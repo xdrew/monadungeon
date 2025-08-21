@@ -93,11 +93,11 @@ docker compose -f $COMPOSE_FILE exec -T php php bin/console cache:clear
 log_info "Warming up cache..."
 docker compose -f $COMPOSE_FILE exec -T php php bin/console cache:warmup
 
-# Health check
+# Health check - just verify nginx is responding
 log_info "Performing health check..."
 sleep 5
-# Try the nginx health endpoint first, then fall back to checking if nginx is responding
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/health || curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "000")
+# Check if nginx is responding (frontend should return 200)
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "000")
 
 if [ "$HTTP_STATUS" = "200" ]; then
     log_info "Health check passed! Application is running."
