@@ -11,6 +11,8 @@ services:
       POSTGRES_USER: monadungeon
       TZ: 'UTC'
       PGTZ: 'UTC'
+    ports:
+      - 5432:5432
     networks:
       - monadungeon_prod
     healthcheck:
