@@ -53,6 +53,12 @@ fi
 # Frontend will be built inside Docker container
 log_info "Frontend will be built in Docker container..."
 
+# Ensure backup directory exists
+if [ ! -d "$BACKUP_DIR" ]; then
+    log_info "Creating backup directory..."
+    mkdir -p "$BACKUP_DIR"
+fi
+
 # Create backup before deployment
 log_info "Creating database backup..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
