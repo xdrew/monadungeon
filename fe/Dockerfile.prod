@@ -18,18 +18,20 @@ RUN npm ci
 # Copy application code
 COPY . .
 
-# Set environment variables for the build
-ENV VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}
-ENV VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+# Create .env file with build arguments for Vite to use
+RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env && \
+    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env && \
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env
 
-# Debug: Print environment variables
-RUN echo "Building with VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}"
-RUN echo "Building with VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}"
-RUN echo "Building with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
+# Debug: Show the .env file content
+RUN echo "=== .env file content ===" && cat .env
 
-# Build the application for production
+# Build the application for production (Vite will read from .env file)
 RUN npm run build
+
+# Debug: Check if environment variables are in the built files
+RUN echo "=== Checking built files for VITE_PRIVY_APP_ID ===" && \
+    grep -r "cmeb207py01ikky0csyj8akos" dist/ || echo "WARNING: VITE_PRIVY_APP_ID not found in built files!"
 
 # Final stage: Just copy the built files
 FROM alpine:3.18
