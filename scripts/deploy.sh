@@ -56,42 +56,42 @@ log_info "Frontend will be built in Docker container..."
 # Create backup before deployment
 log_info "Creating database backup..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-docker-compose -f $COMPOSE_FILE exec -T db pg_dump -U monadungeon monadungeon > "$BACKUP_DIR/monadungeon_backup_$TIMESTAMP.sql" 2>/dev/null || log_warning "Database backup failed (might be first deployment)"
+docker compose -f $COMPOSE_FILE exec -T db pg_dump -U monadungeon monadungeon > "$BACKUP_DIR/monadungeon_backup_$TIMESTAMP.sql" 2>/dev/null || log_warning "Database backup failed (might be first deployment)"
 
 # Build Docker images (including frontend)
 log_info "Building Docker images (including frontend)..."
-docker-compose -f $COMPOSE_FILE build --no-cache frontend-builder
-docker-compose -f $COMPOSE_FILE build
+docker compose -f $COMPOSE_FILE build --no-cache frontend-builder
+docker compose -f $COMPOSE_FILE build
 
 # Stop current containers
 log_info "Stopping current containers..."
-docker-compose -f $COMPOSE_FILE down
+docker compose -f $COMPOSE_FILE down
 
 # Start new containers
 log_info "Starting new containers..."
-docker-compose -f $COMPOSE_FILE up -d
+docker compose -f $COMPOSE_FILE up -d
 
 # Wait for services to be healthy
 log_info "Waiting for services to be healthy..."
 sleep 10
 
 # Check if database is ready
-until docker-compose -f $COMPOSE_FILE exec -T db pg_isready -U monadungeon > /dev/null 2>&1; do
+until docker compose -f $COMPOSE_FILE exec -T db pg_isready -U monadungeon > /dev/null 2>&1; do
     log_info "Waiting for database to be ready..."
     sleep 2
 done
 
 # Run database migrations
 log_info "Running database migrations..."
-docker-compose -f $COMPOSE_FILE exec -T php php bin/console doctrine:migrations:migrate --no-interaction
+docker compose -f $COMPOSE_FILE exec -T php php bin/console doctrine:migrations:migrate --no-interaction
 
 # Clear cache
 log_info "Clearing application cache..."
-docker-compose -f $COMPOSE_FILE exec -T php php bin/console cache:clear
+docker compose -f $COMPOSE_FILE exec -T php php bin/console cache:clear
 
 # Warm up cache
 log_info "Warming up cache..."
-docker-compose -f $COMPOSE_FILE exec -T php php bin/console cache:warmup
+docker compose -f $COMPOSE_FILE exec -T php php bin/console cache:warmup
 
 # Health check
 log_info "Performing health check..."
@@ -103,7 +103,7 @@ if [ "$HTTP_STATUS" = "200" ]; then
 else
     log_error "Health check failed! HTTP status: $HTTP_STATUS"
     log_info "Checking container logs..."
-    docker-compose -f $COMPOSE_FILE logs --tail=50
+    docker compose -f $COMPOSE_FILE logs --tail=50
     exit 1
 fi
 
@@ -113,6 +113,6 @@ find $BACKUP_DIR -name "monadungeon_backup_*.sql" -mtime +7 -delete
 
 # Show running containers
 log_info "Deployment completed successfully!"
-docker-compose -f $COMPOSE_FILE ps
+docker compose -f $COMPOSE_FILE ps
 
 log_info "Application is available at https://$(grep SERVER_NAME $ENV_FILE | cut -d'=' -f2)"
