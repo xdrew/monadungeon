@@ -43,7 +43,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./docker/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./fe/dist:/usr/share/nginx/html:ro
+      - frontend_dist:/usr/share/nginx/html:ro
       - nginx_cache:/var/cache/nginx
       - letsencrypt:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot:ro
@@ -52,8 +52,22 @@ services:
       - "443:443"
     depends_on:
       - php
+      - frontend-builder
     networks:
       - monadungeon_prod
+
+  # Build frontend and extract static files
+  frontend-builder:
+    container_name: frontend_builder_monadungeon_prod
+    build:
+      context: ./fe
+      dockerfile: Dockerfile.prod
+    volumes:
+      - frontend_dist:/app/dist
+    command: sh -c "echo 'Frontend built successfully'"
+    networks:
+      - monadungeon_prod
+
 
   php:
     container_name: php_monadungeon_prod
@@ -115,6 +129,7 @@ volumes:
   nginx_cache:
   letsencrypt:
   certbot_webroot:
+  frontend_dist:
 
 networks:
   monadungeon_prod:
