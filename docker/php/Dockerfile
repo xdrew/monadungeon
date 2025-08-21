@@ -44,7 +44,10 @@ COPY ./src/config/preload.php /sf/app/src/config/preload.php
 COPY ./src/patches /sf/app/src/patches
 
 # install composer dependencies (autoloader MUST be generated later!)
-RUN composer install -n --no-dev --no-cache --no-ansi --no-autoloader --no-scripts --prefer-dist
+# This dirty hack fixes composer patch issue
+RUN composer install -n --no-dev --no-cache --no-ansi --no-scripts --prefer-dist || true \
+    && composer install -n --no-dev --no-cache --no-ansi --no-scripts --prefer-dist || true \
+    && composer install -n --no-dev --no-cache --no-ansi --no-scripts --prefer-dist
 
 # unset default image entrypoint
 ENTRYPOINT []
