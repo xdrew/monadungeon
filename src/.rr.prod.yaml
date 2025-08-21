@@ -66,13 +66,6 @@ status:
 reload:
   enabled: false
 
-# Jobs/Queue configuration (if using RoadRunner jobs)
-jobs:
-  pool:
-    num_workers: 2
-    allocate_timeout: 60s
-    destroy_timeout: 60s
-
 # KV storage (optional, for caching)
 kv:
   memory:
