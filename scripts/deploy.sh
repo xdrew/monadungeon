@@ -61,6 +61,9 @@ docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T db pg_dump -U monad
 # Build Docker images (including frontend)
 log_info "Building Docker images (including frontend)..."
 # Load environment variables from .env.prod for the build
+# Export the variables so docker compose can use them
+export $(grep -E '^VITE_' $ENV_FILE | xargs)
+log_info "Frontend env vars: VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID:-not set}, VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID:-not set}"
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --no-cache frontend-builder
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build
 
