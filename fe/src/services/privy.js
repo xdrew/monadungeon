@@ -227,7 +227,7 @@ class PrivyService {
         
         // Check for Monad Games ID cross_app account
         if (user.linked_accounts && user.linked_accounts.length > 0) {
-          const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID || 'cmd8euall0037le0my79qpz42';
+          const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID;
           const crossAppAccount = user.linked_accounts.find(account => 
             account.type === 'cross_app' && 
             account.provider_app?.id === monadGamesAppId
@@ -421,7 +421,7 @@ class PrivyService {
       }
       
       // Check for Monad Games ID cross_app account
-      const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID || 'cmd8euall0037le0my79qpz42';
+      const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID;
       const crossAppAccount = normalizedUser.linked_accounts.find(account => 
         account.type === 'cross_app' && 
         account.provider_app?.id === monadGamesAppId

@@ -29,7 +29,7 @@ class MonadAuthService {
       
       // Check for cross_app account with Monad Games ID
       if (privyResult.user?.linked_accounts) {
-        const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID || 'cmd8euall0037le0my79qpz42';
+        const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID;
         const crossAppAccount = privyResult.user.linked_accounts.find(account => 
           account.type === 'cross_app' && 
           account.provider_app?.id === monadGamesAppId

@@ -358,7 +358,7 @@ const loginWithMonad = async () => {
     loadingMessage.value = 'Connecting to Monad Games ID...';
     errorMessage.value = '';
 
-    const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID || 'cmd8euall0037le0my79qpz42';
+    const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID;
 
     // Generate code challenge and state for OAuth
     const generateRandomString = (length) => {
@@ -607,7 +607,7 @@ const handlePrivySuccess = async (result) => {
     // Step 2: If still no wallet, establish cross-app connection with Monad Games ID
     if (!walletAddress) {
       try {
-        const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID || 'cmd8euall0037le0my79qpz42';
+        const monadGamesAppId = import.meta.env.VITE_MONAD_GAMES_APP_ID;
 
         // Generate code challenge and state for OAuth
         const generateRandomString = (length) => {
