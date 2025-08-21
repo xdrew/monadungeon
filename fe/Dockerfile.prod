@@ -15,41 +15,33 @@ COPY package.json package-lock.json* ./
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Copy application code (dockerignore will exclude .env files)
+# Copy application code (dockerignore excludes .env files)
 COPY . .
 
-# Ensure no .env files exist from COPY
-RUN ls -la .env* 2>/dev/null || echo "No .env files copied (good!)"
+# CRITICAL: Create .env file BEFORE running build
+# Vite reads .env files at build time to replace import.meta.env.* references
+RUN echo "Creating .env file with build variables..." && \
+    echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env && \
+    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env && \
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env && \
+    echo "Contents of .env:" && \
+    cat .env
 
-# Create ALL the .env files that Vite might look for
-# Vite loads these in order: .env.production.local, .env.local, .env.production, .env
-RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env.production.local && \
-    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env.production.local && \
-    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env.production.local && \
-    cp .env.production.local .env.production && \
-    cp .env.production.local .env.local && \
-    cp .env.production.local .env
+# Build the application - Vite will read the .env file
+RUN echo "Running build with env vars..." && \
+    npm run build
 
-# Debug: Show the env file and build args
-RUN echo "=== Build Arguments ===" && \
-    echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" && \
-    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" && \
-    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" && \
-    echo "=== .env.production.local ===" && \
-    cat .env.production.local
-
-# Build the application for production
-# Vite will read .env.production.local with highest priority
-RUN npm run build
-
-# Debug: Verify environment variables are in the built files
-RUN echo "=== Checking built files for environment variables ===" && \
-    echo "Searching for VITE_PRIVY_APP_ID value (${VITE_PRIVY_APP_ID}):" && \
-    (grep -l "${VITE_PRIVY_APP_ID}" dist/assets/*.js 2>/dev/null && echo "✓ Found") || echo "✗ NOT FOUND!" && \
-    echo "Searching for VITE_MONAD_GAMES_APP_ID value (${VITE_MONAD_GAMES_APP_ID}):" && \
-    (grep -l "${VITE_MONAD_GAMES_APP_ID}" dist/assets/*.js 2>/dev/null && echo "✓ Found") || echo "✗ NOT FOUND!" && \
-    echo "Checking for unprocessed env var names:" && \
-    (grep "VITE_PRIVY_APP_ID\|VITE_MONAD_GAMES_APP_ID" dist/assets/*.js 2>/dev/null | head -2 || echo "✓ No unprocessed env vars found")
+# Verify the build worked
+RUN echo "Checking if environment variables were replaced in build..." && \
+    if grep -q "VITE_PRIVY_APP_ID" dist/assets/*.js; then \
+        echo "ERROR: Environment variables were NOT replaced! Build failed!" && \
+        exit 1; \
+    else \
+        echo "SUCCESS: Environment variables were properly replaced in build"; \
+    fi && \
+    echo "Checking for actual app IDs in built files..." && \
+    grep -l "cmeb207py01ikky0csyj8akos" dist/assets/*.js 2>/dev/null || echo "WARNING: Privy app ID not found" && \
+    grep -l "cmd8euall0037le0my79qpz42" dist/assets/*.js 2>/dev/null || echo "WARNING: Monad Games app ID not found"
 
 # Final stage: Just copy the built files
 FROM alpine:3.18
