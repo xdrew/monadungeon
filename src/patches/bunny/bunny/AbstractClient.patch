@@ -1,6 +1,5 @@
-@package bunny/bunny
---- src/Bunny/AbstractClient.php
-+++ src/Bunny/AbstractClient.php
+--- a/src/Bunny/AbstractClient.php
++++ b/src/Bunny/AbstractClient.php
 @@ -295,6 +295,7 @@
       */
      protected function read()

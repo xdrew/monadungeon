@@ -1,6 +1,5 @@
-@package bunny/bunny
---- src/Bunny/Async/Client.php
-+++ src/Bunny/Async/Client.php
+--- a/src/Bunny/Async/Client.php
++++ b/src/Bunny/Async/Client.php
 @@ -297,7 +297,16 @@
       */
      public function onDataAvailable()
