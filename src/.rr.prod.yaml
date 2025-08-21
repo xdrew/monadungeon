@@ -78,4 +78,4 @@ kv:
   memory:
     driver: memory
     config:
-      interval: 60s
+      interval: 60
