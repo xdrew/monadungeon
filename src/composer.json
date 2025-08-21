@@ -29,6 +29,7 @@
         "symfony/runtime": "~7.0.0",
         "symfony/security-bundle": "~7.0.0",
         "symfony/serializer": "~7.0.0",
+        "symfony/validator": "7.0.*",
         "symfony/yaml": "~7.0.0",
         "telephantast/bunny-transport": "main-dev",
         "telephantast/doctrine-persistence": "^0.1@dev",
