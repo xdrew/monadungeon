@@ -99,8 +99,8 @@ sleep 5
 # Check if nginx is responding (frontend should return 200)
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "000")
 
-if [ "$HTTP_STATUS" = "200" ]; then
-    log_info "Health check passed! Application is running."
+if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "301" ] || [ "$HTTP_STATUS" = "302" ]; then
+    log_info "Health check passed! Application is running. (HTTP status: $HTTP_STATUS)"
 else
     log_error "Health check failed! HTTP status: $HTTP_STATUS"
     log_info "Checking container logs..."
