@@ -20,23 +20,33 @@ COPY package.json package-lock.json* ./
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Create .env file with build arguments BEFORE copying code
-RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env && \
-    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env && \
-    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env
-
-# Copy application code (but preserve the .env file we just created)
+# Copy application code
 COPY . .
-# Restore our .env file in case COPY overwrote it
+
+# Create .env.production file for Vite (Vite looks for .env.production in production builds)
+RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env.production && \
+    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env.production && \
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env.production
+
+# Also create .env file as fallback
 RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env && \
     echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env && \
     echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env
 
-# Debug: Show the .env file content
-RUN echo "=== .env file content ===" && cat .env
+# Debug: Show both env files
+RUN echo "=== .env.production file content ===" && cat .env.production && \
+    echo "=== .env file content ===" && cat .env
 
-# Build the application for production (Vite will read from .env file)
-RUN npm run build
+# Set environment variables directly for the build process
+ENV VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}
+ENV VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# Build the application for production with environment variables
+RUN VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID} \
+    VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID} \
+    VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    npm run build
 
 # Debug: Check if environment variables are in the built files
 RUN echo "=== Checking built files for environment variables ===" && \
