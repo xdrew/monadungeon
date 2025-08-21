@@ -64,6 +64,10 @@ log_info "Creating database backup..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T db pg_dump -U monadungeon monadungeon > "$BACKUP_DIR/monadungeon_backup_$TIMESTAMP.sql" 2>/dev/null || log_warning "Database backup failed (might be first deployment)"
 
+# Clean up old frontend build to ensure fresh deployment
+log_info "Removing old frontend build volume..."
+docker volume rm monadungeon_frontend_dist 2>/dev/null || log_info "No existing frontend volume to remove"
+
 # Build Docker images (including frontend)
 log_info "Building Docker images (including frontend)..."
 # Load and export environment variables from .env.prod for the build
