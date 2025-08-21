@@ -7,6 +7,11 @@ ARG VITE_PRIVY_APP_ID
 ARG VITE_MONAD_GAMES_APP_ID
 ARG VITE_API_BASE_URL=https://monadungeon.xyz
 
+# Debug: Print build arguments immediately
+RUN echo "Build ARG VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" && \
+    echo "Build ARG VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" && \
+    echo "Build ARG VITE_API_BASE_URL=${VITE_API_BASE_URL}"
+
 WORKDIR /app
 
 # Copy package files
@@ -30,8 +35,10 @@ RUN echo "=== .env file content ===" && cat .env
 RUN npm run build
 
 # Debug: Check if environment variables are in the built files
-RUN echo "=== Checking built files for VITE_PRIVY_APP_ID ===" && \
-    grep -r "cmeb207py01ikky0csyj8akos" dist/ || echo "WARNING: VITE_PRIVY_APP_ID not found in built files!"
+RUN echo "=== Checking built files for environment variables ===" && \
+    (grep -r "cmeb207py01ikky0csyj8akos" dist/ && echo "✓ VITE_PRIVY_APP_ID found") || echo "✗ WARNING: VITE_PRIVY_APP_ID not found in built files!" && \
+    (grep -r "cmd8euall0037le0my79qpz42" dist/ && echo "✓ VITE_MONAD_GAMES_APP_ID found") || echo "✗ WARNING: VITE_MONAD_GAMES_APP_ID not found in built files!" && \
+    ls -la dist/assets/*.js | head -5
 
 # Final stage: Just copy the built files
 FROM alpine:3.18

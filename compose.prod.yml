@@ -65,9 +65,9 @@ services:
       context: ./fe
       dockerfile: Dockerfile.prod
       args:
-        VITE_PRIVY_APP_ID: ${VITE_PRIVY_APP_ID}
-        VITE_MONAD_GAMES_APP_ID: ${VITE_MONAD_GAMES_APP_ID}
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://monadungeon.xyz}
+        VITE_PRIVY_APP_ID: "${VITE_PRIVY_APP_ID}"
+        VITE_MONAD_GAMES_APP_ID: "${VITE_MONAD_GAMES_APP_ID}"
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-https://monadungeon.xyz}"
     volumes:
       - frontend_dist:/app/dist
     command: sh -c "echo 'Frontend built successfully'"
