@@ -50,20 +50,17 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# Build frontend assets
-log_info "Building frontend assets..."
-cd fe
-npm ci --only=production
-npm run build
-cd ..
+# Frontend will be built inside Docker container
+log_info "Frontend will be built in Docker container..."
 
 # Create backup before deployment
 log_info "Creating database backup..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 docker-compose -f $COMPOSE_FILE exec -T db pg_dump -U monadungeon monadungeon > "$BACKUP_DIR/monadungeon_backup_$TIMESTAMP.sql" 2>/dev/null || log_warning "Database backup failed (might be first deployment)"
 
-# Build Docker images
-log_info "Building Docker images..."
+# Build Docker images (including frontend)
+log_info "Building Docker images (including frontend)..."
+docker-compose -f $COMPOSE_FILE build --no-cache frontend-builder
 docker-compose -f $COMPOSE_FILE build
 
 # Stop current containers
