@@ -16,7 +16,7 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN set -x \
     && apk add supervisor patch \
     # install PHP extensions (CFLAGS usage reason - https://bit.ly/3ALS5NU)
-    && install-php-extensions @composer opcache pdo_pgsql pgsql intl pcov pcntl sockets \
+    && install-php-extensions @composer opcache pdo_pgsql pgsql intl pcov pcntl sockets gmp \
     # make clean up
     && docker-php-source delete \
     # enable opcache for CLI, docs: <https://www.php.net/manual/en/opcache.configuration.php#ini.opcache.jit>
