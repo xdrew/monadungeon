@@ -19,7 +19,16 @@ final readonly class Action
         try {
             $messageBus->dispatch(new CreateGame($request->gameId));
         } catch (\Throwable $e) {
-            return new Error(Uuid::v7(), 'Game creation failed: ' . $e->getMessage());
+            // Log the full error for debugging
+            error_log('Game creation error: ' . $e->getMessage() . ' - ' . $e->getTraceAsString());
+            
+            // Get a more descriptive error message
+            $errorMessage = $e->getMessage() ?: get_class($e);
+            if ($e->getPrevious()) {
+                $errorMessage .= ' (Caused by: ' . $e->getPrevious()->getMessage() . ')';
+            }
+            
+            return new Error(Uuid::v7(), 'Game creation failed: ' . $errorMessage);
         }
 
         return new Response($request->gameId);
