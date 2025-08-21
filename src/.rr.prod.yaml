@@ -76,5 +76,6 @@ jobs:
 # KV storage (optional, for caching)
 kv:
   memory:
-    enabled: true
-    interval: 60s
+    driver: memory
+    config:
+      interval: 60s
