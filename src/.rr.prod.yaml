@@ -1,0 +1,80 @@
+version: "3"
+
+server:
+  command: "php public/index.php"
+  env:
+    - APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
+
+http:
+  address: 0.0.0.0:8080
+  pool:
+    num_workers: 4
+    max_jobs: 500
+    allocate_timeout: 60s
+    destroy_timeout: 60s
+  middleware: [ "static", "gzip", "headers" ]
+  headers:
+    response:
+      X-Powered-By: "RoadRunner"
+  uploads:
+    forbid: [ ".php", ".exe", ".bat" ]
+    max_size: 50M
+  static:
+    dir: "public"
+    forbid: [ ".php", ".htaccess" ]
+    response:
+      headers:
+        Cache-Control: "public, max-age=86400"
+  # HTTP/2 support
+  http2:
+    enabled: true
+    h2c: false
+    max_concurrent_streams: 128
+
+# Production logging configuration
+logs:
+  mode: production
+  level: error
+  encoding: json
+  output: stderr
+  channels:
+    http:
+      encoding: json
+      level: error
+    server:
+      encoding: json
+      level: error
+      mode: production
+    metrics:
+      encoding: json
+      level: error
+
+# Metrics for monitoring
+metrics:
+  address: 127.0.0.1:2112
+  collect:
+    app_metric:
+      type: histogram
+      help: "Application response time"
+
+# Health check endpoint
+status:
+  address: 127.0.0.1:2114
+  unavailable_status_code: 503
+
+# No auto-reload in production
+reload:
+  enabled: false
+
+# Jobs/Queue configuration (if using RoadRunner jobs)
+jobs:
+  pool:
+    num_workers: 2
+    allocate_timeout: 60s
+    destroy_timeout: 60s
+
+# KV storage (optional, for caching)
+kv:
+  memory:
+    enabled: true
+    interval: 60s

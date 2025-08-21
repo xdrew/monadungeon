@@ -1,0 +1,267 @@
+/* Monad Theme - Based on Monad Testnet branding */
+:root {
+  /* Monad Brand Colors */
+  --monad-purple: #7B3FF2;
+  --monad-purple-light: #9F6EFF;
+  --monad-purple-lighter: #C4A5FF;
+  --monad-purple-dark: #5A2FBA;
+  --monad-purple-darker: #3E1F82;
+  
+  /* Monad Secondary Colors */
+  --monad-violet: #A78BFA;
+  --monad-indigo: #6366F1;
+  --monad-blue: #3B82F6;
+  --monad-pink: #EC4899;
+  
+  /* Monad Background Gradients */
+  --monad-gradient-primary: linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%);
+  --monad-gradient-secondary: linear-gradient(135deg, #6366F1 0%, #7B3FF2 100%);
+  --monad-gradient-dark: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
+  
+  /* Monad Dark Backgrounds */
+  --monad-bg-dark: #0F0E1C;
+  --monad-bg-darker: #09080F;
+  --monad-bg-card: #1A1830;
+  --monad-bg-hover: #252345;
+  
+  /* Monad Text Colors */
+  --monad-text-primary: #F5F3FF;
+  --monad-text-secondary: #C4B5FD;
+  --monad-text-muted: #9CA3AF;
+  
+  /* Override main design tokens with Monad theme */
+  --color-primary: var(--monad-purple);
+  --color-primary-hover: var(--monad-purple-light);
+  --color-secondary: var(--monad-violet);
+  --color-secondary-hover: var(--monad-purple-lighter);
+  --color-danger: var(--monad-pink);
+  --color-warning: #FBBF24;
+  --color-warning-hover: #FCD34D;
+  --color-info: var(--monad-blue);
+  --color-info-hover: #60A5FA;
+  
+  /* Background Colors */
+  --bg-primary: var(--monad-bg-dark);
+  --bg-secondary: var(--monad-bg-card);
+  --bg-tertiary: var(--monad-bg-hover);
+  --bg-field: var(--monad-bg-darker);
+  --bg-modal: var(--monad-bg-card);
+  --bg-overlay: rgba(9, 8, 15, 0.85);
+  
+  /* Text Colors */
+  --text-primary: var(--monad-text-primary);
+  --text-secondary: var(--monad-text-secondary);
+  --text-muted: var(--monad-text-muted);
+  --text-accent: var(--monad-purple-light);
+  
+  /* Shadows with purple glow */
+  --shadow-sm: 0 2px 4px rgba(123, 63, 242, 0.1);
+  --shadow-md: 0 4px 8px rgba(123, 63, 242, 0.15);
+  --shadow-lg: 0 8px 16px rgba(123, 63, 242, 0.2);
+  --shadow-glow: 0 0 20px rgba(123, 63, 242, 0.5);
+  --shadow-glow-strong: 0 0 30px rgba(159, 110, 255, 0.7);
+}
+
+/* Monad Logo Styles */
+.monad-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.monad-logo img {
+  height: 60px;
+  width: auto;
+  filter: drop-shadow(0 0 10px rgba(123, 63, 242, 0.3));
+  transition: filter 0.3s ease;
+}
+
+.monad-logo:hover img {
+  filter: drop-shadow(0 0 20px rgba(123, 63, 242, 0.6));
+}
+
+/* Small logo for sidebar */
+.monad-logo-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.monad-logo-small img {
+  height: 30px;
+  width: auto;
+  filter: drop-shadow(0 0 8px rgba(123, 63, 242, 0.3));
+  transition: filter 0.3s ease;
+}
+
+.monad-logo-small:hover img {
+  filter: drop-shadow(0 0 15px rgba(123, 63, 242, 0.5));
+}
+
+/* Monad Button Styles */
+.monad-button {
+  background: var(--monad-gradient-primary);
+  color: var(--monad-text-primary);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(123, 63, 242, 0.3);
+}
+
+.monad-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.4);
+}
+
+/* Monad Card Styles */
+.monad-card {
+  background: var(--monad-bg-card);
+  border: 1px solid rgba(123, 63, 242, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(123, 63, 242, 0.1);
+  transition: all 0.3s ease;
+}
+
+.monad-card:hover {
+  border-color: var(--monad-purple);
+  box-shadow: 0 8px 30px rgba(123, 63, 242, 0.2);
+}
+
+/* Monad Glow Effects */
+.monad-glow {
+  box-shadow: var(--shadow-glow);
+  animation: monadPulse 2s infinite;
+}
+
+@keyframes monadPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(123, 63, 242, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(159, 110, 255, 0.8);
+  }
+}
+
+/* Monad Monster Card Styles */
+.monster-card {
+  background: var(--monad-gradient-dark);
+  border: 2px solid var(--monad-purple);
+  border-radius: 12px;
+  padding: 15px;
+  position: relative;
+  overflow: hidden;
+}
+
+.monster-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(123, 63, 242, 0.1) 0%, transparent 70%);
+  animation: rotate 10s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Monad Monster Image Styles */
+.monster-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid var(--monad-purple-light);
+  box-shadow: 0 0 20px rgba(123, 63, 242, 0.4);
+  transition: all 0.3s ease;
+}
+
+.monster-image:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 30px rgba(159, 110, 255, 0.6);
+}
+
+/* Monad Battle Effects */
+.battle-effect {
+  background: linear-gradient(135deg, rgba(123, 63, 242, 0.2) 0%, rgba(167, 139, 250, 0.2) 100%);
+  border: 2px solid var(--monad-purple);
+  border-radius: 12px;
+  animation: battleGlow 0.5s ease-in-out;
+}
+
+@keyframes battleGlow {
+  0% {
+    box-shadow: 0 0 0 rgba(123, 63, 242, 0);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(123, 63, 242, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(123, 63, 242, 0);
+  }
+}
+
+/* Monad Tile Styles */
+.tile-monad {
+  background: var(--monad-bg-card);
+  border: 1px solid rgba(123, 63, 242, 0.3);
+  transition: all 0.3s ease;
+}
+
+.tile-monad:hover {
+  border-color: var(--monad-purple);
+  background: var(--monad-bg-hover);
+  box-shadow: 0 0 15px rgba(123, 63, 242, 0.3);
+}
+
+.tile-monad.selected {
+  border-color: var(--monad-purple-light);
+  box-shadow: 0 0 25px rgba(159, 110, 255, 0.5);
+}
+
+/* Monad UI Overlays */
+.monad-overlay {
+  background: linear-gradient(135deg, rgba(15, 14, 28, 0.95) 0%, rgba(30, 27, 75, 0.95) 100%);
+  backdrop-filter: blur(10px);
+}
+
+/* Monad Header Styles */
+.game-header-monad {
+  background: var(--monad-gradient-dark);
+  border-bottom: 1px solid var(--monad-purple);
+  box-shadow: 0 2px 20px rgba(123, 63, 242, 0.2);
+}
+
+/* Monad Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--monad-bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--monad-purple);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--monad-purple-light);
+}

@@ -1,0 +1,24 @@
+/* Main Styles Index - Import all style modules */
+
+/* Foundation */
+@import './design-tokens.css';
+@import './monad-theme.css'; /* Monad testnet theme overrides */
+@import './animations.css';
+
+/* Layout */
+@import './layout/game-layout.css';
+
+/* Components */
+@import './components/buttons.css';
+@import './components/loading.css';
+@import './components/modals.css';
+@import './components/tiles.css';
+@import './components/inventory.css';
+@import './components/controls.css';
+@import './components/gameView.css';
+
+/* Future imports can be added here as you continue extracting:
+ * @import './utils/helpers.css';
+ * @import './components/forms.css';
+ * @import './components/notifications.css';
+ */ 

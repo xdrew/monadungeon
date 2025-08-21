@@ -1,0 +1,473 @@
+/* Tile System Styles */
+
+/* Tiles Container */
+.tiles-container {
+  position: relative;
+  margin: 0 auto;
+  background-color: transparent;
+  transition: transform var(--transition-normal) ease;
+  box-shadow: none;
+  border-radius: var(--radius-md);
+  transform-origin: left top;
+  overflow: visible;
+  min-width: 300px;
+  min-height: 300px;
+}
+
+/* Base Tile */
+.tile {
+  position: absolute;
+  width: 98px; /* 100px - 2px border */
+  height: 98px; /* 100px - 2px border */
+  border: 1px solid #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: transform var(--transition-normal) ease, box-shadow var(--transition-normal) ease;
+  --tile-size: var(--tile-size);
+  --field-min-x: 0;
+  --field-min-y: 0;
+  --tile-x: attr(data-x number);
+  --tile-y: attr(data-y number);
+}
+
+.tile-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+}
+
+.tile-orientation {
+  font-size: 24px;
+  opacity: 0.5;
+}
+
+/* Monster Images in Tiles */
+.tile-items.has-monster-image {
+  position: absolute;
+  display: flex;
+  align-items: end;
+  justify-content: end;
+  width: 45px;
+  height: 45px;
+}
+
+.tile-items .monster-image {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  background: rgba(26, 24, 48, 0.8);
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid rgba(159, 110, 255, 0.4);
+  transition: all 0.3s ease;
+}
+
+.tile-items:hover .monster-image {
+  transform: scale(1.1);
+  border-color: rgba(159, 110, 255, 0.6);
+}
+
+.tile-items.has-guard .monster-hp {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: var(--monad-purple);
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  border: 1px solid #0F0E1C;
+}
+
+/* Tile Hover Effects */
+.tile:hover {
+  z-index: var(--z-tooltip);
+  box-shadow: 0 0 12px rgba(76, 175, 80, 0.7);
+  filter: brightness(1.2);
+}
+
+/* Tile Types */
+.tile.entrance {
+  background-color: #2c3e50;
+}
+
+.tile.corridor {
+  background-color: #7f8c8d;
+}
+
+.tile.room {
+  background-color: #7f8c8d;
+  border: 1px solid #5d6d6e;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+}
+
+.room-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.room-symbol {
+  font-weight: bold;
+  font-size: 36px;
+  text-shadow: 0 0 3px rgba(255,255,255,0.3);
+}
+
+.starting-tile {
+  border: 2px solid #e74c3c !important;
+  z-index: 5;
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+}
+
+/* Tile Openings */
+.tile-openings {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.opening {
+  position: absolute;
+  background-color: rgba(76, 175, 80, 0.3);
+}
+
+.opening.top {
+  top: 0;
+  left: 40%;
+  width: 20%;
+  height: 12%;
+}
+
+.opening.right {
+  top: 40%;
+  right: 0;
+  width: 12%;
+  height: 20%;
+}
+
+.opening.bottom {
+  bottom: 0;
+  left: 40%;
+  width: 20%;
+  height: 12%;
+}
+
+.opening.left {
+  top: 40%;
+  left: 0;
+  width: 12%;
+  height: 20%;
+}
+
+.room-opening {
+  /*background-color: rgba(76, 175, 80, 0.3) !important;*/
+  /*width: 30% !important;*/
+  /*height: 30% !important;*/
+}
+
+/* Player Indicators */
+.player-indicator {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  font-size: 28px;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+  z-index: 10;
+}
+
+.has-player {
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+  z-index: 10;
+}
+
+.tile.current-player-position {
+  box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.6);
+  z-index: 10;
+}
+
+/* Tile Items */
+.tile-items {
+  font-size: 22px;
+  margin-top: 6px;
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+  z-index: 5;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-round);
+  padding: 3px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.tile-items:hover {
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
+  z-index: 30;
+}
+
+.tile-items.has-guard {
+  background-color: rgba(220, 53, 69, 0.3);
+  box-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+  animation: guard-pulse 2s infinite;
+}
+
+/* Special styling for different skeleton types */
+.tile-items.has-guard[title^="Skeleton King"] {
+  background-color: rgba(128, 0, 128, 0.3); /* Purple for King */
+  box-shadow: 0 0 5px rgba(128, 0, 128, 0.5);
+  animation: king-pulse 2s infinite;
+}
+
+.tile-items.has-guard[title^="Skeleton Warrior"] {
+  background-color: rgba(165, 42, 42, 0.3); /* Brown for Warrior */
+  box-shadow: 0 0 5px rgba(165, 42, 42, 0.5);
+}
+
+.tile-items.has-guard[title^="Skeleton Mage"] {
+  background-color: rgba(70, 130, 180, 0.3); /* Steel blue for Mage */
+  box-shadow: 0 0 5px rgba(70, 130, 180, 0.5);
+  animation: crystal-pulse 3s infinite;
+}
+
+.tile-items.has-guard[title^="Skeleton Turnkey"] {
+  background-color: rgba(255, 165, 0, 0.3); /* Orange for Turnkey */
+  box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
+}
+
+.tile-items.is-reward {
+  background-color: rgba(255, 193, 7, 0.3);
+  box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+  animation: reward-pulse 2s infinite;
+}
+
+/* Item Display */
+.item-emoji {
+  font-size: 24px;
+  margin-right: var(--spacing-sm);
+}
+
+.item-name {
+  font-weight: bold;
+  margin-right: var(--spacing-sm);
+}
+
+.item-type {
+  font-size: 16px;
+  color: #666;
+}
+
+.item-value {
+  background-color: var(--color-warning);
+  color: var(--bg-modal);
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-md);
+  font-weight: bold;
+}
+
+.item-highlight {
+  font-weight: bold;
+  color: var(--color-primary);
+}
+
+/* Available Place Markers */
+.available-place {
+  position: absolute;
+  width: var(--tile-size);
+  height: var(--tile-size);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 55;
+}
+
+.move-marker {
+  border: 3px dashed rgba(0, 180, 255, 0.5);
+  border-radius: var(--spacing-sm);
+  background-color: rgba(0, 180, 255, 0.15);
+  animation: pulse 2s infinite;
+}
+
+.move-marker.place-tile {
+  border: 3px dashed rgba(50, 205, 50, 0.6);
+  background-color: rgba(50, 205, 50, 0.2);
+  animation: pulse-place 2s infinite;
+}
+
+/* Clickable Available Places */
+.available-place.clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.available-place.clickable:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+}
+
+.marker-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 24px;
+  opacity: 0.8;
+}
+
+.place-icon {
+  color: rgba(50, 205, 50, 0.9);
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
+}
+
+.move-icon {
+  color: rgba(0, 180, 255, 0.9);
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
+}
+
+/* Ghost Tile */
+.ghost-tile {
+  opacity: 0.7;
+  border: 2px dashed var(--color-primary);
+  animation: ghostPulse 2s infinite;
+}
+
+.ghost-tile.room {
+  /* Room ghost tiles should have the same orientation styling as corridor tiles */
+  /* Only difference should be in the tile content/symbol, not the border/orientation indicators */
+}
+
+.ghost-tile-controls {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  gap: var(--spacing-sm);
+  pointer-events: auto;
+  width: 100%;
+  bottom: -40px;
+  left: 0;
+  justify-content: center;
+}
+
+.ghost-rotate-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-round);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
+  background-color: var(--color-primary);
+  color: white;
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+}
+
+.ghost-rotate-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+/* Tile Animations */
+.tile.tile-placing-animation {
+  animation: tilePlace 0.8s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+  z-index: var(--z-dropdown);
+}
+
+.tile.is-current-action.tile-placing-animation {
+  box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 255, 255, 0.5);
+}
+
+.tile.tile-placing-animation::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.8;
+  animation: trailFade 0.8s ease-out forwards;
+}
+
+.tile.tile-placing-animation .tile-content {
+  will-change: transform;
+}
+
+/* Replay Styles */
+.tile.replaying {
+  z-index: 5;
+  box-shadow: 0 0 8px rgba(230, 126, 34, 0.5);
+}
+
+.game-field.is-replaying {
+  /* Add any replay-specific field styling here */
+}
+
+/* Tile Coordinates Tooltip */
+.tile-coordinates {
+  position: absolute;
+  bottom: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--bg-overlay);
+  color: white;
+  padding: 5px var(--spacing-sm);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  z-index: 30;
+  white-space: nowrap;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.center-view-button {
+  background: rgba(76, 175, 80, 0.7);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 7px;
+  pointer-events: auto;
+  transition: background-color var(--transition-fast);
+}
+
+.center-view-button:hover {
+  background: var(--color-primary);
+} 

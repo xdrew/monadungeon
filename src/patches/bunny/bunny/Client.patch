@@ -1,0 +1,12 @@
+@package bunny/bunny
+--- src/Bunny/Client.php
++++ src/Bunny/Client.php
+@@ -191,7 +191,7 @@
+                     $now = microtime(true);
+                     $nextStreamSelectTimeout = ($this->lastWrite ?: $now) + $this->options["heartbeat"];
+                     if (!isset($nextHeartbeat)) {
+-                        $nextHeartbeat = $now + $this->options["heartbeat"];
++                        $nextHeartbeat = $nextStreamSelectTimeout;
+                     }
+                     if ($stopTime !== null && $stopTime < $nextStreamSelectTimeout) {
+                         $nextStreamSelectTimeout = $stopTime;

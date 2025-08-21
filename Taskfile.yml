@@ -1,0 +1,159 @@
+version: '3'
+
+dotenv: ['.env']
+
+vars:
+  SERVICE_POSTFIX: _${PROJECT}
+  DOCKER_COMPOSE: docker compose
+
+tasks:
+  build:
+    cmds:
+      - '{{.DOCKER_COMPOSE}} build'
+
+  run:
+    cmds:
+      - '{{.DOCKER_COMPOSE}} up -d'
+
+  restart:
+    cmds:
+      - '{{.DOCKER_COMPOSE}} restart'
+
+  stop:
+    cmds:
+      - '{{.DOCKER_COMPOSE}} stop'
+
+  fe:install:
+    desc: Install frontend dependencies
+    cmds:
+      - "{{.DOCKER_COMPOSE}} exec frontend npm install"
+
+  fe:dev:
+    desc: Start frontend development server
+    cmds:
+      - "{{.DOCKER_COMPOSE}} exec frontend npm run dev"
+
+  fe:build:
+    desc: Build frontend for production
+    cmds:
+      - "{{.DOCKER_COMPOSE}} exec frontend npm run build"
+
+  fe:lint:
+    desc: Run linting on frontend code
+    cmds:
+      - "{{.DOCKER_COMPOSE}} exec frontend npm run lint"
+
+  fe:bash:
+    desc: Open bash shell in frontend container
+    cmds:
+      - "{{.DOCKER_COMPOSE}} exec frontend /bin/sh"
+
+  fe:npm:
+    desc: Run arbitrary npm command (usage - task fe:npm -- install axios --save)
+    cmds:
+      - "{{.DOCKER_COMPOSE}} exec frontend npm {{.CLI_ARGS}}"
+
+  fe:test:
+    desc: Run e2e tests with minimal output
+    cmds:
+      - "{{.DOCKER_COMPOSE}} --project-name playwright-test -f docker-compose.test.yml run --rm -e BASE_URL=http://sf.sf:18080 playwright npm run test:e2e -- --config=playwright.config.docker.ts -x"
+
+  fe:test:verbose:
+    desc: Run e2e tests with verbose output
+    cmds:
+      - "{{.DOCKER_COMPOSE}} --project-name playwright-test -f docker-compose.test.yml run --rm -e BASE_URL=http://sf.sf:18080 -e VERBOSE=1 playwright npm run test:e2e -- --config=playwright.config.docker.ts --reporter=list -x"
+
+  fe:test:video:
+    desc: Run e2e tests with video recording (saves all videos)
+    cmds:
+      - "{{.DOCKER_COMPOSE}} --project-name playwright-test -f docker-compose.test.yml run --rm -e BASE_URL=http://sf.sf:18080 playwright npm run test:e2e -- --config=playwright.config.docker.ts"
+
+  php:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} sh
+
+  phpx:
+    cmds:
+      - docker exec -it phpx{{.SERVICE_POSTFIX}} sh
+
+  piy:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor/bin/phpunit --group piy --stop-on-failure
+
+  piyx:
+    cmds:
+      - docker exec -it phpx{{.SERVICE_POSTFIX}} php vendor/bin/phpunit --group piy --stop-on-failure
+
+  all:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor/bin/phpunit --stop-on-failure
+
+  psalm:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor-bin/psalm/vendor/bin/psalm
+
+  psalm-cache:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor-bin/psalm/vendor/bin/psalm --clear-cache
+
+  rector:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor/bin/rector process src -n
+
+  rectorfix:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor/bin/rector process src
+
+  composer-normalize:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} composer normalize --diff
+
+  doctrine-validate:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php bin/console doctrine:schema:validate
+
+  csfix:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor/bin/php-cs-fixer fix src
+
+  fix:
+    cmds:
+      - task: rectorfix
+      - task: composer-normalize
+      - task: csfix
+      - task: psalm
+
+  setup:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} composer install
+      - docker exec -it php{{.SERVICE_POSTFIX}} php bin/console doctrine:database:create --if-not-exists
+      - docker exec -it php{{.SERVICE_POSTFIX}} php bin/console doctrine:migrations:migrate -n
+
+  rebuild_db_test:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php bin/console doctrine:database:drop --if-exists --force --env=test
+      - docker exec -it php{{.SERVICE_POSTFIX}} php bin/console doctrine:database:create --env=test
+      - docker exec -it php{{.SERVICE_POSTFIX}} php bin/console doctrine:migrations:migrate -n  --env=test
+
+  init:
+    cmds:
+      - task: run
+      - task: setup
+      - task: rebuild_db_test
+      - task: all
+      - task: fix
+      - docker exec -it php{{.SERVICE_POSTFIX}} php bin/console game:run 100
+
+  composer-require-checker:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor/bin/composer-require-checker check
+
+  composer-unused:
+    cmds:
+      - docker exec -it php{{.SERVICE_POSTFIX}} php vendor/bin/composer-unused
+
+  composerfix:
+    cmds:
+      - task: composer-normalize
+      - task: composer-require-checker
+      - task: composer-unused

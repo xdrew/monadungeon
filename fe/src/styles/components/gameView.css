@@ -1,0 +1,114 @@
+/* GameView component styles */
+
+/* Field styles computation - highly coupled to component logic */
+.tiles-container {
+  /* Dynamic styles computed from JavaScript */
+  transform-origin: left top;
+}
+
+/* Unified inventory grid styles */
+.unified-inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 6px;
+  background-color: #222;
+  border-radius: 4px;
+}
+
+.inventory-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 4px;
+  background-color: #333;
+  min-height: 50px;
+  border: 1px solid #444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.inventory-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.key-item {
+  border-left: 3px solid #ffd700;
+}
+
+.weapon-item {
+  border-left: 3px solid #ff4500;
+}
+
+.spell-item {
+  border-left: 3px solid #9400d3;
+}
+
+.treasure-item {
+  border-left: 3px solid #00bfff;
+}
+
+.item-icon {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.item-details {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.item-damage, .item-value {
+  font-size: 10px;
+  font-weight: bold;
+  background-color: rgba(0,0,0,0.3);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.item-damage {
+  color: #ff4500;
+}
+
+.item-value {
+  color: #ffd700;
+}
+
+.item-type-indicator {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.inventory-counts {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 4px;
+  margin-top: 6px;
+  border-top: 1px solid #444;
+}
+
+.count-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.count-icon {
+  font-size: 14px;
+}
+
+.count-value {
+  font-weight: bold;
+  color: #ccc;
+} 

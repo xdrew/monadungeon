@@ -1,0 +1,20 @@
+@package bunny/bunny
+--- src/Bunny/Async/Client.php
++++ src/Bunny/Async/Client.php
+@@ -297,7 +297,16 @@
+      */
+     public function onDataAvailable()
+     {
++        try {
+         $this->read();
++        } catch (\Throwable $e) {
++            foreach ($this->awaitCallbacks as $k => $callback) {
++                if ($callback($e) === true) {
++                    unset($this->awaitCallbacks[$k]);
++                    break;
++                }
++            }
++        }
+ 
+         while (($frame = $this->reader->consumeFrame($this->readBuffer)) !== null) {
+             foreach ($this->awaitCallbacks as $k => $callback) {

@@ -1,0 +1,109 @@
+services:
+  db:
+    container_name: db_${PROJECT}
+    image: postgres:17-alpine
+    ports:
+      - 15432:5432
+    volumes:
+      - database_data:/var/lib/postgresql/data:rw
+    environment:
+      POSTGRES_PASSWORD: 111
+      POSTGRES_DB: sf
+      TZ: 'Europe/Warsaw'
+      PGTZ: 'Europe/Warsaw'
+    command: ["postgres", "-c", "log_statement=all"] # log everything to stderr
+    networks:
+      - monadungeon
+  rabbitmq:
+    container_name: rabbitmq_${PROJECT}
+    image: heidiks/rabbitmq-delayed-message-exchange:3.10.2-management
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq/mnesia:delegated
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      - monadungeon
+  frontend:
+    container_name: frontend_${PROJECT}
+    build:
+      context: ./fe
+      dockerfile: Dockerfile
+    volumes:
+      - './fe:/app'
+      - '/app/node_modules'
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - monadungeon
+  nginx:
+    container_name: nginx_${PROJECT}
+    image: nginx:1.15.3-alpine
+    volumes:
+      - './src/:/sf/app/src'
+      - './docker/nginx/fe.conf:/etc/nginx/conf.d/fe.conf:ro'
+      - './docker/nginx/ssl/:/etc/nginx/ssl/:ro'
+    ports:
+      - 18080:80
+      - 8443:443
+    depends_on:
+      - frontend
+      - php
+    networks:
+      - monadungeon
+  php:
+    container_name: php_${PROJECT}
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: app_dev
+    volumes:
+      - './src/:/sf/app/src:cached'
+    command: rr serve -c .rr.dev.yaml
+    env_file:
+      - .env
+    networks:
+      - monadungeon
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  phpx:
+    container_name: phpx_${PROJECT}
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: app_dev_xdebug
+    volumes:
+      - './src/:/sf/app/src:cached'
+    environment:
+      XDEBUG_SESSION: PHPSTORM
+      XDEBUG_MODE: debug
+#      APP_ENV: prod
+      XDEBUG_CONFIG: 'idekey=PHPSTORM client_port=9003 client_host=host.docker.internal max_nesting_level=1024 remote_handler=dbgp output_dir=/sf/app/src/1'
+      PHP_IDE_CONFIG: "serverName=monadungeon.sf"
+    command: rr serve -c .rr.dev.yaml
+    env_file:
+      - .env
+    networks:
+      - monadungeon
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  redis:
+    container_name: redis_${PROJECT}
+    image: redis:alpine
+    networks:
+      - monadungeon
+
+volumes:
+  rabbitmq:
+  database_data:
+networks:
+  monadungeon:
+    name: monadungeon

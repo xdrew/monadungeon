@@ -1,0 +1,64 @@
+/* Design Tokens - CSS Custom Properties */
+:root {
+  /* Colors */
+  --color-primary: #4CAF50;
+  --color-primary-hover: #45a049;
+  --color-secondary: #e67e22;
+  --color-secondary-hover: #d35400;
+  --color-danger: #ff6b6b;
+  --color-warning: #ffb700;
+  --color-warning-hover: #ffc800;
+  --color-info: #3498db;
+  --color-info-hover: #2980b9;
+  
+  /* Background Colors */
+  --bg-primary: #222;
+  --bg-secondary: #2a2a2a;
+  --bg-tertiary: #333;
+  --bg-field: #111;
+  --bg-modal: #1a1a2e;
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  
+  /* Text Colors */
+  --text-primary: #e0e0e0;
+  --text-secondary: #aaa;
+  --text-muted: #7f8c8d;
+  --text-accent: #4CAF50;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 15px;
+  --spacing-lg: 20px;
+  --spacing-xl: 30px;
+  --spacing-xxl: 50px;
+  
+  /* Border Radius */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-round: 50%;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 10px rgba(76, 175, 80, 0.7);
+  
+  /* Transitions */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  
+  /* Z-Index */
+  --z-tooltip: 20;
+  --z-modal: 1000;
+  --z-overlay: 900;
+  --z-dropdown: 50;
+  
+  /* Game Specific */
+  --tile-size: 100px;
+  --field-padding: 100px;
+  --sidebar-width: 350px;
+} 

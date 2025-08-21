@@ -1,0 +1,145 @@
+/* Game Layout Styles */
+
+.game-container {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.game-layout {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.game-main-area {
+  flex: 1;
+  padding: var(--spacing-md);
+  overflow: hidden;
+  height: 100%;
+  min-width: 0; /* Important for flexbox overflow */
+}
+
+.game-sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--bg-secondary);
+  border-left: 1px solid #444;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid #444;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-dropdown);
+}
+
+.sidebar-content {
+  padding: var(--spacing-md);
+}
+
+.sidebar-section {
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.sidebar-section h4 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+  font-weight: normal;
+  border-bottom: 1px solid #444;
+  padding-bottom: var(--spacing-sm);
+}
+
+/* Game Board */
+.game-board {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.game-visualization {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  height: calc(100vh - 135px);
+  min-height: 300px;
+  border-radius: var(--radius-md);
+  background-color: #1a1a1a;
+}
+
+/* Game Field */
+.game-field {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  position: relative;
+  padding: var(--field-padding);
+  display: block;
+  cursor: default;
+  background-color: var(--bg-field);
+  background-size: 20px 20px;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px), 
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+}
+
+/* Drag Navigation States */
+.game-field.ctrl-pressed {
+  cursor: grab;
+}
+
+.game-field.dragging {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .game-layout {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .game-main-area {
+    height: calc(100vh - 60px);
+    padding: 10px;
+  }
+
+  .game-sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+    border-left: none;
+    border-top: 1px solid #444;
+  }
+
+  .sidebar-header {
+    padding: 10px 15px;
+  }
+
+  .sidebar-content {
+    display: flex;
+    overflow-x: auto;
+    padding: 10px;
+  }
+
+  .sidebar-section {
+    min-width: 300px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+  }
+} 

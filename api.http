@@ -1,0 +1,37 @@
+@domain=127.0.0.1
+@gameId=979a0657-947a-4142-936f-ab68acfc0fca
+@tileId=95148301-6065-4fbf-9a87-50ae12bdb1e2
+
+
+POST http://{{domain}}:18080/api/game
+Content-Type: application/json
+
+{"gameId": "{{gameId}}"}
+
+
+###
+
+POST http://{{domain}}:18080/api/field/tile/pick
+Content-Type: application/json
+
+{
+  "gameId": "{{gameId}}",
+  "tileId": "{{tileId}}"
+}
+###
+
+POST http://{{domain}}:18080/api/field/tile/rotate
+Content-Type: application/json
+
+{"tileId": "{{tileId}}", "topSide": 2}
+
+###
+
+POST http://{{domain}}:18080/api/field/tile/place
+Content-Type: application/json
+
+{
+  "tileId": "{{tileId}}",
+  "gameId": "{{gameId}}",
+  "fieldPlace": "0,0"
+}

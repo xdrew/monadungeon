@@ -1,0 +1,286 @@
+Using API URL: http://sf.sf:18080
+[TEST] Game UUID: 876b520e-761f-4bbd-9eaa-cec05fb77800
+GameId: 876b520e-761f-4bbd-9eaa-cec05fb77800
+
+=== Player 1 Turn 1: Victory Scenario ===
+[TEST] Elapsed time: 0m 3s
+About to click on available place...
+Placing tile at position: 0,-1
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 1: Battle modal appeared
+Clicked pick up and end turn button
+Current turn:  Turn: 2
+Already at expected turn 2
+Turn complete
+
+=== Player 2 Turn 2: Place teleportation gate then room, defeat by Skeleton King ===
+
+=== Player 2 Turn Starting ===
+About to click on available place...
+Placing tile at position: 1,0
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Placed first teleportation gate tile
+About to click on available place...
+Placing tile at position: 2,0
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 2: Battle modal appeared
+Clicked close battle button (X)
+Current turn:  Turn: 2
+Waiting for turn to change from:  Turn: 2
+Turn changed to:  Turn: 3
+Turn complete
+
+=== Player 1 Turn 3: Victory Scenario ===
+About to click on available place...
+Placing tile at position: 0,-2
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 1: Battle modal appeared
+Clicked pick up and end turn button
+Current turn:  Turn: 3
+Waiting for turn to change from:  Turn: 3
+Turn changed to:  Turn: 4
+Turn complete
+
+=== Player 2 Turn 4: Victory against Mummy ===
+Found 2 move markers
+Found move marker with position 0,0 in title: Available position: 0,0 - Can move
+Move completed or battle started
+Move markers after movement: 2 (was 2)
+About to click on available place...
+Placing tile at position: 0,1
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 2: Battle modal appeared
+Clicked pick up and end turn button
+Battle modal closed after picking up fireball
+Current turn:  Turn: 5
+Already at expected turn 5
+Turn complete
+
+=== Player 1 Turn 5: Another Victory ===
+About to click on available place...
+Placing tile at position: 0,-3
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 1: Battle modal appeared
+Clicked pick up and end turn button
+Battle modal closed after picking up second dagger
+Current turn:  Turn: 6
+Already at expected turn 6
+Turn complete
+
+=== Player 2 Turn 6: Victory using Consumable ===
+About to click on available place...
+Placing tile at position: 1,1
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Battle modal visible - consumable selection expected
+Selected fireball consumable
+Clicked fight, win, and pick up reward button
+Player 2: Used fireball to defeat skeleton_turnkey (9 damage vs 8 HP) and picked up key
+Current turn:  Turn: 6
+Waiting for turn to change from:  Turn: 6
+Turn changed to:  Turn: 7
+Turn complete
+
+=== Player 1 Turn 7: Inventory Full - Replace Item ===
+[TEST] Elapsed time: 0m 40s
+About to click on available place...
+Placing tile at position: 0,-4
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 1: Battle modal appeared
+Clicked pick up and end turn button
+Inventory full dialog appeared
+Found 5 items in inventory
+Selected item at index 0 to replace
+Clicked replace button
+Player 1: Replaced dagger with sword
+Current turn:  Turn: 7
+Waiting for turn to change from:  Turn: 7
+Turn changed to:  Turn: 8
+
+=== Player 2 Turn 8: Gets Stunned ===
+About to click on available place...
+Placing tile at position: 1,2
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 2: Battle modal appeared
+Clicked close battle button (X)
+Current turn:  Turn: 9
+Already at expected turn 9
+Turn complete
+
+=== Player 1 Turn 9: Victory - Should Leave Item ===
+About to click on available place...
+Placing tile at position: 0,-5
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 1: Battle modal appeared
+Player 1: Clicked leave item button (inventory full)
+
+=== Player 2 Turn 10: Stunned - Skip Turn ===
+Turn automatically skipped
+
+=== Player 1 Turn 11: Already Has Key ===
+About to click on available place...
+Placing tile at position: 0,-6
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 1: Battle modal appeared
+Clicked close battle button (X)
+Current turn:  Turn: 12
+Already at expected turn 12
+
+=== Player 2 Turn 12: Victory against Rat ===
+About to click on available place...
+Placing tile at position: 2,1
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 2: Battle modal appeared
+Clicked pick up and end turn button
+Current turn:  Turn: 12
+Waiting for turn to change from:  Turn: 12
+Turn changed to:  Turn: 13
+
+=== Player 1 Turn 13: Skip turn or pick up axe ===
+[TEST] Elapsed time: 1m 13s
+Found 1 move markers
+Found tile at position 0,0, looking for overlapping move marker
+No move marker found for position 0,0, using first available
+Move completed or battle started
+Move markers after movement: 1 (was 1)
+Current turn:  Turn: 13
+Waiting for turn to change from:  Turn: 13
+Turn changed to:  Turn: 14
+Turn complete
+
+=== Player 2 Turn 14: Second Teleportation Gate & Fallen Battle ===
+[TEST] Elapsed time: 1m 20s
+About to click on available place...
+Placing tile at position: 3,1
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Placed second teleportation gate tile at 3,1
+About to click on available place...
+Placing tile at position: 4,1
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Fallen battle modal appeared
+Clicked close battle button (X)
+Closed battle modal for draw result
+Current turn:  Turn: 15
+Already at expected turn 15
+
+=== Player 1 Turn 15: Dragon Battle - Loses ===
+[TEST] Elapsed time: 1m 29s
+About to click on available place...
+Placing tile at position: 1,-5
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Dragon tile placed at position: 1,-5
+Dragon battle modal appeared - Player 1 loses
+Clicked close battle button (X)
+Player 1 lost to dragon (11 damage < 15 HP)
+Current turn:  Turn: 16
+Already at expected turn 16
+
+=== Player 2 Turn 16: Place Healing Fountain Tile then Room ===
+About to click on available place...
+Placing tile at position: 4,0
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 2 placed corner tile with healing fountain at 4,0 (no battle)
+⚠️ Warning: Healing fountain may not be visible on placed tile
+About to click on available place...
+Placing tile at position: 5,0
+Click completed
+Pressing Enter to confirm tile placement
+Tile placement confirmed
+Player 2 placed room tile at 5,0
+Battle modal appeared - Player 2 will lose
+Clicked close battle button (X)
+Player 2 lost battle and moves back
+Player 2 stepped back to healing fountain tile at 4,0 and recovered HP
+Current turn:  Turn: 17
+Already at expected turn 17
+
+=== Player 1 Turn 17: Lose to Dragon Again ===
+Retrieved dragon position from storage: 1,-5
+WARNING: Dragon no longer at expected position!
+Found 3 move markers
+Found move marker with position 1,-5 in title: Available position: 1,-5 - Can move
+Move completed or battle started
+  ✓  1 [chromium] › e2e/tests/two-player-game.spec.ts:76:7 › Two Player Game › complete game flow with battles and healing fountain (2.6m)
+Dragon battle modal appeared again - Player 1 loses
+Clicked close battle button (X)
+Player 1 lost to dragon again (9 damage < 15 HP)
+Current turn:  Turn: 18
+Already at expected turn 18
+
+=== Player 2 Turn 18: Teleportation Between Gates ===
+Player 2 is at healing fountain, will teleport instead of battle
+Teleportation gate positions - Gate 1: {"x":1,"y":0}, Gate 2: {"x":3,"y":1}
+Found 2 move markers
+Found tile at position 0,0, looking for overlapping move marker
+No move marker found for position 0,0, using first available
+Move completed or battle started
+Move markers after movement: 2 (was 2)
+Moved from healing fountain to adjacent position
+Found 2 move markers
+Found move marker with position 3,1 in title: Available position: 3,1 - Can move
+Move completed or battle started
+Move markers after movement: 2 (was 2)
+Moved to second teleportation gate at 3,1
+Looking for teleportation options...
+Found 3 move markers
+Found move marker with position 1,0 in title: Available position: 1,0 - Can move
+Move completed or battle started
+Move markers after movement: 3 (was 3)
+✓ Teleported to first gate at 1,0
+Clicked End Turn button
+Current turn:  Turn: 18
+Waiting for turn to change from:  Turn: 18
+Turn changed to:  Turn: 19
+
+=== Player 1 Turn 19: Dragon Battle - Game End ===
+Dragon position: 1,-5
+Moving to dragon for final battle at position: 1,-5
+Found 3 move markers
+Found move marker with position 1,-5 in title: Available position: 1,-5 - Can move
+Move completed or battle started
+Move markers after movement: 3 (was 3)
+Dragon battle modal appeared - Player 1 will win
+Battle: Player damage unknown vs unknown HP 15
+Victory indicators - Reward section: true, Victory text: true, Damage > HP: true
+Button visibility - Pickup: true, Leave: false, End Turn: true
+Reward visible: true
+Clicked pick up and end turn button
+
+=== GAME ENDED (UI shows game over) ===
+Game finished successfully!
+Player 1 won with 3 treasure points vs Player 2's 2
+[TEST] Elapsed time: 2m 36s
+[TEST] Test completed
+
+  1 passed (2.7m)

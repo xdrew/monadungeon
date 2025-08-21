@@ -1,0 +1,15 @@
+{
+    "autoload": {
+        "psr-4": {
+            "App\\Psalm\\": "src/"
+        }
+    },
+    "require-dev": {
+        "vimeo/psalm": "^5.18",
+        "psalm/plugin-phpunit": "^0.18.4"
+    },
+    "replace": {
+        "amphp/amp": "*",
+        "amphp/byte-stream": "*"
+    }
+}

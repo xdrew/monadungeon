@@ -1,0 +1,25 @@
+services:
+  # Playwright Test Runner
+  playwright:
+    build:
+      context: ./fe
+      dockerfile: Dockerfile.playwright
+    volumes:
+      # Mount source for live test updates
+      - ./fe/e2e:/app/e2e:ro
+      - ./fe/src:/app/src:ro
+      - ./fe/playwright.config.ts:/app/playwright.config.ts:ro
+      - ./fe/playwright.config.docker.ts:/app/playwright.config.docker.ts:ro
+      # Mount for test results
+      - ./fe/test-results:/app/test-results
+      - ./fe/playwright-report:/app/playwright-report
+    environment:
+      - CI=true
+      - BASE_URL=http://localhost:5173
+      - API_URL=http://sf.sf:18080
+    network_mode: host
+    command: >
+      sh -c "
+        echo 'Running Playwright tests...' &&
+        npm run test:e2e -- --config=playwright.config.docker.ts --reporter=list,html
+      "

@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Game\Field;
+
+use App\Infrastructure\Uuid\Uuid;
+use Telephantast\Message\Message;
+
+/**
+ * @psalm-immutable
+ *
+ * @implements Message<Tile>
+ * @return Tile
+ */
+final readonly class GetTile implements Message
+{
+    public function __construct(
+        public Uuid $tileId,
+    ) {}
+}

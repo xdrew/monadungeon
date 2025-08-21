@@ -1,0 +1,22 @@
+FROM mcr.microsoft.com/playwright:v1.53.0-jammy
+
+# Set work directory
+WORKDIR /app
+
+# Install dependencies first (better layer caching)
+COPY package*.json ./
+RUN npm ci
+
+# Copy application files
+COPY . .
+
+# Ensure Playwright browsers are installed
+RUN npx playwright install chromium firefox
+
+# The playwright image already has a pwuser, just set ownership
+RUN chown -R pwuser:pwuser /app
+
+USER pwuser
+
+# Default command runs tests
+CMD ["npm", "run", "test:e2e"]

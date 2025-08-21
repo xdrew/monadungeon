@@ -1,0 +1,53 @@
+@package bunny/bunny
+--- src/Bunny/AbstractClient.php
++++ src/Bunny/AbstractClient.php
+@@ -295,6 +295,7 @@
+      */
+     protected function read()
+     {
++        try {
+         $s = @fread($this->stream, $this->frameMax);
+ 
+         if ($s === false) {
+@@ -313,6 +314,11 @@
+ 
+         $this->readBuffer->append($s);
+         $this->lastRead = microtime(true);
++        } catch (ClientException $exception) {
++            $this->state = ClientStateEnum::ERROR;
++
++            throw $exception;
++        }
+     }
+ 
+     /**
+@@ -320,6 +326,7 @@
+      */
+     protected function write()
+     {
++        try {
+         if (($written = @fwrite($this->getStream(), $this->writeBuffer->read($this->writeBuffer->getLength()))) === false) {
+             throw new ClientException("Could not write data to socket.");
+         }
+@@ -332,6 +339,11 @@
+ 
+         $this->writeBuffer->discard($written);
+         $this->lastWrite = microtime(true);
++        } catch (ClientException $exception) {
++            $this->state = ClientStateEnum::ERROR;
++
++            throw $exception;
++        }
+     }
+ 
+     /**
+@@ -374,7 +386,8 @@
+      */
+     public function isConnected()
+     {
+-        return $this->state !== ClientStateEnum::NOT_CONNECTED && $this->state !== ClientStateEnum::ERROR;
++        return $this->state !== ClientStateEnum::NOT_CONNECTED && $this->state !== ClientStateEnum::ERROR
++            && max($this->lastRead, $this->lastWrite) + $this->options['heartbeat'] > microtime(true);
+     }
+ 
+     /**

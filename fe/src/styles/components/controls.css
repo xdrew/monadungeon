@@ -1,0 +1,149 @@
+/* Game Controls Styles */
+
+/* Zoom Controls */
+.zoom-controls {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  z-index: var(--z-tooltip);
+  background-color: rgba(34, 34, 34, 0.8);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  box-shadow: var(--shadow-md);
+}
+
+.zoom-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-tertiary);
+  border: 1px solid #555;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  color: #ddd;
+}
+
+.zoom-button:hover {
+  background-color: #444;
+  border-color: #666;
+  color: #fff;
+}
+
+.zoom-button:active {
+  background-color: #555;
+  transform: translateY(1px);
+}
+
+.center-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Game Controls (hidden in refactored version) */
+.game-controls {
+  display: none;
+}
+
+/* Action Buttons */
+.action-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.move-button,
+.attack-button,
+.use-item-button {
+  display: none;
+}
+
+/* Back Button */
+.back-button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color var(--transition-normal);
+}
+
+.back-button:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* Specific Game Buttons (using the design system) */
+.add-player-button {
+  background-color: var(--color-info);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color var(--transition-normal), transform var(--transition-fast);
+  width: 100%;
+  margin-top: 5px;
+}
+
+.add-player-button:hover:not(:disabled) {
+  background-color: var(--color-info-hover);
+  transform: translateY(-2px);
+}
+
+.add-player-button:disabled {
+  background-color: var(--text-muted);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.switch-player-button {
+  background-color: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color var(--transition-normal), transform var(--transition-fast);
+  width: 100%;
+  margin-top: 5px;
+}
+
+.switch-player-button:hover:not(:disabled) {
+  background-color: var(--text-muted);
+  transform: translateY(-2px);
+}
+
+.switch-player-button:disabled {
+  background-color: var(--color-primary);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.stop-replay-button {
+  background-color: #c0392b;
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-top: var(--spacing-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.stop-replay-button:hover {
+  background-color: #e74c3c;
+} 
