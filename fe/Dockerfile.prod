@@ -20,10 +20,14 @@ COPY package.json package-lock.json* ./
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Copy application code
-COPY . .
+# Create .env file with build arguments BEFORE copying code
+RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env && \
+    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env && \
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env
 
-# Create .env file with build arguments for Vite to use
+# Copy application code (but preserve the .env file we just created)
+COPY . .
+# Restore our .env file in case COPY overwrote it
 RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env && \
     echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env && \
     echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env
