@@ -15,16 +15,20 @@ COPY package.json package-lock.json* ./
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Copy application code
+# Copy application code (dockerignore will exclude .env files)
 COPY . .
 
-# Remove any existing .env files to ensure clean build
-RUN rm -f .env .env.* || true
+# Ensure no .env files exist from COPY
+RUN ls -la .env* 2>/dev/null || echo "No .env files copied (good!)"
 
-# Create .env.production.local file (highest priority for Vite production builds)
+# Create ALL the .env files that Vite might look for
+# Vite loads these in order: .env.production.local, .env.local, .env.production, .env
 RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env.production.local && \
     echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env.production.local && \
-    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env.production.local
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env.production.local && \
+    cp .env.production.local .env.production && \
+    cp .env.production.local .env.local && \
+    cp .env.production.local .env
 
 # Debug: Show the env file and build args
 RUN echo "=== Build Arguments ===" && \
