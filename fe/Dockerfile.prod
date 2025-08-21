@@ -7,11 +7,6 @@ ARG VITE_PRIVY_APP_ID
 ARG VITE_MONAD_GAMES_APP_ID
 ARG VITE_API_BASE_URL=https://monadungeon.xyz
 
-# Set them as environment variables for the build process
-ENV VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}
-ENV VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-
 WORKDIR /app
 
 # Copy package files
@@ -23,28 +18,45 @@ RUN npm ci
 # Copy application code (dockerignore excludes .env files)
 COPY . .
 
-# Debug: Show that environment variables are set
-RUN echo "Environment variables for build:" && \
+# Debug: Show that build arguments are received
+RUN echo "Build arguments received:" && \
     echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" && \
     echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" && \
     echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}"
 
-# Build the application with the production config that explicitly defines env vars
-RUN npm run build -- --config vite.config.prod.js
+# NUCLEAR OPTION: Replace import.meta.env references directly in source files
+RUN echo "Replacing environment variables directly in source files..." && \
+    find src -type f \( -name "*.js" -o -name "*.vue" -o -name "*.ts" \) -exec sed -i \
+        -e "s|import\.meta\.env\.VITE_PRIVY_APP_ID|'${VITE_PRIVY_APP_ID}'|g" \
+        -e "s|import\.meta\.env\.VITE_MONAD_GAMES_APP_ID|'${VITE_MONAD_GAMES_APP_ID}'|g" \
+        -e "s|import\.meta\.env\.VITE_API_BASE_URL|'${VITE_API_BASE_URL}'|g" {} \; && \
+    echo "Replacements done. Checking a sample file:" && \
+    grep -n "VITE_\|'cmeb207py01ikky0csyj8akos'\|'cmd8euall0037le0my79qpz42'" src/services/privy.js | head -5 || true
+
+# Build the application - now the values are hardcoded
+RUN npm run build
 
 # Verify the build worked
 RUN echo "Checking if environment variables were replaced in build..." && \
-    if grep -q "VITE_PRIVY_APP_ID" dist/assets/*.js; then \
-        echo "ERROR: Environment variables were NOT replaced! Build failed!" && \
-        echo "Debugging: Checking what's in the built files..." && \
-        grep "import.meta.env\|VITE_" dist/assets/*.js | head -10 && \
+    if grep -q "import\.meta\.env\.VITE_PRIVY_APP_ID" dist/assets/*.js; then \
+        echo "ERROR: import.meta.env.VITE_PRIVY_APP_ID still found in built files!" && \
         exit 1; \
     else \
-        echo "SUCCESS: Environment variables were properly replaced in build"; \
+        echo "SUCCESS: No import.meta.env references found"; \
     fi && \
     echo "Checking for actual app IDs in built files..." && \
-    (grep -l "cmeb207py01ikky0csyj8akos" dist/assets/*.js && echo "✓ Privy app ID found") || echo "✗ WARNING: Privy app ID not found" && \
-    (grep -l "cmd8euall0037le0my79qpz42" dist/assets/*.js && echo "✓ Monad Games app ID found") || echo "✗ WARNING: Monad Games app ID not found"
+    if grep -q "cmeb207py01ikky0csyj8akos" dist/assets/*.js; then \
+        echo "✓ Privy app ID found in built files"; \
+    else \
+        echo "✗ ERROR: Privy app ID NOT found in built files!" && \
+        exit 1; \
+    fi && \
+    if grep -q "cmd8euall0037le0my79qpz42" dist/assets/*.js; then \
+        echo "✓ Monad Games app ID found in built files"; \
+    else \
+        echo "✗ ERROR: Monad Games app ID NOT found in built files!" && \
+        exit 1; \
+    fi
 
 # Final stage: Just copy the built files
 FROM alpine:3.18
