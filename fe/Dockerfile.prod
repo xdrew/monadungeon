@@ -7,11 +7,6 @@ ARG VITE_PRIVY_APP_ID
 ARG VITE_MONAD_GAMES_APP_ID
 ARG VITE_API_BASE_URL=https://monadungeon.xyz
 
-# Debug: Print build arguments immediately
-RUN echo "Build ARG VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" && \
-    echo "Build ARG VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" && \
-    echo "Build ARG VITE_API_BASE_URL=${VITE_API_BASE_URL}"
-
 WORKDIR /app
 
 # Copy package files
@@ -23,36 +18,34 @@ RUN npm ci
 # Copy application code
 COPY . .
 
-# Create .env.production file for Vite (Vite looks for .env.production in production builds)
-RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env.production && \
-    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env.production && \
-    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env.production
+# Remove any existing .env files to ensure clean build
+RUN rm -f .env .env.* || true
 
-# Also create .env file as fallback
-RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env && \
-    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env && \
-    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env
+# Create .env.production.local file (highest priority for Vite production builds)
+RUN echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" > .env.production.local && \
+    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" >> .env.production.local && \
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env.production.local
 
-# Debug: Show both env files
-RUN echo "=== .env.production file content ===" && cat .env.production && \
-    echo "=== .env file content ===" && cat .env
+# Debug: Show the env file and build args
+RUN echo "=== Build Arguments ===" && \
+    echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" && \
+    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" && \
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" && \
+    echo "=== .env.production.local ===" && \
+    cat .env.production.local
 
-# Set environment variables directly for the build process
-ENV VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}
-ENV VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+# Build the application for production
+# Vite will read .env.production.local with highest priority
+RUN npm run build
 
-# Build the application for production with environment variables
-RUN VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID} \
-    VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID} \
-    VITE_API_BASE_URL=${VITE_API_BASE_URL} \
-    npm run build
-
-# Debug: Check if environment variables are in the built files
+# Debug: Verify environment variables are in the built files
 RUN echo "=== Checking built files for environment variables ===" && \
-    (grep -r "cmeb207py01ikky0csyj8akos" dist/ && echo "✓ VITE_PRIVY_APP_ID found") || echo "✗ WARNING: VITE_PRIVY_APP_ID not found in built files!" && \
-    (grep -r "cmd8euall0037le0my79qpz42" dist/ && echo "✓ VITE_MONAD_GAMES_APP_ID found") || echo "✗ WARNING: VITE_MONAD_GAMES_APP_ID not found in built files!" && \
-    ls -la dist/assets/*.js | head -5
+    echo "Searching for VITE_PRIVY_APP_ID value (${VITE_PRIVY_APP_ID}):" && \
+    (grep -l "${VITE_PRIVY_APP_ID}" dist/assets/*.js 2>/dev/null && echo "✓ Found") || echo "✗ NOT FOUND!" && \
+    echo "Searching for VITE_MONAD_GAMES_APP_ID value (${VITE_MONAD_GAMES_APP_ID}):" && \
+    (grep -l "${VITE_MONAD_GAMES_APP_ID}" dist/assets/*.js 2>/dev/null && echo "✓ Found") || echo "✗ NOT FOUND!" && \
+    echo "Checking for unprocessed env var names:" && \
+    (grep "VITE_PRIVY_APP_ID\|VITE_MONAD_GAMES_APP_ID" dist/assets/*.js 2>/dev/null | head -2 || echo "✓ No unprocessed env vars found")
 
 # Final stage: Just copy the built files
 FROM alpine:3.18
