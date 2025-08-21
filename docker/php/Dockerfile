@@ -40,6 +40,8 @@ WORKDIR /sf/app/src
 # copy composer (json|lock) files for dependencies layer caching
 COPY ./src/composer.* /sf/app/src/
 COPY ./src/config/preload.php /sf/app/src/config/preload.php
+# copy patches directory for composer patches plugin
+COPY ./src/patches /sf/app/src/patches
 
 # install composer dependencies (autoloader MUST be generated later!)
 RUN composer install -n --no-dev --no-cache --no-ansi --no-autoloader --no-scripts --prefer-dist
