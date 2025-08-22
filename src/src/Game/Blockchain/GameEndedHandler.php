@@ -130,8 +130,8 @@ final class GameEndedHandler
             throw new \RuntimeException('Server address not available - check private key configuration');
         }
 
-        // Transaction amount is 1 for each game completed
-        $transactionAmount = 1;
+        // Transaction amount is 0 for each game completed
+        $transactionAmount = 0;
 
         // Encode function call
         $functionName = 'updatePlayerData';

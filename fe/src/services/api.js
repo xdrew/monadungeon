@@ -567,6 +567,27 @@ export const gameApi = {
     }
   },
 
+  /**
+   * Get leaderboard data
+   * @param {Object} params - Query parameters
+   * @param {number} [params.page=1] - Page number
+   * @param {number} [params.limit=20] - Items per page
+   * @param {string} [params.sortBy='victories'] - Sort by 'victories' or 'totalGames'
+   * @param {string} [params.sortOrder='DESC'] - Sort order 'ASC' or 'DESC'
+   * @param {string} [params.currentPlayerWallet] - Current player's wallet address
+   * @returns {Promise<Object>} Promise with leaderboard data
+   */
+  getLeaderboard: async (params = {}) => {
+    try {
+      const response = await apiClient.get('/leaderboard', { params });
+      console.log('Leaderboard fetched:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      throw error;
+    }
+  },
+
 };
 
 // Export the axios instance for custom usage if needed

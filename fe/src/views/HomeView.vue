@@ -48,6 +48,13 @@
         >
           Play Against AI 🤖
         </button>
+        
+        <button 
+          class="secondary-button" 
+          @click="viewLeaderboard"
+        >
+          View Leaderboard 🏆
+        </button>
       </div>
 
       <div
@@ -831,6 +838,10 @@ const handlePrivySuccess = async (result) => {
 };
 
 // Game creation
+const viewLeaderboard = () => {
+  router.push('/leaderboard');
+};
+
 const createNewGame = async () => {
   try {
     loading.value = true;
@@ -1064,6 +1075,25 @@ const createNewGame = async () => {
   box-shadow: 0 6px 20px rgba(123, 63, 242, 0.4);
 }
 
+.secondary-button {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #333;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+  border: none;
+  padding: 15px 30px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 500;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+
+.secondary-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+  background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
+}
 
 .error-message {
   color: #ff6b6b;

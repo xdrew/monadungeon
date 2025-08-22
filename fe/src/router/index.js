@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '@/views/HomeView.vue';
 import GameView from '@/views/GameView.vue';
 import NotFoundView from '@/views/NotFoundView.vue';
+import LeaderboardView from '@/views/LeaderboardView.vue';
 
 const routes = [
   {
@@ -16,6 +17,12 @@ const routes = [
     component: GameView,
     props: true,
     meta: { title: 'Game' }
+  },
+  {
+    path: '/leaderboard',
+    name: 'leaderboard',
+    component: LeaderboardView,
+    meta: { title: 'Leaderboard' }
   },
   {
     path: '/:pathMatch(.*)*',

@@ -1,9 +1,11 @@
 import { createApp, h, computed } from 'vue'
-import { createRouter, createWebHistory, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import './assets/main.css'
+import router from './router'
 import HomeView from './views/HomeView.vue'
 import GameView from './views/GameView.vue'
 import NotFoundView from './views/NotFoundView.vue'
+import LeaderboardView from './views/LeaderboardView.vue'
 
 // ----------------
 // Define Game Components
@@ -30,6 +32,8 @@ const CustomRouterView = {
         return HomeView
       } else if (path.startsWith('/game')) {
         return GameView
+      } else if (path === '/leaderboard') {
+        return LeaderboardView
       } else {
         return NotFoundView
       }
@@ -44,17 +48,7 @@ const CustomRouterView = {
   }
 }
 
-// ----------------
-// Setup Router
-// ----------------
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    { path: '/', component: HomeView, name: 'home' },
-    { path: '/game/:id', component: GameView, name: 'game' },
-    { path: '/:pathMatch(.*)*', component: NotFoundView, name: 'not-found' }
-  ]
-})
+// Router is now imported from ./router/index.js
 
 // ----------------
 // Create App Component
