@@ -28,6 +28,7 @@
     "@vitejs/plugin-vue": "^4.5.0",
     "eslint": "^8.49.0",
     "eslint-plugin-vue": "^9.17.0",
+    "terser": "^5.43.1",
     "vite": "^5.0.2"
   }
 }

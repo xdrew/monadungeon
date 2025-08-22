@@ -31,13 +31,8 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]'
       }
     },
-    // Add build timestamp as a comment in the output
-    minify: 'terser',
-    terserOptions: {
-      format: {
-        comments: false,
-      },
-    },
+    // Minification settings
+    minify: 'esbuild', // Use esbuild for faster builds, or 'terser' for better compression
     // Generate manifest for asset mapping
     manifest: true,
     // Clear output directory before build

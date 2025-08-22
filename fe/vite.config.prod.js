@@ -36,14 +36,9 @@ export default defineConfig({
     emptyOutDir: true,
     // Generate manifest.json for asset mapping
     manifest: true,
-    // Production minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
-    },
+    // Production minification - use esbuild by default (faster)
+    // Change to 'terser' if you need better compression and have terser installed
+    minify: 'esbuild',
     // Disable source maps in production for smaller size
     sourcemap: false
   },
