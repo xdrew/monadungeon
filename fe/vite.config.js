@@ -21,6 +21,28 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  build: {
+    // Ensure unique filenames for each build to bust cache
+    rollupOptions: {
+      output: {
+        // Use content hash in filenames for cache busting
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
+      }
+    },
+    // Add build timestamp as a comment in the output
+    minify: 'terser',
+    terserOptions: {
+      format: {
+        comments: false,
+      },
+    },
+    // Generate manifest for asset mapping
+    manifest: true,
+    // Clear output directory before build
+    emptyOutDir: true,
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,

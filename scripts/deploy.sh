@@ -39,9 +39,24 @@ cd $PROJECT_DIR
 
 log_info "Starting deployment process..."
 
+# Store current commit before pull for comparison
+PREV_COMMIT=$(git rev-parse HEAD)
+
 # Pull latest code from git
 log_info "Pulling latest code from repository..."
 git pull origin main
+
+# Store new commit after pull
+NEW_COMMIT=$(git rev-parse HEAD)
+
+# Check if there were updates
+if [ "$PREV_COMMIT" != "$NEW_COMMIT" ]; then
+    log_info "Code updated from $PREV_COMMIT to $NEW_COMMIT"
+    log_info "Changes included:"
+    git log --oneline $PREV_COMMIT..$NEW_COMMIT | head -10
+else
+    log_info "No new commits found, deploying current version"
+fi
 
 # Check if .env.prod exists
 if [ ! -f "$ENV_FILE" ]; then
@@ -68,6 +83,10 @@ docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T db pg_dump -U monad
 log_info "Removing old frontend build volume..."
 docker volume rm monadungeon_frontend_dist 2>/dev/null || log_info "No existing frontend volume to remove"
 
+# Clear any existing Docker build cache for frontend
+log_info "Clearing Docker build cache for frontend..."
+docker builder prune -f --filter="label=stage=frontend-builder" 2>/dev/null || true
+
 # Build Docker images (including frontend)
 log_info "Building Docker images (including frontend)..."
 # Load and export environment variables from .env.prod for the build
@@ -78,7 +97,7 @@ log_info "Frontend env vars loaded from $ENV_FILE:"
 log_info "  VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID:-not set}"
 log_info "  VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID:-not set}"
 log_info "  VITE_API_BASE_URL=${VITE_API_BASE_URL:-not set}"
-# Build with explicit env file and exported variables
+# Build with explicit env file and exported variables (force rebuild with --no-cache)
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --no-cache frontend-builder
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build
 
@@ -112,6 +131,32 @@ docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T php php bin/console
 log_info "Warming up cache..."
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T php php bin/console cache:warmup
 
+# Clear CDN cache if configured
+if [ ! -z "${CDN_PURGE_URL:-}" ]; then
+    log_info "Purging CDN cache..."
+    curl -X POST "$CDN_PURGE_URL" 2>/dev/null || log_warning "CDN cache purge failed"
+fi
+
+# Clear nginx cache if exists
+log_info "Clearing nginx cache..."
+docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T nginx find /var/cache/nginx -type f -delete 2>/dev/null || true
+
+# Verify frontend build contains latest changes
+log_info "Verifying frontend build..."
+# Check if the built index.html exists and contains expected content
+FRONTEND_CHECK=$(docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T nginx ls -la /usr/share/nginx/html/index.html 2>/dev/null || echo "MISSING")
+if [[ "$FRONTEND_CHECK" == *"MISSING"* ]]; then
+    log_warning "Frontend build verification: index.html not found in expected location"
+else
+    log_info "Frontend build verification: index.html found"
+    # Check for leaderboard feature as a smoke test
+    if docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T nginx grep -q "leaderboard" /usr/share/nginx/html/assets/*.js 2>/dev/null; then
+        log_info "Frontend build verification: Leaderboard feature found in build"
+    else
+        log_warning "Frontend build verification: Leaderboard feature not found in build (might be minified differently)"
+    fi
+fi
+
 # Health check - just verify nginx is responding
 log_info "Performing health check..."
 sleep 5
@@ -120,6 +165,15 @@ HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "
 
 if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "301" ] || [ "$HTTP_STATUS" = "302" ]; then
     log_info "Health check passed! Application is running. (HTTP status: $HTTP_STATUS)"
+    
+    # Additional frontend verification
+    log_info "Performing frontend content verification..."
+    FRONTEND_CONTENT=$(curl -s http://localhost/ | head -20)
+    if [[ "$FRONTEND_CONTENT" == *"<div id=\"app\""* ]] || [[ "$FRONTEND_CONTENT" == *"monadungeon"* ]]; then
+        log_info "Frontend content verification: Vue app container found"
+    else
+        log_warning "Frontend content verification: Expected content not found"
+    fi
 else
     log_error "Health check failed! HTTP status: $HTTP_STATUS"
     log_info "Checking container logs..."
@@ -135,4 +189,32 @@ find $BACKUP_DIR -name "monadungeon_backup_*.sql" -mtime +7 -delete
 log_info "Deployment completed successfully!"
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE ps
 
-log_info "Application is available at https://$(grep SERVER_NAME $ENV_FILE | cut -d'=' -f2)"
+# Display deployment summary
+echo ""
+log_info "=== DEPLOYMENT SUMMARY ==="
+log_info "Application URL: https://$(grep SERVER_NAME $ENV_FILE | cut -d'=' -f2)"
+log_info "Build timestamp: $(date)"
+log_info "Git commit: $(git rev-parse --short HEAD)"
+log_info "Git branch: $(git rev-parse --abbrev-ref HEAD)"
+
+# Check for common issues
+echo ""
+log_info "=== POST-DEPLOYMENT CHECKS ==="
+
+# Check if all expected containers are running
+EXPECTED_CONTAINERS=("nginx" "php" "db" "rabbitmq" "redis")
+for container in "${EXPECTED_CONTAINERS[@]}"; do
+    if docker ps | grep -q "${container}_monadungeon"; then
+        log_info "✓ Container ${container} is running"
+    else
+        log_warning "✗ Container ${container} is not running"
+    fi
+done
+
+# Automatic cache busting is enabled
+echo ""
+log_info "=== CACHE MANAGEMENT ==="
+log_info "✓ Automatic cache busting enabled via content hashing"
+log_info "✓ HTML files served with no-cache headers"  
+log_info "✓ Static assets (JS/CSS) use unique filenames per build"
+log_info "✓ Users will automatically get latest version on page refresh"

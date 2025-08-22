@@ -22,6 +22,31 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  build: {
+    // Ensure unique filenames with content hash for automatic cache busting
+    rollupOptions: {
+      output: {
+        // Content hash in filenames - changes when file content changes
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
+      }
+    },
+    // Clear output directory before build
+    emptyOutDir: true,
+    // Generate manifest.json for asset mapping
+    manifest: true,
+    // Production minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    },
+    // Disable source maps in production for smaller size
+    sourcemap: false
+  },
   // Define environment variables explicitly for production build
   define: {
     'import.meta.env.VITE_PRIVY_APP_ID': JSON.stringify(process.env.VITE_PRIVY_APP_ID || 'cmeb207py01ikky0csyj8akos'),
