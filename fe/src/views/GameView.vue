@@ -2643,6 +2643,10 @@ const closeBattleReportAndEndTurn = async () => {
     // Clear battle info
     battleInfo.value = null;
     
+    // Check if the next player is an AI player and trigger their turn
+    // This is important for stunned players whose turn auto-ends
+    await checkAndHandleVirtualPlayerTurn();
+    
   } catch (err) {
     console.error('Failed to close battle report:', err);
     error.value = err.message || 'Failed to close battle report';
@@ -2845,6 +2849,10 @@ const handlePickItemAndEndTurn = async () => {
       
       // Refresh game data
       await loadGameData();
+      
+      // Check if the next player is an AI player and trigger their turn
+      await checkAndHandleVirtualPlayerTurn();
+      
       showBattleReportModal.value = false;
       battleInfo.value = null;
       resetRequestLock();
@@ -2895,6 +2903,10 @@ const handlePickItemWithReplacement = async (itemIdToReplace) => {
     
     // Refresh game data
     await loadGameData();
+    
+    // Check if the next player is an AI player and trigger their turn
+    await checkAndHandleVirtualPlayerTurn();
+    
     showBattleReportModal.value = false;
     battleInfo.value = null;
     resetRequestLock();
@@ -3010,6 +3022,9 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     // Close the modal
     showBattleReportModal.value = false;
     battleInfo.value = null;
+    
+    // Check if the next player is an AI player and trigger their turn
+    await checkAndHandleVirtualPlayerTurn();
 
     // The game status watcher should automatically show the leaderboard if the game ended
     resetRequestLock();
@@ -3085,6 +3100,9 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
 
     // Refresh game data after closing the modal to get the updated game state
     await loadGameData();
+    
+    // Check if the next player is an AI player and trigger their turn
+    await checkAndHandleVirtualPlayerTurn();
 
     resetRequestLock();
   } catch (err) {
@@ -3266,6 +3284,9 @@ const skipItemAndEndTurn = async () => {
     
     // Refresh game data to get the updated turn state
     await loadGameData();
+    
+    // Check if the next player is an AI player and trigger their turn
+    await checkAndHandleVirtualPlayerTurn();
   } catch (err) {
     console.error('Failed to end turn after skipping item:', err);
     error.value = `Failed to end turn: ${err.message}`;
@@ -3477,6 +3498,9 @@ const handleManualEndTurn = async () => {
     await loadGameData();
     
     console.log('Turn ended manually by player');
+    
+    // Check if the next player is an AI player and trigger their turn
+    await checkAndHandleVirtualPlayerTurn();
   } catch (err) {
     console.error('Failed to end turn:', err);
     error.value = `Failed to end turn: ${err.message}`;
