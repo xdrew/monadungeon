@@ -83,14 +83,15 @@ docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T db pg_dump -U monad
 log_info "Removing old frontend build volume..."
 docker volume rm monadungeon_frontend_dist 2>/dev/null || log_info "No existing frontend volume to remove"
 
-# Clear any existing Docker build cache for frontend and all related caches
-log_info "Clearing Docker build cache for frontend..."
-docker builder prune -af 2>/dev/null || true
-# Also clear Docker's layer cache
-docker system prune -f --volumes 2>/dev/null || true
+# Note: We force cache invalidation by updating a timestamp file instead of clearing all caches
 
 # Build Docker images (including frontend)
 log_info "Building Docker images (including frontend)..."
+
+# Force Docker to invalidate cache by updating a timestamp file
+log_info "Invalidating Docker cache for frontend..."
+echo "Build timestamp: $(date)" > fe/.docker-build-timestamp
+
 # Load and export environment variables from .env.prod for the build
 set -a  # Mark all new variables for export
 source $ENV_FILE
@@ -99,10 +100,10 @@ log_info "Frontend env vars loaded from $ENV_FILE:"
 log_info "  VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID:-not set}"
 log_info "  VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID:-not set}"
 log_info "  VITE_API_BASE_URL=${VITE_API_BASE_URL:-not set}"
-# Build with explicit env file and exported variables (force rebuild with --no-cache)
-# First, remove any existing images to ensure fresh build
-docker rmi monadungeon-frontend-builder 2>/dev/null || true
-docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --no-cache --pull frontend-builder
+# Build with explicit env file and exported variables, including git commit
+GIT_COMMIT=$(git rev-parse --short HEAD)
+log_info "Building with Git commit: $GIT_COMMIT"
+docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --build-arg GIT_COMMIT=$GIT_COMMIT --no-cache frontend-builder
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build
 
 # Stop current containers

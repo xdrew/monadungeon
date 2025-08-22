@@ -24,12 +24,17 @@ RUN echo "Build arguments received:" && \
     echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" && \
     echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}"
 
+# Get the git commit hash if available
+ARG GIT_COMMIT=unknown
+
 # NUCLEAR OPTION: Replace import.meta.env references directly in source files
 RUN echo "Replacing environment variables directly in source files..." && \
+    echo "Git commit: ${GIT_COMMIT}" && \
     find src -type f \( -name "*.js" -o -name "*.vue" -o -name "*.ts" \) -exec sed -i \
         -e "s|import\.meta\.env\.VITE_PRIVY_APP_ID|'${VITE_PRIVY_APP_ID}'|g" \
         -e "s|import\.meta\.env\.VITE_MONAD_GAMES_APP_ID|'${VITE_MONAD_GAMES_APP_ID}'|g" \
-        -e "s|import\.meta\.env\.VITE_API_BASE_URL|'${VITE_API_BASE_URL}'|g" {} \; && \
+        -e "s|import\.meta\.env\.VITE_API_BASE_URL|'${VITE_API_BASE_URL}'|g" \
+        -e "s|import\.meta\.env\.VITE_BUILD_VERSION|'${GIT_COMMIT}'|g" {} \; && \
     echo "Replacements done. Checking a sample file:" && \
     grep -n "VITE_\|'cmeb207py01ikky0csyj8akos'\|'cmd8euall0037le0my79qpz42'" src/services/privy.js | head -5 || true
 

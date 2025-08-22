@@ -10,6 +10,9 @@
       <h2 class="subtitle">
         Powered by Monad Testnet
       </h2>
+      <div class="version-info" style="font-size: 10px; color: #666; margin-top: -10px;">
+        Build: {{ buildVersion }}
+      </div>
       <p class="description">
         Embark on an epic journey through dangerous dungeons filled with monsters, treasures, and ancient secrets.
       </p>
@@ -99,6 +102,9 @@ const loading = ref(false);
 const loadingMessage = ref('Creating your adventure...');
 const authenticatedUser = ref(null);
 const showPrivyModal = ref(false);
+
+// Build version for debugging deployment issues
+const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
 
 // Custom UUID v4 implementation
 const generateRandomId = () => {
