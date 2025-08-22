@@ -81,7 +81,8 @@ docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T db pg_dump -U monad
 
 # Clean up old frontend build to ensure fresh deployment
 log_info "Removing old frontend build volume..."
-docker volume rm monadungeon_frontend_dist 2>/dev/null || log_info "No existing frontend volume to remove"
+# The volume name includes the compose project name
+docker volume rm monadungeon_prod_frontend_dist 2>/dev/null || log_info "No existing frontend volume to remove"
 
 # Note: We force cache invalidation by updating a timestamp file instead of clearing all caches
 
