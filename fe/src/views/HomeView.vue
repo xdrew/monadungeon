@@ -50,8 +50,9 @@
         </button>
         
         <button 
-          class="secondary-button" 
+          class="secondary-button leaderboard-button" 
           @click="viewLeaderboard"
+          style="display: block !important; visibility: visible !important;"
         >
           View Leaderboard 🏆
         </button>
