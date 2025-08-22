@@ -109,8 +109,8 @@ log_info "Building with Git commit: $GIT_COMMIT"
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --build-arg GIT_COMMIT=$GIT_COMMIT
 
 # Stop current containers
-log_info "Stopping current containers..."
-docker compose -f $COMPOSE_FILE --env-file $ENV_FILE down
+#log_info "Stopping current containers..."
+#docker compose -f $COMPOSE_FILE --env-file $ENV_FILE down
 
 # Start new containers
 log_info "Starting new containers..."
