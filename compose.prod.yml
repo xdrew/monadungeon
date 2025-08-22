@@ -69,8 +69,9 @@ services:
         VITE_MONAD_GAMES_APP_ID: "${VITE_MONAD_GAMES_APP_ID}"
         VITE_API_BASE_URL: "${VITE_API_BASE_URL:-https://monadungeon.xyz}"
     volumes:
-      - frontend_dist:/app/dist
-    command: sh -c "echo 'Frontend built successfully'"
+      - frontend_dist:/target
+    # Copy built files to the volume that nginx uses
+    command: sh -c "cp -r /app/dist/* /target/ && echo 'Frontend files copied to volume'"
     networks:
       - monadungeon_prod
 
