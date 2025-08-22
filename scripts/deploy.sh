@@ -83,9 +83,11 @@ docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T db pg_dump -U monad
 log_info "Removing old frontend build volume..."
 docker volume rm monadungeon_frontend_dist 2>/dev/null || log_info "No existing frontend volume to remove"
 
-# Clear any existing Docker build cache for frontend
+# Clear any existing Docker build cache for frontend and all related caches
 log_info "Clearing Docker build cache for frontend..."
-docker builder prune -f --filter="label=stage=frontend-builder" 2>/dev/null || true
+docker builder prune -af 2>/dev/null || true
+# Also clear Docker's layer cache
+docker system prune -f --volumes 2>/dev/null || true
 
 # Build Docker images (including frontend)
 log_info "Building Docker images (including frontend)..."
@@ -98,7 +100,9 @@ log_info "  VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID:-not set}"
 log_info "  VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID:-not set}"
 log_info "  VITE_API_BASE_URL=${VITE_API_BASE_URL:-not set}"
 # Build with explicit env file and exported variables (force rebuild with --no-cache)
-docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --no-cache frontend-builder
+# First, remove any existing images to ensure fresh build
+docker rmi monadungeon-frontend-builder 2>/dev/null || true
+docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --no-cache --pull frontend-builder
 docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build
 
 # Stop current containers
@@ -149,11 +153,21 @@ if [[ "$FRONTEND_CHECK" == *"MISSING"* ]]; then
     log_warning "Frontend build verification: index.html not found in expected location"
 else
     log_info "Frontend build verification: index.html found"
-    # Check for leaderboard feature as a smoke test
-    if docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T nginx grep -q "leaderboard" /usr/share/nginx/html/assets/*.js 2>/dev/null; then
-        log_info "Frontend build verification: Leaderboard feature found in build"
+    
+    # Get the JS filename from index.html
+    JS_FILE=$(docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T nginx grep -oE '/assets/index-[a-zA-Z0-9_-]+\.js' /usr/share/nginx/html/index.html | head -1)
+    if [ ! -z "$JS_FILE" ]; then
+        log_info "Frontend build verification: Using JS file $JS_FILE"
+        
+        # Check for leaderboard feature in the actual JS file
+        if docker compose -f $COMPOSE_FILE --env-file $ENV_FILE exec -T nginx grep -q "View Leaderboard\|leaderboard" /usr/share/nginx/html$JS_FILE 2>/dev/null; then
+            log_info "Frontend build verification: Leaderboard feature found in build"
+        else
+            log_warning "Frontend build verification: Leaderboard feature not found in build"
+            log_warning "This might indicate the build is using cached files. Consider running deploy again."
+        fi
     else
-        log_warning "Frontend build verification: Leaderboard feature not found in build (might be minified differently)"
+        log_warning "Frontend build verification: Could not find JS file reference in index.html"
     fi
 fi
 
