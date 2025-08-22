@@ -9,7 +9,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class Action
 {
-    #[Route('/api/health', methods: ['GET'])]
+    #[Route('/health', methods: ['GET'])]
     public function __invoke(): JsonResponse
     {
         return new JsonResponse([
