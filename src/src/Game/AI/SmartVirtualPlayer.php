@@ -25,6 +25,7 @@ final class SmartVirtualPlayer
     private array $visitedPositions = [];  // Track visited positions in current turn to prevent oscillation
     private static array $unreachableTargets = [];  // Track targets that are unreachable (persists across turns)
     private static array $turnsSinceLastProgress = [];  // Track turns without progress per game/player
+    private int $moveCount = 0;  // Track number of moves in current turn
     
     public function __construct(
         private readonly MessageBus $messageBus,
@@ -34,6 +35,7 @@ final class SmartVirtualPlayer
 
     private const MAX_ACTIONS_PER_TURN = 30; // Safety limit to prevent infinite loops
     private const MAX_TILES_PER_SEQUENCE = 5; // Max tiles in one placement sequence (corridors)
+    private const MAX_MOVES_PER_TURN = 4; // Maximum number of moves allowed in a single turn
     
     /**
      * Execute a complete turn for the virtual player
@@ -42,6 +44,10 @@ final class SmartVirtualPlayer
     public function executeTurn(Uuid $gameId, Uuid $playerId, string $strategyType = 'balanced'): array
     {
         $actions = [];
+        
+        // Clear visited positions and reset move counter at the start of each turn
+        $this->visitedPositions = [];
+        $this->moveCount = 0;
         
         try {
             // Check if game is already finished
@@ -845,10 +851,19 @@ final class SmartVirtualPlayer
             [$fromX, $fromY] = explode(',', $currentPosition->toString());
             [$toX, $toY] = explode(',', $bestMove);
             
+            // Check move limit
+            if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+                $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                return;
+            }
+            
             $actions[] = $this->createAction('ai_reasoning', [
                 'message' => "Moving from {$currentPosition->toString()} to {$bestMove} towards {$targetType} at {$closestTarget}"
             ]);
             
+            $this->moveCount++;
             $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
             $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
             
@@ -989,22 +1004,31 @@ final class SmartVirtualPlayer
         }
         
         if ($bestMove) {
+            // Extract just the position from targetWeapon for tracking (e.g., "2,1" from "sword at 2,1")
+            $targetPos = null;
+            foreach ($reachableWeapons as $pos => $type) {
+                if ($targetWeapon === "{$type} at {$pos}") {
+                    $targetPos = $pos;
+                    break;
+                }
+            }
+            
             error_log("DEBUG AI: Best move is {$bestMove} towards {$targetWeapon} (distance: {$shortestDistance})");
             
-            // Track progress towards this weapon
-            if (!isset(self::$turnsSinceLastProgress[$trackingKey][$targetWeapon])) {
-                self::$turnsSinceLastProgress[$trackingKey][$targetWeapon] = ['distance' => $shortestDistance, 'turns' => 0];
+            // Track progress towards this weapon position (not the full description)
+            if (!isset(self::$turnsSinceLastProgress[$trackingKey][$targetPos])) {
+                self::$turnsSinceLastProgress[$trackingKey][$targetPos] = ['distance' => $shortestDistance, 'turns' => 0];
             } else {
-                $previousDistance = self::$turnsSinceLastProgress[$trackingKey][$targetWeapon]['distance'];
+                $previousDistance = self::$turnsSinceLastProgress[$trackingKey][$targetPos]['distance'];
                 if ($shortestDistance >= $previousDistance) {
                     // Not making progress
-                    self::$turnsSinceLastProgress[$trackingKey][$targetWeapon]['turns']++;
-                    error_log("DEBUG AI: No progress towards weapon at {$targetWeapon} for " . self::$turnsSinceLastProgress[$trackingKey][$targetWeapon]['turns'] . " turns");
+                    self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns']++;
+                    error_log("DEBUG AI: No progress towards weapon at {$targetPos} for " . self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] . " turns");
                     
                     // If we haven't made progress for 2+ turns, mark as unreachable
-                    if (self::$turnsSinceLastProgress[$trackingKey][$targetWeapon]['turns'] >= 2) {
-                        self::$unreachableTargets[$trackingKey][$targetWeapon] = true;
-                        error_log("DEBUG AI: Marking weapon at {$targetWeapon} as UNREACHABLE!");
+                    if (self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] >= 2) {
+                        self::$unreachableTargets[$trackingKey][$targetPos] = true;
+                        error_log("DEBUG AI: Marking weapon at {$targetPos} as UNREACHABLE!");
                         
                         $actions[] = $this->createAction('ai_reasoning', [
                             'message' => "Weapon at {$targetWeapon} appears unreachable, exploring instead"
@@ -1016,7 +1040,7 @@ final class SmartVirtualPlayer
                     }
                 } else {
                     // We're making progress, reset counter
-                    self::$turnsSinceLastProgress[$trackingKey][$targetWeapon] = ['distance' => $shortestDistance, 'turns' => 0];
+                    self::$turnsSinceLastProgress[$trackingKey][$targetPos] = ['distance' => $shortestDistance, 'turns' => 0];
                 }
             }
             
@@ -1024,10 +1048,19 @@ final class SmartVirtualPlayer
             [$fromX, $fromY] = explode(',', $currentPosition->toString());
             [$toX, $toY] = explode(',', $bestMove);
             
+            // Check move limit
+            if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+                $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                return;
+            }
+            
             $actions[] = $this->createAction('ai_reasoning', [
                 'message' => "Moving from {$currentPosition->toString()} to {$bestMove} towards {$targetWeapon}"
             ]);
             
+            $this->moveCount++;
             $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
             $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
             
@@ -1083,12 +1116,21 @@ final class SmartVirtualPlayer
         [$fromX, $fromY] = explode(',', $currentPosition->toString());
         [$toX, $toY] = explode(',', $targetPosition);
         
+        // Check move limit
+        if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+            $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
+            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            return;
+        }
+        
         $actions[] = $this->createAction('ai_decision', [
             'decision' => 'Moving to position',
             'target' => $targetPosition,
             'reason' => $this->getSpecificMoveReason($targetPosition, $field, $player)
         ]);
         
+        $this->moveCount++;
         $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
         
@@ -1176,6 +1218,7 @@ final class SmartVirtualPlayer
         $isRoom = $placeResult['response']['tile']['room'] ?? true;
         
         // MANDATORY Step 3: Move player
+        $this->moveCount++;
         $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$currentX, (int)$currentY, (int)$x, (int)$y, true);
         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
         
