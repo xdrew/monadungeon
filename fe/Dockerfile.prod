@@ -63,19 +63,23 @@ RUN echo "Checking if environment variables were replaced in build..." && \
         exit 1; \
     fi
 
-# Final stage: Just copy the built files
+# Final stage: Deploy the built files
 FROM alpine:3.18
 
 WORKDIR /app
 
-# Install bash for any scripts
+# Install bash for deployment script
 RUN apk add --no-cache bash
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /app/dist
 
-# The volume mount will be at /app/dist
-VOLUME ["/app/dist"]
+# Copy deployment script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-# This container just builds and exits
-CMD ["sh", "-c", "echo 'Frontend build complete. Static files available in /app/dist'"]
+# Remove VOLUME directive - we'll mount volumes in compose
+# VOLUME ["/app/dist"]
+
+# Run deployment script
+ENTRYPOINT ["/docker-entrypoint.sh"]
