@@ -2055,20 +2055,26 @@ final class SmartVirtualPlayer
         // PRIORITY 3: Defensive movement when weak
         if (!($this->strategyConfig['preferBattles'] ?? true) && $player->getHP() <= 2) {
             // Pick safest option (furthest from center for now)
-            $safePos = $moveOptions[count($moveOptions) - 1];
+            // Re-index array to ensure sequential keys
+            $moveOptionsIndexed = array_values($moveOptions);
+            $safePos = $moveOptionsIndexed[count($moveOptionsIndexed) - 1];
             error_log("DEBUG AI Reasoning: Low HP ({$player->getHP()}), moving defensively to {$safePos}");
             return $safePos;
         }
         
         // Default: pick based on strategy preference
         if ($this->strategyConfig['preferBattles'] ?? false) {
-            error_log("DEBUG AI Reasoning: Aggressive strategy - exploring new area at {$moveOptions[0]}");
-            return $moveOptions[0];  // Aggressive: explore actively
+            // Re-index array to ensure sequential keys
+            $moveOptionsIndexed = array_values($moveOptions);
+            error_log("DEBUG AI Reasoning: Aggressive strategy - exploring new area at {$moveOptionsIndexed[0]}");
+            return $moveOptionsIndexed[0];  // Aggressive: explore actively
         }
         
         // Balanced: pick middle option
-        $middleIndex = intval(count($moveOptions) / 2);
-        $balancedPos = $moveOptions[$middleIndex] ?? $moveOptions[0];
+        // Re-index array to ensure sequential keys
+        $moveOptionsIndexed = array_values($moveOptions);
+        $middleIndex = intval(count($moveOptionsIndexed) / 2);
+        $balancedPos = $moveOptionsIndexed[$middleIndex] ?? $moveOptionsIndexed[0];
         error_log("DEBUG AI Reasoning: Balanced exploration - moving to {$balancedPos}");
         return $balancedPos;
     }
