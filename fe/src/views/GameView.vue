@@ -2346,6 +2346,13 @@ watch(() => gameData.value?.state?.currentTurnId, (newTurnId, oldTurnId) => {
       console.log('Dismissing item pickup dialog due to turn change');
       dismissItemPickupDialog();
     }
+    
+    // Reset AI turn flag when turn changes - this ensures AI can play again
+    // even if multiple AI turns happen in quick succession
+    if (aiTurnInProgress) {
+      console.log('Turn changed, resetting AI turn flag');
+      aiTurnInProgress = false;
+    }
   }
 });
 
