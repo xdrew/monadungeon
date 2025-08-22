@@ -105,8 +105,8 @@ log_info "  VITE_API_BASE_URL=${VITE_API_BASE_URL:-not set}"
 # Build with explicit env file and exported variables, including git commit
 GIT_COMMIT=$(git rev-parse --short HEAD)
 log_info "Building with Git commit: $GIT_COMMIT"
-docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --build-arg GIT_COMMIT=$GIT_COMMIT --no-cache frontend-builder
-docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build
+# Build all services, passing the GIT_COMMIT arg for frontend-builder
+docker compose -f $COMPOSE_FILE --env-file $ENV_FILE build --build-arg GIT_COMMIT=$GIT_COMMIT --no-cache
 
 # Stop current containers
 log_info "Stopping current containers..."
