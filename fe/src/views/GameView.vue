@@ -777,11 +777,31 @@ const isPlayerTurn = computed(() => {
   if (gameData.value?.state?.status === 'finished') {
     return false;
   }
+  
+  // Check if it's actually the human player's turn
+  const isHumanTurn = isPlayerTurnUtil(gameData.value, currentPlayerId.value);
+  
+  // If it's the human player's turn but AI processing flag is still on, clear it
+  if (isHumanTurn && isProcessingAI.value) {
+    const currentPlayer = gameData.value?.state?.currentPlayer || gameData.value?.state?.currentPlayerId;
+    const virtualPlayerId = localStorage.getItem('virtualPlayerId');
+    
+    // Double-check it's not the AI's turn
+    if (!virtualPlayerId || currentPlayer !== virtualPlayerId) {
+      console.log('⚠️ isProcessingAI was stuck on during human turn - clearing it');
+      isProcessingAI.value = false;
+      aiTurnInProgress = false;
+      aiExecutionPromise = null;
+    }
+  }
+  
   // Block interactions if AI is processing
   if (isProcessingAI.value) {
+    console.log('🚫 Interactions blocked - isProcessingAI is true');
     return false;
   }
-  return isPlayerTurnUtil(gameData.value, currentPlayerId.value);
+  
+  return isHumanTurn;
 });
 
 // Check if the player can place a tile
@@ -854,17 +874,70 @@ const updateGameTurns = (gameDataResponse) => {
 let aiTurnInProgress = false;
 // Promise to track ongoing AI execution
 let aiExecutionPromise = null;
+// Track last AI check time to prevent rapid successive calls
+let lastAICheckTime = 0;
+// Lock to prevent concurrent AI checks
+let aiCheckLock = false;
 
 // Check if current player is virtual and handle their turn
 const checkAndHandleVirtualPlayerTurn = async () => {
+  // Use a lock to prevent concurrent executions
+  if (aiCheckLock) {
+    console.log('⚠️ AI check already locked, skipping duplicate call');
+    return;
+  }
+  
+  aiCheckLock = true;
+  
   try {
-    if (!gameData.value?.state) return;
+    if (!gameData.value?.state) {
+      aiCheckLock = false;
+      return;
+    }
     
-    // If AI execution is already in progress, wait for it to complete
+    // Prevent rapid successive calls (debounce)
+    const now = Date.now();
+    if (now - lastAICheckTime < 500) {
+      console.log('⚠️ AI check called too soon after last check, skipping');
+      aiCheckLock = false;
+      return;
+    }
+    lastAICheckTime = now;
+    
+    // If AI execution is already in progress, wait for it to complete with timeout
     if (aiExecutionPromise) {
       console.log('⚠️ AI turn already in progress, waiting for completion');
-      await aiExecutionPromise;
-      return;
+      
+      // Wait for promise with a timeout to prevent getting stuck
+      const timeoutPromise = new Promise(resolve => setTimeout(() => {
+        console.log('⚠️ AI promise timeout - clearing stuck state');
+        resolve('timeout');
+      }, 5000)); // 5 second timeout
+      
+      const result = await Promise.race([aiExecutionPromise, timeoutPromise]);
+      
+      if (result === 'timeout') {
+        // Clear stuck state
+        console.log('🔄 Clearing stuck AI state after timeout');
+        aiExecutionPromise = null;
+        aiTurnInProgress = false;
+        isProcessingAI.value = false;
+        
+        // Continue to check if we should start a new AI turn
+      } else {
+        // After waiting normally, check if it's still an AI turn or if it switched to human
+        const currentPlayer = gameData.value?.state?.currentPlayer || gameData.value?.state?.currentPlayerId;
+        const virtualPlayerId = localStorage.getItem('virtualPlayerId');
+        if (!virtualPlayerId || currentPlayer !== virtualPlayerId) {
+          console.log('✅ After waiting, turn is now human player - clearing isProcessingAI');
+          isProcessingAI.value = false;
+          aiTurnInProgress = false;
+        } else {
+          // It's still the AI's turn, continue to process it
+          console.log('🤖 Still AI turn after waiting, continuing...');
+        }
+        return;
+      }
     }
     
     // Don't execute AI turn if game is finished
@@ -878,11 +951,12 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     const currentPlayer = gameData.value.state.currentPlayer || gameData.value.state.currentPlayerId;
     const virtualPlayerId = localStorage.getItem('virtualPlayerId');
     
-    // console.log('DEBUG: Checking virtual player turn');
-    // console.log('DEBUG: Current player:', currentPlayer);
-    // console.log('DEBUG: Virtual player ID:', virtualPlayerId);
+    console.log('DEBUG: Checking virtual player turn');
+    console.log('DEBUG: Current player:', currentPlayer);
+    console.log('DEBUG: Virtual player ID from localStorage:', virtualPlayerId);
+    console.log('DEBUG: Current player ID from UI:', currentPlayerId.value);
     
-    // Check if current player is a virtual player (matches stored virtual player ID)
+    // Check if current player is the virtual player ID from localStorage
     if (virtualPlayerId && currentPlayer === virtualPlayerId) {
       // Prevent duplicate AI turn execution
       if (aiTurnInProgress) {
@@ -893,6 +967,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       console.log('✅ Virtual player turn detected:', currentPlayer);
       
       // Set both flags to block interactions and prevent duplicates
+      console.log('🔒 Setting isProcessingAI = true for AI turn');
       isProcessingAI.value = true;
       aiTurnInProgress = true;
       
@@ -906,6 +981,8 @@ const checkAndHandleVirtualPlayerTurn = async () => {
           console.error('Error in AI execution:', error);
         } finally {
           // Clear the flags after execution
+          console.log('🔄 AI execution promise finally - clearing isProcessingAI');
+          isProcessingAI.value = false;
           aiTurnInProgress = false;
           aiExecutionPromise = null;
           resolve();
@@ -915,25 +992,39 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       // Wait for the AI execution to complete
       await aiExecutionPromise;
     } else {
-      console.log('❌ Not a virtual player turn');
-      // Make sure to clear the flags if it's not AI turn
+      console.log('👤 Human player turn detected');
+      // Ensure flags are cleared for human player to act
+      if (isProcessingAI.value) {
+        console.log('🔓 Clearing isProcessingAI for human turn');
+      }
       isProcessingAI.value = false;
       aiTurnInProgress = false;
+      aiExecutionPromise = null;
     }
   } catch (error) {
     console.error('Error checking virtual player turn:', error);
+    isProcessingAI.value = false;
     aiTurnInProgress = false;
     aiExecutionPromise = null;
+  } finally {
+    // Always release the lock
+    aiCheckLock = false;
   }
 };
 
 // Execute a virtual player's turn
 const executeVirtualPlayerTurn = async (playerId) => {
   try {
+    // Double-check we're not already executing
+    if (aiTurnInProgress) {
+      console.log('⚠️ executeVirtualPlayerTurn called but AI turn already in progress, skipping');
+      return;
+    }
+    
     loading.value = true;
     loadingStatus.value = 'Virtual player thinking...';
     
-    console.log('Executing virtual player turn for:', playerId);
+    console.log('🤖 Executing virtual player turn for:', playerId);
     
     // Call the backend to execute the virtual player's turn
     const response = await gameApi.executeVirtualPlayerTurn(id.value, playerId);
@@ -941,10 +1032,21 @@ const executeVirtualPlayerTurn = async (playerId) => {
     if (response.success) {
       console.log('Virtual player actions:', response.actions);
       
-      // Refresh game state after virtual player's turn
-      await loadGameData();
+      // Clear loading state before refreshing game data
+      loading.value = false;
+      loadingStatus.value = '';
+      
+      // Refresh game state after virtual player's turn (without showing loading)
+      await loadGameData(false);
     } else {
       console.error('Virtual player turn failed:', response);
+      // If the AI turn failed because it's not their turn, clear the flags
+      if (response.response?.message?.includes('not your turn')) {
+        console.log('⚠️ AI tried to act when not their turn - clearing flags');
+        isProcessingAI.value = false;
+        aiTurnInProgress = false;
+        aiExecutionPromise = null;
+      }
     }
   } catch (error) {
     console.error('Failed to execute virtual player turn:', error);
@@ -953,11 +1055,12 @@ const executeVirtualPlayerTurn = async (playerId) => {
     loading.value = false;
     loadingStatus.value = '';
     // Clear the AI processing flag to re-enable interactions
+    console.log('🔄 executeVirtualPlayerTurn finally - clearing isProcessingAI');
     isProcessingAI.value = false;
   }
 };
 
-const loadGameData = async () => {
+const loadGameData = async (showLoading = true) => {
   if (!id.value) {
     console.error('No game ID found in route params');
     error.value = 'Invalid game ID';
@@ -971,7 +1074,9 @@ const loadGameData = async () => {
 
   try {
     // Attempt to load the game data
-    loading.value = true;
+    if (showLoading) {
+      loading.value = true;
+    }
     const fetchedGameData = await gameApi.getGame(id.value);
     console.log('Game data loaded:', fetchedGameData);
 
@@ -990,6 +1095,21 @@ const loadGameData = async () => {
     // Skip this check if we're already processing an AI turn (called from executeVirtualPlayerTurn)
     if (!aiTurnInProgress) {
       await checkAndHandleVirtualPlayerTurn();
+    } else {
+      // If we're called during AI turn processing, check if the turn has switched to human
+      const currentPlayer = fetchedGameData.state?.currentPlayer || fetchedGameData.state?.currentPlayerId;
+      const virtualPlayerId = localStorage.getItem('virtualPlayerId');
+      
+      // If it's no longer the AI's turn, clear the AI processing flag
+      if (!virtualPlayerId || currentPlayer !== virtualPlayerId) {
+        console.log('✅ Turn switched from AI to human player, clearing isProcessingAI');
+        console.log('Current player:', currentPlayer, 'Virtual player:', virtualPlayerId);
+        isProcessingAI.value = false;
+        aiTurnInProgress = false;
+        aiExecutionPromise = null;
+      } else {
+        console.log('⚠️ Still AI turn during loadGameData, keeping isProcessingAI=true');
+      }
     }
 
     // Check for pending battle info and show battle modal if needed
@@ -1034,7 +1154,10 @@ const loadGameData = async () => {
     // Reset request lock on error
     resetRequestLock();
   } finally {
-    loading.value = false;
+    if (showLoading) {
+      loading.value = false;
+      loadingStatus.value = '';
+    }
   }
 };
 
@@ -3364,8 +3487,12 @@ const skipItemAndEndTurn = async () => {
       turnId: turnId
     });
     
-    // Refresh game data to get the updated turn state
-    await loadGameData();
+    // Clear loading state before refreshing
+    loading.value = false;
+    loadingStatus.value = '';
+    
+    // Refresh game data to get the updated turn state (without showing loading)
+    await loadGameData(false);
     
     // Check if the next player is an AI player and trigger their turn
     await checkAndHandleVirtualPlayerTurn();
@@ -3576,8 +3703,12 @@ const handleManualEndTurn = async () => {
       turnId: currentTurnId
     });
     
-    // Refresh game data to get the updated turn state
-    await loadGameData();
+    // Clear loading state before refreshing
+    loading.value = false;
+    loadingStatus.value = '';
+    
+    // Refresh game data to get the updated turn state (without showing loading)
+    await loadGameData(false);
     
     console.log('Turn ended manually by player');
     
