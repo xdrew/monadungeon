@@ -309,6 +309,10 @@ class Battle extends AggregateRoot
                         gameId: $command->gameId,
                         item: $monster,
                     ));
+                    
+                    // Remove the item from the field to prevent duplication
+                    $field = $messageContext->dispatch(new GetField($command->gameId));
+                    $field->removeItemsFromPosition($toPos);
 
                     // Record the item pickup action
                     $messageContext->dispatch(new PerformTurnAction(

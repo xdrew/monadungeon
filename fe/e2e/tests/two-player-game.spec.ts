@@ -873,7 +873,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.continueBattle(page, 'pickup');
 
     // Wait for game to end
-    await page.getByText(/Game Over|Winner|Leaderboard/i).waitFor({ timeout: TIMEOUTS.MODAL_WAIT });
+    await page.getByText(/🏆 Game Over: Leaderboard/i).waitFor({ timeout: TIMEOUTS.MODAL_WAIT });
     console.log('=== GAME ENDED (UI shows game over) ===');
 
     // Verify final game state via API
