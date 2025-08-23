@@ -17,9 +17,8 @@
 /* Base Tile */
 .tile {
   position: absolute;
-  width: 98px; /* 100px - 2px border */
-  height: 98px; /* 100px - 2px border */
-  border: 1px solid #444;
+  width: 100px;
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -108,7 +107,6 @@
 
 .tile.room {
   background-color: #7f8c8d;
-  border: 1px solid #5d6d6e;
   box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
 
@@ -128,7 +126,6 @@
 }
 
 .starting-tile {
-  border: 2px solid #e74c3c !important;
   z-index: 5;
   box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
 }
@@ -305,14 +302,14 @@
 }
 
 .move-marker {
-  border: 3px dashed rgba(0, 180, 255, 0.5);
+  /*border: 3px dashed rgba(0, 180, 255, 0.5);*/
   border-radius: var(--spacing-sm);
   background-color: rgba(0, 180, 255, 0.15);
   animation: pulse 2s infinite;
 }
 
 .move-marker.place-tile {
-  border: 3px dashed rgba(50, 205, 50, 0.6);
+  /*border: 3px dashed rgba(50, 205, 50, 0.6);*/
   background-color: rgba(50, 205, 50, 0.2);
   animation: pulse-place 2s infinite;
 }
@@ -351,7 +348,7 @@
 /* Ghost Tile */
 .ghost-tile {
   opacity: 0.7;
-  border: 2px dashed var(--color-primary);
+  /*border: 2px dashed var(--color-primary);*/
   animation: ghostPulse 2s infinite;
 }
 

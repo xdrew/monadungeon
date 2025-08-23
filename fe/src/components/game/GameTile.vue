@@ -406,11 +406,10 @@ const onItemClick = () => {
 <style scoped>
 .tile {
   position: absolute;
-  width: 98px; /* 100px - 2px border */
-  height: 98px; /* 100px - 2px border */
+  width: 100px;
+  height: 100px;
   transition: transform 0.3s, box-shadow 0.3s;
   background-color: #1a1a2e;
-  border: 1px solid #444;
   color: white;
   display: flex;
   align-items: center;
@@ -580,8 +579,9 @@ const onItemClick = () => {
 
 .opening {
   position: absolute;
-  background-color: #333;
+  background-color: transparent;
   z-index: 2;
+  display: none; /* Hide openings since we use background images */
 }
 
 /* Hide openings when tile has background image */

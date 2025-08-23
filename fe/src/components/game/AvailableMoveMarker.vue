@@ -100,14 +100,14 @@ const handleClick = () => {
 }
 
 .move-marker {
-  border: 3px dashed rgba(0, 180, 255, 0.8);
+  //border: 3px dashed rgba(0, 180, 255, 0.8);
   border-radius: 10px;
   background-color: rgba(0, 180, 255, 0.25);
   animation: pulse 2s infinite;
 }
 
 .move-marker.place-tile {
-  border: 3px dashed rgba(50, 205, 50, 0.8);
+  //border: 3px dashed rgba(50, 205, 50, 0.8);
   background-color: rgba(50, 205, 50, 0.3);
   animation: pulse-place 2s infinite;
 }

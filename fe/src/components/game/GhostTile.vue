@@ -218,7 +218,6 @@ const placeTile = () => {
   height: 100px;
   transition: transform 0.3s, box-shadow 0.3s;
   background-color: #1a1a2e;
-  border: 1px solid #444;
   color: white;
   display: flex;
   align-items: center;
@@ -285,8 +284,9 @@ const placeTile = () => {
 
 .opening {
   position: absolute;
-  background-color: #333;
+  background-color: transparent;
   z-index: 2;
+  display: none; /* Hide openings since we use background images */
 }
 
 .opening.top {
@@ -336,7 +336,6 @@ const placeTile = () => {
 /* Ghost tile specific styles */
 .ghost-tile {
   opacity: 0.85;
-  border: 2px dashed #4CAF50;
   animation: ghostPulse 2s infinite;
   pointer-events: auto;
   cursor: pointer;
@@ -347,7 +346,6 @@ const placeTile = () => {
 }
 
 .ghost-tile.room {
-  border: 2px dashed #ffb700;
   box-shadow: 0 0 10px rgba(255, 183, 0, 0.5);
 }
 
