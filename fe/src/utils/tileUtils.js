@@ -27,10 +27,24 @@ export const getTileOrientationChar = (position, gameData) => {
  * @returns {boolean} True if the tile is a room tile, false otherwise
  */
 export const isRoomTile = (position, gameData) => {
-  // The API should provide roomTiles as part of the field data
+  // First check the roomFieldPlaces array if available
   if (gameData?.field?.roomFieldPlaces && position) {
-    return gameData.field.roomFieldPlaces.includes(position);
+    if (gameData.field.roomFieldPlaces.includes(position)) {
+      return true;
+    }
   }
+  
+  // Also check the orientation character as a fallback
+  // Room tiles use double-line box drawing characters
+  if (gameData?.field?.tileOrientations && position) {
+    const orientationChar = gameData.field.tileOrientations[position];
+    if (orientationChar) {
+      // Room characters: ╬ ╠ ╣ ╦ ╩ ║ ═ ╔ ╗ ╝ ╚
+      const roomChars = ['╬', '╠', '╣', '╦', '╩', '║', '═', '╔', '╗', '╝', '╚'];
+      return roomChars.includes(orientationChar);
+    }
+  }
+  
   return false; // Default
 }; 
 

@@ -152,10 +152,11 @@
                   <!-- Render ghost tile if we have one and deck is not empty -->
                   <GhostTile
                     v-if="ghostTilePosition && pickedTile && !(gameData?.state?.deck?.isEmpty) && !isProcessingAI && gameData?.state?.status !== 'finished'"
+                    :key="`ghost-${ghostTilePosition}-${ghostTileOrientation}-${pickedTile?.orientation}`"
                     :position="ghostTilePosition"
                     :orientation="ghostTileOrientation"
-                    :orientation-symbol="getTileOrientationSymbol(ghostTileOrientation, pickedTile.room)"
-                    :orientation-class="getTileOrientationClass(ghostTileOrientation, pickedTile.room)"
+                    :orientation-symbol="ghostTileOrientationSymbol"
+                    :orientation-class="ghostTileOrientationClass"
                     :is-room="pickedTile.room"
                     :is-placing-tile="isPlacingTile"
                     :min-x="gameData.field.size.minX || 0"
@@ -688,6 +689,23 @@ const battleInfo = ref(null);
 const battleReportModalRef = ref(null);
 
 // Computed property to determine if the game can be started
+// Computed properties for ghost tile to ensure reactivity
+const ghostTileOrientationSymbol = computed(() => {
+  if (!ghostTileOrientation.value || !pickedTile.value) return '';
+  const symbol = getTileOrientationSymbol(ghostTileOrientation.value, pickedTile.value.room);
+  console.log('Computing ghost tile symbol:', {
+    orientation: ghostTileOrientation.value,
+    isRoom: pickedTile.value.room,
+    symbol
+  });
+  return symbol;
+});
+
+const ghostTileOrientationClass = computed(() => {
+  if (!ghostTileOrientation.value || !pickedTile.value) return '';
+  return getTileOrientationClass(ghostTileOrientation.value, pickedTile.value.room);
+});
+
 const canStartGame = computed(() => {
   // Logic to determine if game can be started
   if (!gameData.value || !gameData.value.players) return false;
@@ -1291,6 +1309,29 @@ watch(tileSize, (newSize) => {
   if (tiles.length) {
     tiles.forEach(tile => {
       tile.style.setProperty('--tile-size', `${newSize}px`);
+    });
+  }
+});
+
+// Watch for orientation changes during tile placement
+watch(ghostTileOrientation, (newVal, oldVal) => {
+  if (newVal !== oldVal && newVal) {
+    const newSymbol = getTileOrientationSymbol(newVal, pickedTile.value?.room);
+    const newClass = getTileOrientationClass(newVal, pickedTile.value?.room);
+    console.log('Ghost tile orientation changed:', {
+      from: oldVal,
+      to: newVal,
+      symbol: newSymbol,
+      class: newClass,
+      isRoom: pickedTile.value?.room
+    });
+    
+    // Force update of the ghost tile by triggering a re-render
+    nextTick(() => {
+      console.log('After nextTick - checking computed values:', {
+        orientation: ghostTileOrientation.value,
+        computedSymbol: getTileOrientationSymbol(ghostTileOrientation.value, pickedTile.value?.room)
+      });
     });
   }
 });
@@ -2121,7 +2162,16 @@ const rotateGhostTileLocal = async () => {
     onSuccess: (tile) => {
       // Update the tile orientation
       pickedTile.value = tile;
-      ghostTileOrientation.value = parseOrientationString(tile.orientation);
+      const newOrientation = parseOrientationString(tile.orientation);
+      const newSymbol = getTileOrientationSymbol(newOrientation, tile.room);
+      console.log('Rotation successful - updating orientation:', {
+        oldOrientation: ghostTileOrientation.value,
+        newOrientation,
+        tileOrientation: tile.orientation,
+        isRoom: tile.room,
+        newSymbol
+      });
+      ghostTileOrientation.value = newOrientation;
     },
     onError: (err) => {
       console.error('Failed to rotate tile:', err);
@@ -2170,7 +2220,13 @@ const handleInitialTileOrientationLocal = async (position) => {
     rotateTileApi: gameApi.rotateTile,
     onSuccess: (tile) => {
       pickedTile.value = tile;
-      ghostTileOrientation.value = parseOrientationString(tile.orientation);
+      const newOrientation = parseOrientationString(tile.orientation);
+      console.log('Initial orientation found - updating:', {
+        oldOrientation: ghostTileOrientation.value,
+        newOrientation,
+        tileOrientation: tile.orientation
+      });
+      ghostTileOrientation.value = newOrientation;
     },
     onError: (err) => {
       console.error('Failed to rotate tile:', err);

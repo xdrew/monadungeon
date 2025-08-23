@@ -9,7 +9,8 @@
       { 'replaying': isReplaying && currentReplayTurn > turnNumber - 1 },
       { 'is-current-action': isCurrentAction },
       { 'tile-placing-animation': isPlacingAnimation },
-      { 'current-player-position': isCurrentPlayerPosition }
+      { 'current-player-position': isCurrentPlayerPosition },
+      { 'has-background-image': tileBackgroundImage }
     ]"
     :style="{
       left: `${(x - minX) * tileSize}px`,
@@ -26,6 +27,13 @@
     @mouseenter="onTileMouseEnter"
     @mouseleave="onTileMouseLeave"
   >
+    <!-- Rotated background image layer -->
+    <div 
+      v-if="tileBackgroundImage"
+      class="tile-background-layer"
+      :style="tileBackgroundStyle"
+    />
+    
     <div
       class="tile-content"
       :class="{ 'room-content': isRoom }"
@@ -138,10 +146,11 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed } from 'vue';
+import { defineProps, defineEmits, computed, ref, onMounted } from 'vue';
 import { getPlayerEmoji } from '@/utils/playerUtils';
 import { getItemDamage } from '@/utils/itemUtils';
 import { getMonsterImage } from '@/utils/monsterUtils';
+import { getTileImageWithFallback, getTileImageWithRotation } from '@/config/tileImageConfig';
 
 const props = defineProps({
   position: {
@@ -277,6 +286,53 @@ const props = defineProps({
 
 const emit = defineEmits(['highlight', 'unhighlight', 'center-view', 'item-click']);
 
+// Tile background image and rotation
+const tileBackgroundImage = ref(null);
+const tileRotation = ref(0);
+
+// Load tile image on mount
+onMounted(async () => {
+  // Get the base image and rotation for this tile
+  const imageConfig = getTileImageWithRotation(props.orientationChar, props.isRoom);
+  
+  if (imageConfig) {
+    // Check if the image exists
+    try {
+      const response = await fetch(imageConfig.image, { method: 'HEAD' });
+      if (response.ok) {
+        tileBackgroundImage.value = imageConfig.image;
+        tileRotation.value = imageConfig.rotation;
+      }
+    } catch (error) {
+      console.error('Failed to load tile image:', imageConfig.image, error);
+    }
+  }
+});
+
+// Computed property for background style
+const tileBackgroundStyle = computed(() => {
+  if (!tileBackgroundImage.value) {
+    return {};
+  }
+  
+  const style = {
+    backgroundImage: `url(${tileBackgroundImage.value})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat'
+  };
+  
+  // Apply rotation to the background image
+  if (tileRotation.value !== 0) {
+    // Use CSS transform on a pseudo-element or inner div for the background rotation
+    style.transform = `rotate(${tileRotation.value}deg)`;
+    // Ensure the rotated background fills the tile
+    style.transformOrigin = 'center center';
+  }
+  
+  return style;
+});
+
 // Computed properties for openings
 const hasTopOpening = computed(() => props.openings.top);
 const hasRightOpening = computed(() => props.openings.right);
@@ -389,6 +445,28 @@ const onItemClick = () => {
   pointer-events: none;
 }
 
+/* Hide orientation symbols when tile has background image */
+.tile.has-background-image .tile-orientation {
+  display: none;
+}
+
+/* Background layer for rotated images */
+.tile-background-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Ensure content is above background */
+.tile.has-background-image .tile-content {
+  position: relative;
+  z-index: 1;
+}
+
 .room-symbol {
   /* Removed color to match regular tile orientation colors */
 }
@@ -497,12 +575,18 @@ const onItemClick = () => {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 1; /* Above background but below items */
 }
 
 .opening {
   position: absolute;
   background-color: #333;
   z-index: 2;
+}
+
+/* Hide openings when tile has background image */
+.tile.has-background-image .opening {
+  display: none;
 }
 
 .opening.top {

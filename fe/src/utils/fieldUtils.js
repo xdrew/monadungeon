@@ -2,6 +2,8 @@
  * Utility functions for working with game field and player positions
  */
 
+import { parseOrientationString } from './tileUtils';
+
 // Constants
 const FIELD_PADDING = 100;
 const TILE_ANIMATION_DURATION = 1000;
@@ -606,7 +608,7 @@ const handleTilePicking = async (params) => {
     tileState, tileUtils, loadingState
   } = params;
   
-  const { pickedTileId, pickedTile, ghostTilePosition, isPlacingTile } = tileState;
+  const { pickedTileId, pickedTile, ghostTilePosition, isPlacingTile, ghostTileOrientation } = tileState;
   const { generateUUID, getRequiredOpenSide, handleInitialTileOrientation, cancelTilePlacement } = tileUtils;
   const { error } = loadingState;
 
@@ -653,6 +655,18 @@ const handleTilePicking = async (params) => {
     pickedTileId.value = tileId;
     pickedTile.value = response.tile;
     ghostTilePosition.value = position;
+    // Set initial orientation for the ghost tile to display
+    if (response.tile && response.tile.orientation) {
+      const initialOrientation = parseOrientationString(response.tile.orientation);
+      console.log('Setting initial ghost tile orientation:', {
+        orientationString: response.tile.orientation,
+        parsed: initialOrientation,
+        position
+      });
+      ghostTileOrientation.value = initialOrientation;
+    }
+    // Set isPlacingTile immediately to show the ghost tile during rotation
+    isPlacingTile.value = true;
 
     // Try to find a valid initial orientation
     const validOrientation = await handleInitialTileOrientation(position);
@@ -663,7 +677,6 @@ const handleTilePicking = async (params) => {
       return;
     }
 
-    isPlacingTile.value = true;
     console.log('Picked tile:', response.tile);
     
     // Return a response indicating tile was picked (not a turn-ending action)

@@ -3,7 +3,8 @@
     class="tile ghost-tile"
     :class="[
       isRoom ? 'room' : 'corridor',
-      orientationClass
+      orientationClass,
+      { 'has-background-image': tileBackgroundImage }
     ]"
     :style="{
       left: `${(parseInt(position.split(',')[0]) - minX) * tileSize}px`,
@@ -13,6 +14,13 @@
     :title="'Click to place tile (Enter)'"
     @click="placeTile"
   >
+    <!-- Rotated background image layer -->
+    <div 
+      v-if="tileBackgroundImage"
+      class="tile-background-layer"
+      :style="tileBackgroundStyle"
+    />
+    
     <div
       class="tile-content"
       :class="{ 'room-content': isRoom }"
@@ -21,7 +29,7 @@
         class="tile-orientation"
         :class="{ 'room-symbol': isRoom }"
       >
-        {{ orientationSymbol }}
+        {{ displayOrientationSymbol }}
       </div>
       <div
         v-if="isPlacingTile"
@@ -63,7 +71,8 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed } from 'vue';
+import { defineProps, defineEmits, computed, watch, ref, onMounted, onUpdated } from 'vue';
+import { getTileImageWithRotation } from '@/config/tileImageConfig';
 
 const props = defineProps({
   position: {
@@ -114,6 +123,76 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['rotate', 'place']);
+
+// Tile background image and rotation
+const tileBackgroundImage = ref(null);
+const tileRotation = ref(0);
+
+// Load tile image
+const loadTileImage = async () => {
+  if (props.orientationSymbol) {
+    const imageConfig = getTileImageWithRotation(props.orientationSymbol, props.isRoom);
+    
+    if (imageConfig) {
+      // Check if the image exists
+      try {
+        const response = await fetch(imageConfig.image, { method: 'HEAD' });
+        if (response.ok) {
+          tileBackgroundImage.value = imageConfig.image;
+          tileRotation.value = imageConfig.rotation;
+        }
+      } catch (error) {
+        console.error('Failed to load ghost tile image:', imageConfig.image, error);
+      }
+    }
+  }
+};
+
+// Load image on mount and when orientation changes
+onMounted(loadTileImage);
+onUpdated(loadTileImage);
+
+// Computed property for background style
+const tileBackgroundStyle = computed(() => {
+  if (!tileBackgroundImage.value) {
+    return {};
+  }
+  
+  const style = {
+    backgroundImage: `url(${tileBackgroundImage.value})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat'
+  };
+  
+  // Apply rotation to the background
+  if (tileRotation.value !== 0) {
+    style.transform = `rotate(${tileRotation.value}deg)`;
+    style.transformOrigin = 'center center';
+  }
+  
+  return style;
+});
+
+// Computed property for orientation symbol to ensure reactivity
+const displayOrientationSymbol = computed(() => {
+  console.log('GhostTile orientationSymbol:', props.orientationSymbol);
+  return props.orientationSymbol;
+});
+
+// Watch for prop changes to debug
+watch(() => props.orientationSymbol, (newVal, oldVal) => {
+  console.log('GhostTile: orientationSymbol prop changed', { 
+    from: oldVal, 
+    to: newVal,
+    orientation: props.orientation,
+    orientationClass: props.orientationClass
+  });
+});
+
+watch(() => props.orientation, (newVal, oldVal) => {
+  console.log('GhostTile: orientation prop changed', { from: oldVal, to: newVal });
+});
 
 // Computed properties for openings
 const hasTopOpening = computed(() => props.openings.top);
@@ -166,6 +245,28 @@ const placeTile = () => {
 .tile-orientation {
   font-size: 24px;
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* Hide orientation symbol when tile has background image */
+.ghost-tile.has-background-image .tile-orientation {
+  display: none;
+}
+
+/* Background layer for rotated images */
+.tile-background-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Ensure content is above background */
+.ghost-tile.has-background-image .tile-content {
+  position: relative;
+  z-index: 1;
 }
 
 .room-symbol {
@@ -240,6 +341,9 @@ const placeTile = () => {
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 
 .ghost-tile.room {
