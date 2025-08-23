@@ -508,8 +508,8 @@ const onItemClick = () => {
   position: absolute;
   font-size: 24px;
   z-index: 3;
-  bottom: 8px;
-  right: 8px;
+  bottom: 15px;
+  right: 15px;
 }
 
 .tile-items.has-guard {
@@ -732,8 +732,8 @@ const onItemClick = () => {
 
 .healing-fountain-indicator {
   position: absolute;
-  top: 5px;
-  left: 5px;
+  top: 35px;
+  left: 35px;
   font-size: 20px;
   z-index: 4;
   filter: drop-shadow(0 0 4px rgba(64, 224, 208, 0.8));
@@ -742,8 +742,8 @@ const onItemClick = () => {
 
 .teleportation-gate-indicator {
   position: absolute;
-  top: 5px;
-  left: 5px;
+  top: 35px;
+  left: 35px;
   font-size: 20px;
   z-index: 4;
   filter: drop-shadow(0 0 4px rgba(138, 43, 226, 0.8));

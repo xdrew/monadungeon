@@ -852,11 +852,20 @@ const updateGameTurns = (gameDataResponse) => {
 
 // Track if we're already processing an AI turn to prevent duplicates
 let aiTurnInProgress = false;
+// Promise to track ongoing AI execution
+let aiExecutionPromise = null;
 
 // Check if current player is virtual and handle their turn
 const checkAndHandleVirtualPlayerTurn = async () => {
   try {
     if (!gameData.value?.state) return;
+    
+    // If AI execution is already in progress, wait for it to complete
+    if (aiExecutionPromise) {
+      console.log('⚠️ AI turn already in progress, waiting for completion');
+      await aiExecutionPromise;
+      return;
+    }
     
     // Don't execute AI turn if game is finished
     if (gameData.value.state.status === 'finished') {
@@ -877,7 +886,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     if (virtualPlayerId && currentPlayer === virtualPlayerId) {
       // Prevent duplicate AI turn execution
       if (aiTurnInProgress) {
-        console.log('⚠️ AI turn already in progress, skipping duplicate call');
+        console.log('⚠️ AI turn already in progress flag set, skipping');
         return;
       }
       
@@ -887,15 +896,24 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       isProcessingAI.value = true;
       aiTurnInProgress = true;
       
-      // Add a small delay to make it feel more natural
-      setTimeout(async () => {
+      // Create a promise for the entire AI execution including delay
+      aiExecutionPromise = new Promise(async (resolve) => {
         try {
+          // Add a small delay to make it feel more natural
+          await new Promise(timeout => setTimeout(timeout, 1000));
           await executeVirtualPlayerTurn(currentPlayer);
+        } catch (error) {
+          console.error('Error in AI execution:', error);
         } finally {
-          // Clear the in-progress flag after execution
+          // Clear the flags after execution
           aiTurnInProgress = false;
+          aiExecutionPromise = null;
+          resolve();
         }
-      }, 1000); // 1 second delay
+      });
+      
+      // Wait for the AI execution to complete
+      await aiExecutionPromise;
     } else {
       console.log('❌ Not a virtual player turn');
       // Make sure to clear the flags if it's not AI turn
@@ -905,6 +923,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
   } catch (error) {
     console.error('Error checking virtual player turn:', error);
     aiTurnInProgress = false;
+    aiExecutionPromise = null;
   }
 };
 
