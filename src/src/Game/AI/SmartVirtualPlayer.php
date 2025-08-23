@@ -1135,6 +1135,8 @@ final class SmartVirtualPlayer
         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
         
         if ($moveResult['success']) {
+            // Mark the new position as visited to prevent oscillation
+            $this->visitedPositions[$targetPosition] = true;
             $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
         } else {
             $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
@@ -2073,33 +2075,81 @@ final class SmartVirtualPlayer
             throw new \RuntimeException('No move options available');
         }
         
+        // Filter out visited positions to prevent oscillation
+        $unvisitedOptions = array_filter($moveOptions, function($option) {
+            return !isset($this->visitedPositions[$option]);
+        });
+        
+        // If all options are visited, use all options but log warning
+        if (empty($unvisitedOptions)) {
+            error_log("DEBUG AI: Warning - all move options have been visited this turn!");
+            $unvisitedOptions = $moveOptions;
+        }
+        
         // PRIORITY 1: Look for treasure locations (chests)
-        $treasurePosition = $this->findTreasurePosition($moveOptions, $field, $player);
+        $treasurePosition = $this->findTreasurePosition($unvisitedOptions, $field, $player);
         if ($treasurePosition !== null) {
             error_log("DEBUG AI Reasoning: Found treasure at {$treasurePosition} and I have a key - moving to collect it!");
             return $treasurePosition;
         }
         
         // PRIORITY 2: Look for weapon upgrades we can obtain
-        $upgradePosition = $this->findWeaponUpgradePosition($moveOptions, $field, $player);
+        $upgradePosition = $this->findWeaponUpgradePosition($unvisitedOptions, $field, $player);
         if ($upgradePosition !== null) {
             error_log("DEBUG AI Reasoning: Found weapon upgrade opportunity at {$upgradePosition}");
             return $upgradePosition;
         }
         
         // PRIORITY 3: Look for winnable battles with rewards
-        $battlePosition = $this->findWinnableBattlePosition($moveOptions, $field, $player);
+        $battlePosition = $this->findWinnableBattlePosition($unvisitedOptions, $field, $player);
         if ($battlePosition !== null && ($this->strategyConfig['preferBattles'] ?? true)) {
             $playerStrength = $this->calculateEffectiveStrength($player);
             error_log("DEBUG AI Reasoning: Found winnable battle at {$battlePosition} (our strength: {$playerStrength})");
             return $battlePosition;
         }
         
-        // PRIORITY 3: Defensive movement when weak
+        // PRIORITY 4: Check for healing fountain ONLY if HP is low
+        // Only move to healing fountain if HP is below threshold
+        $currentHP = $player->getHP();
+        $healingThreshold = $this->strategyConfig['healingThreshold'] ?? 2;
+        
+        // Only consider healing fountain if HP is below threshold
+        if ($currentHP <= $healingThreshold) {
+            foreach ($unvisitedOptions as $position) {
+                // Check if this position has a healing fountain
+                $placedTiles = $field->getPlacedTiles();
+                if (isset($placedTiles[$position])) {
+                    $tileId = $placedTiles[$position];
+                    if (is_string($tileId)) {
+                        $tileId = Uuid::fromString($tileId);
+                    }
+                    if ($tileId instanceof Uuid) {
+                        $tile = $field->getTileFromCache($tileId);
+                        if ($tile) {
+                            $features = $tile->getFeatures();
+                            foreach ($features as $feature) {
+                                $featureString = '';
+                                if ($feature instanceof \App\Game\Field\TileFeature) {
+                                    $featureString = $feature->value;
+                                } elseif (is_string($feature)) {
+                                    $featureString = $feature;
+                                }
+                                if ($featureString === 'healing_fountain' || $featureString === TileFeature::HEALING_FOUNTAIN->value) {
+                                    error_log("DEBUG AI Reasoning: Low HP ({$currentHP}), moving to healing fountain at {$position}");
+                                    return $position;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // PRIORITY 5: Defensive movement when weak
         if (!($this->strategyConfig['preferBattles'] ?? true) && $player->getHP() <= 2) {
             // Pick safest option (furthest from center for now)
             // Re-index array to ensure sequential keys
-            $moveOptionsIndexed = array_values($moveOptions);
+            $moveOptionsIndexed = array_values($unvisitedOptions);
             $safePos = $moveOptionsIndexed[count($moveOptionsIndexed) - 1];
             error_log("DEBUG AI Reasoning: Low HP ({$player->getHP()}), moving defensively to {$safePos}");
             return $safePos;
@@ -2108,14 +2158,14 @@ final class SmartVirtualPlayer
         // Default: pick based on strategy preference
         if ($this->strategyConfig['preferBattles'] ?? false) {
             // Re-index array to ensure sequential keys
-            $moveOptionsIndexed = array_values($moveOptions);
+            $moveOptionsIndexed = array_values($unvisitedOptions);
             error_log("DEBUG AI Reasoning: Aggressive strategy - exploring new area at {$moveOptionsIndexed[0]}");
             return $moveOptionsIndexed[0];  // Aggressive: explore actively
         }
         
-        // Balanced: pick middle option
+        // Balanced: pick middle option from unvisited positions
         // Re-index array to ensure sequential keys
-        $moveOptionsIndexed = array_values($moveOptions);
+        $moveOptionsIndexed = array_values($unvisitedOptions);
         $middleIndex = intval(count($moveOptionsIndexed) / 2);
         $balancedPos = $moveOptionsIndexed[$middleIndex] ?? $moveOptionsIndexed[0];
         error_log("DEBUG AI Reasoning: Balanced exploration - moving to {$balancedPos}");
