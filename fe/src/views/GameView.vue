@@ -952,15 +952,15 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     }
     
     const currentPlayer = gameData.value.state.currentPlayer || gameData.value.state.currentPlayerId;
-    const virtualPlayerId = localStorage.getItem('virtualPlayerId');
     
     console.log('DEBUG: Checking virtual player turn');
     console.log('DEBUG: Current player:', currentPlayer);
-    console.log('DEBUG: Virtual player ID from localStorage:', virtualPlayerId);
     console.log('DEBUG: Current player ID from UI:', currentPlayerId.value);
     
-    // Check if current player is the virtual player ID from localStorage
-    if (virtualPlayerId && currentPlayer === virtualPlayerId) {
+    // Check if current player is a virtual player using our improved detection
+    if (isVirtualPlayer(currentPlayer)) {
+      const virtualPlayerId = localStorage.getItem('virtualPlayerId');
+      console.log('DEBUG: Virtual player ID from localStorage:', virtualPlayerId);
       // Prevent duplicate AI turn execution
       if (aiTurnInProgress) {
         console.log('⚠️ AI turn already in progress flag set, skipping');
