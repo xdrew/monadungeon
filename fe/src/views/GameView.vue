@@ -959,8 +959,14 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     
     // Check if current player is a virtual player using our improved detection
     if (isVirtualPlayer(currentPlayer)) {
-      const virtualPlayerId = localStorage.getItem('virtualPlayerId');
-      console.log('DEBUG: Virtual player ID from localStorage:', virtualPlayerId);
+      // Store the virtual player ID if not already stored
+      const storedVirtualPlayerId = localStorage.getItem('virtualPlayerId');
+      if (!storedVirtualPlayerId || storedVirtualPlayerId !== currentPlayer) {
+        localStorage.setItem('virtualPlayerId', currentPlayer);
+        console.log('Stored AI player ID for future reference:', currentPlayer);
+      }
+      
+      console.log('DEBUG: Virtual player ID:', currentPlayer);
       // Prevent duplicate AI turn execution
       if (aiTurnInProgress) {
         console.log('⚠️ AI turn already in progress flag set, skipping');
@@ -3608,9 +3614,8 @@ const isVirtualPlayer = (playerId) => {
     const humanPlayerId = localStorage.getItem('currentPlayerId');
     // If this player is not the human player, it's the AI
     if (humanPlayerId && playerId !== humanPlayerId) {
-      // Store this as the virtual player for future reference
-      localStorage.setItem('virtualPlayerId', playerId);
-      console.log('Detected AI player by elimination:', playerId);
+      // Don't update localStorage here as it may cause re-renders
+      // Instead, update it only once when we actually need to execute AI turn
       return true;
     }
   }
