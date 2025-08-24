@@ -11,12 +11,6 @@
         <h1 class="title">
           MONADUNGEON
         </h1>
-        <h2 class="subtitle">
-          Powered by Monad Testnet
-        </h2>
-        <div class="version-info">
-          Build: {{ buildVersion }}
-        </div>
         <p class="description">
           Embark on an epic journey through dangerous dungeons filled with monsters, treasures, and ancient secrets.
         </p>
@@ -71,6 +65,9 @@
         >
           📜 How to Play
         </button>
+        <div class="version-info">
+          Build: {{ buildVersion }}
+        </div>
       </div>
 
         <div
