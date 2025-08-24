@@ -643,16 +643,24 @@ const finalizeBattleWithoutConsumables = () => {
 };
 
 const finalizeBattleAndPickUp = () => {
+  console.log('🟢 Green button clicked - finalizeBattleAndPickUp called');
+  console.log('Battle ID:', props.battleInfo.battleId);
+  console.log('Selected consumables:', selectedConsumables.value);
+  console.log('Replace item ID:', selectedItemForReplacement.value?.itemId);
+  
   battleFinalized.value = true;
   
   // Hide the modal immediately to prevent showing intermediate state
   // The parent will handle re-showing if needed
-  emit('finalize-battle-and-pick-up', {
+  const eventData = {
     battleId: props.battleInfo.battleId,
     selectedConsumableIds: selectedConsumables.value,
     replaceItemId: selectedItemForReplacement.value?.itemId,
     hideModalImmediately: true
-  });
+  };
+  
+  console.log('Emitting finalize-battle-and-pick-up with data:', eventData);
+  emit('finalize-battle-and-pick-up', eventData);
   
   // Reset state
   showConsumableSelection.value = false;
