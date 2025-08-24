@@ -3597,8 +3597,25 @@ const isCurrentPlayerPosition = (position) => {
 
 // Helper to check if a player is an AI/virtual player
 const isVirtualPlayer = (playerId) => {
+  // First check if we have a stored virtual player ID
   const virtualPlayerId = localStorage.getItem('virtualPlayerId');
-  return virtualPlayerId && playerId === virtualPlayerId;
+  if (virtualPlayerId && playerId === virtualPlayerId) {
+    return true;
+  }
+  
+  // If we have exactly 2 players in a game, the non-human player is the AI
+  if (gameData.value?.players?.length === 2) {
+    const humanPlayerId = localStorage.getItem('currentPlayerId');
+    // If this player is not the human player, it's the AI
+    if (humanPlayerId && playerId !== humanPlayerId) {
+      // Store this as the virtual player for future reference
+      localStorage.setItem('virtualPlayerId', playerId);
+      console.log('Detected AI player by elimination:', playerId);
+      return true;
+    }
+  }
+  
+  return false;
 };
 
 // Helper to get the current user's Privy ID
