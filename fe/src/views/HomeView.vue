@@ -1,5 +1,6 @@
 <template>
   <div class="home-container">
+    <MusicToggle />
     <div class="game-options">
       <div class="monad-logo">
         <img src="/assets/monad-logo-black.webp" alt="Monad" />
@@ -90,11 +91,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { gameApi } from '@/services/api';
 import { privyService } from '@/services/privy';
 import PrivyAuth from '@/components/PrivyAuth.vue';
+import MusicToggle from '@/components/game/MusicToggle.vue';
+import { musicService } from '@/services/musicService';
 
 const router = useRouter();
 const errorMessage = ref('');
@@ -125,6 +128,10 @@ const generateRandomId = () => {
 
 // Check for existing authentication on mount
 onMounted(async () => {
+  // Initialize music service with placeholder URL
+  // Replace this with your actual music track URL
+  musicService.init('/music/game-theme.mp3');
+  
   // First check if we're returning from OAuth redirect
   const urlParams = new URLSearchParams(window.location.search);
   const oauthCode = urlParams.get('privy_oauth_code');
@@ -592,6 +599,12 @@ const completeMonadOAuth = async (authorizationCode, stateCode, codeVerifier) =>
 };
 
 // Handle successful Privy authentication
+// Clean up on unmount
+onBeforeUnmount(() => {
+  // Music will continue playing as user navigates to game
+  // Only destroy in GameView when leaving the game completely
+});
+
 const handlePrivySuccess = async (result) => {
   try {
     loading.value = true;

@@ -80,6 +80,7 @@
                 @center-player="centerViewOnCurrentPlayer"
                 @center-available="centerViewOnAvailablePlaces"
               />
+              <MusicToggle />
 
               <!-- Render field and tiles if available -->
               <div 
@@ -561,6 +562,8 @@ import GameTile from '@/components/game/GameTile.vue';
 import AvailableMoveMarker from '@/components/game/AvailableMoveMarker.vue';
 import ItemPickupDialog from '@/components/game/ItemPickupDialog.vue';
 import ActionLog from '@/components/ActionLog.vue';
+import MusicToggle from '@/components/game/MusicToggle.vue';
+import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';
 import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil } from '@/utils/itemUtils';
@@ -1171,6 +1174,10 @@ watch(() => route.params.id, (newId, oldId) => {
 onMounted(async () => {
   console.log('Game view mounted with game ID:', id.value);
 
+  // Initialize music service with placeholder URL
+  // Replace this with your actual music track URL
+  musicService.init('/music/game-theme.mp3');
+
   try {
     // Initial game data load
     loading.value = true;
@@ -1189,6 +1196,9 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  // Clean up music service
+  musicService.destroy();
+  
   // Clean up WebSocket connection when component is destroyed
   // if (socket.value) {
   //   socket.value.close();
