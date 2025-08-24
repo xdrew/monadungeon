@@ -710,8 +710,14 @@ const clearTileState = (tileState) => {
 const validatePlayerTurn = (params) => {
   const { isPlayerTurn, gameData, currentPlayerId, autoSwitchPlayer } = params;
   
+  console.log('🔍 validatePlayerTurn check:', {
+    isPlayerTurn,
+    currentPlayerId: currentPlayerId?.value,
+    gameStatePlayer: gameData?.state?.currentPlayerId
+  });
+  
   if (!isPlayerTurn) {
-    console.log('Not your turn');
+    console.log('❌ Not your turn - blocking click');
     return false;
   }
 

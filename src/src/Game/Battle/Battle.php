@@ -378,8 +378,8 @@ class Battle extends AggregateRoot
         $field = $messageContext->dispatch(new GetField($this->gameId));
 
         $this->diceResults = [
-            $field->getNextDiceRoll(1, 6),
-            $field->getNextDiceRoll(1, 6),
+            $field->getNextDiceRoll(1, 1),
+            $field->getNextDiceRoll(1, 1),
         ];
 
         $this->totalDamage = array_sum($this->diceResults);

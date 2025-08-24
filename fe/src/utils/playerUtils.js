@@ -49,6 +49,26 @@ export const isPlayerTurn = (gameData, playerId, enableLogging = false) => {
 };
 
 /**
+ * Checks if the current turn belongs to an AI/virtual player
+ * @param {Object} gameData - The game data containing state information
+ * @returns {boolean} True if it's the AI player's turn, false otherwise
+ */
+export const isAITurn = (gameData) => {
+  if (!gameData || !gameData.state || !gameData.state.currentPlayerId) {
+    return false;
+  }
+  
+  // Check if we have a virtual player ID stored (from game creation)
+  const virtualPlayerId = localStorage.getItem('virtualPlayerId');
+  if (!virtualPlayerId) {
+    return false;
+  }
+  
+  // If current player from API matches the virtual player, it's the AI's turn
+  return gameData.state.currentPlayerId === virtualPlayerId;
+};
+
+/**
  * Gets an emoji representation for a player based on their player ID
  * @param {string} playerId - The ID of the player
  * @returns {string} An emoji character representing the player
@@ -56,20 +76,10 @@ export const isPlayerTurn = (gameData, playerId, enableLogging = false) => {
 export const getPlayerEmoji = (playerId) => {
   if (!playerId) return '👤';
   
-  // Check if this is a virtual player (robot emoji)
+  // Simple check: if this player matches the virtual player ID, show robot emoji
   const virtualPlayerId = typeof localStorage !== 'undefined' ? localStorage.getItem('virtualPlayerId') : null;
-  if (virtualPlayerId && playerId === virtualPlayerId) return '🤖';
-  
-  // If we don't have a stored virtual player ID, check if this is the non-human player in a 2-player game
-  // This helps avoid flickering when the virtualPlayerId hasn't been stored yet
-  if (typeof localStorage !== 'undefined') {
-    const humanPlayerId = localStorage.getItem('currentPlayerId');
-    // Simple check: if there's a human player and this isn't them, it's likely the AI
-    // This will only apply the robot emoji in obvious cases to avoid false positives
-    if (humanPlayerId && playerId !== humanPlayerId && virtualPlayerId === null) {
-      // Don't automatically set it, just display as robot
-      return '🤖';
-    }
+  if (virtualPlayerId && playerId === virtualPlayerId) {
+    return '🤖';
   }
   
   // Expanded emoji set for more variety and better uniqueness
@@ -224,19 +234,14 @@ export const autoSwitchPlayer = ({ gameData, currentPlayerId, secondPlayerId, sh
 
   const apiCurrentPlayerId = gameData.state.currentPlayerId;
   
-  // Check if we're in a game with an AI player
+  // Check if there's a virtual player in the game
   const virtualPlayerId = localStorage.getItem('virtualPlayerId');
-  const humanPlayerId = localStorage.getItem('humanPlayerId');
   
-  // If we have a virtual player in the game, don't auto-switch players
-  // The human should always control their own player regardless of whose turn it is
-  if (virtualPlayerId && humanPlayerId) {
-    console.log('Game has AI player, maintaining human player control');
-    // Ensure the human player remains the controlled player
-    if (currentPlayerId.value !== humanPlayerId) {
-      currentPlayerId.value = humanPlayerId;
-      localStorage.setItem('currentPlayerId', humanPlayerId);
-    }
+  // If the API's current player is the virtual player, don't switch
+  // Keep control with the human player
+  if (virtualPlayerId && apiCurrentPlayerId === virtualPlayerId) {
+    console.log('AI turn detected, keeping human player control');
+    // Don't change anything, human stays in control
     return;
   }
   
@@ -279,12 +284,6 @@ export const autoSwitchPlayer = ({ gameData, currentPlayerId, secondPlayerId, sh
   } else if (currentPlayerId.value) {
     // We only have one player stored locally
     if (apiCurrentPlayerId !== currentPlayerId.value) {
-      // Don't switch if this is just the AI's turn
-      if (virtualPlayerId === apiCurrentPlayerId) {
-        console.log('AI player turn, maintaining human player control');
-        return;
-      }
-      
       // If our stored player doesn't match the API's current player,
       // we need to update it
       console.log('API current player differs from stored player. Updating...');
@@ -298,19 +297,9 @@ export const autoSwitchPlayer = ({ gameData, currentPlayerId, secondPlayerId, sh
     }
   } else {
     // We don't have any players stored locally
-    // Only use the API's current player if it's not the AI
-    if (virtualPlayerId === apiCurrentPlayerId) {
-      console.log('AI is current player but no human player stored - need to maintain human player');
-      // Try to use humanPlayerId if available
-      if (humanPlayerId) {
-        currentPlayerId.value = humanPlayerId;
-        localStorage.setItem('currentPlayerId', humanPlayerId);
-      }
-    } else {
-      console.log('No local player, using API current player:', apiCurrentPlayerId);
-      currentPlayerId.value = apiCurrentPlayerId;
-      localStorage.setItem('currentPlayerId', apiCurrentPlayerId);
-    }
+    console.log('No local player, using API current player:', apiCurrentPlayerId);
+    currentPlayerId.value = apiCurrentPlayerId;
+    localStorage.setItem('currentPlayerId', apiCurrentPlayerId);
   }
 };
 
