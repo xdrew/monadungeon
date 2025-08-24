@@ -380,6 +380,24 @@
                 End Turn
               </button>
             </div>
+            
+            <!-- Emergency AI Recovery Button (only shows when AI is stuck) -->
+            <div
+              v-if="aiStuckDetected && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
+              class="sidebar-section end-turn-section"
+            >
+              <button
+                class="end-turn-btn btn--block"
+                style="background-color: #ff6b6b;"
+                @click="forceAITurn"
+                :disabled="loading || isRequestInProgress"
+              >
+                AI Stuck - Click to Continue
+              </button>
+              <small style="color: #999; display: block; margin-top: 5px; text-align: center;">
+                AI hasn't moved for 10+ seconds
+              </small>
+            </div>
 
             <!-- Action Log -->
             <div
@@ -621,6 +639,9 @@ const gameData = ref(null);
 const currentPlayerId = ref(localStorage.getItem('currentPlayerId') || null);
 const secondPlayerId = ref(localStorage.getItem('secondPlayerId') || null);
 const humanPlayerId = ref(localStorage.getItem('humanPlayerId') || localStorage.getItem('currentPlayerId') || null);
+const virtualPlayerIdStored = ref(localStorage.getItem('virtualPlayerId') || null);
+const aiStuckDetected = ref(false);
+let aiStuckTimer = null;
 const playerIsReady = ref(false);
 const gameStarted = ref(false);
 const isProcessingAI = ref(false); // Flag to block interactions during AI turn
@@ -958,9 +979,18 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     console.log('DEBUG: Current player ID from UI:', currentPlayerId.value);
     
     // Check if current player is a virtual player using our improved detection
-    if (isVirtualPlayer(currentPlayer)) {
-      // Store the virtual player ID if not already stored
-      const storedVirtualPlayerId = localStorage.getItem('virtualPlayerId');
+    const storedVirtualPlayerId = localStorage.getItem('virtualPlayerId');
+    const isAITurn = storedVirtualPlayerId && currentPlayer === storedVirtualPlayerId;
+    
+    console.log('DEBUG: AI turn check:', {
+      currentPlayer,
+      storedVirtualPlayerId,
+      isAITurn,
+      isVirtualPlayerResult: isVirtualPlayer(currentPlayer)
+    });
+    
+    if (isAITurn) {
+      // Store the virtual player ID if not already stored (shouldn't happen but just in case)
       if (!storedVirtualPlayerId || storedVirtualPlayerId !== currentPlayer) {
         localStorage.setItem('virtualPlayerId', currentPlayer);
         console.log('Stored AI player ID for future reference:', currentPlayer);
@@ -974,6 +1004,27 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       }
       
       console.log('✅ Virtual player turn detected:', currentPlayer);
+      
+      // Start AI stuck detection timer (10 seconds)
+      if (aiStuckTimer) {
+        clearTimeout(aiStuckTimer);
+      }
+      aiStuckDetected.value = false; // Reset stuck detection
+      
+      aiStuckTimer = setTimeout(() => {
+        if (aiTurnInProgress && gameData.value?.state?.currentPlayerId === currentPlayer) {
+          console.log('⚠️ AI appears to be stuck - showing recovery button');
+          aiStuckDetected.value = true;
+          
+          // Auto-recover after showing the button for 5 more seconds
+          setTimeout(() => {
+            if (aiStuckDetected.value && aiTurnInProgress) {
+              console.log('🔄 Auto-recovering stuck AI...');
+              forceAITurn();
+            }
+          }, 5000);
+        }
+      }, 10000); // 10 seconds before considering AI stuck
       
       // Set both flags to block interactions and prevent duplicates
       console.log('🔒 Setting isProcessingAI = true for AI turn');
@@ -994,6 +1045,14 @@ const checkAndHandleVirtualPlayerTurn = async () => {
           isProcessingAI.value = false;
           aiTurnInProgress = false;
           aiExecutionPromise = null;
+          
+          // Clear stuck detection
+          if (aiStuckTimer) {
+            clearTimeout(aiStuckTimer);
+            aiStuckTimer = null;
+          }
+          aiStuckDetected.value = false;
+          
           resolve();
         }
       });
@@ -1009,6 +1068,13 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       isProcessingAI.value = false;
       aiTurnInProgress = false;
       aiExecutionPromise = null;
+      
+      // Clear stuck detection since it's human's turn now
+      if (aiStuckTimer) {
+        clearTimeout(aiStuckTimer);
+        aiStuckTimer = null;
+      }
+      aiStuckDetected.value = false;
     }
   } catch (error) {
     console.error('Error checking virtual player turn:', error);
@@ -3749,6 +3815,48 @@ const handleManualEndTurn = async () => {
   } catch (err) {
     console.error('Failed to end turn:', err);
     error.value = `Failed to end turn: ${err.message}`;
+  } finally {
+    loading.value = false;
+    loadingStatus.value = '';
+  }
+};
+
+// Force AI turn execution (for stuck recovery)
+const forceAITurn = async () => {
+  try {
+    const aiPlayerId = gameData.value?.state?.currentPlayerId;
+    if (!aiPlayerId) {
+      console.error('No current player ID found');
+      return;
+    }
+    
+    console.log('🔧 Forcing stuck AI turn for player:', aiPlayerId);
+    loading.value = true;
+    loadingStatus.value = 'Recovering AI turn...';
+    
+    // Clear stuck detection
+    aiStuckDetected.value = false;
+    if (aiStuckTimer) {
+      clearTimeout(aiStuckTimer);
+      aiStuckTimer = null;
+    }
+    
+    // Clear any existing AI flags that might be blocking
+    isProcessingAI.value = false;
+    aiTurnInProgress = false;
+    aiExecutionPromise = null;
+    aiCheckLock = false;
+    
+    // Execute the AI turn directly
+    await executeVirtualPlayerTurn(aiPlayerId);
+    
+    console.log('✅ AI turn recovered successfully');
+  } catch (err) {
+    console.error('Failed to force AI turn:', err);
+    error.value = `Failed to recover AI turn: ${err.message}`;
+    
+    // Show the button again if recovery failed
+    aiStuckDetected.value = true;
   } finally {
     loading.value = false;
     loadingStatus.value = '';
