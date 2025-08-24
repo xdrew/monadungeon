@@ -63,25 +63,10 @@ const App = {
       id: 'app-container', 
       style: `
         color: white;
-        background-color: #111;
-        background-image: linear-gradient(to bottom, #1a1a1a, #111);
+        background-color: #0a0a0a;
         min-height: 100vh;
-        padding-bottom: 40px;
       `
     }, [
-      // Header
-      h('header', { 
-        style: `
-          background-color: #222;
-          padding: 15px 0;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-          margin-bottom: 30px;
-        `
-      }, [
-        h('h1', { 
-          style: 'color: #ffd700; text-align: center; margin: 0; text-shadow: 1px 1px 3px #000;'
-        }, 'Monadungeon: Adventure')
-      ]),
       
       // Navigation
       // h('nav', {
@@ -139,26 +124,11 @@ const App = {
       // Main content container with router view
       h('main', { 
         style: `
-          margin: 0 auto;
-          padding: 0 20px;
+          margin: 0;
+          padding: 0;
         `
       }, [
         h(CustomRouterView)
-      ]),
-      
-      // Footer
-      h('footer', {
-        style: `
-          text-align: center;
-          margin-top: 60px;
-          padding-top: 20px;
-          border-top: 1px solid #333;
-          color: #777;
-          font-size: 14px;
-        `
-      }, [
-        h('p', null, 'Monadungeon Adventure © 2025'),
-        h('p', { style: 'margin-top: 5px; font-size: 12px;' }, 'A Vue.js Game Application')
       ])
     ])
   }

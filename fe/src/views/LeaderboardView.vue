@@ -335,28 +335,28 @@ export default {
   position: absolute;
   left: 0;
   top: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #2a1a4d 0%, #1a1030 100%);
+  color: #888;
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(118, 75, 162, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .back-button:hover {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-  transform: none; /* Prevent position change on hover */
-  box-shadow: 0 4px 12px rgba(118, 75, 162, 0.4);
+  background: linear-gradient(135deg, #35205e 0%, #251545 100%);
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 .leaderboard-title {
-  color: #ffd700;
+  color: #b8950d;
   margin: 0;
   font-size: 2.5em;
-  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  text-shadow: 2px 2px 4px #000;
   font-weight: bold;
   letter-spacing: 1px;
 }
@@ -365,20 +365,20 @@ export default {
   text-align: center;
   padding: 40px;
   font-size: 1.1em;
-  color: #ffd700;
+  color: #888;
 }
 
 .error {
-  color: #ff6b6b;
+  color: #aa4444;
 }
 
 .leaderboard-table-container {
-  background: #2a2a3e;
+  background: #1a1a1a;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.7);
   position: relative;
-  border: 1px solid rgba(118, 75, 162, 0.3);
+  border: 1px solid #222;
 }
 
 .table-body-container {
@@ -432,8 +432,8 @@ export default {
 }
 
 .leaderboard-table thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #2a1a4d 0%, #1a1030 100%);
+  color: #888;
 }
 
 .leaderboard-table th {
@@ -489,7 +489,7 @@ export default {
 
 .username {
   font-weight: 500;
-  color: #ffd700;
+  color: #998833;
 }
 
 .victories, .games {
@@ -515,18 +515,18 @@ export default {
 }
 
 .you-badge {
-  background: #ffc107;
-  color: #000;
+  background: #4d3d00;
+  color: #998833;
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 0.8em;
   margin-left: 8px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .current-player-preview {
   margin: 10px 0;
-  border: 2px solid #ffc107;
+  border: 2px solid #4d3d00;
 }
 
 .table-footer {
@@ -534,8 +534,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
-  background: rgba(0, 0, 0, 0.3);
-  border-top: 1px solid rgba(118, 75, 162, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid #222;
 }
 
 .page-info {
@@ -550,35 +550,35 @@ export default {
 
 .pagination-btn, .page-btn {
   padding: 6px 12px;
-  background: rgba(118, 75, 162, 0.2);
-  color: #ffd700;
-  border: 1px solid rgba(118, 75, 162, 0.4);
+  background: rgba(30, 30, 30, 0.5);
+  color: #888;
+  border: 1px solid #333;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
-  font-weight: 500;
+  font-weight: 400;
   font-size: 0.9em;
   min-width: 32px;
   text-align: center;
 }
 
 .pagination-btn:hover:not(:disabled), .page-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: #764ba2;
-  box-shadow: 0 2px 8px rgba(118, 75, 162, 0.3);
+  background: linear-gradient(135deg, #2a1a4d 0%, #1a1030 100%);
+  color: #aaa;
+  border-color: #444;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .pagination-btn:disabled, .page-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
-  color: #666;
+  color: #444;
 }
 
 .page-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: #764ba2;
+  background: linear-gradient(135deg, #2a1a4d 0%, #1a1030 100%);
+  color: #aaa;
+  border-color: #444;
 }
 
 /* Responsive design */

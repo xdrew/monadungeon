@@ -1,22 +1,25 @@
 <template>
   <div class="home-container">
     <MusicToggle />
-    <div class="game-options">
-      <div class="monad-logo">
-        <img src="/assets/monad-logo-black.webp" alt="Monad" />
-      </div>
-      <h1 class="title">
-        MONADUNGEON
-      </h1>
-      <h2 class="subtitle">
-        Powered by Monad Testnet
-      </h2>
-      <div class="version-info" style="font-size: 10px; color: #666; margin-top: -10px;">
-        Build: {{ buildVersion }}
-      </div>
-      <p class="description">
-        Embark on an epic journey through dangerous dungeons filled with monsters, treasures, and ancient secrets.
-      </p>
+    
+    <div class="main-content">
+      <!-- Game Options Panel -->
+      <div class="game-panel">
+        <div class="monad-logo">
+          <img src="/assets/monad-logo-black.webp" alt="Monad" />
+        </div>
+        <h1 class="title">
+          MONADUNGEON
+        </h1>
+        <h2 class="subtitle">
+          Powered by Monad Testnet
+        </h2>
+        <div class="version-info">
+          Build: {{ buildVersion }}
+        </div>
+        <p class="description">
+          Embark on an epic journey through dangerous dungeons filled with monsters, treasures, and ancient secrets.
+        </p>
 
       <div v-if="authenticatedUser" class="user-info">
         <p class="welcome">
@@ -70,21 +73,22 @@
         </button>
       </div>
 
-      <div
-          v-if="errorMessage"
-          class="error-message"
-      >
-        {{ errorMessage }}
-      </div>
-      <div
-          v-if="loading"
-          class="loading-indicator"
-      >
-        <div class="spinner">
-          <div class="spinner-inner" />
+        <div
+            v-if="errorMessage"
+            class="error-message"
+        >
+          {{ errorMessage }}
         </div>
-        <div class="loading-text">
-          {{ loadingMessage }}
+        <div
+            v-if="loading"
+            class="loading-indicator"
+        >
+          <div class="spinner">
+            <div class="spinner-inner" />
+          </div>
+          <div class="loading-text">
+            {{ loadingMessage }}
+          </div>
         </div>
       </div>
     </div>
@@ -947,38 +951,92 @@ const createNewGame = async () => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  background-color: #0a0a0a;
   padding: 20px;
-  background-color: #2a2a2a;
+  position: relative;
+  overflow: hidden;
 }
 
-.game-options {
-  background-color: #333;
-  border-radius: 8px;
-  padding: 40px;
-  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+/* Background image with feathered edges */
+.home-container::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 60%;
+  height: 80%;
+  background-image: url('/images/hero.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.4;
+  mask-image: radial-gradient(ellipse at left center, black 40%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at left center, black 40%, transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+  will-change: auto;
+}
+
+.main-content {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 1400px;
   width: 100%;
-  max-width: 500px;
+  position: relative;
+  z-index: 2;
+  padding-right: 60px;
+}
+
+/* Game Panel */
+.game-panel {
+  background: transparent;
+  padding: 40px;
   text-align: center;
   color: white;
+  width: 100%;
+  max-width: 500px;
 }
 
 .title {
-  color: #ffd700;
+  color: #b8950d;
   margin-bottom: 10px;
   font-size: 48px;
   text-shadow: 2px 2px 4px #000;
+  font-weight: bold;
+  letter-spacing: 2px;
 }
 
 .subtitle {
-  color: #f8f8f8;
+  color: #888;
   margin-bottom: 15px;
   font-style: italic;
+  font-size: 16px;
 }
 
 .description {
   margin-bottom: 30px;
   line-height: 1.6;
-  color: #ccc;
+  color: #666;
+  font-size: 14px;
+}
+
+.version-info {
+  font-size: 10px;
+  color: #666;
+  margin-top: -5px;
+  margin-bottom: 15px;
+}
+
+.monad-logo {
+  margin-bottom: 20px;
+}
+
+.monad-logo img {
+  width: 60px;
+  height: auto;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
 }
 
 .actions {
@@ -990,27 +1048,27 @@ const createNewGame = async () => {
 
 
 .monad-button {
-  background: linear-gradient(135deg, #9333ea 0%, #6b21a8 100%);
-  color: white;
+  background: linear-gradient(135deg, #4a1e5c 0%, #3a1545 100%);
+  color: #b8b8b8;
   padding: 14px 24px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 500;
   transition: all 0.3s;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   width: 100%;
-  box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .monad-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(147, 51, 234, 0.4);
+  background: linear-gradient(135deg, #5a2470 0%, #451a55 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 .monad-button:disabled {
@@ -1025,8 +1083,8 @@ const createNewGame = async () => {
 }
 
 .user-info {
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(107, 33, 168, 0.1) 100%);
-  border: 1px solid #9333ea;
+  background: rgba(30, 30, 30, 0.5);
+  border: 1px solid #333;
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 20px;
@@ -1034,13 +1092,13 @@ const createNewGame = async () => {
 }
 
 .user-info .welcome {
-  color: #fff;
+  color: #999;
   margin-bottom: 5px;
   font-size: 16px;
 }
 
 .user-info .welcome strong {
-  color: #a855f7;
+  color: #7a4a9a;
 }
 
 .user-info .wallet {
@@ -1052,8 +1110,8 @@ const createNewGame = async () => {
 
 .logout-button {
   background: transparent;
-  color: #a855f7;
-  border: 1px solid #a855f7;
+  color: #6a4080;
+  border: 1px solid #3a2050;
   padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
@@ -1062,8 +1120,9 @@ const createNewGame = async () => {
 }
 
 .logout-button:hover {
-  background: #a855f7;
-  color: white;
+  background: #2a1540;
+  color: #888;
+  border-color: #4a3060;
 }
 
 .divider {
@@ -1082,53 +1141,53 @@ const createNewGame = async () => {
 
 .divider span {
   padding: 0 15px;
-  color: #888;
+  color: #444;
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .primary-button {
-  background: linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(123, 63, 242, 0.3);
+  background: linear-gradient(135deg, #3d1f79 0%, #2a1a4d 100%);
+  color: #b8b8b8;
   border: none;
   padding: 15px 30px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 18px;
-  font-weight: 500;
-  transition: background-color 0.2s;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  font-weight: 400;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 .primary-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.4);
+  background: linear-gradient(135deg, #4a2590 0%, #35205e 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
 
 .secondary-button {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-  color: #333;
-  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+  background: linear-gradient(135deg, #4d3d00 0%, #3d2f00 100%);
+  color: #998833;
   border: none;
   padding: 15px 30px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 400;
   transition: all 0.2s;
   margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 .secondary-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
-  background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
+  background: linear-gradient(135deg, #5d4a00 0%, #4d3a00 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
 
 .error-message {
-  color: #ff6b6b;
+  color: #aa4444;
   margin-top: 20px;
 }
 
@@ -1171,13 +1230,72 @@ const createNewGame = async () => {
 }
 
 .loading-text {
-  color: #4CAF50;
+  color: #557755;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 @keyframes rotate {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Tablet and Mobile Responsive Design */
+@media (max-width: 1024px) {
+  .main-content {
+    justify-content: center;
+    padding-right: 20px;
+  }
+  
+  .home-container::before {
+    position: fixed;
+    width: 100%;
+    height: 50%;
+    top: 0;
+    left: 0;
+    transform: none;
+    mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+    opacity: 0.3;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-container::before {
+    opacity: 0.25;
+  }
+  
+  .title {
+    font-size: 36px;
+  }
+  
+  .game-panel {
+    padding: 30px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 32px;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+  }
+  
+  .description {
+    font-size: 13px;
+  }
+  
+  .primary-button,
+  .secondary-button,
+  .monad-button {
+    font-size: 16px;
+    padding: 12px 20px;
+  }
+  
+  .game-panel {
+    padding: 25px 15px;
+  }
 }
 </style>

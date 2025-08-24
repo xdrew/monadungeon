@@ -587,14 +587,14 @@ onBeforeUnmount(() => {
 }
 
 .item {
-  background: rgba(255, 215, 0, 0.05);
+  background: rgba(30, 30, 30, 0.3);
   padding: 15px;
   border-radius: 8px;
   display: grid;
   grid-template-columns: 40px 150px 1fr;
   align-items: center;
   gap: 15px;
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  border: 1px solid #222;
 }
 
 .item-icon {
@@ -603,11 +603,11 @@ onBeforeUnmount(() => {
 
 .item-name {
   font-weight: bold;
-  color: #ffd700;
+  color: #776622;
 }
 
 .item-effect {
-  color: #b0b0b0;
+  color: #555;
 }
 
 .inventory-limits {

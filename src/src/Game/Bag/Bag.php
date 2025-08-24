@@ -44,8 +44,8 @@ class Bag extends AggregateRoot
         for ($i = 0; $i < 10; ++$i) {
             $items[] = Item::createMummy();
             $items[] = Item::createMummy();
-            $items[] = Item::createSkeletonWarrior();
-            $items[] = Item::createSkeletonWarrior();
+            $items[] = Item::createSkeletonKing();
+            $items[] = Item::createSkeletonKing();
         }
         $items[] = Item::createFallen();
 
