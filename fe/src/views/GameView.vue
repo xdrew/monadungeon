@@ -4001,10 +4001,35 @@ const checkStunnedPlayersAndSwitch = () => {
   const serverCurrentPlayerId = gameData.value.state?.currentPlayerId;
   if (!serverCurrentPlayerId) return;
   
+  // Check if we're in a game with an AI player
+  const virtualPlayerId = localStorage.getItem('virtualPlayerId');
+  const humanPlayerId = localStorage.getItem('humanPlayerId');
+  
+  // If we have a virtual player in the game, don't switch players based on whose turn it is
+  // The human should always control their own player
+  if (virtualPlayerId && humanPlayerId) {
+    console.log('Game has AI player, maintaining human player control');
+    // Ensure the human player remains the controlled player
+    if (currentPlayerId.value !== humanPlayerId) {
+      currentPlayerId.value = humanPlayerId;
+      localStorage.setItem('currentPlayerId', humanPlayerId);
+    }
+    
+    console.log('Player check complete. Current player: ', currentPlayerId.value);
+    console.log('Server player: ', serverCurrentPlayerId);
+    
+    // Check if human player is stunned
+    const currentPlayerData = gameData.value.players.find(p => p.id === humanPlayerId);
+    const isCurrentPlayerStunned = currentPlayerData && (currentPlayerData.hp === 0 || currentPlayerData.defeated === true);
+    console.log('Is current player stunned: ', isCurrentPlayerStunned);
+    return;
+  }
+  
   // First check if our current player is stunned and it's their turn
   const currentPlayerData = gameData.value.players.find(p => p.id === currentPlayerId.value);
   const isCurrentPlayerStunned = currentPlayerData && (currentPlayerData.hp === 0 || currentPlayerData.defeated === true);
   
+  // This logic is for local multiplayer only (not AI games)
   // If we have both players stored locally
   if (currentPlayerId.value && secondPlayerId.value) {
     // If our UI player doesn't match the server player, switch to match server
@@ -4027,7 +4052,13 @@ const checkStunnedPlayersAndSwitch = () => {
       }
     }
   } else {
-    // Only one player stored, update to match server
+    // Only one player stored - check if it's an AI game
+    if (virtualPlayerId === serverCurrentPlayerId) {
+      console.log('AI is current player but no second player for local multiplayer');
+      // Don't switch to AI player
+      return;
+    }
+    // Only update for non-AI players
     currentPlayerId.value = serverCurrentPlayerId;
     localStorage.setItem('currentPlayerId', currentPlayerId.value);
   }

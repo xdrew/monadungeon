@@ -60,6 +60,18 @@ export const getPlayerEmoji = (playerId) => {
   const virtualPlayerId = typeof localStorage !== 'undefined' ? localStorage.getItem('virtualPlayerId') : null;
   if (virtualPlayerId && playerId === virtualPlayerId) return '🤖';
   
+  // If we don't have a stored virtual player ID, check if this is the non-human player in a 2-player game
+  // This helps avoid flickering when the virtualPlayerId hasn't been stored yet
+  if (typeof localStorage !== 'undefined') {
+    const humanPlayerId = localStorage.getItem('currentPlayerId');
+    // Simple check: if there's a human player and this isn't them, it's likely the AI
+    // This will only apply the robot emoji in obvious cases to avoid false positives
+    if (humanPlayerId && playerId !== humanPlayerId && virtualPlayerId === null) {
+      // Don't automatically set it, just display as robot
+      return '🤖';
+    }
+  }
+  
   // Expanded emoji set for more variety and better uniqueness
   const playerEmojis = [
     '👩🏻‍🌾', '💂🏻‍♀️', '👩🏻‍🎓', '👩🏻‍🔧', '🧙‍♂️', // Original set
@@ -211,13 +223,30 @@ export const autoSwitchPlayer = ({ gameData, currentPlayerId, secondPlayerId, sh
   if (!gameData || !gameData.state || !gameData.state.currentPlayerId) return;
 
   const apiCurrentPlayerId = gameData.state.currentPlayerId;
+  
+  // Check if we're in a game with an AI player
+  const virtualPlayerId = localStorage.getItem('virtualPlayerId');
+  const humanPlayerId = localStorage.getItem('humanPlayerId');
+  
+  // If we have a virtual player in the game, don't auto-switch players
+  // The human should always control their own player regardless of whose turn it is
+  if (virtualPlayerId && humanPlayerId) {
+    console.log('Game has AI player, maintaining human player control');
+    // Ensure the human player remains the controlled player
+    if (currentPlayerId.value !== humanPlayerId) {
+      currentPlayerId.value = humanPlayerId;
+      localStorage.setItem('currentPlayerId', humanPlayerId);
+    }
+    return;
+  }
+  
   console.log('Auto-switching player check:', { 
     apiCurrentPlayerId, 
     currentPlayerId: currentPlayerId.value, 
     secondPlayerId: secondPlayerId.value 
   });
 
-  // If we have both players stored locally
+  // If we have both players stored locally (for local multiplayer)
   if (currentPlayerId.value && secondPlayerId.value) {
     // If the API's current player doesn't match our current player,
     // we need to ensure the correct player is active
@@ -250,6 +279,12 @@ export const autoSwitchPlayer = ({ gameData, currentPlayerId, secondPlayerId, sh
   } else if (currentPlayerId.value) {
     // We only have one player stored locally
     if (apiCurrentPlayerId !== currentPlayerId.value) {
+      // Don't switch if this is just the AI's turn
+      if (virtualPlayerId === apiCurrentPlayerId) {
+        console.log('AI player turn, maintaining human player control');
+        return;
+      }
+      
       // If our stored player doesn't match the API's current player,
       // we need to update it
       console.log('API current player differs from stored player. Updating...');
@@ -262,10 +297,20 @@ export const autoSwitchPlayer = ({ gameData, currentPlayerId, secondPlayerId, sh
       showPlayerSwitchNotification();
     }
   } else {
-    // We don't have any players stored locally, so use the API's current player
-    console.log('No local player, using API current player:', apiCurrentPlayerId);
-    currentPlayerId.value = apiCurrentPlayerId;
-    localStorage.setItem('currentPlayerId', apiCurrentPlayerId);
+    // We don't have any players stored locally
+    // Only use the API's current player if it's not the AI
+    if (virtualPlayerId === apiCurrentPlayerId) {
+      console.log('AI is current player but no human player stored - need to maintain human player');
+      // Try to use humanPlayerId if available
+      if (humanPlayerId) {
+        currentPlayerId.value = humanPlayerId;
+        localStorage.setItem('currentPlayerId', humanPlayerId);
+      }
+    } else {
+      console.log('No local player, using API current player:', apiCurrentPlayerId);
+      currentPlayerId.value = apiCurrentPlayerId;
+      localStorage.setItem('currentPlayerId', apiCurrentPlayerId);
+    }
   }
 };
 
