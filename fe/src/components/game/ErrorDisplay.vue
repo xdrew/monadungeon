@@ -3,17 +3,16 @@
     <h2>Error Loading Game</h2>
     <p>{{ errorMessage }}</p>
     <button
-      class="back-button"
-      @click="navigateHome"
+      class="refresh-button"
+      @click="refreshPage"
     >
-      Back to Home
+      Refresh Page
     </button>
   </div>
 </template>
 
 <script setup>
 import { defineProps } from 'vue';
-import { useRouter } from 'vue-router';
 
 const props = defineProps({
   errorMessage: {
@@ -22,10 +21,8 @@ const props = defineProps({
   }
 });
 
-const router = useRouter();
-
-const navigateHome = () => {
-  router.push('/');
+const refreshPage = () => {
+  window.location.reload();
 };
 </script>
 
@@ -54,7 +51,7 @@ p {
   color: #333;
 }
 
-.back-button {
+.refresh-button {
   background-color: #ff5252;
   color: white;
   border: none;
@@ -65,7 +62,7 @@ p {
   transition: background-color 0.2s;
 }
 
-.back-button:hover {
+.refresh-button:hover {
   background-color: #ff3838;
 }
 </style> 
