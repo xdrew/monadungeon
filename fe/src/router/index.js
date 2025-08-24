@@ -3,6 +3,7 @@ import HomeView from '@/views/HomeView.vue';
 import GameView from '@/views/GameView.vue';
 import NotFoundView from '@/views/NotFoundView.vue';
 import LeaderboardView from '@/views/LeaderboardView.vue';
+import RulesView from '@/views/RulesView.vue';
 
 const routes = [
   {
@@ -23,6 +24,12 @@ const routes = [
     name: 'leaderboard',
     component: LeaderboardView,
     meta: { title: 'Leaderboard' }
+  },
+  {
+    path: '/rules',
+    name: 'rules',
+    component: RulesView,
+    meta: { title: 'Rules' }
   },
   {
     path: '/:pathMatch(.*)*',

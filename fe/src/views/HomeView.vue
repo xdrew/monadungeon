@@ -60,6 +60,14 @@
         >
           View Leaderboard 🏆
         </button>
+        
+        <button 
+          class="secondary-button rules-button" 
+          @click="viewRules"
+          style="display: block !important; visibility: visible !important;"
+        >
+          📜 How to Play
+        </button>
       </div>
 
       <div
@@ -860,6 +868,10 @@ const handlePrivySuccess = async (result) => {
 // Game creation
 const viewLeaderboard = () => {
   router.push('/leaderboard');
+};
+
+const viewRules = () => {
+  router.push('/rules');
 };
 
 const createNewGame = async () => {

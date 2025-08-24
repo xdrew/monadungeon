@@ -142,13 +142,13 @@ const getMonsterImage = (monsterName) => {
   
   // Map monster names to their proper sprite images in /images/items/
   const monsterSprites = {
-    'skeleton_king': '/images/items/monad_Ubur.webp',
+    'skeleton_king': '/images/items/Molandak.webp',
     'skeleton_warrior': '/images/items/taekwonNad1.webp',
     'skeleton_turnkey': '/images/items/IMG_20231110_131522.webp',
     'dragon': '/images/items/e-For-The.webp',
     'fallen': '/images/items/adacv.webp',
     'giant_rat': '/images/items/monad_ikan.webp',
-    'giant_spider': '/images/items/monad_ikan.webp',
+    'giant_spider': '/images/items/moyaki.webp',
     'mummy': '/images/items/monad_Ubur.webp',
     'treasure_chest': '/assets/treasure.png', // Keep treasure as is
     'chest': '/assets/treasure.png'
