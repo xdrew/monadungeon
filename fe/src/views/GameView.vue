@@ -398,6 +398,21 @@
                 AI hasn't moved for 10+ seconds
               </small>
             </div>
+            
+            <!-- Temporary: Immediate AI Turn Button for Testing -->
+            <div
+              v-if="!isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
+              class="sidebar-section end-turn-section"
+            >
+              <button
+                class="end-turn-btn btn--block"
+                style="background-color: #ffa500;"
+                @click="forceAITurn"
+                :disabled="loading || isRequestInProgress"
+              >
+                Execute AI Turn Now (Debug)
+              </button>
+            </div>
 
             <!-- Action Log -->
             <div
@@ -639,7 +654,7 @@ const gameData = ref(null);
 const currentPlayerId = ref(localStorage.getItem('currentPlayerId') || null);
 const secondPlayerId = ref(localStorage.getItem('secondPlayerId') || null);
 const humanPlayerId = ref(localStorage.getItem('humanPlayerId') || localStorage.getItem('currentPlayerId') || null);
-const virtualPlayerIdStored = ref(localStorage.getItem('virtualPlayerId') || null);
+const virtualPlayerIdStored = computed(() => localStorage.getItem('virtualPlayerId') || null);
 const aiStuckDetected = ref(false);
 let aiStuckTimer = null;
 const playerIsReady = ref(false);
