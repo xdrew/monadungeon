@@ -612,6 +612,11 @@ const toggleConsumable = (item) => {
 };
 
 const finalizeBattleWithConsumables = () => {
+  if (!props.battleInfo.battleId) {
+    console.error('No battleId available, cannot finalize battle');
+    return;
+  }
+  
   battleFinalized.value = true;
   emit('finalize-battle', {
     battleId: props.battleInfo.battleId,
