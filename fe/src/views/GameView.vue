@@ -1263,7 +1263,28 @@ onMounted(async () => {
 
   // Initialize music service with placeholder URL
   // Replace this with your actual music track URL
-  musicService.init('/music/game-theme.mp3');
+  await musicService.init('/music/game-theme.mp3');
+  
+  // If music is enabled but not playing (likely due to autoplay block), 
+  // set up immediate retry on first user interaction
+  if (musicService.getEnabled() && musicService.audio && musicService.audio.paused) {
+    const startMusicOnInteraction = async (e) => {
+      // Don't interfere with music toggle button
+      if (e.target?.closest('.music-toggle')) return;
+      
+      try {
+        await musicService.play();
+        console.log('Music started after user interaction');
+        document.removeEventListener('click', startMusicOnInteraction);
+        document.removeEventListener('keydown', startMusicOnInteraction);
+      } catch (err) {
+        // Still can't play, will retry on next interaction
+      }
+    };
+    
+    document.addEventListener('click', startMusicOnInteraction);
+    document.addEventListener('keydown', startMusicOnInteraction);
+  }
 
   try {
     // Initial game data load
