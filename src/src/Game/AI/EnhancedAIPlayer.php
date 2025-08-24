@@ -42,7 +42,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         'aggressive' => true,
         'preferTreasures' => true,
         'riskTolerance' => 0.7,
-        'healingThreshold' => 2,
+        'healingThreshold' => 1,
         'inventoryPriority' => ['sword', 'axe', 'dagger', 'fireball', 'key'],
     ];
 
@@ -204,10 +204,30 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         $this->lastBattleInfo = [];
         
         // Priority 1: If critically low HP and healing available
-        if ($this->needsHealing() && $this->canReachHealing()) {
+        if ($this->needsHealing()) {
+            $this->logger->info("AI needs healing", [
+                'current_hp' => $this->currentPlayer->hp,
+                'max_hp' => $this->currentPlayer->maxHp,
+                'threshold' => $this->strategyConfig['healingThreshold']
+            ]);
+            
+            // Log healing fountain availability
+            $healingPositions = $this->currentField->healingFountainPositions ?? [];
+            $this->logger->info("Healing fountains available", [
+                'count' => count($healingPositions),
+                'positions' => $healingPositions
+            ]);
+            
             $result = $this->moveToHealingFountain($gameId, $playerId, $turnId);
             if ($result) {
+                $this->actionLog[] = [
+                    'type' => 'ai_healing',
+                    'timestamp' => date('H:i:s.v'),
+                    'details' => ['message' => 'Moving to healing fountain due to low HP']
+                ];
                 return ['action' => 'heal', 'success' => $result, 'endsNow' => true];
+            } else {
+                $this->logger->warning("AI needs healing but couldn't move to fountain");
             }
         }
         
@@ -783,7 +803,10 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             return false;
         }
 
-        return $this->currentPlayer->hp <= $this->strategyConfig['healingThreshold'];
+        // Priority healing when at 1 HP (critically low)
+        // This matches the healing threshold in the strategy config
+        return $this->currentPlayer->hp <= $this->strategyConfig['healingThreshold'] && 
+               $this->currentPlayer->hp < $this->currentPlayer->maxHp;
     }
 
     /**
@@ -805,26 +828,88 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         // Get current position
         $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
         
-        // Find nearest healing fountain
+        // Get available moves
+        $availablePlaces = $this->messageBus->dispatch(
+            new GetAvailablePlacesForPlayer($gameId, $playerId)
+        );
+        
+        if (empty($availablePlaces->moveTo)) {
+            return false;
+        }
+        
+        // First, check if any healing fountain is directly reachable
+        foreach ($healingPositions as $healingPos) {
+            if (is_string($healingPos)) {
+                $healingPos = FieldPlace::fromString($healingPos);
+            }
+            
+            foreach ($availablePlaces->moveTo as $movePos) {
+                if ($movePos->equals($healingPos)) {
+                    // Direct move to healing fountain
+                    $result = $this->apiClient->movePlayer(
+                        $gameId,
+                        $playerId,
+                        $turnId,
+                        $currentPosition->positionX,
+                        $currentPosition->positionY,
+                        $movePos->positionX,
+                        $movePos->positionY,
+                        false
+                    );
+                    
+                    if ($result['success']) {
+                        $this->logger->info("AI moved directly to healing fountain", [
+                            'position' => $movePos->toString()
+                        ]);
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        // If no direct path, move towards the nearest healing fountain
         $nearestFountain = $this->findNearestPosition($currentPosition, $healingPositions);
         
         if (!$nearestFountain) {
             return false;
         }
+        
+        // Find the move that gets us closest to the nearest fountain
+        $bestMove = null;
+        $minDistance = PHP_INT_MAX;
+        
+        foreach ($availablePlaces->moveTo as $movePos) {
+            $distance = $this->calculateDistance($movePos, $nearestFountain);
+            if ($distance < $minDistance) {
+                $minDistance = $distance;
+                $bestMove = $movePos;
+            }
+        }
+        
+        if ($bestMove && $minDistance < $this->calculateDistance($currentPosition, $nearestFountain)) {
+            // This move gets us closer to the healing fountain
+            $result = $this->apiClient->movePlayer(
+                $gameId,
+                $playerId,
+                $turnId,
+                $currentPosition->positionX,
+                $currentPosition->positionY,
+                $bestMove->positionX,
+                $bestMove->positionY,
+                false
+            );
+            
+            if ($result['success']) {
+                $this->logger->info("AI moved towards healing fountain", [
+                    'target' => $nearestFountain->toString(),
+                    'moved_to' => $bestMove->toString(),
+                    'distance_remaining' => $minDistance
+                ]);
+                return true;
+            }
+        }
 
-        // Move to healing fountain
-        $result = $this->apiClient->movePlayer(
-            $gameId,
-            $playerId,
-            $turnId,
-            $currentPosition->positionX,
-            $currentPosition->positionY,
-            $nearestFountain->positionX,
-            $nearestFountain->positionY,
-            false
-        );
-
-        return $result['success'];
+        return false;
     }
 
     /**
