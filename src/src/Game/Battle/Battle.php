@@ -15,6 +15,7 @@ use App\Game\Movement\Events\PlayerMoved;
 use App\Game\Movement\GetPlayerPosition;
 use App\Game\Player\AddItemToInventory;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\PickItem;
 use App\Game\Player\ReducePlayerHP;
 use App\Game\Player\RemoveItemFromInventory;
 use App\Game\Turn\EndTurn;
@@ -293,42 +294,18 @@ class Battle extends AggregateRoot
 
                 // Handle item pickup if battle was won and pickupItem flag is set
                 if ($finalResult === BattleResult::WIN && $command->pickupItem) {
-                    // Check if we need to replace an existing item
-                    if ($command->replaceItemId !== null) {
-                        // Handle item replacement
-                        $messageContext->dispatch(new RemoveItemFromInventory(
-                            gameId: $command->gameId,
-                            playerId: $command->playerId,
-                            itemId: Uuid::fromString($command->replaceItemId),
-                        ));
-                    }
-
-                    // Add monster item to player inventory
-                    $messageContext->dispatch(new AddItemToInventory(
-                        playerId: $command->playerId,
+                    // Use PickItem command to properly handle item pickup and field removal
+                    // This will handle:
+                    // - Adding item to inventory
+                    // - Replacing existing item if needed
+                    // - Removing item from field
+                    // - Recording the turn action
+                    $messageContext->dispatch(new PickItem(
                         gameId: $command->gameId,
-                        item: $monster,
-                    ));
-                    
-                    // Remove the item from the field to prevent duplication
-                    $field = $messageContext->dispatch(new GetField($command->gameId));
-                    $field->removeItemsFromPosition($toPos);
-
-                    // Record the item pickup action
-                    $messageContext->dispatch(new PerformTurnAction(
+                        playerId: $command->playerId,
                         turnId: $this->turnId,
-                        gameId: $this->gameId,
-                        playerId: $this->playerId,
-                        action: TurnAction::PICK_ITEM,
-                        additionalData: [
-                            'item' => [
-                                'name' => $monster->name->value,
-                                'type' => $monster->type->value,
-                                'treasureValue' => $monster->treasureValue,
-                            ],
-                            'replacedItemId' => $command->replaceItemId,
-                        ],
-                        at: new \DateTimeImmutable(),
+                        position: $toPos,
+                        itemIdToReplace: $command->replaceItemId ? Uuid::fromString($command->replaceItemId) : null,
                     ));
                 }
             }

@@ -22,7 +22,7 @@ services:
       - '15672:15672'
     volumes:
       - rabbitmq:/var/lib/rabbitmq/mnesia:delegated
-      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+#      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 5s

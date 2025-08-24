@@ -42,12 +42,12 @@ class Bag extends AggregateRoot
         $items = [];
 
         for ($i = 0; $i < 10; ++$i) {
-            $items[] = Item::createDragon();
             $items[] = Item::createMummy();
             $items[] = Item::createMummy();
             $items[] = Item::createSkeletonWarrior();
             $items[] = Item::createSkeletonWarrior();
         }
+        $items[] = Item::createFallen();
 
         for ($i = 0; $i < 4; ++$i) {
             $items[] = Item::createGiantRat();
