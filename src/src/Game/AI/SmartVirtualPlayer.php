@@ -273,7 +273,10 @@ final class SmartVirtualPlayer
             foreach ($items as $pos => $item) {
                 // Skip if this target is marked as unreachable
                 if (isset(self::$unreachableTargets[$trackingKey][$pos])) {
-                    $itemType = $item->type ?? 'unknown';
+                    $itemType = 'unknown';
+                    if ($item instanceof \App\Game\Item\Item) {
+                        $itemType = $item->type->value ?? 'unknown';
+                    }
                     error_log("DEBUG AI: Skipping previously unreachable {$itemType} at {$pos} (will retry periodically)");
                     continue;
                 }
@@ -1284,11 +1287,33 @@ final class SmartVirtualPlayer
                         error_log("DEBUG AI: Marking weapon at {$targetPos} as UNREACHABLE for now!");
                         
                         $actions[] = $this->createAction('ai_reasoning', [
-                            'message' => "Weapon at {$targetWeapon} at {$targetPos} appears unreachable for now, will try exploring to open new paths"
+                            'message' => "Weapon at {$targetWeapon} appears unreachable for now, will try placing tiles to open new paths"
                         ]);
                         
-                        // Try normal exploration instead
-                        $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
+                        // Try placing a tile to open new paths instead of backtracking
+                        $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
+                            gameId: $gameId,
+                            playerId: $playerId,
+                            messageBus: $this->messageBus,
+                        ));
+                        $placeTileOptions = $availablePlaces['placeTile'] ?? [];
+                        
+                        if (!empty($placeTileOptions)) {
+                            $actions[] = $this->createAction('ai_decision', [
+                                'decision' => 'Placing tile to open new paths',
+                                'reason' => 'Current target unreachable, trying to create new routes'
+                            ]);
+                            $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
+                        } else {
+                            // No tiles to place, check if we hit move limit
+                            if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+                                $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
+                            } else {
+                                $actions[] = $this->createAction('ai_info', ['message' => 'Target unreachable and no tiles to place, ending turn']);
+                            }
+                            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                        }
                         return;
                     }
                 } else {
@@ -1743,8 +1768,14 @@ final class SmartVirtualPlayer
             $items = $field->getItems();
             $betterWeaponsOnField = [];
             $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            $trackingKey = "{$gameId}_{$playerId}";
             
             foreach ($items as $pos => $item) {
+                // Skip if this target is marked as unreachable
+                if (isset(self::$unreachableTargets[$trackingKey][$pos])) {
+                    continue;
+                }
+                
                 if ($this->shouldPickupItem($item, $player)) {
                     $itemType = '';
                     if ($item instanceof \App\Game\Item\Item) {
@@ -1756,15 +1787,31 @@ final class SmartVirtualPlayer
                 }
             }
             
-            // Try to continue moving towards better weapons if they exist
-            if (!empty($betterWeaponsOnField) && !empty($moveToOptions)) {
+            // Try to continue moving towards better weapons if they exist (but check move limit)
+            if (!empty($betterWeaponsOnField) && !empty($moveToOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
-                $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing to move towards better weapons']);
-                $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
+                
+                // Check if we have unvisited positions to move to
+                $unvisitedOptions = array_filter($moveToOptions, fn($option) => !isset($this->visitedPositions[$option]));
+                
+                if (!empty($unvisitedOptions)) {
+                    $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing to move towards better weapons']);
+                    $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
+                } else {
+                    // All positions visited, should place tiles or end turn
+                    $actions[] = $this->createAction('ai_reasoning', ['message' => 'All positions visited, cannot continue movement']);
+                    if (!empty($placeTileOptions)) {
+                        $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
+                    } else {
+                        $actions[] = $this->createAction('ai_info', ['message' => 'No unvisited positions and no tiles to place']);
+                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    }
+                }
             } elseif (!empty($placeTileOptions)) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
-            } elseif (!empty($moveToOptions)) {
+            } elseif (!empty($moveToOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
             } else {
