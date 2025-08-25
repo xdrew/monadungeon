@@ -27,6 +27,8 @@ final class SmartVirtualPlayer
     private static array $turnsSinceLastProgress = [];  // Track turns without progress per game/player
     private static array $lastFieldStateHash = [];  // Track field state to detect when new tiles are placed
     private int $moveCount = 0;  // Track number of moves in current turn
+    private ?string $currentTargetPosition = null;  // Track current target to prevent oscillation
+    private ?string $currentTargetReason = null;  // Track why we're pursuing current target
     
     public function __construct(
         private readonly MessageBus $messageBus,
@@ -49,6 +51,8 @@ final class SmartVirtualPlayer
         // Clear visited positions and reset move counter at the start of each turn
         $this->visitedPositions = [];
         $this->moveCount = 0;
+        $this->currentTargetPosition = null;
+        $this->currentTargetReason = null;
         
         try {
             // Check if game is already finished
@@ -1143,10 +1147,16 @@ final class SmartVirtualPlayer
     {
         $trackingKey = "{$gameId}_{$playerId}";
         
-        // Filter out unreachable targets
-        $reachableWeapons = array_filter($betterWeaponsOnField, function($pos) use ($trackingKey) {
-            return !isset(self::$unreachableTargets[$trackingKey][$pos]);
-        }, ARRAY_FILTER_USE_KEY);
+        // If we have a current target weapon, check if it's still available
+        if ($this->currentTargetPosition !== null && isset($betterWeaponsOnField[$this->currentTargetPosition])) {
+            error_log("DEBUG AI: Continuing pursuit of {$this->currentTargetReason} at {$this->currentTargetPosition}");
+            $reachableWeapons = [$this->currentTargetPosition => $betterWeaponsOnField[$this->currentTargetPosition]];
+        } else {
+            // Filter out unreachable targets
+            $reachableWeapons = array_filter($betterWeaponsOnField, function($pos) use ($trackingKey) {
+                return !isset(self::$unreachableTargets[$trackingKey][$pos]);
+            }, ARRAY_FILTER_USE_KEY);
+        }
         
         if (empty($reachableWeapons)) {
             error_log("DEBUG AI: All weapon targets are unreachable");
@@ -1248,6 +1258,10 @@ final class SmartVirtualPlayer
             }
             
             error_log("DEBUG AI: Best move is {$bestMove} towards {$targetWeapon} (distance: {$shortestDistance})");
+            
+            // Set current target so we persist it across moves within this turn
+            $this->currentTargetPosition = $targetPos;
+            $this->currentTargetReason = $targetWeapon;
             
             // Track progress towards this weapon position (not the full description)
             if (!isset(self::$turnsSinceLastProgress[$trackingKey][$targetPos])) {
@@ -2363,15 +2377,40 @@ final class SmartVirtualPlayer
             throw new \RuntimeException('No move options available');
         }
         
+        // If we have a current target and it's reachable from one of our move options, prioritize moves towards it
+        if ($this->currentTargetPosition !== null) {
+            error_log("DEBUG AI: Have current target {$this->currentTargetReason} at {$this->currentTargetPosition}, finding best move towards it");
+            
+            $bestMoveTowardsTarget = null;
+            $shortestDistance = PHP_INT_MAX;
+            
+            foreach ($moveOptions as $option) {
+                [$moveX, $moveY] = explode(',', $option);
+                [$targetX, $targetY] = explode(',', $this->currentTargetPosition);
+                $distance = abs((int)$moveX - (int)$targetX) + abs((int)$moveY - (int)$targetY);
+                
+                if ($distance < $shortestDistance) {
+                    $shortestDistance = $distance;
+                    $bestMoveTowardsTarget = $option;
+                }
+            }
+            
+            if ($bestMoveTowardsTarget !== null) {
+                error_log("DEBUG AI: Continuing towards target - moving to {$bestMoveTowardsTarget} (distance to target: {$shortestDistance})");
+                return $bestMoveTowardsTarget;
+            }
+        }
+        
         // Filter out visited positions to prevent oscillation
         $unvisitedOptions = array_filter($moveOptions, function($option) {
             return !isset($this->visitedPositions[$option]);
         });
         
-        // If all options are visited, use all options but log warning
+        // If all options are visited, prefer moves we haven't visited recently
         if (empty($unvisitedOptions)) {
             error_log("DEBUG AI: Warning - all move options have been visited this turn!");
-            $unvisitedOptions = $moveOptions;
+            // Just use the first available option to avoid getting stuck
+            $unvisitedOptions = array_slice($moveOptions, 0, 1);
         }
         
         // PRIORITY 1: Look for treasure locations (chests)
