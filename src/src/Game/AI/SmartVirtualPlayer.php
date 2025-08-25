@@ -775,6 +775,13 @@ final class SmartVirtualPlayer
                 continue;
             }
             
+            // Check if we can defeat the monster at this position
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            if (!$this->canDefeatMonsterAt($moveOption, $player)) {
+                error_log("DEBUG AI: Skipping {$moveOption} - cannot defeat monster there");
+                continue;
+            }
+            
             [$moveX, $moveY] = explode(',', $moveOption);
             $moveX = (int)$moveX;
             $moveY = (int)$moveY;
@@ -910,6 +917,144 @@ final class SmartVirtualPlayer
     }
     
     /**
+     * Calculate the probability of defeating a monster
+     * @return float Probability from 0.0 to 1.0
+     */
+    private function calculateDefeatProbability($monsterHP, $player): float
+    {
+        if ($monsterHP <= 0) {
+            return 1.0; // Already defeated
+        }
+        
+        // Get base weapon damage
+        $weaponDamage = 0;
+        foreach ($player->getItems() as $playerItem) {
+            if ($playerItem->type->getCategory() === \App\Game\Item\ItemCategory::WEAPON) {
+                $weaponDamage += $playerItem->type->getDamage();
+            }
+        }
+        
+        // Check for consumables
+        $consumableDamage = 0;
+        foreach ($player->getItems() as $playerItem) {
+            if ($playerItem->type === \App\Game\Item\ItemType::FIREBALL) {
+                $consumableDamage += $playerItem->type->getDamage();
+                break; // Only count one for probability calc
+            }
+        }
+        
+        // 2d6 probabilities: roll -> ways to get it / 36
+        // 2: 1/36, 3: 2/36, 4: 3/36, 5: 4/36, 6: 5/36, 7: 6/36,
+        // 8: 5/36, 9: 4/36, 10: 3/36, 11: 2/36, 12: 1/36
+        $diceProbs = [
+            2 => 1/36, 3 => 2/36, 4 => 3/36, 5 => 4/36, 6 => 5/36, 7 => 6/36,
+            8 => 5/36, 9 => 4/36, 10 => 3/36, 11 => 2/36, 12 => 1/36
+        ];
+        
+        // Calculate win probability
+        $winProbability = 0.0;
+        
+        // Calculate minimum dice roll needed to win (must exceed monster HP)
+        $minDiceNeeded = $monsterHP - $weaponDamage + 1;  // Need to deal MORE than monster HP
+        $minDiceWithConsumable = $monsterHP - $weaponDamage - $consumableDamage + 1;
+        
+        // Sum probabilities for all winning dice rolls
+        foreach ($diceProbs as $roll => $prob) {
+            if ($roll >= $minDiceNeeded) {
+                // Can win without consumable
+                $winProbability += $prob;
+            } else if ($consumableDamage > 0 && $roll >= $minDiceWithConsumable) {
+                // Can win only with consumable - use it if aggressive
+                $riskTolerance = $this->strategyConfig['riskTolerance'] ?? 0.5;
+                if ($riskTolerance >= 0.7) {
+                    // Aggressive: always use consumables to win
+                    $winProbability += $prob;
+                } else if ($riskTolerance >= 0.4) {
+                    // Balanced: use consumable 50% of the time in this situation
+                    $winProbability += $prob * 0.5;
+                } 
+                // Defensive: save consumables, don't count this as winnable
+            }
+        }
+        
+        return min(1.0, $winProbability); // Cap at 1.0 in case calculations exceed it
+    }
+    
+    /**
+     * Check if player should attempt to defeat a monster at the given position
+     * based on strategy and win probability
+     */
+    private function canDefeatMonsterAt(string $position, $player): bool
+    {
+        $field = $this->messageBus->dispatch(new GetField($player->gameId));
+        $items = $field->getItems();
+        
+        if (!isset($items[$position])) {
+            return true; // No item means no monster
+        }
+        
+        $item = $items[$position];
+        $monsterHP = $this->getMonsterHP($item);
+        
+        if ($monsterHP <= 0) {
+            return true; // Monster already defeated or no monster
+        }
+        
+        // Calculate win probability
+        $winProbability = $this->calculateDefeatProbability($monsterHP, $player);
+        
+        // Get monster name for better logging
+        $monsterName = 'unknown';
+        if ($item instanceof \App\Game\Item\Item) {
+            $monsterName = $item->name->value ?? 'unknown';
+        }
+        
+        // If win probability is 0%, always skip
+        if ($winProbability <= 0.0) {
+            error_log("DEBUG AI: Cannot defeat {$monsterName} at {$position}: HP={$monsterHP}, WinChance=0%");
+            return false;
+        }
+        
+        // Get minimum acceptable probability based on strategy
+        $minAcceptableProbability = $this->getMinAcceptableBattleProbability();
+        
+        $shouldAttempt = $winProbability >= $minAcceptableProbability;
+        
+        if (!$shouldAttempt) {
+            $winPercent = round($winProbability * 100);
+            $minPercent = round($minAcceptableProbability * 100);
+            error_log("DEBUG AI: Avoiding {$monsterName} at {$position}: HP={$monsterHP}, WinChance={$winPercent}% < Required={$minPercent}%");
+        } else {
+            $winPercent = round($winProbability * 100);
+            error_log("DEBUG AI: Can attempt {$monsterName} at {$position}: HP={$monsterHP}, WinChance={$winPercent}%");
+        }
+        
+        return $shouldAttempt;
+    }
+    
+    /**
+     * Get minimum acceptable battle probability based on current strategy
+     */
+    private function getMinAcceptableBattleProbability(): float
+    {
+        // Risk tolerance from strategy config (0.0 to 1.0)
+        $riskTolerance = $this->strategyConfig['riskTolerance'] ?? 0.5;
+        
+        // Aggressive strategy: Accept lower win probabilities
+        if ($riskTolerance >= 0.7) {
+            return 0.3; // Accept 30% or better chance
+        }
+        // Balanced strategy: Moderate risk
+        else if ($riskTolerance >= 0.4) {
+            return 0.5; // Accept 50% or better chance
+        }
+        // Defensive strategy: Only take safe battles
+        else {
+            return 0.7; // Require 70% or better chance
+        }
+    }
+    
+    /**
      * Execute movement towards better weapons on the field
      */
     private function executeMoveTowardsBetterWeapon(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, $currentPosition, array $moveToOptions, array $betterWeaponsOnField, array &$actions): void
@@ -979,6 +1124,13 @@ final class SmartVirtualPlayer
             // Skip positions we've already visited to prevent oscillation
             if (isset($this->visitedPositions[$moveOption])) {
                 error_log("DEBUG AI: Skipping {$moveOption} - already visited this turn");
+                continue;
+            }
+            
+            // Check if we can defeat the monster at this position
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            if (!$this->canDefeatMonsterAt($moveOption, $player)) {
+                error_log("DEBUG AI: Skipping {$moveOption} - cannot defeat monster there");
                 continue;
             }
             
@@ -1111,8 +1263,21 @@ final class SmartVirtualPlayer
             return;
         }
         
-        // Choose move based on strategy (from valid options only)
-        $targetPosition = $this->chooseMovementTarget($validMoveOptions, $field, $player);
+        // Filter out positions with unbeatable monsters
+        $safeOptions = array_filter($validMoveOptions, function($option) use ($player) {
+            return $this->canDefeatMonsterAt($option, $player);
+        });
+        
+        if (empty($safeOptions)) {
+            error_log("DEBUG AI: All move options have unbeatable monsters!");
+            $actions[] = $this->createAction('ai_info', ['message' => 'All moves blocked by strong monsters, ending turn']);
+            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            return;
+        }
+        
+        // Choose move based on strategy (from safe options only)
+        $targetPosition = $this->chooseMovementTarget($safeOptions, $field, $player);
         [$fromX, $fromY] = explode(',', $currentPosition->toString());
         [$toX, $toY] = explode(',', $targetPosition);
         

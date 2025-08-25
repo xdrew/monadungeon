@@ -37,10 +37,20 @@ export class GameHelpers {
     // Wait for initial animations to complete
     await page.waitForLoadState('networkidle');
     
-    // Check if the game UI is interactive
+    // Check if the game UI is fully loaded with available places
     await page.waitForFunction(() => {
-      const clickables = document.querySelectorAll('.clickable');
-      return clickables.length > 0;
+      // Check for available place markers (they may or may not have clickable class initially)
+      const availablePlaces = document.querySelectorAll('.available-place');
+      // Check for place icons specifically (the green plus buttons)
+      const placeIcons = document.querySelectorAll('.place-icon');
+      // Also check that the game container is loaded
+      const gameContainer = document.querySelector('.game-container');
+      
+      // Either we have available places with place icons, or we have clickable elements
+      const hasPlacementOptions = (availablePlaces.length > 0 && placeIcons.length > 0) || 
+                                  document.querySelectorAll('.available-place.clickable').length > 0;
+      
+      return hasPlacementOptions && gameContainer;
     }, { timeout: TIMEOUTS.MODAL_WAIT });
     
     // Brief pause for any final UI updates
@@ -74,36 +84,59 @@ export class GameHelpers {
     }
     
     // Wait for available placement positions to appear
-    const availablePlaceSelector = '.available-place.place-tile.clickable:not(:has-text("👣"))';
+    // Look for available places with place-icon (the green plus buttons)
+    const availablePlaceSelector = '.available-place:has(.place-icon)';
+    const fallbackSelector = '.available-place.place-tile';
     
     try {
+      // First try the most specific selector
       await page.waitForSelector(availablePlaceSelector, {
         state: 'visible',
         timeout: TIMEOUTS.ELEMENT_WAIT
       });
     } catch (error) {
-      // Take a screenshot if selector not found
-      await page.screenshot({ path: `test-results/no-tile-placement-options-${Date.now()}.png`, fullPage: true });
-      
-      // Check if there's a "Processing..." message
-      const processingVisible = await page.getByText('Processing...').isVisible().catch(() => false);
-      if (processingVisible) {
-        console.log('Game is still processing, waiting longer...');
-        await page.waitForTimeout(TIMEOUTS.MODAL_WAIT);
-        
-        // Try again after waiting
-        await page.waitForSelector(availablePlaceSelector, {
+      // Try fallback selector
+      try {
+        await page.waitForSelector(fallbackSelector, {
           state: 'visible',
-          timeout: TIMEOUTS.MODAL_WAIT
+          timeout: TIMEOUTS.SHORT_WAIT
         });
-      } else {
-        throw new Error('No available tile placement positions found');
+      } catch (fallbackError) {
+        // Take a screenshot if selector not found
+        await page.screenshot({ path: `test-results/no-tile-placement-options-${Date.now()}.png`, fullPage: true });
+        
+        // Check if there's a "Processing..." message
+        const processingVisible = await page.getByText('Processing...').isVisible().catch(() => false);
+        if (processingVisible) {
+          console.log('Game is still processing, waiting longer...');
+          await page.waitForTimeout(TIMEOUTS.MODAL_WAIT);
+          
+          // Try again after waiting with the primary selector
+          await page.waitForSelector(availablePlaceSelector, {
+            state: 'visible',
+            timeout: TIMEOUTS.MODAL_WAIT
+          });
+        } else {
+          throw new Error('No available tile placement positions found');
+        }
       }
     }
     
-    // Get available places
-    const availablePlaces = page.locator(availablePlaceSelector);
-    const count = await availablePlaces.count();
+    // Get available places - look for multiple possible selectors
+    let availablePlaces = page.locator('.available-place:has(.place-icon)');
+    let count = await availablePlaces.count();
+    
+    if (count === 0) {
+      // Try looking for available places with clickable class
+      availablePlaces = page.locator('.available-place.clickable').filter({ hasNot: page.locator('text="👣"') });
+      count = await availablePlaces.count();
+    }
+    
+    if (count === 0) {
+      // Try fallback selector
+      availablePlaces = page.locator('.available-place.place-tile');
+      count = await availablePlaces.count();
+    }
     
     if (count === 0) {
       // Take a debug screenshot
@@ -112,6 +145,7 @@ export class GameHelpers {
     }
     
     // Click to place tile
+    console.log(`Found ${count} available placement positions`);
     console.log('About to click on available place...');
     
     // Count existing ghost tiles before clicking
@@ -119,6 +153,9 @@ export class GameHelpers {
     
     // Get the first available place and capture its position
     const firstPlace = availablePlaces.first();
+    
+    // Ensure the element is visible and ready
+    await firstPlace.waitFor({ state: 'visible', timeout: TIMEOUTS.SHORT_WAIT });
     
     // Try to extract position from the element's attributes or title
     let placedPosition = { x: 0, y: 0 };
@@ -146,12 +183,20 @@ export class GameHelpers {
       console.log('Could not extract position from available place element');
     }
     
-    // Use force click to bypass any viewport/visibility issues
-    await firstPlace.click({ force: true });
-    console.log('Click completed');
+    // Try clicking with different strategies
+    try {
+      // First try a normal click
+      await firstPlace.click();
+      console.log('Normal click completed');
+    } catch (clickError) {
+      console.log('Normal click failed, trying force click...');
+      // If normal click fails, use force click
+      await firstPlace.click({ force: true });
+      console.log('Force click completed');
+    }
     
     // Small wait to let the UI react to the click
-    await page.waitForTimeout(TIMEOUTS.ANIMATION_WAIT / 2);
+    await page.waitForTimeout(TIMEOUTS.ANIMATION_WAIT);
 
     // Wait for either a new ghost tile to appear or ghost tile controls to be visible
     try {
