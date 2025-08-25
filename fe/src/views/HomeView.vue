@@ -46,6 +46,7 @@
             @click="createNewGame"
             @mouseover="hoverButton"
             @mouseout="resetButton"
+            :disabled="loading"
         >
           Play Against AI 🤖
         </button>
@@ -876,6 +877,12 @@ const viewRules = () => {
 };
 
 const createNewGame = async () => {
+  // Prevent multiple clicks
+  if (loading.value) {
+    console.log('Already creating game, ignoring duplicate click');
+    return;
+  }
+  
   try {
     loading.value = true;
     errorMessage.value = '';
@@ -1157,10 +1164,16 @@ const createNewGame = async () => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
-.primary-button:hover {
+.primary-button:hover:not(:disabled) {
   background: linear-gradient(135deg, #4a2590 0%, #35205e 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #2a1a4d 0%, #1f1538 100%);
 }
 
 .secondary-button {

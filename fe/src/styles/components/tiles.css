@@ -92,7 +92,7 @@
 /* Tile Hover Effects */
 .tile:hover {
   z-index: var(--z-tooltip);
-  box-shadow: 0 0 12px rgba(76, 175, 80, 0.7);
+  /*box-shadow: 0 0 12px rgba(76, 175, 80, 0.7);*/
   filter: brightness(1.2);
 }
 
@@ -127,7 +127,7 @@
 
 .starting-tile {
   z-index: 5;
-  box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+  /*box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);*/
 }
 
 /* Tile Openings */
@@ -190,12 +190,12 @@
 }
 
 .has-player {
-  box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+  /*box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);*/
   z-index: 10;
 }
 
 .tile.current-player-position {
-  box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.6);
+  /*box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.6);*/
   z-index: 10;
 }
 

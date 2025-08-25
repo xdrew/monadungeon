@@ -471,7 +471,7 @@ const onItemClick = () => {
 }
 
 .starting-tile {
-  box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
+  //box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
   z-index: 2;
 }
 
@@ -499,9 +499,9 @@ const onItemClick = () => {
 
 /* Keep the glow effect for current player position */
 .current-player-position {
-  box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0.9);
+  //box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0.9);
   z-index: 10;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.3) 70%);
+  //background: radial-gradient(circle at center, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.3) 70%);
 }
 
 .tile-items {
