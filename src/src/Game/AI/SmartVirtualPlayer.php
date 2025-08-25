@@ -1560,24 +1560,75 @@ final class SmartVirtualPlayer
     {
         error_log('DEBUG AI moveResponse: ' . json_encode($moveResponse, JSON_PRETTY_PRINT));
         
-        // Check for itemInfo (chest without battle)
+        // Check for itemInfo (item without battle)
         if (isset($moveResponse['itemInfo']) && $moveResponse['itemInfo'] !== null) {
             $itemInfo = $moveResponse['itemInfo'];
-            $actions[] = $this->createAction('item_detected', ['type' => 'chest', 'item' => $itemInfo]);
+            $item = $itemInfo['item'] ?? null;
+            $itemType = $item['type'] ?? '';
+            
+            $actions[] = $this->createAction('item_detected', ['type' => $itemType, 'item' => $itemInfo]);
+            
+            // Check if we should pick up this item
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            $shouldPickup = false;
+            $reason = '';
             
             // ALWAYS pick up treasures - they are the win condition!
             if ($this->isChestOrTreasure($itemInfo)) {
-                $actions[] = $this->createAction('treasure_reasoning', [
-                    'decision' => 'Pick up treasure',
-                    'reason' => 'Found treasure chest - collecting for win condition!'
+                $shouldPickup = true;
+                $reason = 'Found treasure chest - collecting for win condition!';
+            }
+            // Pick up weapons if they're upgrades
+            elseif (in_array($itemType, ['dagger', 'sword', 'axe'])) {
+                if ($this->shouldPickupItem($item, $player)) {
+                    $shouldPickup = true;
+                    $reason = "Found {$itemType} - picking up as weapon upgrade!";
+                } else {
+                    $reason = "Already have better weapons, skipping {$itemType}";
+                }
+            }
+            // Pick up keys if we don't have one
+            elseif ($itemType === 'key') {
+                if (!$this->playerHasKey($player)) {
+                    $shouldPickup = true;
+                    $reason = 'Found key - needed for opening chests!';
+                } else {
+                    $reason = 'Already have a key, skipping';
+                }
+            }
+            // Pick up spells
+            elseif (in_array($itemType, ['fireball', 'teleport'])) {
+                $shouldPickup = true;
+                $reason = "Found {$itemType} spell - useful for combat/movement!";
+            }
+            
+            if ($shouldPickup) {
+                $actions[] = $this->createAction('item_reasoning', [
+                    'decision' => 'Pick up item',
+                    'reason' => $reason
                 ]);
-                $this->handleChestPickup($gameId, $playerId, $currentTurnId, $moveResponse, $actions);
+                
+                // Pick up the item
+                $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+                [$x, $y] = explode(',', $currentPosition->toString());
+                $pickupResult = $this->apiClient->pickItem($gameId, $playerId, $currentTurnId, (int)$x, (int)$y);
+                $actions[] = $this->createAction('pickup_result', ['result' => $pickupResult]);
+                
+                if ($pickupResult['success']) {
+                    // Item picked up, end turn
+                    $actions[] = $this->createAction('ai_info', ['message' => 'Item picked up, ending turn']);
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                } else {
+                    // Failed to pick up, continue turn
+                    $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                }
             } else {
                 $actions[] = $this->createAction('item_reasoning', [
                     'decision' => 'Skip item',
-                    'reason' => 'Not a treasure chest, continuing exploration'
+                    'reason' => $reason
                 ]);
-                // Not a treasure, continue or end turn
+                // Not picking up, continue turn
                 $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
             }
             return;
