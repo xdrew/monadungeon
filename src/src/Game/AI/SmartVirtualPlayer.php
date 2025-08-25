@@ -83,7 +83,7 @@ final class SmartVirtualPlayer
             
             // Check if field state has changed (new tiles placed)
             $field = $this->messageBus->dispatch(new GetField(gameId: $gameId));
-            $currentFieldHash = md5(json_encode($field->tiles));
+            $currentFieldHash = md5(json_encode($field->getPlacedTiles()));
             
             if (isset(self::$lastFieldStateHash[$trackingKey]) && self::$lastFieldStateHash[$trackingKey] !== $currentFieldHash) {
                 // Field has changed, clear unreachable targets as paths may have opened
