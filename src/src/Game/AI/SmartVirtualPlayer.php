@@ -272,8 +272,24 @@ final class SmartVirtualPlayer
                 'betterWeaponsOnField' => $betterWeaponsOnField
             ]);
             
-            // PRIORITY 0: Check if we're standing on an item we should pick up!
+            // PRIORITY -1: Check if we're on a healing fountain and need healing
             $currentPosStr = $currentPosition->toString();
+            $currentHP = $player->getHP();
+            $maxHP = $player->getMaxHP();
+            
+            // Check if we're on a healing fountain and need healing (HP < max)
+            if ($currentHP < $maxHP && $this->isOnHealingFountain($currentPosStr, $field)) {
+                $actions[] = $this->createAction('ai_reasoning', [
+                    'decision' => 'End turn on healing fountain',
+                    'reason' => "On healing fountain with {$currentHP}/{$maxHP} HP - ending turn to heal",
+                    'priority' => -1
+                ]);
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                return $actions;
+            }
+            
+            // PRIORITY 0: Check if we're standing on an item we should pick up!
             $items = $field->getItems();
             
             // Check for chest first (highest priority)
@@ -310,6 +326,26 @@ final class SmartVirtualPlayer
                         $this->continueAfterNonBattleAction($gameId, $playerId, $currentTurnId, $actions);
                         return $actions;
                     }
+                }
+            }
+            
+            // PRIORITY 0.5: Critical HP - must find healing fountain immediately  
+            if ($player->getHP() <= 1 && !empty($moveToOptions)) {
+                $healingFountainPosition = $this->findHealingFountainInMoveOptions($moveToOptions, $field);
+                if ($healingFountainPosition !== null) {
+                    $actions[] = $this->createAction('ai_reasoning', [
+                        'decision' => 'Move to healing fountain (critical HP)',
+                        'reason' => "HP is 1 - must heal immediately at fountain at {$healingFountainPosition}",
+                        'priority' => 0.5
+                    ]);
+                    
+                    // Move directly to the healing fountain
+                    [$x, $y] = explode(',', $healingFountainPosition);
+                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$x, (int)$y);
+                    $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                    
+                    $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+                    return $actions;
                 }
             }
             
@@ -637,6 +673,27 @@ final class SmartVirtualPlayer
      */
     private function continueAfterNonBattleAction(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array &$actions): void
     {
+        // Check if we're on a healing fountain and need healing
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+        $currentHP = $player->getHP();
+        $maxHP = $player->getMaxHP();
+        
+        if ($currentHP < $maxHP) {
+            $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+            $field = $this->messageBus->dispatch(new GetField($gameId));
+            
+            if ($this->isOnHealingFountain($currentPosition->toString(), $field)) {
+                $actions[] = $this->createAction('ai_reasoning', [
+                    'decision' => 'End turn on healing fountain',
+                    'reason' => "On healing fountain with {$currentHP}/{$maxHP} HP - ending turn to heal",
+                    'priority' => -1
+                ]);
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                return;
+            }
+        }
+        
         // Unlike battle actions, picking up items doesn't end movement
         // Get available actions from current position
         $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
@@ -1550,6 +1607,26 @@ final class SmartVirtualPlayer
                 }
             }
             
+            // Check if we're on a healing fountain and need healing before continuing
+            $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            $currentHP = $player->getHP();
+            $maxHP = $player->getMaxHP();
+            
+            if ($currentHP < $maxHP) {
+                $field = $this->messageBus->dispatch(new GetField($gameId));
+                if ($this->isOnHealingFountain($currentPosition->toString(), $field)) {
+                    $actions[] = $this->createAction('ai_reasoning', [
+                        'decision' => 'End turn on healing fountain',
+                        'reason' => "Reached healing fountain with {$currentHP}/{$maxHP} HP - ending turn to heal",
+                        'priority' => -1
+                    ]);
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    return;
+                }
+            }
+            
             $actions[] = $this->createAction('continue_turn', ['message' => 'Looking for more actions']);
             
             // Get available actions from current position
@@ -1784,6 +1861,27 @@ final class SmartVirtualPlayer
             $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
             $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
             return;
+        }
+        
+        // Check if we're on a healing fountain and need healing
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+        $currentHP = $player->getHP();
+        $maxHP = $player->getMaxHP();
+        
+        if ($currentHP < $maxHP) {
+            $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+            $field = $this->messageBus->dispatch(new GetField($gameId));
+            
+            if ($this->isOnHealingFountain($currentPosition->toString(), $field)) {
+                $actions[] = $this->createAction('ai_reasoning', [
+                    'decision' => 'End turn on healing fountain',
+                    'reason' => "On healing fountain with {$currentHP}/{$maxHP} HP - ending turn to heal",
+                    'priority' => -1
+                ]);
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                return;
+            }
         }
         
         // Check action limit
@@ -3125,5 +3223,58 @@ final class SmartVirtualPlayer
             // Continue playing even if pickup failed
             $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
         }
+    }
+    
+    /**
+     * Check if player is currently on a healing fountain
+     */
+    private function isOnHealingFountain(string $position, $field): bool
+    {
+        $placedTiles = $field->getPlacedTiles();
+        
+        // Starting position (0,0) always has a healing fountain
+        if ($position === '0,0') {
+            return true;
+        }
+        
+        if (isset($placedTiles[$position])) {
+            $tileId = $placedTiles[$position];
+            if (is_string($tileId)) {
+                $tileId = Uuid::fromString($tileId);
+            }
+            if ($tileId instanceof Uuid) {
+                $tile = $field->getTileFromCache($tileId);
+                if ($tile) {
+                    $features = $tile->getFeatures();
+                    foreach ($features as $feature) {
+                        $featureString = '';
+                        if ($feature instanceof \App\Game\Field\TileFeature) {
+                            $featureString = $feature->value;
+                        } elseif (is_string($feature)) {
+                            $featureString = $feature;
+                        }
+                        if ($featureString === 'healing_fountain' || $featureString === TileFeature::HEALING_FOUNTAIN->value) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Find a healing fountain in the available move options
+     */
+    private function findHealingFountainInMoveOptions(array $moveOptions, $field): ?string
+    {
+        foreach ($moveOptions as $position) {
+            if ($this->isOnHealingFountain($position, $field)) {
+                return $position;
+            }
+        }
+        
+        return null;
     }
 }
