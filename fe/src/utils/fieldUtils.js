@@ -700,6 +700,9 @@ const clearTileState = (tileState) => {
   pickedTileId.value = null;
   pickedTile.value = null;
   isPlacingTile.value = false;
+  
+  // Also clear from localStorage
+  localStorage.removeItem('pickedTileState');
 };
 
 /**
@@ -790,6 +793,8 @@ export const handlePlaceClick = async (params) => {
     isPlaceTile,
     canPlaceTile,
     hasPicked: !!pickedTileId.value,
+    pickedTileId: pickedTileId.value,
+    pickedTile: pickedTile.value ? 'Yes' : 'No',
     isDeckEmpty
   });
 

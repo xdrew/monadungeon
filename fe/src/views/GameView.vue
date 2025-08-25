@@ -103,7 +103,7 @@
                   <!-- Render available move/place markers before tiles -->
                   <AvailableMoveMarker
                     v-for="position in gameData.state.availablePlaces.moveTo"
-                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !isTeleportMode && !isProcessingAI && gameData.state.status !== 'finished'"
+                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isProcessingAI && gameData.state.status !== 'finished'"
                     :key="`move-${position}`"
                     :position="position"
                     :x="parseInt(position.split(',')[0])"
@@ -663,11 +663,89 @@ const isProcessingAI = ref(false); // Flag to block interactions during AI turn
 const zoomLevel = ref(1);
 const highlightedTile = ref(null);
 const selectedTile = ref(null);
-const pickedTileId = ref(null);
-const pickedTile = ref(null);
-const ghostTilePosition = ref(null);
-const ghostTileOrientation = ref(null);
-const isPlacingTile = ref(false);
+// Check for saved picked tile state early to prevent ghost tile flashing
+const earlyPickedTileCheck = () => {
+  const storedState = localStorage.getItem('pickedTileState');
+  if (storedState) {
+    try {
+      const state = JSON.parse(storedState);
+      // Only restore if it's for the same game
+      if (state.gameId === route.params.id) {
+        return {
+          pickedTileId: state.pickedTileId,
+          pickedTile: state.pickedTile,
+          ghostTilePosition: state.ghostTilePosition,
+          ghostTileOrientation: state.ghostTileOrientation,
+          isPlacingTile: state.isPlacingTile
+        };
+      }
+    } catch (e) {
+      console.error('Failed to parse early picked tile state:', e);
+    }
+  }
+  return null;
+};
+
+const earlyState = earlyPickedTileCheck();
+const pickedTileId = ref(earlyState?.pickedTileId || null);
+const pickedTile = ref(earlyState?.pickedTile || null);
+const ghostTilePosition = ref(earlyState?.ghostTilePosition || null);
+const ghostTileOrientation = ref(earlyState?.ghostTileOrientation || null);
+const isPlacingTile = ref(earlyState?.isPlacingTile || false);
+
+// Helper to save/restore picked tile state
+const savePickedTileState = () => {
+  const state = {
+    gameId: id.value,
+    pickedTileId: pickedTileId.value,
+    pickedTile: pickedTile.value,
+    ghostTilePosition: ghostTilePosition.value,
+    ghostTileOrientation: ghostTileOrientation.value,
+    isPlacingTile: isPlacingTile.value
+  };
+  localStorage.setItem('pickedTileState', JSON.stringify(state));
+};
+
+const clearPickedTileState = () => {
+  localStorage.removeItem('pickedTileState');
+};
+
+const restorePickedTileState = () => {
+  // Since we already restored state early, just verify it's still valid
+  const storedState = localStorage.getItem('pickedTileState');
+  if (!storedState) return false;
+  
+  try {
+    const state = JSON.parse(storedState);
+    // Only restore if it's for the same game
+    if (state.gameId !== id.value) {
+      clearPickedTileState();
+      // Clear the refs too
+      pickedTileId.value = null;
+      pickedTile.value = null;
+      ghostTilePosition.value = null;
+      ghostTileOrientation.value = null;
+      isPlacingTile.value = false;
+      return false;
+    }
+    
+    // State was already restored early, just log it
+    if (state.pickedTileId && state.pickedTile) {
+      console.log('Picked tile state was restored early from localStorage:', state);
+      return true;
+    }
+  } catch (e) {
+    console.error('Failed to verify picked tile state:', e);
+    clearPickedTileState();
+    // Clear the refs too
+    pickedTileId.value = null;
+    pickedTile.value = null;
+    ghostTilePosition.value = null;
+    ghostTileOrientation.value = null;
+    isPlacingTile.value = false;
+  }
+  return false;
+};
 const isMoveMode = ref(false);
 const isPlaceMode = ref(false);
 const tileSize = ref(100);
@@ -1261,6 +1339,13 @@ const loadGameData = async (showLoading = true) => {
 // Watch for route changes to reload data if necessary
 watch(() => route.params.id, (newId, oldId) => {
   if (newId !== oldId) {
+    // Clear picked tile state if changing games
+    clearPickedTileState();
+    pickedTileId.value = null;
+    pickedTile.value = null;
+    ghostTilePosition.value = null;
+    ghostTileOrientation.value = null;
+    isPlacingTile.value = false;
     loadGameData();
   }
 });
@@ -1298,6 +1383,23 @@ onMounted(async () => {
     loading.value = true;
     loadingStatus.value = 'Loading game data...';
     await loadGameData();
+    
+    // After loading game data, restore picked tile state if any
+    if (restorePickedTileState()) {
+      console.log('Restored picked tile state after refresh');
+      
+      // Validate that the deck hasn't changed since we picked the tile
+      // If the deck is now empty or tiles have been placed, clear the state
+      if (gameData.value?.state?.deck?.isEmpty) {
+        console.log('Deck is now empty, clearing picked tile state');
+        clearPickedTileState();
+        pickedTileId.value = null;
+        pickedTile.value = null;
+        ghostTilePosition.value = null;
+        ghostTileOrientation.value = null;
+        isPlacingTile.value = false;
+      }
+    }
 
     // Initialize WebSocket for real-time updates
     // initWebSocket();
@@ -1577,6 +1679,15 @@ watch(tileSize, (newSize) => {
     tiles.forEach(tile => {
       tile.style.setProperty('--tile-size', `${newSize}px`);
     });
+  }
+});
+
+// Watch for picked tile changes to save state
+watch([pickedTileId, pickedTile, ghostTilePosition, ghostTileOrientation, isPlacingTile], () => {
+  if (pickedTileId.value && pickedTile.value) {
+    savePickedTileState();
+  } else {
+    clearPickedTileState();
   }
 });
 
@@ -2391,6 +2502,7 @@ const cancelTilePlacement = () => {
   pickedTile.value = null;
   isPlacingTile.value = false;
   ghostTileOrientation.value = null;
+  clearPickedTileState();
 };
 
 
