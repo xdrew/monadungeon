@@ -1352,6 +1352,10 @@ watch(() => route.params.id, (newId, oldId) => {
 
 onMounted(async () => {
   console.log('Game view mounted with game ID:', id.value);
+  
+  // Expose handleFinalizeBattleAndPickUp globally for debugging
+  window.gameViewHandleFinalizeBattleAndPickUp = handleFinalizeBattleAndPickUp;
+  console.log('Exposed handleFinalizeBattleAndPickUp to window for debugging');
 
   // Initialize music service with placeholder URL
   // Replace this with your actual music track URL
@@ -3390,6 +3394,19 @@ const handlePickItemWithReplacement = async (itemIdToReplace) => {
 
 // Function to handle finalize battle and pick up
 const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
+  console.log('🔵 handleFinalizeBattleAndPickUp called with:', finalizeBattleData);
+  console.log('Current request in progress:', isRequestInProgress.value);
+  
+  // Reset any stale request locks since we're in a battle finalization flow
+  resetRequestLock();
+  
+  // Check if a request is already in progress after reset
+  if (isRequestActive()) {
+    console.warn('⚠️ Request already in progress even after reset, forcing through');
+    // Force reset and continue
+    resetRequestLock();
+  }
+  
   // Hide modal immediately if requested (to prevent showing intermediate battle state)
   if (finalizeBattleData.hideModalImmediately) {
     showBattleReportModal.value = false;
@@ -3398,34 +3415,55 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
   try {
     const currentTurnId = gameData.value?.state?.currentTurnId;
     const playerPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
+    
+    console.log('🔍 Checking prerequisites:');
+    console.log('  - currentTurnId:', currentTurnId);
+    console.log('  - playerPosition:', playerPosition);
+    console.log('  - currentPlayerId:', currentPlayerId.value);
+    console.log('  - gameData.value:', gameData.value ? 'exists' : 'null');
 
     if (!currentTurnId || !playerPosition) {
-      console.error('Missing turn ID or player position');
+      console.error('❌ Early return: Missing turn ID or player position');
+      console.error('  - currentTurnId:', currentTurnId);
+      console.error('  - playerPosition:', playerPosition);
       closeBattleReportAndEndTurn();
       return;
     }
 
+    console.log('✅ Prerequisites passed, setting loading state');
     loading.value = true;
     loadingStatus.value = 'Finalizing battle and picking up item...';
 
     // If there's no selected item to replace, check if inventory space is available
+    console.log('🔍 Checking inventory space:');
+    console.log('  - replaceItemId:', finalizeBattleData.replaceItemId);
+    console.log('  - hasInventorySpaceForReward:', hasInventorySpaceForReward.value);
+    
     if (!finalizeBattleData.replaceItemId && !hasInventorySpaceForReward.value) {
+      console.log('⚠️ No replace item and no inventory space');
+      
       // Special case for keys: all keys are the same, so auto-replace without asking
       if (battleInfo.value && battleInfo.value.reward && 
           (battleInfo.value.reward.type === 'key' || battleInfo.value.reward.name === 'key')) {
-        console.log('Auto-replacing key since all keys are functionally the same');
+        console.log('🔑 Auto-replacing key since all keys are functionally the same');
 
         // Get the first key from current inventory to replace
         const currentKeys = getCurrentPlayerData.value?.inventory?.keys || [];
+        console.log('  - Current keys in inventory:', currentKeys.length);
         if (currentKeys.length > 0) {
           // Update finalizeBattleData with the key to replace
           finalizeBattleData.replaceItemId = currentKeys[0].itemId;
+          console.log('  - Auto-selected key for replacement:', finalizeBattleData.replaceItemId);
+        } else {
+          console.log('  - No keys to auto-replace');
         }
       } else {
+        console.log('📦 Not a key item, need inventory selection');
         // Show inventory selection for non-key items
         loading.value = false;
 
         // Check if the battle report modal reference exists
+        console.log('  - battleReportModalRef.value:', battleReportModalRef.value ? 'exists' : 'null');
         if (battleReportModalRef.value) {
           // Get current inventory for the specific category based on reward type
           const rewardType = battleInfo.value?.reward?.type;
@@ -3441,17 +3479,27 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
 
           const inventoryForCategory = getCurrentPlayerData.value?.inventory?.[inventoryCategory] || [];
 
+          console.log('  - Inventory category:', inventoryCategory);
+          console.log('  - Items in category:', inventoryForCategory.length);
+          
           // Show inventory selection UI within the battle report modal
+          console.log('📋 Showing inventory selection UI');
           battleReportModalRef.value.showFinalizeBattleInventoryFullSelection(inventoryForCategory);
         } else {
-          console.error('Cannot show inventory selection, battle report modal ref is missing');
+          console.error('❌ Early return: Cannot show inventory selection, battle report modal ref is missing');
           error.value = 'Cannot show inventory selection';
           closeBattleReportAndEndTurn();
         }
+        console.log('❌ Early return: Waiting for inventory selection');
         return;
       }
     }
 
+    console.log('🚀 Making API call to finalize battle');
+    console.log('  - battleId:', finalizeBattleData.battleId);
+    console.log('  - selectedConsumableIds:', finalizeBattleData.selectedConsumableIds);
+    console.log('  - replaceItemId:', finalizeBattleData.replaceItemId);
+    
     // Use the enhanced finalizeBattle endpoint that now handles item pickup in a single request
     const response = await gameApi.finalizeBattle({
       battleId: finalizeBattleData.battleId,
