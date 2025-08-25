@@ -340,8 +340,9 @@ final class SmartVirtualPlayer
                     ]);
                     
                     // Move directly to the healing fountain
-                    [$x, $y] = explode(',', $healingFountainPosition);
-                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$x, (int)$y);
+                    [$toX, $toY] = explode(',', $healingFountainPosition);
+                    [$fromX, $fromY] = explode(',', $currentPosition->toString());
+                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                     
                     $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
