@@ -1403,6 +1403,24 @@ onMounted(async () => {
         ghostTileOrientation.value = null;
         isPlacingTile.value = false;
       }
+      
+      // Check if the tile has already been placed on the field
+      // This can happen if the placement was successful but UI didn't update properly
+      if (pickedTileId.value && gameData.value?.field?.tiles) {
+        const tileAlreadyPlaced = gameData.value.field.tiles.some(tile => 
+          tile.tileId === pickedTileId.value
+        );
+        
+        if (tileAlreadyPlaced) {
+          console.log('Picked tile has already been placed on field, clearing picked tile state');
+          clearPickedTileState();
+          pickedTileId.value = null;
+          pickedTile.value = null;
+          ghostTilePosition.value = null;
+          ghostTileOrientation.value = null;
+          isPlacingTile.value = false;
+        }
+      }
     }
 
     // Initialize WebSocket for real-time updates
