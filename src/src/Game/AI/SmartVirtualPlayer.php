@@ -25,6 +25,7 @@ final class SmartVirtualPlayer
     private array $visitedPositions = [];  // Track visited positions in current turn to prevent oscillation
     private static array $unreachableTargets = [];  // Track targets that are unreachable (persists across turns)
     private static array $turnsSinceLastProgress = [];  // Track turns without progress per game/player
+    private static array $lastFieldStateHash = [];  // Track field state to detect when new tiles are placed
     private int $moveCount = 0;  // Track number of moves in current turn
     
     public function __construct(
@@ -79,6 +80,28 @@ final class SmartVirtualPlayer
             if (!isset(self::$turnsSinceLastProgress[$trackingKey])) {
                 self::$turnsSinceLastProgress[$trackingKey] = [];
             }
+            
+            // Check if field state has changed (new tiles placed)
+            $field = $this->messageBus->dispatch(new GetField(gameId: $gameId));
+            $currentFieldHash = md5(json_encode($field->tiles));
+            
+            if (isset(self::$lastFieldStateHash[$trackingKey]) && self::$lastFieldStateHash[$trackingKey] !== $currentFieldHash) {
+                // Field has changed, clear unreachable targets as paths may have opened
+                error_log("DEBUG AI: Field state changed, clearing unreachable targets");
+                self::$unreachableTargets[$trackingKey] = [];
+                self::$turnsSinceLastProgress[$trackingKey] = [];
+            }
+            
+            // Also periodically clear unreachable targets every 5 turns to re-evaluate
+            $game = $this->messageBus->dispatch(new GetGame($gameId));
+            $turnNumber = $game->getCurrentTurnNumber();
+            if ($turnNumber > 0 && $turnNumber % 5 === 0) {
+                error_log("DEBUG AI: Turn {$turnNumber} - periodic clear of unreachable targets");
+                self::$unreachableTargets[$trackingKey] = [];
+                self::$turnsSinceLastProgress[$trackingKey] = [];
+            }
+            
+            self::$lastFieldStateHash[$trackingKey] = $currentFieldHash;
             
             // Get current turn ID
             $currentTurnId = $this->messageBus->dispatch(new GetCurrentTurn($gameId));
@@ -243,7 +266,8 @@ final class SmartVirtualPlayer
             foreach ($items as $pos => $item) {
                 // Skip if this target is marked as unreachable
                 if (isset(self::$unreachableTargets[$trackingKey][$pos])) {
-                    error_log("DEBUG AI: Skipping unreachable target at {$pos}");
+                    $itemType = $item->type ?? 'unknown';
+                    error_log("DEBUG AI: Skipping previously unreachable {$itemType} at {$pos} (will retry periodically)");
                     continue;
                 }
                 
@@ -1235,13 +1259,13 @@ final class SmartVirtualPlayer
                     self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns']++;
                     error_log("DEBUG AI: No progress towards weapon at {$targetPos} for " . self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] . " turns");
                     
-                    // If we haven't made progress for 2+ turns, mark as unreachable
-                    if (self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] >= 2) {
+                    // If we haven't made progress for 3+ consecutive turns, mark as temporarily unreachable
+                    if (self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] >= 3) {
                         self::$unreachableTargets[$trackingKey][$targetPos] = true;
-                        error_log("DEBUG AI: Marking weapon at {$targetPos} as UNREACHABLE!");
+                        error_log("DEBUG AI: Marking weapon at {$targetPos} as UNREACHABLE for now!");
                         
                         $actions[] = $this->createAction('ai_reasoning', [
-                            'message' => "Weapon at {$targetWeapon} appears unreachable, exploring instead"
+                            'message' => "Weapon at {$targetWeapon} at {$targetPos} appears unreachable for now, will try exploring to open new paths"
                         ]);
                         
                         // Try normal exploration instead
