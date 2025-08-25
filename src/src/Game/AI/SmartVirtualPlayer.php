@@ -48,6 +48,9 @@ final class SmartVirtualPlayer
     {
         $actions = [];
         
+        // Add immediate debug to confirm this method is called
+        error_log("DEBUG: SmartVirtualPlayer::executeTurn called for game {$gameId->toString()} player {$playerId->toString()}");
+        
         // Clear visited positions and reset move counter at the start of each turn
         $this->visitedPositions = [];
         $this->moveCount = 0;
@@ -1694,7 +1697,7 @@ final class SmartVirtualPlayer
                     if ($item instanceof \App\Game\Item\Item) {
                         $itemType = $item->type->value ?? '';
                     }
-                    if (in_array($itemType, ['sword', 'axe'])) {
+                    if (in_array($itemType, ['dagger', 'sword', 'axe'])) {
                         $betterWeaponsOnField[$pos] = $itemType;
                     }
                 }
