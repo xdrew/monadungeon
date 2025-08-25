@@ -57,6 +57,7 @@ final readonly class Action
                     $playerData[$playerId->toString()] = [
                         'hp' => $player->getHP(),
                         'defeated' => $player->isDefeated(),
+                        'isAi' => $player->isAi(),
                         'inventory' => [
                             'keys' => $this->formatInventoryItems($inventory['key'] ?? []),
                             'weapons' => $this->formatInventoryItems($inventory['weapon'] ?? []),

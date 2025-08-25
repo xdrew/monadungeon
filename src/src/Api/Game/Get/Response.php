@@ -139,6 +139,10 @@ final readonly class Response
                 if (isset($playerData[$playerIdStr]['defeated'])) {
                     $playerFormattedData['defeated'] = $playerData[$playerIdStr]['defeated'];
                 }
+                // Add isAi flag if available
+                if (isset($playerData[$playerIdStr]['isAi'])) {
+                    $playerFormattedData['isAi'] = $playerData[$playerIdStr]['isAi'];
+                }
                 // Add inventory data if available
                 if (isset($playerData[$playerIdStr]['inventory'])) {
                     $playerFormattedData['inventory'] = $playerData[$playerIdStr]['inventory'];
@@ -155,6 +159,7 @@ final readonly class Response
                     $player = $messageBus->dispatch(new GetPlayer($playerId));
                     $playerFormattedData['hp'] = $player->getHP();
                     $playerFormattedData['defeated'] = $player->isDefeated();
+                    $playerFormattedData['isAi'] = $player->isAi();
                     $playerFormattedData['externalId'] = $player->getExternalId();
                 } catch (\Throwable) {
                     // Unable to get player data, continue with what we have
@@ -167,6 +172,9 @@ final readonly class Response
             }
             if (!isset($playerFormattedData['defeated'])) {
                 $playerFormattedData['defeated'] = false;
+            }
+            if (!isset($playerFormattedData['isAi'])) {
+                $playerFormattedData['isAi'] = false; // Default to human player
             }
             // Add empty inventory if no inventory data is available
             if (!isset($playerFormattedData['inventory'])) {

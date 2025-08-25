@@ -19,5 +19,6 @@ final readonly class Request
         public ?string $externalId = null,
         public ?string $username = null,
         public ?string $walletAddress = null,
+        public bool $isAi = false,
     ) {}
 }

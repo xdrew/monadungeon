@@ -914,7 +914,7 @@ const createNewGame = async () => {
 
     // Add a virtual player as player 2 (use valid UUID)
     const virtualPlayerId = generateRandomId();
-    await gameApi.joinGame(response.gameId, virtualPlayerId, null, 'AI Player', null);
+    await gameApi.joinGame(response.gameId, virtualPlayerId, null, 'AI Player', null, true); // isAi = true
     console.log('Added virtual player as player 2:', virtualPlayerId);
 
     // Store the virtual player ID in localStorage to identify it later

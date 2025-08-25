@@ -820,14 +820,30 @@ const isPlayerTurn = computed(() => {
   // Get the actual current player from the API - this is the source of truth
   const serverCurrentPlayerId = gameData.value?.state?.currentPlayerId;
   
-  // Get the stable human player ID that was stored when the game was created
-  // This should NEVER change during the game
+  // Check if this is a PvP game (no AI players)
+  const hasAIPlayer = gameData.value?.players?.some(p => p.isAi === true);
+  
+  if (!hasAIPlayer) {
+    // This is a PvP/hotseat game - check if current player matches the session player
+    const currentPlayerId = localStorage.getItem('currentPlayerId');
+    const isCurrentPlayerTurn = currentPlayerId && serverCurrentPlayerId === currentPlayerId;
+    
+    console.log('👥 PvP game - isPlayerTurn check:', {
+      serverCurrentPlayerId,
+      currentPlayerId,
+      isCurrentPlayerTurn
+    });
+    
+    return isCurrentPlayerTurn;
+  }
+  
+  // This is a game with AI - use the original logic
   const humanPlayerId = localStorage.getItem('humanPlayerId');
   const virtualPlayerId = localStorage.getItem('virtualPlayerId');
   
   // Debug logging
   if (serverCurrentPlayerId) {
-    console.log('🎮 isPlayerTurn computed check:');
+    console.log('🎮 isPlayerTurn computed check (AI game):');
     console.log('- Server current player:', serverCurrentPlayerId);
     console.log('- Human player ID (stable):', humanPlayerId);
     console.log('- Virtual player ID:', virtualPlayerId);
@@ -935,11 +951,26 @@ let lastExecutedAITurn = null;
 let aiExecutionInProgressForTurn = null;
 // Promise to track ongoing AI execution
 let aiExecutionPromise = null;
+// Track if AI turn is in progress
+let aiTurnInProgress = false;
 
 // Check if current player is virtual and handle their turn
 const checkAndHandleVirtualPlayerTurn = async () => {
   try {
     if (!gameData.value?.state) {
+      return;
+    }
+    
+    // First check if there's actually an AI player in the game
+    const hasAIPlayer = gameData.value.players?.some(p => p.isAi === true);
+    if (!hasAIPlayer) {
+      // No AI players in this game - it's a PvP game
+      if (isProcessingAI.value) {
+        console.log('👥 PvP game detected - clearing AI flags');
+        isProcessingAI.value = false;
+        aiExecutionInProgressForTurn = null;
+        aiExecutionPromise = null;
+      }
       return;
     }
     
@@ -1133,13 +1164,13 @@ const loadGameData = async (showLoading = true) => {
     let virtualPlayerId = localStorage.getItem('virtualPlayerId');
     const humanPlayerId = localStorage.getItem('currentPlayerId');
     
-    // If virtualPlayerId is missing but we have 2 players and one is not the human, detect and store it
-    if (!virtualPlayerId && fetchedGameData.players && fetchedGameData.players.length === 2 && humanPlayerId) {
-      const otherPlayer = fetchedGameData.players.find(p => p.id !== humanPlayerId);
-      if (otherPlayer) {
-        console.log('🤖 Detected virtual player ID from game data:', otherPlayer.id);
-        localStorage.setItem('virtualPlayerId', otherPlayer.id);
-        virtualPlayerId = otherPlayer.id;
+    // If virtualPlayerId is missing but we have an AI player, detect and store it
+    if (!virtualPlayerId && fetchedGameData.players) {
+      const aiPlayer = fetchedGameData.players.find(p => p.isAi === true);
+      if (aiPlayer) {
+        console.log('🤖 Detected AI player from game data:', aiPlayer.id);
+        localStorage.setItem('virtualPlayerId', aiPlayer.id);
+        virtualPlayerId = aiPlayer.id;
       }
     }
     
@@ -3707,22 +3738,23 @@ const isCurrentPlayerPosition = (position) => {
 
 // Helper to check if a player is an AI/virtual player
 const isVirtualPlayer = (playerId) => {
-  // First check if we have a stored virtual player ID
+  // First check the isAi flag from the game data - this is the authoritative source
+  if (gameData.value?.players) {
+    const player = gameData.value.players.find(p => p.id === playerId);
+    if (player && typeof player.isAi === 'boolean') {
+      // If we have an explicit isAi flag, use it
+      return player.isAi;
+    }
+  }
+  
+  // Fallback: check if we have a stored virtual player ID
   const virtualPlayerId = localStorage.getItem('virtualPlayerId');
   if (virtualPlayerId && playerId === virtualPlayerId) {
     return true;
   }
   
-  // If we have exactly 2 players in a game, the non-human player is the AI
-  if (gameData.value?.players?.length === 2) {
-    const humanPlayerId = localStorage.getItem('currentPlayerId');
-    // If this player is not the human player, it's the AI
-    if (humanPlayerId && playerId !== humanPlayerId) {
-      // Don't update localStorage here as it may cause re-renders
-      // Instead, update it only once when we actually need to execute AI turn
-      return true;
-    }
-  }
+  // Note: We removed the fallback that assumed non-current players are AI
+  // because in hotseat mode, both players are human
   
   return false;
 };

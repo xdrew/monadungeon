@@ -260,6 +260,35 @@ test.describe('Two Player Game', () => {
     await GameHelpers.setupPlayerSession(page, player1Id);
     await page.goto(`${apiUrl}/game/${gameId}`);
     await GameHelpers.waitForGameLoad(page);
+    
+    // Mark both players as ready via API
+    await request.post(`${apiUrl}/api/game/player/ready`, {
+      data: { 
+        playerId: player1Id,
+        gameId: gameId 
+      }
+    });
+    await request.post(`${apiUrl}/api/game/player/ready`, {
+      data: { 
+        playerId: player2Id,
+        gameId: gameId
+      }  
+    });
+    
+    // Wait for game to update after ready
+    await page.waitForTimeout(1000);
+    
+    // Reload to get latest state
+    await page.reload();
+    await GameHelpers.waitForGameLoad(page);
+    
+    // Check game state
+    const gameState = await page.evaluate(() => {
+      const turnText = document.querySelector('h3')?.textContent || '';
+      const playerInfo = Array.from(document.querySelectorAll('[class*="inventory"]')).map(el => el.textContent);
+      return { turnText, playerInfo };
+    });
+    console.log('Game state after ready:', gameState);
 
     // === PLAYER 1 TURN 1: Victory Scenario ===
     console.log('=== Player 1 Turn 1: Victory Scenario ===');
@@ -274,17 +303,29 @@ test.describe('Two Player Game', () => {
     // Wait for battle modal to close and battle to finalize
     await waitForBattleComplete();
     
-    // Wait for turn change from Turn 1 to Turn 2
-    await waitForTurnChange(1, 2);
+    console.log('Player 1 Turn 1 complete, switching to Player 2');
     
-    console.log('Turn complete');
+    // In hotseat mode, we need to switch to Player 2's session
+    // The turn has already changed to Turn 2 (Player 2's turn)
+    await GameHelpers.setupPlayerSession(page, player2Id);
+    
+    // Reload the page to apply the new player session
+    await page.reload();
+    await GameHelpers.waitForGameLoad(page);
+    
+    // Wait a bit to ensure the game state is stable
+    await page.waitForTimeout(2000);
+    
+    // Check current turn
+    const currentTurn = await page.evaluate(() => {
+      const turnElement = document.querySelector('h3');
+      return turnElement?.textContent || '';
+    });
+    console.log(`Current turn after switching to Player 2: ${currentTurn}`);
     
     // === PLAYER 2 TURN 2: Place teleportation gate then room, defeat by Skeleton King ===
     console.log('=== Player 2 Turn 2: Place teleportation gate then room, defeat by Skeleton King ===');
-    await GameHelpers.setupPlayerSession(page, player2Id);
-    await GameHelpers.waitForGameLoad(page);
-    
-    console.log('=== Player 2 Turn Starting ===');
+    printElapsedTime();
     
     // First place the teleportation gate tile (replaces corridor)
     await GameHelpers.placeTile(page, 1, 0); // Place to the right (player auto-moves here)

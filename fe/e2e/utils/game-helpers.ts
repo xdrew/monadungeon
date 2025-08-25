@@ -18,10 +18,19 @@ export class GameHelpers {
   /**
    * Set up player session in the browser
    */
-  static async setupPlayerSession(page: Page, playerId: string): Promise<void> {
-    await page.evaluate((pid) => {
+  static async setupPlayerSession(page: Page, playerId: string, isAIGame: boolean = false): Promise<void> {
+    await page.evaluate(({ pid, hasAI }) => {
       localStorage.setItem('currentPlayerId', pid);
-    }, playerId);
+      // For hotseat games, we need to update humanPlayerId to match currentPlayerId
+      // This allows each human player to take their turn
+      if (!hasAI) {
+        localStorage.setItem('humanPlayerId', pid);
+      }
+      // Clear any virtual player ID in hotseat mode
+      if (!hasAI && localStorage.getItem('virtualPlayerId')) {
+        localStorage.removeItem('virtualPlayerId');
+      }
+    }, { pid: playerId, hasAI: isAIGame });
   }
 
 
@@ -122,13 +131,52 @@ export class GameHelpers {
       }
     }
     
-    // Get available places - look for multiple possible selectors
-    let availablePlaces = page.locator('.available-place:has(.place-icon)');
+    // Wait a moment to ensure the UI is ready to accept clicks
+    await page.waitForTimeout(TIMEOUTS.SHORT_WAIT);
+    
+    // Check whose turn it is
+    const currentPlayer = await page.evaluate(() => {
+      const currentPlayerId = localStorage.getItem('currentPlayerId');
+      const turnInfo = document.querySelector('[class*="Turn"]')?.textContent || '';
+      return { currentPlayerId, turnInfo };
+    });
+    console.log('Current player info:', currentPlayer);
+    
+    // Wait for elements to become clickable (isPlayerTurn must be true)
+    try {
+      await page.waitForFunction(() => {
+        const clickableElements = document.querySelectorAll('.available-place.clickable');
+        // Also check if there are any disabled markers
+        const disabledElements = document.querySelectorAll('.available-place.disabled');
+        const allElements = document.querySelectorAll('.available-place');
+        
+        console.log(`Available places: ${allElements.length}, Clickable: ${clickableElements.length}, Disabled: ${disabledElements.length}`);
+        
+        return clickableElements.length > 0;
+      }, { timeout: TIMEOUTS.ELEMENT_WAIT });
+      console.log('Clickable elements are now available');
+    } catch (e) {
+      console.log('Warning: No clickable elements found, proceeding anyway');
+      
+      // Debug: Check game state
+      const debugInfo = await page.evaluate(() => {
+        return {
+          availablePlaces: document.querySelectorAll('.available-place').length,
+          clickablePlaces: document.querySelectorAll('.available-place.clickable').length,
+          disabledPlaces: document.querySelectorAll('.available-place.disabled').length,
+          placeIcons: document.querySelectorAll('.place-icon').length
+        };
+      });
+      console.log('Debug info:', debugInfo);
+    }
+    
+    // Get available places - prioritize clickable available places
+    let availablePlaces = page.locator('.available-place.clickable').filter({ hasNot: page.locator('text="👣"') });
     let count = await availablePlaces.count();
     
     if (count === 0) {
-      // Try looking for available places with clickable class
-      availablePlaces = page.locator('.available-place.clickable').filter({ hasNot: page.locator('text="👣"') });
+      // Try looking for available places with place-icon (the green plus buttons)
+      availablePlaces = page.locator('.available-place:has(.place-icon)');
       count = await availablePlaces.count();
     }
     
@@ -183,19 +231,43 @@ export class GameHelpers {
       console.log('Could not extract position from available place element');
     }
     
+    // Log element info for debugging
+    const isVisible = await firstPlace.isVisible();
+    const boundingBox = await firstPlace.boundingBox();
+    console.log(`Element visible: ${isVisible}, bounding box:`, boundingBox);
+    
+    // Check if the element has the clickable class
+    const hasClickableClass = await firstPlace.evaluate(el => el.classList.contains('clickable'));
+    console.log(`Has clickable class: ${hasClickableClass}`);
+    
     // Try clicking with different strategies
-    try {
-      // First try a normal click
-      await firstPlace.click();
-      console.log('Normal click completed');
-    } catch (clickError) {
-      console.log('Normal click failed, trying force click...');
-      // If normal click fails, use force click
-      await firstPlace.click({ force: true });
-      console.log('Force click completed');
+    if (hasClickableClass) {
+      try {
+        // If it has clickable class, try normal click
+        await firstPlace.click();
+        console.log('Normal click on clickable element completed');
+      } catch (clickError) {
+        console.log('Normal click failed, trying force click...');
+        await firstPlace.click({ force: true });
+        console.log('Force click completed');
+      }
+    } else {
+      console.log('Element not clickable, trying to click the inner place-icon...');
+      // Try to click the inner place-icon element instead
+      const placeIcon = firstPlace.locator('.place-icon');
+      if (await placeIcon.count() > 0) {
+        await placeIcon.first().click({ force: true });
+        console.log('Clicked on place-icon');
+      } else {
+        // Fallback: dispatch click event directly
+        await firstPlace.evaluate(element => {
+          element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        });
+        console.log('Direct event dispatch completed');
+      }
     }
     
-    // Small wait to let the UI react to the click
+    // Wait for the UI to process the click
     await page.waitForTimeout(TIMEOUTS.ANIMATION_WAIT);
 
     // Wait for either a new ghost tile to appear or ghost tile controls to be visible

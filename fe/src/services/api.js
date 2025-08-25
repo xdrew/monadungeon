@@ -76,9 +76,9 @@ export const gameApi = {
     }
   },
 
-  joinGame: async (gameId, playerId, externalId = null, username = null, walletAddress = null) => {
+  joinGame: async (gameId, playerId, externalId = null, username = null, walletAddress = null, isAi = false) => {
     try {
-      const payload = {gameId: gameId, playerId: playerId};
+      const payload = {gameId: gameId, playerId: playerId, isAi: isAi};
       if (externalId) {
         payload.externalId = externalId;
       }

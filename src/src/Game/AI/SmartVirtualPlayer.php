@@ -928,7 +928,7 @@ final class SmartVirtualPlayer
         
         // Get base weapon damage
         $weaponDamage = 0;
-        foreach ($player->getItems() as $playerItem) {
+        foreach ($player->getAllItems() as $playerItem) {
             if ($playerItem->type->getCategory() === \App\Game\Item\ItemCategory::WEAPON) {
                 $weaponDamage += $playerItem->type->getDamage();
             }
@@ -936,7 +936,7 @@ final class SmartVirtualPlayer
         
         // Check for consumables
         $consumableDamage = 0;
-        foreach ($player->getItems() as $playerItem) {
+        foreach ($player->getAllItems() as $playerItem) {
             if ($playerItem->type === \App\Game\Item\ItemType::FIREBALL) {
                 $consumableDamage += $playerItem->type->getDamage();
                 break; // Only count one for probability calc
@@ -986,7 +986,7 @@ final class SmartVirtualPlayer
      */
     private function canDefeatMonsterAt(string $position, $player): bool
     {
-        $field = $this->messageBus->dispatch(new GetField($player->gameId));
+        $field = $this->messageBus->dispatch(new GetField($player->getGameId()));
         $items = $field->getItems();
         
         if (!isset($items[$position])) {

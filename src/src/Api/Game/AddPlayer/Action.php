@@ -27,6 +27,7 @@ final readonly class Action
                 externalId: $request->externalId,
                 username: $request->username,
                 walletAddress: $request->walletAddress,
+                isAi: $request->isAi,
             ));
         } catch (\Throwable $e) {
             return new Error(Uuid::v7(), 'Failed to add player to game: ' . $e->getMessage());

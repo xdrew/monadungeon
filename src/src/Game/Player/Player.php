@@ -69,6 +69,12 @@ class Player extends AggregateRoot
     private ?string $walletAddress = null;
 
     /**
+     * Whether this player is controlled by AI
+     */
+    #[Column(type: BooleanType::class)]
+    private bool $isAi = false;
+
+    /**
      * @var array{key: array<Item>, weapon: array<Item>, spell: array<Item>, treasure: array<Item>}
      * Inventory slots by item category
      * Format:
@@ -112,6 +118,7 @@ class Player extends AggregateRoot
         $player->externalId = $event->externalId;
         $player->username = $event->username ?? null;
         $player->walletAddress = $event->walletAddress ?? null;
+        $player->isAi = $event->isAi;
         return $player;
     }
 
@@ -461,6 +468,11 @@ class Player extends AggregateRoot
     public function isReady(): bool
     {
         return $this->ready;
+    }
+
+    public function isAi(): bool
+    {
+        return $this->isAi;
     }
 
     public function getCharacterId(): ?Uuid

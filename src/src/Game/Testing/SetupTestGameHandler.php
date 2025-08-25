@@ -82,6 +82,7 @@ final readonly class SetupTestGameHandler
                 $this->messageBus->dispatch(new AddPlayer(
                     gameId: $gameId,
                     playerId: Uuid::fromString($playerId),
+                    isAi: false, // Explicitly set as human player for tests
                 ));
             }
         }
