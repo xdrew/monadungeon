@@ -353,8 +353,10 @@ final class SmartVirtualPlayer
                             }
                         }
                         
-                        // Continue turn after pickup
-                        $this->continueAfterNonBattleAction($gameId, $playerId, $currentTurnId, $actions);
+                        // Picking up an item ends the turn
+                        $actions[] = $this->createAction('ai_info', ['message' => 'Item picked up, ending turn']);
+                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                         return $actions;
                     }
                 }
