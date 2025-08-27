@@ -91,7 +91,7 @@ final class FieldTest extends TestCase
         self::assertInstanceOf(Tile::class, $tile);
         self::assertEquals(
 //            [
-                new TilePicked($gameId, $pickTile->tileId, $tile->getOrientation(), $tile->room, new FieldPlace(1, 0)),
+                new TilePicked($gameId, $pickTile->tileId, $tile->getOrientation(), $tile->room, new FieldPlace(1, 0), $tile->getFeatures()),
 //                new PerformTurnAction(
 //                    turnId: $turnId,
 //                    gameId: $gameId,

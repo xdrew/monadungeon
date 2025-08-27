@@ -55,6 +55,9 @@ final class UnplacedTileType extends Type
             );
         }
 
+        // The tile data (orientation, room, features) is kept as-is
+        // It will be stored as an array with those properties
+
         return $data;
     }
 

@@ -82,21 +82,48 @@ class Tile extends AggregateRoot
 
         $field = $messageContext->dispatch(new GetField($command->gameId));
         $placedTiles = $field->getPlacedTilesAmount();
+        
         $deck = $messageContext->dispatch(new GetDeck($command->gameId));
         $deckTotalTiles = $deck->getTilesTotalCount();
         $deckRemainingTiles = $deck->getTilesRemainingCount();
 
-        // Check if there's an unplaced tile - if it exists and belongs to the same player,
-        // we're likely retrying after a failed placement attempt, so allow it
+        // Check if there's an unplaced tile
         $unplacedTile = $field->getUnplacedTile();
         if ($unplacedTile !== null && $unplacedTile['tileId'] !== null) {
             // If the unplaced tile's ID matches the requested tile ID, this is a retry
             if ($unplacedTile['tileId']->equals($command->tileId)) {
-                // Allow re-picking the same tile (retry scenario)
-                // Continue with the pick operation
+                // This is a retry - recreate the tile from the stored data without consuming a new deck tile
+                $tile = new self(
+                    tileId: $command->tileId,
+                    orientation: TileOrientation::fromString($unplacedTile['orientation']),
+                    room: $unplacedTile['room'],
+                    features: array_map(static fn($f) => TileFeature::from($f), $unplacedTile['features'] ?? []),
+                );
+                
+                // Skip getting a new tile from deck and orientation adjustment
+                $messageContext->dispatch(new TilePicked(
+                    gameId: $command->gameId,
+                    tileId: $command->tileId,
+                    orientation: $tile->getOrientation(),
+                    room: $tile->room,
+                    fieldPlace: $command->fieldPlace,
+                    features: $tile->getFeatures(),
+                ));
+
+                // Record this action for the turn
+                $messageContext->dispatch(new PerformTurnAction(
+                    turnId: $command->turnId,
+                    gameId: $command->gameId,
+                    playerId: $command->playerId,
+                    action: TurnAction::PICK_TILE,
+                    tileId: $command->tileId,
+                ));
+
+                return $tile;
             } else {
-                // Different tile requested while another is unplaced - not allowed
-                throw new CannotPlaceTileUntillPreviousTileIsNotPlaced();
+                // Different tile requested - clear the old unplaced tile and allow picking new one
+                // This handles the case where user wants to pick a different tile
+                $messageContext->dispatch(new ClearUnplacedTile($command->gameId));
             }
         } else {
             // No unplaced tile, check normally
@@ -141,6 +168,7 @@ class Tile extends AggregateRoot
             orientation: $tile->getOrientation(),
             room: $tile->room,
             fieldPlace: $command->fieldPlace,
+            features: $tile->getFeatures(),
         ));
 
         // Record this action for the turn
@@ -199,6 +227,13 @@ class Tile extends AggregateRoot
             $this->orientation = $currentOrientation->getOrientationForTopSide($command->topSide);
         }
 
+        // Dispatch event to update unplaced tile orientation in Field
+        $messageContext->dispatch(new TileRotated(
+            gameId: $command->gameId,
+            tileId: $this->tileId,
+            orientation: $this->orientation,
+        ));
+        
         // Record this action for the turn
         $messageContext->dispatch(new PerformTurnAction(
             turnId: $command->turnId,

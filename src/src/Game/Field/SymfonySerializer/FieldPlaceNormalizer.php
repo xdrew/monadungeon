@@ -47,6 +47,14 @@ final class FieldPlaceNormalizer implements NormalizerInterface, DenormalizerInt
             return FieldPlace::fromString($data);
         }
 
+        // Handle {x, y} format from frontend
+        if (\is_array($data) && isset($data['x'], $data['y']) && is_numeric($data['x']) && is_numeric($data['y'])) {
+            $validData = ['positionX' => (int) $data['x'], 'positionY' => (int) $data['y']];
+
+            return FieldPlace::fromArray($validData);
+        }
+
+        // Handle {positionX, positionY} format (original)
         if (\is_array($data) && isset($data['positionX'], $data['positionY']) && is_numeric($data['positionX']) && is_numeric($data['positionY'])) {
             $validData = ['positionX' => (int) $data['positionX'], 'positionY' => (int) $data['positionY']];
 

@@ -177,7 +177,7 @@ class Field extends AggregateRoot
     private array $healingFountainPositions = [];
 
     /**
-     * @var array{tileId: Uuid|null, fieldPlace: FieldPlace|null}|null
+     * @var array{tileId: Uuid|null, fieldPlace: FieldPlace|null, orientation: string|null, room: bool|null, features: array|null}|null
      * Stores the tile that has been placed but not yet finalized with movement
      */
     #[Column(type: UnplacedTileType::class, columnDefinition: 'jsonb', nullable: true)]
@@ -595,6 +595,7 @@ class Field extends AggregateRoot
         ));
 
         // Clear the unplaced tile now that it has been successfully placed
+        error_log('Field::placeTile - Clearing unplaced tile after successful placement');
         $this->unplacedTile = null;
 
         // Move to the next player's turn
@@ -1738,11 +1739,36 @@ class Field extends AggregateRoot
     #[Handler]
     public function onTilePicked(TilePicked $event): void
     {
-        // Store that a tile has been picked and where it will be placed
+        // Store that a tile has been picked and where it will be placed, including tile details
         $this->unplacedTile = [
             'tileId' => $event->tileId,
             'fieldPlace' => $event->fieldPlace,
+            'orientation' => $event->orientation->toString(),
+            'room' => $event->room,
+            'features' => array_map(static fn($f) => $f->value, $event->features),
         ];
+    }
+
+    /**
+     * Clear the unplaced tile when picking a different tile.
+     */
+    #[Handler]
+    public function clearUnplacedTile(ClearUnplacedTile $command): void
+    {
+        $this->unplacedTile = null;
+    }
+    
+    /**
+     * Update the orientation of the unplaced tile when it's rotated.
+     */
+    #[Handler]
+    public function onTileRotated(TileRotated $event): void
+    {
+        if ($this->unplacedTile !== null && 
+            $this->unplacedTile['tileId'] !== null && 
+            $this->unplacedTile['tileId']->equals($event->tileId)) {
+            $this->unplacedTile['orientation'] = $event->orientation->toString();
+        }
     }
 
     #[Handler]

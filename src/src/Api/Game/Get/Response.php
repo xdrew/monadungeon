@@ -104,8 +104,17 @@ final readonly class Response
                     'fieldPlace' => $unplacedTileData['fieldPlace'] ? $unplacedTileData['fieldPlace']->toString() : null,
                 ];
                 
-                // Try to get tile data if messageBus is available
-                if ($messageBus !== null) {
+                // Check if we have tile data stored directly in unplacedTile
+                if (isset($unplacedTileData['orientation']) && isset($unplacedTileData['room'])) {
+                    // Use the stored tile data
+                    $unplacedTile['tile'] = [
+                        'tileId' => $unplacedTileData['tileId']->toString(),
+                        'orientation' => $unplacedTileData['orientation'], // Already in correct format from storage
+                        'room' => $unplacedTileData['room'],
+                        'features' => $unplacedTileData['features'] ?? [],
+                    ];
+                } elseif ($messageBus !== null) {
+                    // Fallback: Try to get tile data from Tile entity if not stored
                     try {
                         $tile = $messageBus->dispatch(new \App\Game\Field\GetTile($unplacedTileData['tileId']));
                         if ($tile !== null) {
@@ -118,7 +127,6 @@ final readonly class Response
                         }
                     } catch (\Throwable $e) {
                         // If GetTile fails, provide minimal tile data so frontend can display something
-                        // This happens when tile was picked but entity wasn't persisted yet
                         $unplacedTile['tile'] = [
                             'tileId' => (string) $unplacedTileData['tileId'],
                             'orientation' => 'true,true,true,true', // Default 4-sided tile in frontend format

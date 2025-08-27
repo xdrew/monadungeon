@@ -611,6 +611,11 @@ const handleTilePicking = async (params) => {
   const { pickedTileId, pickedTile, ghostTilePosition, isPlacingTile, ghostTileOrientation } = tileState;
   const { generateUUID, getRequiredOpenSide, handleInitialTileOrientation, cancelTilePlacement } = tileUtils;
   const { error } = loadingState;
+  
+  // Convert position string to object if needed
+  const positionObj = typeof position === 'string' 
+    ? { x: parseInt(position.split(',')[0]), y: parseInt(position.split(',')[1]) }
+    : position;
 
   // Check if a request is already in progress
   if (isRequestInProgress) {
@@ -635,11 +640,20 @@ const handleTilePicking = async (params) => {
   try {
     isRequestInProgress = true;
     
-    // Check if there's an unplaced tile in the backend - if so, reuse its tileId
+    // Check if there's an unplaced tile in the backend
     let tileId;
-    if (gameData?.state?.unplacedTile?.tileId) {
-      console.log('Reusing existing unplaced tile ID:', gameData.state.unplacedTile.tileId);
-      tileId = gameData.state.unplacedTile.tileId;
+    const unplacedTile = gameData?.state?.unplacedTile;
+    
+    // Only reuse tileId if we're retrying for the same position
+    if (unplacedTile?.tileId && unplacedTile?.fieldPlace) {
+      const isSamePosition = unplacedTile.fieldPlace.x === positionObj.x && 
+                            unplacedTile.fieldPlace.y === positionObj.y;
+      
+      if (isSamePosition) {
+        tileId = unplacedTile.tileId;
+      } else {
+        tileId = generateUUID();
+      }
     } else {
       tileId = generateUUID();
     }
@@ -657,13 +671,13 @@ const handleTilePicking = async (params) => {
       playerId: currentPlayerId.value,
       turnId: currentTurnId,
       requiredOpenSide,
-      fieldPlace: position,
+      fieldPlace: positionObj,
     });
 
     // Set initial tile data
     pickedTileId.value = tileId;
     pickedTile.value = response.tile;
-    ghostTilePosition.value = position;
+    ghostTilePosition.value = position; // Keep as string for compatibility
     // Set initial orientation for the ghost tile to display
     if (response.tile && response.tile.orientation) {
       const initialOrientation = parseOrientationString(response.tile.orientation);
@@ -811,24 +825,32 @@ export const handlePlaceClick = async (params) => {
 
   // Handle different action types
   if (existingTile && isMoveTo) {
+    // handlePlayerMovement manages its own isRequestInProgress flag
     const moveResponse = await handlePlayerMovement(actionParams);
     return moveResponse; // Return the response so caller can check for itemInfo
   } else if (pickedTileId.value && pickedTile.value && canPlaceTile && !existingTile) {
+    // Set flag for validation and tile placement
+    isRequestInProgress = true;
+    
     // Validate tile orientation
     if (!isValidOrientation(position, pickedTile.value.orientation, gameData, currentPlayerId.value)) {
       console.log('Invalid tile orientation for this position');
       error.value = 'Invalid tile orientation - must have a direct connection to your current tile';
+      isRequestInProgress = false;  // Reset flag on validation error
       return;
     }
     
     try {
+      // handleTilePlacement manages its own isRequestInProgress flag, so reset ours first
+      isRequestInProgress = false;
       const placeResponse = await handleTilePlacement(actionParams);
       return placeResponse; // Return response from tile placement
     } catch (err) {
       error.value = `Failed to place tile: ${err.message}`;
+      isRequestInProgress = false;  // Ensure flag is reset
     }
   } else if (!pickedTileId.value && !existingTile && !isDeckEmpty && isMoveTo) {
-    // Modified condition to allow picking tiles on any valid movement space when deck isn't empty
+    // handleTilePicking manages its own isRequestInProgress flag
     const pickResponse = await handleTilePicking(actionParams);
     return pickResponse; // Return the response so caller knows a tile was picked
   } else if (pickedTileId.value && !existingTile && isMoveTo) {

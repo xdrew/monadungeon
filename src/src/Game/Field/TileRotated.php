@@ -9,18 +9,13 @@ use Telephantast\Message\Event;
 
 /**
  * @psalm-immutable
+ * @implements Event<void>
  */
-final readonly class TilePicked implements Event
+final readonly class TileRotated implements Event
 {
-    /**
-     * @param array<TileFeature> $features
-     */
     public function __construct(
         public Uuid $gameId,
         public Uuid $tileId,
         public TileOrientation $orientation,
-        public bool $room,
-        public FieldPlace $fieldPlace,
-        public array $features = [],
     ) {}
 }
