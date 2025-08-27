@@ -20,5 +20,6 @@ final readonly class PickTile implements Message
         public Uuid $playerId,
         public Uuid $turnId,
         public TileSide $requiredOpenSide,
+        public FieldPlace $fieldPlace,
     ) {}
 }

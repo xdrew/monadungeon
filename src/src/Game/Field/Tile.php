@@ -86,8 +86,23 @@ class Tile extends AggregateRoot
         $deckTotalTiles = $deck->getTilesTotalCount();
         $deckRemainingTiles = $deck->getTilesRemainingCount();
 
-        if ($placedTiles !== $deckTotalTiles - $deckRemainingTiles) {
-            throw new CannotPlaceTileUntillPreviousTileIsNotPlaced();
+        // Check if there's an unplaced tile - if it exists and belongs to the same player,
+        // we're likely retrying after a failed placement attempt, so allow it
+        $unplacedTile = $field->getUnplacedTile();
+        if ($unplacedTile !== null && $unplacedTile['tileId'] !== null) {
+            // If the unplaced tile's ID matches the requested tile ID, this is a retry
+            if ($unplacedTile['tileId']->equals($command->tileId)) {
+                // Allow re-picking the same tile (retry scenario)
+                // Continue with the pick operation
+            } else {
+                // Different tile requested while another is unplaced - not allowed
+                throw new CannotPlaceTileUntillPreviousTileIsNotPlaced();
+            }
+        } else {
+            // No unplaced tile, check normally
+            if ($placedTiles !== $deckTotalTiles - $deckRemainingTiles) {
+                throw new CannotPlaceTileUntillPreviousTileIsNotPlaced();
+            }
         }
 
         try {
@@ -121,9 +136,11 @@ class Tile extends AggregateRoot
         }
 
         $messageContext->dispatch(new TilePicked(
+            gameId: $command->gameId,
             tileId: $command->tileId,
             orientation: $tile->getOrientation(),
             room: $tile->room,
+            fieldPlace: $command->fieldPlace,
         ));
 
         // Record this action for the turn

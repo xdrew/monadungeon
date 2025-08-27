@@ -1237,6 +1237,57 @@ const loadGameData = async (showLoading = true) => {
     // Update game turns from the fetched game data
     updateGameTurns(fetchedGameData);
 
+    // Check for unplaced tile from backend and sync with frontend state
+    if (fetchedGameData.state?.unplacedTile) {
+      const unplacedTileData = fetchedGameData.state.unplacedTile;
+      if (unplacedTileData.tileId) {
+        // Backend has an unplaced tile, sync it with frontend
+        console.log('Syncing unplaced tile from backend:', unplacedTileData);
+        
+        // Check if we have tile data
+        if (unplacedTileData.tile) {
+          // Full tile data available
+          pickedTileId.value = unplacedTileData.tileId;
+          pickedTile.value = unplacedTileData.tile;
+          ghostTilePosition.value = unplacedTileData.fieldPlace;
+          // Parse the orientation string to get the proper format
+          ghostTileOrientation.value = parseOrientationString(unplacedTileData.tile.orientation) || null;
+          isPlacingTile.value = unplacedTileData.fieldPlace ? true : false;
+          
+          // Store in localStorage for consistency
+          const tileState = {
+            gameId: id.value,
+            tileId: unplacedTileData.tileId,
+            tile: unplacedTileData.tile,
+            position: unplacedTileData.fieldPlace,
+            orientation: unplacedTileData.tile.orientation
+          };
+          localStorage.setItem('pickedTileState', JSON.stringify(tileState));
+        } else {
+          // Only tileId available, tile was picked but we don't have full data
+          // Clear the picked tile state to avoid inconsistency
+          console.log('Unplaced tile exists but no tile data, clearing to allow re-pick');
+          clearPickedTileState();
+          pickedTileId.value = null;
+          pickedTile.value = null;
+          ghostTilePosition.value = null;
+          ghostTileOrientation.value = null;
+          isPlacingTile.value = false;
+        }
+      }
+    } else {
+      // No unplaced tile on backend, clear frontend state if it exists
+      if (pickedTileId.value) {
+        console.log('Backend has no unplaced tile, clearing frontend state');
+        clearPickedTileState();
+        pickedTileId.value = null;
+        pickedTile.value = null;
+        ghostTilePosition.value = null;
+        ghostTileOrientation.value = null;
+        isPlacingTile.value = false;
+      }
+    }
+
     // Check if it's a virtual player's turn and handle it
     const currentPlayer = fetchedGameData.state?.currentPlayer || fetchedGameData.state?.currentPlayerId;
     let virtualPlayerId = localStorage.getItem('virtualPlayerId');

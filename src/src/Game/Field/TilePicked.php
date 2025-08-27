@@ -13,8 +13,10 @@ use Telephantast\Message\Event;
 final readonly class TilePicked implements Event
 {
     public function __construct(
+        public Uuid $gameId,
         public Uuid $tileId,
         public TileOrientation $orientation,
         public bool $room,
+        public FieldPlace $fieldPlace,
     ) {}
 }

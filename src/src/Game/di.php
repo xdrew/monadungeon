@@ -18,6 +18,7 @@ use App\Game\Field\DoctrineDBAL\ItemMapType;
 use App\Game\Field\DoctrineDBAL\TileFeatureArrayType;
 use App\Game\Field\DoctrineDBAL\TileOrientationMapType;
 use App\Game\Field\DoctrineDBAL\TileOrientationType;
+use App\Game\Field\DoctrineDBAL\UnplacedTileType;
 use App\Game\Field\Field;
 use App\Game\Field\SymfonySerializer\FieldPlaceNormalizer;
 use App\Game\Field\Tile;
@@ -88,6 +89,7 @@ return static function (ContainerConfigurator $di): void {
                 InventoryJsonType::class => InventoryJsonType::class,
                 ItemArrayJsonType::class => ItemArrayJsonType::class,
                 ItemMapJsonType::class => ItemMapJsonType::class,
+                UnplacedTileType::class => UnplacedTileType::class,
             ],
         ],
     ]);

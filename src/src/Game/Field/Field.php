@@ -15,6 +15,7 @@ use App\Game\Deck\GetDeck;
 use App\Game\Field\DoctrineDBAL\FieldPlaceArrayJsonType;
 use App\Game\Field\DoctrineDBAL\ItemMapType;
 use App\Game\Field\DoctrineDBAL\TileOrientationMapType;
+use App\Game\Field\DoctrineDBAL\UnplacedTileType;
 use App\Game\Field\Error\FieldPlaceIsNotAvailable;
 use App\Game\Field\Error\TileCannotBeFound;
 use App\Game\Field\Error\TileCannotBePlacedHere;
@@ -174,6 +175,13 @@ class Field extends AggregateRoot
      */
     #[Column(type: FieldPlaceArrayJsonType::class)]
     private array $healingFountainPositions = [];
+
+    /**
+     * @var array{tileId: Uuid|null, fieldPlace: FieldPlace|null}|null
+     * Stores the tile that has been placed but not yet finalized with movement
+     */
+    #[Column(type: UnplacedTileType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $unplacedTile = null;
 
     private function __construct(
         #[Id]
@@ -470,6 +478,9 @@ class Field extends AggregateRoot
             throw new NotYourTurnException();
         }
 
+        // Don't store the fieldPlace here - it won't persist if validation fails
+        // The unplaced tile should only track that a tile was picked but not placed
+
         if (!\in_array($command->fieldPlace, $this->availableFieldPlaces, strict: false)) {
             throw new FieldPlaceIsNotAvailable();
         }
@@ -582,6 +593,9 @@ class Field extends AggregateRoot
             tileId: $command->tileId,
             additionalData: ['fieldPlace' => $command->fieldPlace->toString()],
         ));
+
+        // Clear the unplaced tile now that it has been successfully placed
+        $this->unplacedTile = null;
 
         // Move to the next player's turn
         //        $messageContext->dispatch(new NextTurn($command->gameId));
@@ -1707,6 +1721,28 @@ class Field extends AggregateRoot
         }
 
         return false;
+    }
+
+    /**
+     * Get the unplaced tile information (tile that has been placed but player hasn't moved yet).
+     * @return array{tileId: Uuid|null, fieldPlace: FieldPlace|null}|null
+     */
+    public function getUnplacedTile(): ?array
+    {
+        return $this->unplacedTile;
+    }
+
+    /**
+     * Handle when a tile is picked from deck - store it as pending placement.
+     */
+    #[Handler]
+    public function onTilePicked(TilePicked $event): void
+    {
+        // Store that a tile has been picked and where it will be placed
+        $this->unplacedTile = [
+            'tileId' => $event->tileId,
+            'fieldPlace' => $event->fieldPlace,
+        ];
     }
 
     #[Handler]

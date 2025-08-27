@@ -93,6 +93,44 @@ final readonly class Response
         // Format turns data
         $formattedTurns = self::formatTurns($recentTurns);
 
+        // Get unplaced tile info
+        $unplacedTile = null;
+        if ($field !== null) {
+            $unplacedTileData = $field->getUnplacedTile();
+            if ($unplacedTileData !== null && $unplacedTileData['tileId'] !== null) {
+                // The UnplacedTileType ensures tileId is a Uuid and fieldPlace is a FieldPlace object
+                $unplacedTile = [
+                    'tileId' => $unplacedTileData['tileId']->toString(),
+                    'fieldPlace' => $unplacedTileData['fieldPlace'] ? $unplacedTileData['fieldPlace']->toString() : null,
+                ];
+                
+                // Try to get tile data if messageBus is available
+                if ($messageBus !== null) {
+                    try {
+                        $tile = $messageBus->dispatch(new \App\Game\Field\GetTile($unplacedTileData['tileId']));
+                        if ($tile !== null) {
+                            $unplacedTile['tile'] = [
+                                'tileId' => (string) $tile->getTileId(),
+                                'orientation' => $tile->getOrientation()->toString(),
+                                'room' => $tile->room,
+                                'features' => array_map(static fn($f) => $f->value, $tile->getFeatures()),
+                            ];
+                        }
+                    } catch (\Throwable $e) {
+                        // If GetTile fails, provide minimal tile data so frontend can display something
+                        // This happens when tile was picked but entity wasn't persisted yet
+                        $unplacedTile['tile'] = [
+                            'tileId' => (string) $unplacedTileData['tileId'],
+                            'orientation' => 'true,true,true,true', // Default 4-sided tile in frontend format
+                            'room' => true, // Assume room tile as default
+                            'features' => [], // No special features
+                        ];
+                        error_log('Failed to get tile data for unplaced tile ' . $unplacedTileData['tileId']->toString() . ', using defaults: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+
         return new self(
             gameId: (string) $game->getGameId(),
             createdAt: null, // If createdAt is not available on GameLifecycleGame
@@ -104,6 +142,7 @@ final readonly class Response
                 'availablePlaces' => $availablePlaces,
                 'lastBattleInfo' => $field?->getLastBattleInfo(),
                 'deck' => $deckInfo, // Add deck information to state
+                'unplacedTile' => $unplacedTile, // Add unplaced tile info
             ],
             players: self::formatGameLifecyclePlayers($game->getPlayers(), $playerData, $messageBus),
             settings: [], // Add any settings if available in GameLifecycleGame

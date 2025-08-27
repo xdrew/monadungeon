@@ -169,9 +169,12 @@ export const gameApi = {
    * @returns {Promise<Object>} Promise with picked tile data
    * @throws {Error} If requiredOpenSide is not provided
    */
-  pickTile: async ({ gameId, tileId, playerId, turnId, requiredOpenSide }) => {
+  pickTile: async ({ gameId, tileId, playerId, turnId, requiredOpenSide, fieldPlace }) => {
     if (requiredOpenSide === undefined) {
       throw new Error('requiredOpenSide is required when picking a tile');
+    }
+    if (!fieldPlace) {
+      throw new Error('fieldPlace is required when picking a tile');
     }
 
     try {
@@ -180,7 +183,8 @@ export const gameApi = {
         tileId,
         playerId,
         turnId,
-        requiredOpenSide
+        requiredOpenSide,
+        fieldPlace
       });
       console.log('Tile picked:', response.data);
       return response.data;

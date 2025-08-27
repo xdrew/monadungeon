@@ -635,7 +635,15 @@ const handleTilePicking = async (params) => {
   try {
     isRequestInProgress = true;
     
-    const tileId = generateUUID();
+    // Check if there's an unplaced tile in the backend - if so, reuse its tileId
+    let tileId;
+    if (gameData?.state?.unplacedTile?.tileId) {
+      console.log('Reusing existing unplaced tile ID:', gameData.state.unplacedTile.tileId);
+      tileId = gameData.state.unplacedTile.tileId;
+    } else {
+      tileId = generateUUID();
+    }
+    
     const requiredOpenSide = getRequiredOpenSide(position, gameData, currentPlayerId.value);
     
     if (requiredOpenSide === null) {
@@ -649,6 +657,7 @@ const handleTilePicking = async (params) => {
       playerId: currentPlayerId.value,
       turnId: currentTurnId,
       requiredOpenSide,
+      fieldPlace: position,
     });
 
     // Set initial tile data

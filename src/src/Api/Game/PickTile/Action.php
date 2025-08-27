@@ -24,6 +24,7 @@ final readonly class Action
                 $request->playerId,
                 $request->turnId,
                 $request->requiredOpenSide,
+                $request->fieldPlace,
             ));
             $tile = $messageBus->dispatch(new GetTile($request->tileId));
         } catch (\Throwable $e) {
