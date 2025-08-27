@@ -25,7 +25,7 @@ class VirtualPlayerApiClientStub
         return $this->callHistory;
     }
 
-    public function pickTile(Uuid $gameId, Uuid $tileId, Uuid $playerId, Uuid $turnId, TileSide $requiredOpenSide): array
+    public function pickTile(Uuid $gameId, Uuid $tileId, Uuid $playerId, Uuid $turnId, TileSide $requiredOpenSide, int $x, int $y): array
     {
         $this->callHistory[] = ['method' => 'pickTile', 'params' => func_get_args()];
         return $this->responses['pickTile'] ?? ['success' => true];

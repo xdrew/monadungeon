@@ -22,7 +22,7 @@ final readonly class VirtualPlayerApiClient
     /**
      * Pick a tile from the deck (simulates frontend API call)
      */
-    public function pickTile(Uuid $gameId, Uuid $tileId, Uuid $playerId, Uuid $turnId, TileSide $requiredOpenSide): array
+    public function pickTile(Uuid $gameId, Uuid $tileId, Uuid $playerId, Uuid $turnId, TileSide $requiredOpenSide, int $x, int $y): array
     {
         $request = Request::create(
             uri: '/api/game/pick-tile',
@@ -33,6 +33,7 @@ final readonly class VirtualPlayerApiClient
                 'playerId' => $playerId->toString(),
                 'turnId' => $turnId->toString(),
                 'requiredOpenSide' => $requiredOpenSide->value,
+                'fieldPlace' => ['x' => $x, 'y' => $y],
             ])
         );
         $request->headers->set('Content-Type', 'application/json');
@@ -323,7 +324,7 @@ final readonly class VirtualPlayerApiClient
         $tileId = Uuid::v7();
         
         // First pick the tile
-        $pickResult = $this->pickTile($gameId, $tileId, $playerId, $turnId, $requiredOpenSide);
+        $pickResult = $this->pickTile($gameId, $tileId, $playerId, $turnId, $requiredOpenSide, $x, $y);
         
         // Then place it
         $placeResult = $this->placeTile($gameId, $tileId, $playerId, $turnId, $x, $y);
@@ -348,7 +349,7 @@ final readonly class VirtualPlayerApiClient
         $actions = [];
         
         // Step 1: Try to pick tile (may fail if there's already an unplaced tile)
-        $pickResult = $this->pickTile($gameId, $tileId, $playerId, $turnId, $requiredOpenSide);
+        $pickResult = $this->pickTile($gameId, $tileId, $playerId, $turnId, $requiredOpenSide, $x, $y);
         $actions[] = ['step' => 'pick_tile', 'result' => $pickResult];
         
         // If pick failed due to unplaced tile, try to place with existing tile ID

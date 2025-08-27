@@ -1486,7 +1486,7 @@ final class SmartVirtualPlayer
         $tileId = \App\Infrastructure\Uuid\Uuid::v7();
         
         // MANDATORY Step 1: Pick tile
-        $pickResult = $this->apiClient->pickTile($gameId, $tileId, $playerId, $currentTurnId, $requiredOpenSide);
+        $pickResult = $this->apiClient->pickTile($gameId, $tileId, $playerId, $currentTurnId, $requiredOpenSide, (int)$x, (int)$y);
         $actions[] = $this->createAction('pick_tile', ['result' => $pickResult]);
         
         if (!$pickResult['success']) {
