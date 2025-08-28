@@ -6,7 +6,8 @@
           :class="{
             'victory-title': dynamicResult === 'win',
             'defeat-title': dynamicResult === 'loose',
-            'draw-title': dynamicResult === 'draw'
+            'draw-title': dynamicResult === 'draw',
+            'rolling-title': isRolling
           }"
         >
           {{ dynamicResultText }}
@@ -20,19 +21,21 @@
       </div>
       
       <div class="battle-report-body">
-        <div class="damage-comparison">
+        <div class="damage-comparison" :class="{ 'fade-in': showResults, 'rolling-state': isRolling }">
           <div class="player-damage">
-            <div class="big-number">
+            <div v-show="!isRolling" class="big-number">
               {{ totalCalculatedDamage }}
             </div>
             <div class="damage-details">
               <div class="dice-results">
                 <div class="dice-container">
                   <div
-                    v-for="(value, index) in battleInfo.diceResults"
+                    v-for="(value, index) in (isRolling ? rollingValues : battleInfo.diceResults)"
                     :key="index"
                     class="dice-face"
+                    :class="{ 'rolling-dice': isRolling }"
                     :data-value="value"
+                    :style="isRolling ? { animationDelay: `${index * 0.1}s` } : {}"
                   >
                     <span 
                       v-for="pip in value"
@@ -67,17 +70,19 @@
           <div
             class="comparison-symbol"
             :class="{
-              'greater-than': totalCalculatedDamage > battleInfo.monster,
-              'less-than': totalCalculatedDamage < battleInfo.monster,
-              'equal-to': totalCalculatedDamage === battleInfo.monster
+              'greater-than': !isRolling && totalCalculatedDamage > battleInfo.monster,
+              'less-than': !isRolling && totalCalculatedDamage < battleInfo.monster,
+              'equal-to': !isRolling && totalCalculatedDamage === battleInfo.monster,
+              'versus': isRolling
             }"
           >
-            {{ totalCalculatedDamage > battleInfo.monster ? '>' : 
-              (totalCalculatedDamage < battleInfo.monster ? '<' : '=') }}
+            <span v-if="isRolling" class="versus-text">VS</span>
+            <span v-else>{{ totalCalculatedDamage > battleInfo.monster ? '>' : 
+              (totalCalculatedDamage < battleInfo.monster ? '<' : '=') }}</span>
           </div>
           
           <div class="monster-stats">
-            <div class="big-number">
+            <div class="big-number" :class="{ 'fade-in-delay': !isRolling }">
               {{ battleInfo.monster }}
             </div>
             <div class="monster-details">
@@ -96,8 +101,9 @@
         
         <!-- Modify the reward section to also display when consumables would result in victory -->
         <div
-          v-if="shouldShowReward || (showConsumableSelection && potentialVictoryWithConsumables)"
+          v-if="!isRolling && (shouldShowReward || (showConsumableSelection && potentialVictoryWithConsumables))"
           class="reward-section"
+          :class="{ 'fade-in': showResults }"
         >
           <div class="reward-content">
             <div
@@ -170,8 +176,9 @@
         
         <!-- Merged items section - shows used consumables and selectable consumables -->
         <div
-          v-if="(usedConsumables && usedConsumables.length > 0) || showConsumableSelection || showInventorySelection"
+          v-if="!isRolling && ((usedConsumables && usedConsumables.length > 0) || showConsumableSelection || showInventorySelection)"
           class="used-items-section"
+          :class="{ 'fade-in': showResults }"
         >
           <div class="used-items-title">
             {{ showConsumableSelection ? 'Select consumables to use:' : 
@@ -249,7 +256,7 @@
         -->
       </div>
       
-      <div class="battle-report-footer">
+      <div v-show="!isRolling" class="battle-report-footer" :class="{ 'fade-in': showResults }">
         <!-- Show different buttons based on victory state and inventory status -->
         <!-- Special case for keys: if player already has a key, only show end turn button -->
         <div v-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection">
@@ -358,7 +365,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed, ref, watch, nextTick } from 'vue';
+import { defineProps, defineEmits, computed, ref, watch, nextTick, onMounted } from 'vue';
 import { getMonsterImage } from '@/utils/monsterUtils';
 
 const props = defineProps({
@@ -373,6 +380,55 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up']);
+
+// Animation state
+const isRolling = ref(true);
+const showResults = ref(false);
+const rollingValues = ref([1, 1]);
+
+// Start dice rolling animation
+const startRollingAnimation = () => {
+  // Reset states
+  isRolling.value = true;
+  showResults.value = false;
+  
+  // Initialize with same number of dice as actual roll
+  if (props.battleInfo.diceResults) {
+    rollingValues.value = props.battleInfo.diceResults.map(() => 1);
+  }
+  
+  const rollInterval = setInterval(() => {
+    rollingValues.value = rollingValues.value.map(() => Math.floor(Math.random() * 6) + 1);
+  }, 100);
+  
+  // Stop rolling and show actual values after delay
+  setTimeout(() => {
+    clearInterval(rollInterval);
+    // Set final values to actual dice results
+    rollingValues.value = [...props.battleInfo.diceResults];
+    
+    // Small delay then stop animation
+    setTimeout(() => {
+      isRolling.value = false;
+      // Slight delay before showing numbers for smoothness
+      setTimeout(() => {
+        showResults.value = true;
+      }, 100);
+    }, 200);
+  }, 2000);
+};
+
+// Start animation when component mounts or battle info changes
+onMounted(() => {
+  startRollingAnimation();
+});
+
+// Restart animation if battle info changes (new battle)
+watch(() => props.battleInfo?.battleId, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    startRollingAnimation();
+  }
+});
 
 // Reactive data for inventory selection
 const showInventorySelection = ref(false);
@@ -455,6 +511,11 @@ const dynamicResult = computed(() => {
 
 // Computed property for dynamic header text
 const dynamicResultText = computed(() => {
+  // Show "Rolling..." during dice animation
+  if (isRolling.value) {
+    return 'Rolling...';
+  }
+  
   // If consumables would change the outcome, show updated text
   if (showConsumableSelection.value && selectedConsumables.value.length > 0) {
     const totalDamage = totalCalculatedDamage.value;
@@ -1164,6 +1225,20 @@ const potentialRewardTip = computed(() => {
   color: #ff9800;
 }
 
+.rolling-title {
+  color: #fff;
+  animation: titlePulse 0.8s infinite ease-in-out;
+}
+
+@keyframes titlePulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .close-battle-btn {
   background: none;
   border: none;
@@ -1213,6 +1288,7 @@ const potentialRewardTip = computed(() => {
   justify-content: center;
   margin-bottom: 0.4rem;
   perspective: 1000px;
+  min-height: 44px; /* Prevent layout shift */
 }
 
 .dice-face {
@@ -1255,6 +1331,95 @@ const potentialRewardTip = computed(() => {
     inset 0 1px 2px rgba(0,0,0,0.8),
     0 1px 1px rgba(255,255,255,0.1);
 }
+
+/* Rolling animation styles */
+
+.dice-face.rolling-dice {
+  animation: 
+    rollDice3D 0.6s infinite linear,
+    floatDice 2s infinite ease-in-out;
+  transform-origin: center;
+  transform-style: preserve-3d;
+}
+
+@keyframes rollDice3D {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  25% {
+    transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg);
+  }
+  50% {
+    transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg);
+  }
+  75% {
+    transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg);
+  }
+  100% {
+    transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg);
+  }
+}
+
+@keyframes floatDice {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-6px) scale(1.05);
+  }
+  50% {
+    transform: translateY(0) scale(1);
+  }
+  75% {
+    transform: translateY(-3px) scale(1.02);
+  }
+}
+
+/* Smooth extended number reveal animation */
+.number-reveal {
+  animation: numberReveal 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.number-reveal-delayed {
+  animation: numberReveal 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+}
+
+@keyframes numberReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(30px);
+    filter: blur(12px);
+  }
+  25% {
+    opacity: 0.5;
+    transform: scale(0.7) translateY(15px);
+    filter: blur(6px);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(0.95) translateY(5px);
+    filter: blur(2px);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1.08) translateY(-3px);
+    filter: blur(0);
+  }
+  85% {
+    transform: scale(1.02) translateY(-1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Always show comparison */
+.damage-comparison {
+  opacity: 1;
+}
+
 
 /* One pip - center */
 .dice-face[data-value="1"] .pip {
@@ -1405,6 +1570,30 @@ const potentialRewardTip = computed(() => {
   font-weight: bold;
   padding: 0 1rem;
   color: #fff;
+}
+
+.comparison-symbol.versus {
+  animation: versuspulse 0.8s infinite ease-in-out;
+}
+
+.versus-text {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.8),
+    0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes versuspulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
 }
 
 .greater-than {
