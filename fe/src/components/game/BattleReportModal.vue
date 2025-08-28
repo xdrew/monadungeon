@@ -336,6 +336,15 @@
             </button>
           </template>
         </div>
+        <!-- Add retreat button for battles without consumable selection (lost or draw battles) -->
+        <div v-else-if="(battleInfo.result === 'loose' || battleInfo.result === 'draw') && !showInventorySelection" class="button-group">
+          <button
+            class="accept-defeat-btn"
+            @click="handleRetreat"
+          >
+            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat (lose 1 HP)' }}
+          </button>
+        </div>
         <div v-else-if="showInventorySelection" class="button-group">
           <button 
             :disabled="!selectedItemForReplacement" 
@@ -890,6 +899,27 @@ const leaveItemAndEndTurn = () => {
   } else {
     // For other cases, just end turn
     console.log('Ending turn without finalization');
+    emit('end-turn');
+  }
+};
+
+// Function to handle retreat (accept defeat without using consumables)
+const handleRetreat = () => {
+  console.log('handleRetreat called with battleInfo:', props.battleInfo);
+  console.log('Battle result:', props.battleInfo.result);
+  console.log('Battle ID:', props.battleInfo.battleId);
+  
+  // Finalize the battle without consumables (accept the defeat or draw)
+  if (props.battleInfo.battleId) {
+    console.log('Finalizing battle for retreat, result:', props.battleInfo.result);
+    battleFinalized.value = true;
+    emit('finalize-battle', {
+      battleId: props.battleInfo.battleId,
+      selectedConsumableIds: []  // No consumables used
+    });
+  } else {
+    // Fallback: just end turn if no battle ID
+    console.log('No battle ID, ending turn');
     emit('end-turn');
   }
 };
