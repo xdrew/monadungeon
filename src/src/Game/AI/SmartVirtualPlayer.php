@@ -1404,6 +1404,31 @@ final class SmartVirtualPlayer
         
         // Choose move based on strategy (from safe options only)
         $targetPosition = $this->chooseMovementTarget($safeOptions, $field, $player);
+        
+        // If no valid move target (all positions visited), end exploration
+        if ($targetPosition === null) {
+            error_log("DEBUG AI: No unvisited positions available - ending movement phase");
+            $actions[] = $this->createAction('ai_info', ['message' => 'All reachable positions explored, no further movement possible']);
+            
+            // Check if we can place tiles to open new areas
+            $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
+                gameId: $gameId,
+                playerId: $playerId,
+                messageBus: $this->messageBus,
+            ));
+            $placeTileOptions = $availablePlaces['placeTile'] ?? [];
+            
+            if (!empty($placeTileOptions)) {
+                $actions[] = $this->createAction('ai_reasoning', ['message' => 'Placing tile to open new areas for exploration']);
+                $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
+            } else {
+                $actions[] = $this->createAction('ai_info', ['message' => 'No tiles to place and all positions explored, ending turn']);
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            }
+            return;
+        }
+        
         [$fromX, $fromY] = explode(',', $currentPosition->toString());
         [$toX, $toY] = explode(',', $targetPosition);
         
@@ -1787,36 +1812,33 @@ final class SmartVirtualPlayer
                 }
             }
             
+            // Check if we have unvisited positions to move to
+            $unvisitedOptions = array_filter($moveToOptions, fn($option) => !isset($this->visitedPositions[$option]));
+            
             // Try to continue moving towards better weapons if they exist (but check move limit)
-            if (!empty($betterWeaponsOnField) && !empty($moveToOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+            if (!empty($betterWeaponsOnField) && !empty($unvisitedOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
-                
-                // Check if we have unvisited positions to move to
-                $unvisitedOptions = array_filter($moveToOptions, fn($option) => !isset($this->visitedPositions[$option]));
-                
-                if (!empty($unvisitedOptions)) {
-                    $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing to move towards better weapons']);
-                    $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
-                } else {
-                    // All positions visited, should place tiles or end turn
-                    $actions[] = $this->createAction('ai_reasoning', ['message' => 'All positions visited, cannot continue movement']);
-                    if (!empty($placeTileOptions)) {
-                        $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
-                    } else {
-                        $actions[] = $this->createAction('ai_info', ['message' => 'No unvisited positions and no tiles to place']);
-                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
-                    }
-                }
+                $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing to move towards better weapons']);
+                $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
             } elseif (!empty($placeTileOptions)) {
+                // Place tiles to open new areas
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+                $actions[] = $this->createAction('ai_reasoning', ['message' => 'Placing tile to expand exploration area']);
                 $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
-            } elseif (!empty($moveToOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+            } elseif (!empty($unvisitedOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+                // Continue exploring unvisited positions
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+                $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing exploration of unvisited areas']);
                 $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
             } else {
-                // No more actions available, end turn
-                $actions[] = $this->createAction('ai_info', ['message' => 'No more actions available']);
+                // No unvisited positions, no tiles to place, or reached move limit
+                if (empty($unvisitedOptions)) {
+                    $actions[] = $this->createAction('ai_info', ['message' => 'All reachable positions have been explored']);
+                } else if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+                    $actions[] = $this->createAction('ai_info', ['message' => 'Reached maximum moves for this turn']);
+                } else {
+                    $actions[] = $this->createAction('ai_info', ['message' => 'No more actions available']);
+                }
                 $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                 $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
             }
@@ -2473,8 +2495,9 @@ final class SmartVirtualPlayer
     
     /**
      * Choose movement target based on strategy - TREASURES FIRST!
+     * @return string|null Returns the target position or null if all positions have been visited
      */
-    private function chooseMovementTarget(array $moveOptions, $field, $player): string
+    private function chooseMovementTarget(array $moveOptions, $field, $player): ?string
     {
         if (empty($moveOptions)) {
             throw new \RuntimeException('No move options available');
@@ -2509,11 +2532,12 @@ final class SmartVirtualPlayer
             return !isset($this->visitedPositions[$option]);
         });
         
-        // If all options are visited, prefer moves we haven't visited recently
+        // If all options are visited, we've explored the entire reachable area
         if (empty($unvisitedOptions)) {
-            error_log("DEBUG AI: Warning - all move options have been visited this turn!");
-            // Just use the first available option to avoid getting stuck
-            $unvisitedOptions = array_slice($moveOptions, 0, 1);
+            error_log("DEBUG AI: All reachable positions have been visited this turn - exploration complete");
+            // Return null to indicate no valid move available
+            // The caller should handle this by either placing tiles or ending turn
+            return null;
         }
         
         // PRIORITY 1: Look for treasure locations (chests)
