@@ -4,13 +4,12 @@
       <div class="battle-report-header">
         <h3
           :class="{
-            'victory-title': battleInfo.result === 'win',
-            'defeat-title': battleInfo.result === 'loose',
-            'draw-title': battleInfo.result === 'draw'
+            'victory-title': dynamicResult === 'win',
+            'defeat-title': dynamicResult === 'loose',
+            'draw-title': dynamicResult === 'draw'
           }"
         >
-          {{ battleInfo.result === 'win' ? 'Victory!' : 
-            (battleInfo.result === 'draw' ? 'Draw' : 'Defeat') }}
+          {{ dynamicResultText }}
         </h3>
         <button
           class="close-battle-btn"
@@ -32,19 +31,34 @@
                   <div
                     v-for="(value, index) in battleInfo.diceResults"
                     :key="index"
-                    class="dice"
+                    class="dice-face"
+                    :data-value="value"
                   >
-                    {{ value }}
+                    <span 
+                      v-for="pip in value"
+                      :key="`pip-${index}-${pip}`"
+                      class="pip"
+                      :class="`pip-${value}-${pip}`"
+                    ></span>
                   </div>
                 </div>
-                <div class="dice-total">
-                  Dice: {{ battleInfo.diceRollDamage }}
-                </div>
                 <div
-                  v-if="(battleInfo.itemDamage + consumableDamageTotal) > 0"
-                  class="item-bonus"
+                  v-if="equippedWeapons.length > 0 || consumableDamageTotal > 0"
+                  class="damage-breakdown"
                 >
-                  <span class="bonus-value">+{{ battleInfo.itemDamage + consumableDamageTotal }}</span> from items
+                  <span
+                    v-for="(weapon, index) in equippedWeapons"
+                    :key="`breakdown-weapon-${index}`"
+                    class="weapon-text"
+                  >
+                    {{ getUsedItemEmoji(weapon) }} +{{ getItemTypeDamage(weapon.type) }}
+                  </span>
+                  <span
+                    v-if="consumableDamageTotal > 0"
+                    class="consumable-text"
+                  >
+                    🔮 +{{ consumableDamageTotal }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -55,18 +69,11 @@
             :class="{
               'greater-than': totalCalculatedDamage > battleInfo.monster,
               'less-than': totalCalculatedDamage < battleInfo.monster,
-              'equal-to': totalCalculatedDamage === battleInfo.monster,
-              'potential-victory': showConsumableSelection && totalCalculatedDamage > battleInfo.monster && battleInfo.result !== 'win'
+              'equal-to': totalCalculatedDamage === battleInfo.monster
             }"
           >
             {{ totalCalculatedDamage > battleInfo.monster ? '>' : 
               (totalCalculatedDamage < battleInfo.monster ? '<' : '=') }}
-            <div
-              v-if="showConsumableSelection && totalCalculatedDamage > battleInfo.monster && battleInfo.result !== 'win'" 
-              class="victory-indicator"
-            >
-              Victory!
-            </div>
           </div>
           
           <div class="monster-stats">
@@ -89,58 +96,49 @@
         
         <!-- Modify the reward section to also display when consumables would result in victory -->
         <div
-          v-if="shouldShowReward || (showConsumableSelection && totalCalculatedDamage > battleInfo.monster)"
+          v-if="shouldShowReward || (showConsumableSelection && potentialVictoryWithConsumables)"
           class="reward-section"
         >
-          <div class="reward-title">
-            {{ victoryText }}
-          </div>
           <div class="reward-content">
             <div
               v-if="battleInfo.reward"
               class="reward-item"
             >
-              <div class="item-emoji">
-                {{ displayItemEmoji }}
+              <div class="reward-icon">
+                <span class="item-emoji">{{ displayItemEmoji }}</span>
+                <span
+                  v-if="isPotentialReward && selectedConsumables.length === 0"
+                  class="potential-badge"
+                >?</span>
               </div>
               <div class="item-details">
-                <div class="item-name">
-                  {{ formattedItemName }}
-                </div>
-                <div
-                  v-if="battleInfo.reward.treasureValue && battleInfo.reward.treasureValue > 0"
-                  class="item-value"
-                >
-                  💰 {{ battleInfo.reward.treasureValue }} gold
+                <div class="item-header">
+                  <span class="item-name">{{ formattedItemName }}</span>
                   <span
-                    v-if="isGuardChestReward"
-                    class="auto-collected"
-                  >(automatically collected)</span>
+                    v-if="getItemTypeDamage(battleInfo.reward.type) > 0"
+                    class="item-damage-badge"
+                  >+{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
+                  <span
+                    v-if="battleInfo.reward.treasureValue && battleInfo.reward.treasureValue > 0"
+                    class="item-value-badge"
+                  >💰 {{ battleInfo.reward.treasureValue }}</span>
                 </div>
-                <div
-                  v-if="getItemTypeDamage(battleInfo.reward.type) > 0"
-                  class="item-damage"
-                >
-                  +{{ getItemTypeDamage(battleInfo.reward.type) }} damage
-                </div>
-                <!-- Show automatic collection notice for chests -->
                 <div
                   v-if="isGuardChestReward"
-                  class="auto-collect-notice"
+                  class="auto-collect-info"
                 >
-                  The chest was automatically opened and its contents added to your inventory!
+                  Chest auto-opened!
                 </div>
-                <!-- Show note when the reward is a potential future reward -->
                 <div
-                  v-if="isPotentialReward"
-                  class="potential-reward-notice"
+                  v-if="isPotentialReward && selectedConsumables.length === 0"
+                  class="potential-info"
                 >
-                  {{ potentialRewardTip }}
+                  Will be yours if you use consumables
                 </div>
               </div>
             </div>
             <div
-              v-else-if="showConsumableSelection && totalCalculatedDamage > battleInfo.monster"
+              v-else-if="showConsumableSelection && potentialVictoryWithConsumables"
               class="reward-item generic-reward"
             >
               <img 
@@ -170,22 +168,23 @@
           </div>
         </div>
         
-        <!-- Merged items section - shows used weapons and selectable consumables -->
+        <!-- Merged items section - shows used consumables and selectable consumables -->
         <div
-          v-if="(battleInfo.usedItems && battleInfo.usedItems.length > 0) || showConsumableSelection || showInventorySelection"
+          v-if="(usedConsumables && usedConsumables.length > 0) || showConsumableSelection || showInventorySelection"
           class="used-items-section"
         >
           <div class="used-items-title">
-            {{ showConsumableSelection ? 'Select consumables to use in battle:' : 
-              showInventorySelection ? 'Choose an item to replace:' : 'Used items:' }}
+            {{ showConsumableSelection ? 'Select consumables to use:' : 
+              showInventorySelection ? 'Choose an item to replace:' : 
+              usedConsumables && usedConsumables.length > 0 ? 'Used consumables:' : '' }}
           </div>
           <div class="used-items-list">
-            <!-- Show used weapon items (non-selectable) only when not doing inventory replacement -->
+            <!-- Show only used consumables (non-selectable) only when not doing inventory replacement -->
             <div
-              v-for="(item, index) in battleInfo.usedItems"
-              v-if="!showInventorySelection"
+              v-for="(item, index) in usedConsumables"
+              v-if="!showInventorySelection && !showConsumableSelection"
               :key="`used-${index}`"
-              class="used-item"
+              class="used-item consumable-chip"
             >
               <span class="item-emoji">{{ getUsedItemEmoji(item) }}</span>
               <span class="item-name">{{ getCorrectItemName(item) }}</span>
@@ -271,7 +270,7 @@
           </button>
         </div>
         <!-- Normal victory with reward (non-key, non-guard-chest, or has inventory space) -->
-        <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && !showInventorySelection && !showConsumableSelection">
+        <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && !showInventorySelection && !showConsumableSelection" class="button-group">
           <button
             class="pick-up-btn"
             @click="pickUpAndEndTurn"
@@ -287,14 +286,22 @@
             ⏭️ Leave item and end turn
           </button>
         </div>
-        <div v-else-if="showConsumableSelection">
-          <!-- Show victory buttons if consumables would result in victory -->
-          <div v-if="totalCalculatedDamage > battleInfo.monster">
+        <div v-else-if="showConsumableSelection" class="button-group">
+          <!-- Show victory buttons if consumables would improve outcome -->
+          <template v-if="potentialImprovementWithConsumables">
             <button
+              v-if="potentialVictoryWithConsumables"
               class="pick-up-btn"
               @click="finalizeBattleAndPickUp"
             >
               🎒 Fight, win, and pick up reward
+            </button>
+            <button
+              v-else
+              class="finalize-battle-btn"
+              @click="finalizeBattleWithConsumables"
+            >
+              ⚔️ Fight for a draw
             </button>
             <!-- Only show leave item button when inventory is full for the reward type -->
             <button
@@ -304,9 +311,9 @@
             >
               ⏭️ Fight, win, and leave reward
             </button>
-          </div>
+          </template>
           <!-- Show standard finalization buttons if consumables wouldn't result in victory -->
-          <div v-else>
+          <template v-else>
             <button 
               v-if="selectedConsumables.length > 0"
               class="finalize-battle-btn" 
@@ -320,9 +327,9 @@
             >
               {{ battleInfo.result === 'draw' ? '⬅️ Retreat without consumables' : '😵 Accept defeat (lose 1 HP)' }}
             </button>
-          </div>
+          </template>
         </div>
-        <div v-else-if="showInventorySelection">
+        <div v-else-if="showInventorySelection" class="button-group">
           <button 
             :disabled="!selectedItemForReplacement" 
             class="confirm-replacement-btn"
@@ -396,6 +403,96 @@ const getItemTypeDamage = (itemType) => {
   return damageMap[itemType] || 0;
 };
 
+// Computed to check if using all consumables would result in victory
+const potentialVictoryWithConsumables = computed(() => {
+  if (!showConsumableSelection.value || !availableConsumables.value) return false;
+  
+  const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
+  const maxConsumableDamage = availableConsumables.value
+    .filter(item => getItemTypeDamage(item.type) > 0)
+    .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+  
+  // Only return true for actual victory (not draw)
+  return (currentDamage + maxConsumableDamage) > props.battleInfo.monster;
+});
+
+// Computed to check if consumables could improve outcome (draw or win)
+const potentialImprovementWithConsumables = computed(() => {
+  if (!showConsumableSelection.value || !availableConsumables.value) return false;
+  
+  const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
+  const maxConsumableDamage = availableConsumables.value
+    .filter(item => getItemTypeDamage(item.type) > 0)
+    .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+  
+  const totalPossibleDamage = currentDamage + maxConsumableDamage;
+  
+  // Return true if consumables would improve the outcome
+  if (props.battleInfo.result === 'loose') {
+    return totalPossibleDamage >= props.battleInfo.monster; // Can achieve draw or win
+  }
+  if (props.battleInfo.result === 'draw') {
+    return totalPossibleDamage > props.battleInfo.monster; // Can achieve win
+  }
+  return false;
+});
+
+// Computed property for dynamic battle result based on consumable selection
+const dynamicResult = computed(() => {
+  // If consumables are being selected, calculate potential outcome
+  if (showConsumableSelection.value && selectedConsumables.value.length > 0) {
+    const totalDamage = totalCalculatedDamage.value;
+    const monsterHP = props.battleInfo.monster;
+    
+    if (totalDamage > monsterHP) return 'win';
+    if (totalDamage === monsterHP) return 'draw';
+    return 'loose';
+  }
+  
+  // Otherwise use the actual battle result
+  return props.battleInfo.result;
+});
+
+// Computed property for dynamic header text
+const dynamicResultText = computed(() => {
+  // If consumables would change the outcome, show updated text
+  if (showConsumableSelection.value && selectedConsumables.value.length > 0) {
+    const totalDamage = totalCalculatedDamage.value;
+    const monsterHP = props.battleInfo.monster;
+    
+    if (totalDamage > monsterHP) {
+      return 'Victory!';
+    }
+    if (totalDamage === monsterHP) {
+      return 'Draw';
+    }
+    return 'Defeat';
+  }
+  
+  // Default text based on original result
+  if (props.battleInfo.result === 'win') return 'Victory!';
+  if (props.battleInfo.result === 'draw') return 'Draw';
+  return 'Defeat';
+});
+
+// Computed to filter used consumables
+const usedConsumables = computed(() => {
+  if (!props.battleInfo.usedItems) return [];
+  // Filter for consumables only (fireball, teleport)
+  return props.battleInfo.usedItems.filter(item => 
+    item.type && ['fireball', 'teleport'].includes(item.type)
+  );
+});
+
+// Computed to filter equipped weapons
+const equippedWeapons = computed(() => {
+  if (!props.battleInfo.usedItems) return [];
+  // Filter for weapons only (dagger, sword, axe)
+  return props.battleInfo.usedItems.filter(item => 
+    item.type && ['dagger', 'sword', 'axe'].includes(item.type)
+  );
+});
+
 // Computed properties for damage calculations
 const weaponDamageTotal = computed(() => {
   if (!props.battleInfo.usedItems) return 0;
@@ -416,7 +513,7 @@ const consumableDamageTotal = computed(() => {
 });
 
 const totalCalculatedDamage = computed(() => {
-  return (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value + consumableDamageTotal.value;
+  return (props.battleInfo.diceRollDamage || 0) + (props.battleInfo.itemDamage || 0) + consumableDamageTotal.value;
 });
 
 // Computed property to check if the reward is a key
@@ -988,7 +1085,7 @@ const shouldShowReward = computed(() => {
 const isPotentialReward = computed(() => {
   return props.battleInfo.result !== 'win' && 
          showConsumableSelection.value && 
-         totalCalculatedDamage.value > props.battleInfo.monster;
+         potentialVictoryWithConsumables.value;
 });
 
 // Computed property for potential victory text
@@ -1028,8 +1125,8 @@ const potentialRewardTip = computed(() => {
   background-color: #222;
   border-radius: 8px;
   width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
+  max-width: 550px;
+  max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
   display: flex;
@@ -1042,14 +1139,17 @@ const potentialRewardTip = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1.25rem;
+  padding: 0.6rem 1rem;
   border-bottom: 1px solid #444;
-  background-color: #1a1a1a;
+  background: linear-gradient(180deg, #252525 0%, #1a1a1a 100%);
 }
 
 .battle-report-header h3 {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .victory-title {
@@ -1078,7 +1178,7 @@ const potentialRewardTip = computed(() => {
 }
 
 .battle-report-body {
-  padding: 1rem;
+  padding: 0.75rem;
   background-color: #1e1e1e;
 }
 
@@ -1086,7 +1186,10 @@ const potentialRewardTip = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
 }
 
 .player-damage, .monster-stats {
@@ -1097,51 +1200,208 @@ const potentialRewardTip = computed(() => {
 }
 
 .big-number {
-  font-size: 3rem;
+  font-size: 2.5rem;
   font-weight: bold;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
   color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .dice-container {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.4rem;
+  perspective: 1000px;
 }
 
-.dice {
-  width: 40px;
-  height: 40px;
-  background-color: #333;
-  border: 1px solid #555;
-  border-radius: 6px;
+.dice-face {
+  width: 44px;
+  height: 44px;
+  background: 
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, transparent 50%),
+    linear-gradient(145deg, #fafafa 0%, #d8d8d8 50%, #c0c0c0 100%);
+  border: 2px solid #888;
+  border-radius: 10px;
+  display: grid;
+  padding: 4px;
+  box-shadow: 
+    0 4px 8px rgba(0,0,0,0.4),
+    0 2px 4px rgba(0,0,0,0.3),
+    inset 0 2px 4px rgba(255,255,255,0.8),
+    inset 0 -2px 4px rgba(0,0,0,0.2);
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+}
+
+.dice-face:hover {
+  transform: rotateY(10deg) rotateX(-10deg) scale(1.1);
+  box-shadow: 
+    0 6px 12px rgba(0,0,0,0.5),
+    0 3px 6px rgba(0,0,0,0.4),
+    inset 0 2px 4px rgba(255,255,255,0.8),
+    inset 0 -2px 4px rgba(0,0,0,0.2);
+}
+
+/* Enhanced pip styles */
+.pip {
+  width: 7px;
+  height: 7px;
+  background: radial-gradient(circle at 30% 30%, #444 0%, #111 100%);
+  border-radius: 50%;
+  position: absolute;
+  box-shadow: 
+    inset 0 1px 2px rgba(0,0,0,0.8),
+    0 1px 1px rgba(255,255,255,0.1);
+}
+
+/* One pip - center */
+.dice-face[data-value="1"] .pip {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Two pips - diagonal */
+.dice-face[data-value="2"] .pip-2-1 {
+  top: 25%;
+  left: 25%;
+  transform: translate(-50%, -50%);
+}
+.dice-face[data-value="2"] .pip-2-2 {
+  bottom: 25%;
+  right: 25%;
+  transform: translate(50%, 50%);
+}
+
+/* Three pips - diagonal */
+.dice-face[data-value="3"] .pip-3-1 {
+  top: 25%;
+  left: 25%;
+  transform: translate(-50%, -50%);
+}
+.dice-face[data-value="3"] .pip-3-2 {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.dice-face[data-value="3"] .pip-3-3 {
+  bottom: 25%;
+  right: 25%;
+  transform: translate(50%, 50%);
+}
+
+/* Four pips - corners */
+.dice-face[data-value="4"] .pip-4-1 {
+  top: 25%;
+  left: 25%;
+  transform: translate(-50%, -50%);
+}
+.dice-face[data-value="4"] .pip-4-2 {
+  top: 25%;
+  right: 25%;
+  transform: translate(50%, -50%);
+}
+.dice-face[data-value="4"] .pip-4-3 {
+  bottom: 25%;
+  left: 25%;
+  transform: translate(-50%, 50%);
+}
+.dice-face[data-value="4"] .pip-4-4 {
+  bottom: 25%;
+  right: 25%;
+  transform: translate(50%, 50%);
+}
+
+/* Five pips - corners + center */
+.dice-face[data-value="5"] .pip-5-1 {
+  top: 25%;
+  left: 25%;
+  transform: translate(-50%, -50%);
+}
+.dice-face[data-value="5"] .pip-5-2 {
+  top: 25%;
+  right: 25%;
+  transform: translate(50%, -50%);
+}
+.dice-face[data-value="5"] .pip-5-3 {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.dice-face[data-value="5"] .pip-5-4 {
+  bottom: 25%;
+  left: 25%;
+  transform: translate(-50%, 50%);
+}
+.dice-face[data-value="5"] .pip-5-5 {
+  bottom: 25%;
+  right: 25%;
+  transform: translate(50%, 50%);
+}
+
+/* Six pips - two columns */
+.dice-face[data-value="6"] .pip-6-1 {
+  top: 25%;
+  left: 25%;
+  transform: translate(-50%, -50%);
+}
+.dice-face[data-value="6"] .pip-6-2 {
+  top: 25%;
+  right: 25%;
+  transform: translate(50%, -50%);
+}
+.dice-face[data-value="6"] .pip-6-3 {
+  top: 50%;
+  left: 25%;
+  transform: translate(-50%, -50%);
+}
+.dice-face[data-value="6"] .pip-6-4 {
+  top: 50%;
+  right: 25%;
+  transform: translate(50%, -50%);
+}
+.dice-face[data-value="6"] .pip-6-5 {
+  bottom: 25%;
+  left: 25%;
+  transform: translate(-50%, 50%);
+}
+.dice-face[data-value="6"] .pip-6-6 {
+  bottom: 25%;
+  right: 25%;
+  transform: translate(50%, 50%);
+}
+
+.damage-breakdown {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 1.2rem;
-  color: #fff;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
 }
 
-.dice-total {
-  text-align: center;
-  margin-bottom: 0.25rem;
-  color: #ddd;
+.weapon-text,
+.consumable-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-weight: 600;
+  font-size: 0.75rem;
 }
 
-.item-bonus {
-  text-align: center;
-  color: #ddd;
+.weapon-text {
+  color: #81c784;
 }
 
-.bonus-value {
-  font-weight: bold;
-  color: #4caf50;
+.consumable-text {
+  color: #ba68c8;
 }
 
 .comparison-symbol {
   position: relative;
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: bold;
   padding: 0 1rem;
   color: #fff;
@@ -1159,13 +1419,9 @@ const potentialRewardTip = computed(() => {
   color: #ff9800;
 }
 
-.potential-victory {
-  color: #4caf50;
-}
-
 .monster-emoji {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
 }
 
 .monster-name {
@@ -1174,45 +1430,64 @@ const potentialRewardTip = computed(() => {
 }
 
 .reward-section {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
   border-radius: 6px;
-  background-color: #2a4d3a;
+  background: linear-gradient(135deg, #2a4d3a 0%, #1e3a28 100%);
   border: 1px solid #4caf50;
-}
-
-.reward-title {
-  font-size: 1rem;
-  font-weight: bold;
-  color: #4caf50;
-  margin-bottom: 0.5rem;
-  text-align: center;
 }
 
 .reward-content {
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .reward-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
+  width: auto;
 }
 
-.item-emoji {
-  font-size: 1.5rem;
+.reward-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reward-icon .item-emoji {
+  font-size: 2rem;
+}
+
+.potential-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  background: #ff9800;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  border: 1px solid white;
 }
 
 .monster-battle-image {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
   background: var(--monad-bg-card, #1A1830);
   padding: 4px;
   border-radius: 8px;
   border: 2px solid var(--monad-purple-light, #9F6EFF);
-  box-shadow: 0 4px 8px rgba(123, 63, 242, 0.25);
+  box-shadow: 0 3px 6px rgba(123, 63, 242, 0.2);
   animation: monsterPulse 2s infinite;
 }
 
@@ -1241,18 +1516,42 @@ const potentialRewardTip = computed(() => {
 .item-details {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.item-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .item-name {
   font-weight: bold;
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
-.item-value {
+.item-damage-badge,
+.item-value-badge {
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.item-damage-badge {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.item-value-badge {
+  background: rgba(255, 215, 0, 0.2);
   color: #ffd700;
-  font-size: 0.8rem;
+  border: 1px solid rgba(255, 215, 0, 0.4);
 }
 
 .auto-collected {
@@ -1262,22 +1561,19 @@ const potentialRewardTip = computed(() => {
   margin-left: 0.5rem;
 }
 
-.auto-collect-notice {
-  color: #ddd;
-  font-size: 0.8rem;
+.auto-collect-info,
+.potential-info {
+  font-size: 0.75rem;
+  color: #aaa;
   font-style: italic;
-  margin-top: 0.25rem;
 }
 
-.potential-reward-notice {
-  color: #ffcc80;
-  font-size: 0.85rem;
-  font-style: italic;
-  margin-top: 0.25rem;
-  padding: 4px 8px;
-  background-color: rgba(255, 193, 7, 0.15);
-  border-left: 3px solid #ffc107;
-  border-radius: 0 4px 4px 0;
+.auto-collect-info {
+  color: #4caf50;
+}
+
+.potential-info {
+  color: #ff9800;
 }
 
 .no-reward {
@@ -1287,17 +1583,20 @@ const potentialRewardTip = computed(() => {
 }
 
 .used-items-section {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
   border-radius: 6px;
-  background-color: #3a3a3a;
-  border: 1px solid #555;
+  background-color: rgba(58, 58, 58, 0.5);
+  border: 1px solid #444;
 }
 
 .used-items-title {
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-  color: #fff;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #ccc;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .used-items-list {
@@ -1308,28 +1607,34 @@ const potentialRewardTip = computed(() => {
 
 .used-item {
   background-color: #555;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 16px;
+  font-size: 0.85rem;
   color: #ddd;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
+}
+
+.used-item.consumable-chip {
+  background: linear-gradient(135deg, #673ab7 0%, #512da8 100%);
+  border: 1px solid rgba(103, 58, 183, 0.5);
 }
 
 .used-item .item-emoji {
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .used-item .item-name {
   color: #fff;
   font-weight: 500;
+  font-size: 0.8rem;
 }
 
 .used-item .item-damage {
-  color: #4caf50;
-  font-weight: bold;
-  font-size: 0.8rem;
+  color: #81c784;
+  font-weight: 600;
+  font-size: 0.75rem;
 }
 
 /* Add styles for selectable items */
@@ -1569,45 +1874,46 @@ const potentialRewardTip = computed(() => {
 }
 
 .battle-report-footer {
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
   border-top: 1px solid #444;
-  background-color: #1a1a1a;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
+  background: linear-gradient(180deg, #1a1a1a 0%, #151515 100%);
 }
 
 .pick-up-btn {
   background-color: #4caf50;
   color: white;
   border: none;
-  padding: 12px 20px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
-  transition: background-color 0.2s;
-  margin-right: 12px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .pick-up-btn:hover {
   background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
 .leave-item-btn {
   background-color: #666;
   color: white;
   border: none;
-  padding: 12px 20px;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
-  margin-left: 12px;
+  font-size: 13px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .leave-item-btn:hover {
   background-color: #555;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
 .confirm-replacement-btn {
@@ -1664,6 +1970,19 @@ const potentialRewardTip = computed(() => {
   transform: translateY(-1px);
 }
 
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+}
+
+.button-group button {
+  width: 90%;
+  max-width: 400px;
+}
+
 .finalize-battle-btn {
   background: linear-gradient(145deg, #2196f3, #1976d2);
   color: white;
@@ -1694,34 +2013,6 @@ const potentialRewardTip = computed(() => {
 .accept-defeat-btn:hover {
   background: linear-gradient(145deg, #616161, #424242);
   transform: translateY(-1px);
-}
-
-.victory-indicator {
-  position: absolute;
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: #fff;
-  background-color: #4caf50;
-  padding: 2px 8px;
-  border-radius: 12px;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    transform: translateX(-50%) scale(1.1);
-  }
-  100% {
-    transform: translateX(-50%) scale(1);
-  }
 }
 
 .reward-item.generic-reward {
