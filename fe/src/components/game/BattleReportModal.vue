@@ -259,7 +259,7 @@
       <div v-show="!isRolling" class="battle-report-footer" :class="{ 'fade-in': showResults }">
         <!-- Show different buttons based on victory state and inventory status -->
         <!-- Special case for keys: if player already has a key, only show end turn button -->
-        <div v-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection">
+        <div v-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection && !battleFinalized">
           <button
             class="end-turn-btn"
             @click="leaveItemAndEndTurn"
@@ -294,47 +294,38 @@
           </button>
         </div>
         <div v-else-if="showConsumableSelection" class="button-group">
-          <!-- Show victory buttons if consumables would improve outcome -->
-          <template v-if="potentialImprovementWithConsumables">
-            <button
-              v-if="potentialVictoryWithConsumables"
-              class="pick-up-btn"
-              @click="finalizeBattleAndPickUp"
-            >
-              🎒 Fight, win, and pick up reward
-            </button>
-            <button
-              v-else
-              class="finalize-battle-btn"
-              @click="finalizeBattleWithConsumables"
-            >
-              ⚔️ Fight for a draw
-            </button>
-            <!-- Only show leave item button when inventory is full for the reward type -->
-            <button
-              v-if="!hasInventorySpaceForEstimatedReward"
-              class="leave-item-btn"
-              @click="finalizeBattleAndLeaveItem"
-            >
-              ⏭️ Fight, win, and leave reward
-            </button>
-          </template>
-          <!-- Show standard finalization buttons if consumables wouldn't result in victory -->
-          <template v-else>
-            <button 
-              v-if="selectedConsumables.length > 0"
-              class="finalize-battle-btn" 
-              @click="finalizeBattleWithConsumables"
-            >
-              ⚔️ Fight with selected items
-            </button>
-            <button
-              class="accept-defeat-btn"
-              @click="finalizeBattleWithoutConsumables"
-            >
-              {{ battleInfo.result === 'draw' ? '⬅️ Retreat without consumables' : '😵 Accept defeat (lose 1 HP)' }}
-            </button>
-          </template>
+          <!-- Dynamic buttons based on currently selected consumables -->
+          <!-- When consumables would achieve victory - show both pickup and leave options -->
+          <button
+            v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
+            class="pick-up-btn"
+            @click="finalizeBattleAndPickUp"
+          >
+            🎒 Fight, win, and pick up reward
+          </button>
+          <button
+            v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
+            class="leave-item-btn"
+            @click="finalizeBattleAndLeaveItem"
+          >
+            ⏭️ Fight, win, and leave reward
+          </button>
+          <!-- When consumables would achieve draw -->
+          <button
+            v-else-if="selectedConsumables.length > 0 && totalCalculatedDamage === battleInfo.monster"
+            class="finalize-battle-btn"
+            @click="finalizeBattleWithConsumables"
+          >
+            ⚔️ Fight for a draw
+          </button>
+          <!-- No consumables selected or consumables don't help - show default outcome -->
+          <button
+            v-else
+            class="accept-defeat-btn"
+            @click="finalizeBattleWithoutConsumables"
+          >
+            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }}
+          </button>
         </div>
         <!-- Add retreat button for battles without consumable selection (lost or draw battles) -->
         <div v-else-if="(battleInfo.result === 'loose' || battleInfo.result === 'draw') && !showInventorySelection" class="button-group">
@@ -342,7 +333,7 @@
             class="accept-defeat-btn"
             @click="handleRetreat"
           >
-            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat (lose 1 HP)' }}
+            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }}
           </button>
         </div>
         <div v-else-if="showInventorySelection" class="button-group">
@@ -504,8 +495,8 @@ const potentialImprovementWithConsumables = computed(() => {
 
 // Computed property for dynamic battle result based on consumable selection
 const dynamicResult = computed(() => {
-  // If consumables are being selected, calculate potential outcome
-  if (showConsumableSelection.value && selectedConsumables.value.length > 0) {
+  // If consumables are selected (even during inventory selection), calculate potential outcome
+  if (selectedConsumables.value.length > 0 && (showConsumableSelection.value || showInventorySelection.value)) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
     
@@ -817,24 +808,18 @@ const finalizeBattleAndPickUp = () => {
   
   battleFinalized.value = true;
   
-  // Hide the modal immediately to prevent showing intermediate state
-  // The parent will handle re-showing if needed
+  // Hide modal since we'll handle inventory selection separately after battle finalization
   const eventData = {
     battleId: props.battleInfo.battleId,
     selectedConsumableIds: selectedConsumables.value,
-    replaceItemId: selectedItemForReplacement.value?.itemId,
-    hideModalImmediately: true
+    replaceItemId: selectedItemForReplacement.value?.itemId
   };
   
   console.log('Emitting finalize-battle-and-pick-up with data:', eventData);
   emit('finalize-battle-and-pick-up', eventData);
   
-  // Reset state
-  showConsumableSelection.value = false;
-  showInventorySelection.value = false;
-  selectedConsumables.value = [];
-  availableConsumables.value = [];
-  selectedItemForReplacement.value = null;
+  // Don't reset state here - we might need it for inventory selection
+  // State will be reset after the full flow completes
 };
 
 const finalizeBattleAndLeaveItem = () => {
@@ -863,14 +848,33 @@ const confirmReplacement = () => {
     return;
   }
 
-  // Emit to parent component to handle the replacement
-  emit('pick-item-with-replacement', selectedItemForReplacement.value.itemId);
+  // Check if we have selected consumables - if so, we're in the finalize-battle flow
+  if (selectedConsumables.value && selectedConsumables.value.length > 0) {
+    console.log('Confirming replacement with consumables:', selectedConsumables.value);
+    // We're finalizing a battle with consumables AND replacing an item
+    const eventData = {
+      battleId: props.battleInfo.battleId,
+      selectedConsumableIds: selectedConsumables.value,
+      replaceItemId: selectedItemForReplacement.value.itemId,
+      hideModalImmediately: true
+    };
+    emit('finalize-battle-and-pick-up', eventData);
+    
+    // Reset consumable state too
+    selectedConsumables.value = [];
+    availableConsumables.value = [];
+  } else {
+    // Normal replacement without consumables
+    emit('pick-item-with-replacement', selectedItemForReplacement.value.itemId);
+  }
   
-  // Reset state
+  // Reset all state after confirming replacement
   showInventorySelection.value = false;
   inventoryForSelection.value = [];
   selectedItemForReplacement.value = null;
   pendingPickupItem.value = null;
+  showConsumableSelection.value = false;
+  availableConsumables.value = [];  // Now safe to clear after full flow completes
 };
 
 const cancelReplacement = () => {
@@ -878,6 +882,11 @@ const cancelReplacement = () => {
   inventoryForSelection.value = [];
   selectedItemForReplacement.value = null;
   pendingPickupItem.value = null;
+  
+  // If we had consumables selected, show them again
+  if (selectedConsumables.value.length > 0) {
+    showConsumableSelection.value = true;
+  }
 };
 
 const leaveItemAndEndTurn = () => {
@@ -938,6 +947,7 @@ const showInventoryFullSelection = (inventory, item) => {
 
 // Method to handle finalize-battle-and-pick-up with inventory full
 const showFinalizeBattleInventoryFullSelection = (inventory) => {
+  console.log('showFinalizeBattleInventoryFullSelection called with inventory:', inventory);
   showInventorySelection.value = true;
   inventoryForSelection.value = inventory || [];
   selectedItemForReplacement.value = null;
@@ -945,6 +955,14 @@ const showFinalizeBattleInventoryFullSelection = (inventory) => {
   // Keep consumable selection values - we'll use them when finalizing
   // But hide the consumable selection UI
   showConsumableSelection.value = false;
+  
+  // IMPORTANT: Keep availableConsumables so totalCalculatedDamage works
+  // Don't clear availableConsumables.value here!
+  
+  // Keep the selected consumables so we can use them when confirming replacement
+  // They are already stored in selectedConsumables.value
+  console.log('Keeping selected consumables for later:', selectedConsumables.value);
+  console.log('Available consumables still present:', availableConsumables.value);
 };
 
 // Expose methods to parent component
@@ -1217,8 +1235,8 @@ const potentialRewardTip = computed(() => {
   border-radius: 8px;
   width: 90%;
   max-width: 550px;
-  max-height: 85vh;
-  overflow-y: auto;
+  max-height: 90vh;
+  overflow: hidden;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
@@ -1285,14 +1303,17 @@ const potentialRewardTip = computed(() => {
 .battle-report-body {
   padding: 0.75rem;
   background-color: #1e1e1e;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .damage-comparison {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
 }
@@ -1649,8 +1670,8 @@ const potentialRewardTip = computed(() => {
 }
 
 .reward-section {
-  margin-bottom: 0.75rem;
-  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.4rem;
   border-radius: 6px;
   background: linear-gradient(135deg, #2a4d3a 0%, #1e3a28 100%);
   border: 1px solid #4caf50;
@@ -1802,8 +1823,8 @@ const potentialRewardTip = computed(() => {
 }
 
 .used-items-section {
-  margin-bottom: 0.75rem;
-  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.4rem;
   border-radius: 6px;
   background-color: rgba(58, 58, 58, 0.5);
   border: 1px solid #444;
@@ -2096,13 +2117,14 @@ const potentialRewardTip = computed(() => {
   padding: 0.75rem 1rem;
   border-top: 1px solid #444;
   background: linear-gradient(180deg, #1a1a1a 0%, #151515 100%);
+  flex-shrink: 0;
 }
 
 .pick-up-btn {
-  background-color: #4caf50;
+  background: linear-gradient(145deg, #4caf50, #45a049);
   color: white;
   border: none;
-  padding: 10px 16px;
+  padding: 0.75rem 1.5rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
@@ -2112,25 +2134,26 @@ const potentialRewardTip = computed(() => {
 }
 
 .pick-up-btn:hover {
-  background-color: #45a049;
+  background: linear-gradient(145deg, #45a049, #388e3c);
   transform: translateY(-1px);
   box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
 .leave-item-btn {
-  background-color: #666;
+  background: linear-gradient(145deg, #666, #555);
   color: white;
   border: none;
-  padding: 10px 16px;
+  padding: 0.75rem 1.5rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
+  font-weight: bold;
   transition: all 0.2s;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .leave-item-btn:hover {
-  background-color: #555;
+  background: linear-gradient(145deg, #555, #444);
   transform: translateY(-1px);
   box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
@@ -2209,8 +2232,10 @@ const potentialRewardTip = computed(() => {
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 13px;
   font-weight: bold;
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .finalize-battle-btn:hover {
@@ -2225,8 +2250,10 @@ const potentialRewardTip = computed(() => {
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 13px;
   font-weight: bold;
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .accept-defeat-btn:hover {
