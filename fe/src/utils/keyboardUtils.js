@@ -18,6 +18,8 @@
  * @param {Function} params.getProcessedAvailablePlaces - Function to get processed available places
  * @param {Ref<Object|null>} params.gameData - Reference to game data
  * @param {Ref<string>} params.currentPlayerId - Reference to current player ID
+ * @param {Ref<boolean>} params.isTeleportMode - Reference to teleport mode flag
+ * @param {Function} params.cancelTeleportMode - Function to cancel teleport mode
  */
 export const handleKeyboardEvents = ({
   e,
@@ -32,7 +34,9 @@ export const handleKeyboardEvents = ({
   handlePlaceClick,
   getProcessedAvailablePlaces,
   gameData,
-  currentPlayerId
+  currentPlayerId,
+  isTeleportMode,
+  cancelTeleportMode
 }) => {
   // Helper function to get value from a possible ref
   const getValue = (ref) => ref && typeof ref.value !== 'undefined' ? ref.value : ref;
@@ -44,12 +48,23 @@ export const handleKeyboardEvents = ({
   const pickedTileValue = getValue(pickedTile);
   const isPlacingTileValue = getValue(isPlacingTile);
   const ghostTilePositionValue = getValue(ghostTilePosition);
+  const isTeleportModeValue = getValue(isTeleportMode);
 
-  // If battle report is open, allow closing with Escape key
-  if (showBattleReportModalValue && e.key === 'Escape') {
-    closeBattleReportAndEndTurn();
-    e.preventDefault();
-    return;
+  // Handle Escape key for various modes
+  if (e.key === 'Escape') {
+    // If battle report is open, close it
+    if (showBattleReportModalValue) {
+      closeBattleReportAndEndTurn();
+      e.preventDefault();
+      return;
+    }
+    
+    // If teleport mode is active, cancel it
+    if (isTeleportModeValue && cancelTeleportMode) {
+      cancelTeleportMode();
+      e.preventDefault();
+      return;
+    }
   }
 
   // Always handle basic navigation keys regardless of turn

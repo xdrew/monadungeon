@@ -313,7 +313,10 @@
                     v-for="item in (player.inventory?.spells || [])"
                     :key="item.itemId" 
                     class="inventory-item spell-item compact"
-                    :class="{ 'clickable': item.type === 'teleport' && isPlayerTurn && player.id === currentPlayerId }"
+                    :class="{ 
+                      'clickable': item.type === 'teleport' && isPlayerTurn && player.id === currentPlayerId,
+                      'teleport-active': isTeleportMode && selectedTeleportSpell?.itemId === item.itemId
+                    }"
                     :title="getItemTooltip(item)"
                     @click="item.type === 'teleport' && isPlayerTurn && player.id === currentPlayerId && handleTeleportSpellSelection(item)"
                   >
@@ -3214,7 +3217,9 @@ const handleKeyboardEvents = (e) => {
     handlePlaceClick,
     getProcessedAvailablePlaces,
     gameData,
-    currentPlayerId
+    currentPlayerId,
+    isTeleportMode,
+    cancelTeleportMode
   });
 };
 
@@ -3890,6 +3895,12 @@ const handleTeleportSpellSelection = async (spell) => {
   console.log('handleTeleportSpellSelection called with spell:', spell);
   console.log('Spell itemId:', spell.itemId);
   console.log('Spell type:', spell.type);
+  
+  // If already in teleport mode with the same spell, cancel it (toggle behavior)
+  if (isTeleportMode.value && selectedTeleportSpell.value?.itemId === spell.itemId) {
+    cancelTeleportMode();
+    return;
+  }
   
   // Get healing fountain positions from the game data
   if (gameData.value && gameData.value.field && gameData.value.field.healingFountainPositions) {
@@ -5055,5 +5066,22 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   transform: scale(1.1);
   box-shadow: 0 0 10px rgba(138, 43, 226, 0.6);
   background: rgba(138, 43, 226, 0.2);
+}
+
+/* Active teleport spell indicator */
+.inventory-item.spell-item.teleport-active {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+  border: 2px solid #8a2be2;
+  box-shadow: 0 0 15px rgba(138, 43, 226, 0.8);
+  background: rgba(138, 43, 226, 0.3);
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(138, 43, 226, 1);
+  }
 }
 </style>

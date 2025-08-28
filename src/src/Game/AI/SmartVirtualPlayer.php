@@ -669,8 +669,47 @@ final class SmartVirtualPlayer
                         }
                         error_log("DEBUG AI: Should pick up key - we don't have one yet");
                         return true;
+                    } else if (in_array($itemType, ['fireball', 'teleport'])) {
+                        // Check spell inventory capacity
+                        $inventory = $player->getInventory();
+                        $spells = isset($inventory['spell']) ? $inventory['spell'] : [];
+                        $spellCount = count($spells);
+                        
+                        // Maximum 3 spells allowed
+                        if ($spellCount >= 3) {
+                            // Check if we should replace a weaker spell
+                            $spellPriority = ['teleport' => 1, 'fireball' => 2];
+                            $newPriority = $spellPriority[$itemType] ?? 0;
+                            
+                            // Check if we have weaker spells to replace
+                            $hasWeakerSpell = false;
+                            foreach ($spells as $spell) {
+                                if ($spell instanceof \App\Game\Item\Item) {
+                                    $spellType = $spell->type->value ?? '';
+                                } else {
+                                    $spellType = $spell['type'] ?? '';
+                                }
+                                
+                                $invPriority = $spellPriority[$spellType] ?? 0;
+                                if ($invPriority < $newPriority) {
+                                    $hasWeakerSpell = true;
+                                    break;
+                                }
+                            }
+                            
+                            if ($hasWeakerSpell) {
+                                error_log("DEBUG AI: Should pick up {$itemType} spell - can replace weaker spell (have {$spellCount}/3)");
+                                return true;
+                            } else {
+                                error_log("DEBUG AI: Should NOT pick up {$itemType} - already have 3 spells and none are weaker");
+                                return false;
+                            }
+                        } else {
+                            error_log("DEBUG AI: Should pick up {$itemType} spell - have room ({$spellCount}/3 spells)");
+                            return true;
+                        }
                     } else {
-                        // Always pick up other items (spells, chests, etc.)
+                        // Pick up other items (chests, etc.)
                         return true;
                     }
                 }
