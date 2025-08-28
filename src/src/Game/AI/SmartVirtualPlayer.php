@@ -26,6 +26,7 @@ final class SmartVirtualPlayer
     private static array $unreachableTargets = [];  // Track targets that are unreachable (persists across turns)
     private static array $turnsSinceLastProgress = [];  // Track turns without progress per game/player
     private static array $lastFieldStateHash = [];  // Track field state to detect when new tiles are placed
+    private static array $unPickableItems = [];  // Track items that couldn't be picked up due to full inventory
     private int $moveCount = 0;  // Track number of moves in current turn
     private ?string $currentTargetPosition = null;  // Track current target to prevent oscillation
     private ?string $currentTargetReason = null;  // Track why we're pursuing current target
@@ -337,8 +338,13 @@ final class SmartVirtualPlayer
             if (isset($items[$currentPosStr])) {
                 $item = $items[$currentPosStr];
                 
+                // Check if we've already tried and failed to pick up this item
+                $trackingKey = "{$gameId}_{$playerId}";
+                if (isset(self::$unPickableItems[$trackingKey][$currentPosStr])) {
+                    $actions[] = $this->createAction('ai_info', ['message' => 'Skipping item at current position - already tried to pick up with full inventory']);
+                } 
                 // Check if this is a defeated monster with loot we haven't picked up
-                if ($this->shouldPickupItem($item, $player)) {
+                elseif ($this->shouldPickupItem($item, $player)) {
                     $actions[] = $this->createAction('ai_reasoning', ['message' => 'Standing on item from previous battle - picking it up!']);
                     
                     [$x, $y] = explode(',', $currentPosStr);
@@ -350,17 +356,33 @@ final class SmartVirtualPlayer
                         
                         // Check if inventory became full and we need to replace
                         if (isset($response['inventoryFull']) && $response['inventoryFull'] === true) {
-                            $pickedUpItem = $response['item'] ?? null;
-                            if ($pickedUpItem && $this->shouldReplaceForBetterItem($pickedUpItem, $response['currentInventory'] ?? [])) {
-                                $this->handlePostPickupReplacement($gameId, $playerId, $currentTurnId, $response, $actions);
+                            // Check if item was actually replaced
+                            $itemReplaced = $response['itemReplaced'] ?? false;
+                            
+                            if (!$itemReplaced) {
+                                // Item was NOT picked up due to full inventory
+                                $actions[] = $this->createAction('ai_info', ['message' => 'Inventory full, item not picked up - continuing turn']);
+                                // Mark this item position as unpickable
+                                $trackingKey = "{$gameId}_{$playerId}";
+                                if (!isset(self::$unPickableItems[$trackingKey])) {
+                                    self::$unPickableItems[$trackingKey] = [];
+                                }
+                                self::$unPickableItems[$trackingKey][$currentPosStr] = true;
+                                // Continue with the turn instead of ending it
+                            } else {
+                                // Item was replaced, we can end the turn
+                                $actions[] = $this->createAction('ai_info', ['message' => 'Item replaced in inventory, ending turn']);
+                                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                                return $actions;
                             }
+                        } else {
+                            // Item was picked up successfully (inventory not full)
+                            $actions[] = $this->createAction('ai_info', ['message' => 'Item picked up, ending turn']);
+                            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                            return $actions;
                         }
-                        
-                        // Picking up an item ends the turn
-                        $actions[] = $this->createAction('ai_info', ['message' => 'Item picked up, ending turn']);
-                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
-                        return $actions;
                     }
                 }
             }
