@@ -399,7 +399,7 @@ const startRollingAnimation = () => {
   
   const rollInterval = setInterval(() => {
     rollingValues.value = rollingValues.value.map(() => Math.floor(Math.random() * 6) + 1);
-  }, 100);
+  }, 60); // Faster updates for shorter duration
   
   // Stop rolling and show actual values after delay
   setTimeout(() => {
@@ -410,12 +410,12 @@ const startRollingAnimation = () => {
     // Small delay then stop animation
     setTimeout(() => {
       isRolling.value = false;
-      // Slight delay before showing numbers for smoothness
+      // Delay before showing numbers for dramatic effect
       setTimeout(() => {
         showResults.value = true;
-      }, 100);
-    }, 200);
-  }, 2000);
+      }, 200);
+    }, 100);
+  }, 800); // 0.8 second roll
 };
 
 // Start animation when component mounts or battle info changes
@@ -1336,8 +1336,8 @@ const potentialRewardTip = computed(() => {
 
 .dice-face.rolling-dice {
   animation: 
-    rollDice3D 0.6s infinite linear,
-    floatDice 2s infinite ease-in-out;
+    rollDice3D 0.3s infinite linear,
+    floatDice 0.8s infinite ease-in-out;
   transform-origin: center;
   transform-style: preserve-3d;
 }
