@@ -661,8 +661,16 @@ final class SmartVirtualPlayer
                             error_log("DEBUG AI: Should NOT pick up {$itemType} - already have better or equal weapons");
                             return false;
                         }
+                    } else if ($itemType === 'key') {
+                        // Only pick up keys if we don't already have one
+                        if ($this->playerHasKey($player)) {
+                            error_log("DEBUG AI: Already have a key, not picking up another one");
+                            return false;
+                        }
+                        error_log("DEBUG AI: Should pick up key - we don't have one yet");
+                        return true;
                     } else {
-                        // Always pick up non-weapon items
+                        // Always pick up other items (spells, chests, etc.)
                         return true;
                     }
                 }
