@@ -1360,60 +1360,79 @@ final class SmartVirtualPlayer
             error_log("DEBUG AI: Set persistent target to {$targetWeapon} at {$targetPos} for multi-turn pursuit");
             
             // Track progress towards this weapon position (not the full description)
+            // Calculate actual distance from current position to target for progress tracking
+            [$targetX, $targetY] = explode(',', $targetPos);
+            $actualDistanceToTarget = abs($currentX - (int)$targetX) + abs($currentY - (int)$targetY);
+            
             if (!isset(self::$turnsSinceLastProgress[$trackingKey][$targetPos])) {
-                self::$turnsSinceLastProgress[$trackingKey][$targetPos] = ['distance' => $shortestDistance, 'turns' => 0];
+                self::$turnsSinceLastProgress[$trackingKey][$targetPos] = ['distance' => $actualDistanceToTarget, 'turns' => 0, 'last_positions' => []];
             } else {
                 $previousDistance = self::$turnsSinceLastProgress[$trackingKey][$targetPos]['distance'];
-                if ($shortestDistance >= $previousDistance) {
+                $lastPositions = self::$turnsSinceLastProgress[$trackingKey][$targetPos]['last_positions'] ?? [];
+                
+                // Check if we're revisiting the same position we were at in a previous turn (oscillating)
+                if (in_array($currentPosition->toString(), $lastPositions)) {
+                    self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] += 2; // Penalize oscillation more heavily
+                    error_log("DEBUG AI: OSCILLATION DETECTED! Revisiting {$currentPosition->toString()} while pursuing {$targetPos}");
+                } elseif ($actualDistanceToTarget >= $previousDistance) {
                     // Not making progress
                     self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns']++;
-                    error_log("DEBUG AI: No progress towards weapon at {$targetPos} for " . self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] . " turns");
-                    
-                    // If we haven't made progress for 3+ consecutive turns, mark as temporarily unreachable
-                    if (self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] >= 3) {
-                        self::$unreachableTargets[$trackingKey][$targetPos] = true;
-                        error_log("DEBUG AI: Marking weapon at {$targetPos} as UNREACHABLE for now!");
-                        
-                        // Clear persistent target if it's now unreachable
-                        if (self::$persistentTargets[$trackingKey] === $targetPos) {
-                            error_log("DEBUG AI: Clearing persistent target at {$targetPos} as it's now unreachable");
-                            self::$persistentTargets[$trackingKey] = null;
-                            self::$persistentTargetReasons[$trackingKey] = null;
-                        }
-                        
-                        $actions[] = $this->createAction('ai_reasoning', [
-                            'message' => "Weapon at {$targetWeapon} appears unreachable for now, will try placing tiles to open new paths"
-                        ]);
-                        
-                        // Try placing a tile to open new paths instead of backtracking
-                        $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
-                            gameId: $gameId,
-                            playerId: $playerId,
-                            messageBus: $this->messageBus,
-                        ));
-                        $placeTileOptions = $availablePlaces['placeTile'] ?? [];
-                        
-                        if (!empty($placeTileOptions)) {
-                            $actions[] = $this->createAction('ai_decision', [
-                                'decision' => 'Placing tile to open new paths',
-                                'reason' => 'Current target unreachable, trying to create new routes'
-                            ]);
-                            $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
-                        } else {
-                            // No tiles to place, check if we hit move limit
-                            if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
-                                $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
-                            } else {
-                                $actions[] = $this->createAction('ai_info', ['message' => 'Target unreachable and no tiles to place, ending turn']);
-                            }
-                            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
-                        }
-                        return;
-                    }
+                    error_log("DEBUG AI: No progress towards weapon at {$targetPos} for " . self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] . " turns (distance: {$actualDistanceToTarget} vs previous: {$previousDistance})");
                 } else {
-                    // We're making progress, reset counter
-                    self::$turnsSinceLastProgress[$trackingKey][$targetPos] = ['distance' => $shortestDistance, 'turns' => 0];
+                    // We're making progress, reset counter but keep position history
+                    self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] = 0;
+                    self::$turnsSinceLastProgress[$trackingKey][$targetPos]['distance'] = $actualDistanceToTarget;
+                    error_log("DEBUG AI: Making progress towards {$targetPos} (distance: {$actualDistanceToTarget} vs previous: {$previousDistance})");
+                }
+                
+                // Keep track of last 3 positions to detect oscillation
+                $lastPositions[] = $currentPosition->toString();
+                if (count($lastPositions) > 3) {
+                    array_shift($lastPositions);
+                }
+                self::$turnsSinceLastProgress[$trackingKey][$targetPos]['last_positions'] = $lastPositions;
+                
+                // If we haven't made progress for 2+ turns (reduced from 3 for faster detection), mark as temporarily unreachable
+                if (self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] >= 2) {
+                    self::$unreachableTargets[$trackingKey][$targetPos] = true;
+                    error_log("DEBUG AI: Marking weapon at {$targetPos} as UNREACHABLE for now!");
+                    
+                    // Clear persistent target if it's now unreachable
+                    if (self::$persistentTargets[$trackingKey] === $targetPos) {
+                        error_log("DEBUG AI: Clearing persistent target at {$targetPos} as it's now unreachable");
+                        self::$persistentTargets[$trackingKey] = null;
+                        self::$persistentTargetReasons[$trackingKey] = null;
+                    }
+                    
+                    $actions[] = $this->createAction('ai_reasoning', [
+                        'message' => "Weapon at {$targetWeapon} appears unreachable for now, will try placing tiles to open new paths"
+                    ]);
+                    
+                    // Try placing a tile to open new paths instead of backtracking
+                    $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
+                        gameId: $gameId,
+                        playerId: $playerId,
+                        messageBus: $this->messageBus,
+                    ));
+                    $placeTileOptions = $availablePlaces['placeTile'] ?? [];
+                    
+                    if (!empty($placeTileOptions)) {
+                        $actions[] = $this->createAction('ai_decision', [
+                            'decision' => 'Placing tile to open new paths',
+                            'reason' => 'Current target unreachable, trying to create new routes'
+                        ]);
+                        $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
+                    } else {
+                        // No tiles to place, check if we hit move limit
+                        if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+                            $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
+                        } else {
+                            $actions[] = $this->createAction('ai_info', ['message' => 'Target unreachable and no tiles to place, ending turn']);
+                        }
+                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    }
+                    return;
                 }
             }
             
@@ -1498,7 +1517,7 @@ final class SmartVirtualPlayer
         }
         
         // Choose move based on strategy (from safe options only)
-        $targetPosition = $this->chooseMovementTarget($safeOptions, $field, $player);
+        $targetPosition = $this->chooseMovementTarget($safeOptions, $field, $player, $gameId, $playerId);
         
         // If no valid move target (all positions visited), end exploration
         if ($targetPosition === null) {
@@ -1925,8 +1944,8 @@ final class SmartVirtualPlayer
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing to move towards better weapons']);
                 $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
-            } elseif (!empty($placeTileOptions)) {
-                // Place tiles to open new areas
+            } elseif (!empty($placeTileOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+                // Place tiles to open new areas (but only if we haven't reached max moves)
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $actions[] = $this->createAction('ai_reasoning', ['message' => 'Placing tile to expand exploration area']);
                 $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
@@ -2602,7 +2621,7 @@ final class SmartVirtualPlayer
      * Choose movement target based on strategy - TREASURES FIRST!
      * @return string|null Returns the target position or null if all positions have been visited
      */
-    private function chooseMovementTarget(array $moveOptions, $field, $player): ?string
+    private function chooseMovementTarget(array $moveOptions, $field, $player, Uuid $gameId, Uuid $playerId): ?string
     {
         if (empty($moveOptions)) {
             throw new \RuntimeException('No move options available');
