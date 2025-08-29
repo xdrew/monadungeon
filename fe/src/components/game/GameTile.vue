@@ -52,7 +52,8 @@
           'has-guard': item && !item.guardDefeated && item.guardHP > 0,
           'is-reward': item && (item.guardDefeated || item.guardHP === 0),
           'pickable': isItemPickable,
-          'has-monster-image': monsterImage && !item.guardDefeated && item.guardHP > 0
+          'has-monster-image': monsterImage && !item.guardDefeated && item.guardHP > 0,
+          'has-chest-image': chestImage
         }" 
         :title="itemTooltip"
         @click="onItemClick"
@@ -62,6 +63,12 @@
           :src="monsterImage"
           :alt="item.name"
           class="monster-image"
+        />
+        <img
+          v-else-if="chestImage"
+          :src="chestImage"
+          :alt="item.type"
+          class="chest-image"
         />
         <span v-else>{{ itemEmoji }}</span>
         <span
@@ -370,6 +377,27 @@ const monsterImage = computed(() => {
   };
   
   return getMonsterImage(battleInfo);
+});
+
+// Computed property to get chest image
+const chestImage = computed(() => {
+  if (!props.item) return null;
+  
+  // Check if it's a chest type item and guard is defeated or no guard
+  const isChest = ['chest', 'ruby_chest'].includes(props.item.type);
+  const guardDefeated = props.item.guardDefeated || props.item.guardHP === 0;
+  
+  if (isChest && guardDefeated) {
+    // Determine which chest image to use
+    if (props.item.type === 'ruby_chest') {
+      return '/images/ruby-chest.png';
+    } else if (props.item.type === 'chest') {
+      // Chests on the field are always closed (they disappear when opened)
+      return '/images/chest-closed.png';
+    }
+  }
+  
+  return null;
 });
 
 // Functions
@@ -711,6 +739,18 @@ const onItemClick = () => {
   text-align: center;
   box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
   z-index: 1;
+}
+
+.chest-image {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.monster-image {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .weapon-damage {

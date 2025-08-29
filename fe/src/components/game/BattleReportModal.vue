@@ -111,7 +111,13 @@
               class="reward-item"
             >
               <div class="reward-icon">
-                <span class="item-emoji">{{ displayItemEmoji }}</span>
+                <img
+                  v-if="displayItemImage"
+                  :src="displayItemImage"
+                  :alt="formattedItemName"
+                  class="item-image"
+                />
+                <span v-else class="item-emoji">{{ displayItemEmoji }}</span>
                 <span
                   v-if="isPotentialReward && selectedConsumables.length === 0"
                   class="potential-badge"
@@ -262,6 +268,7 @@
         <div v-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection && !battleFinalized">
           <button
             class="end-turn-btn"
+            :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
             End Turn (All keys are the same)
@@ -271,6 +278,7 @@
         <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && isGuardChestReward && !showInventorySelection && !showConsumableSelection">
           <button
             class="pick-up-btn"
+            :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
             End Turn (Treasure collected automatically)
@@ -280,6 +288,7 @@
         <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && !showInventorySelection && !showConsumableSelection" class="button-group">
           <button
             class="pick-up-btn"
+            :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
             🎒 Pick up and end turn
@@ -288,6 +297,7 @@
           <button
             v-if="!hasInventorySpace && !isKeyReward && !isGuardChestReward"
             class="leave-item-btn"
+            :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
             ⏭️ Leave item and end turn
@@ -299,6 +309,7 @@
           <button
             v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
             class="pick-up-btn"
+            :disabled="isProcessing"
             @click="finalizeBattleAndPickUp"
           >
             🎒 Fight, win, and pick up reward
@@ -306,6 +317,7 @@
           <button
             v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
             class="leave-item-btn"
+            :disabled="isProcessing"
             @click="finalizeBattleAndLeaveItem"
           >
             ⏭️ Fight, win, and leave reward
@@ -314,6 +326,7 @@
           <button
             v-else-if="selectedConsumables.length > 0 && totalCalculatedDamage === battleInfo.monster"
             class="finalize-battle-btn"
+            :disabled="isProcessing"
             @click="finalizeBattleWithConsumables"
           >
             ⚔️ Fight for a draw
@@ -322,6 +335,7 @@
           <button
             v-else
             class="accept-defeat-btn"
+            :disabled="isProcessing"
             @click="finalizeBattleWithoutConsumables"
           >
             {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }}
@@ -331,6 +345,7 @@
         <div v-else-if="(battleInfo.result === 'loose' || battleInfo.result === 'draw') && !showInventorySelection" class="button-group">
           <button
             class="accept-defeat-btn"
+            :disabled="isProcessing"
             @click="handleRetreat"
           >
             {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }}
@@ -338,7 +353,7 @@
         </div>
         <div v-else-if="showInventorySelection" class="button-group">
           <button 
-            :disabled="!selectedItemForReplacement" 
+            :disabled="!selectedItemForReplacement || isProcessing" 
             class="confirm-replacement-btn"
             @click="confirmReplacement"
           >
@@ -346,6 +361,7 @@
           </button>
           <button
             class="cancel-replacement-btn"
+            :disabled="isProcessing"
             @click="cancelReplacement"
           >
             ❌ Cancel
@@ -354,6 +370,7 @@
         <div v-else>
           <button
             class="end-turn-btn"
+            :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
             End Turn
@@ -427,6 +444,9 @@ onMounted(() => {
 watch(() => props.battleInfo?.battleId, (newId, oldId) => {
   if (newId && newId !== oldId) {
     startRollingAnimation();
+    // Reset processing flag for new battle
+    isProcessing.value = false;
+    battleFinalized.value = false;
   }
 });
 
@@ -450,6 +470,9 @@ const availableDamageConsumables = computed(() => {
 
 // Add flag to track if battle has been finalized
 const battleFinalized = ref(false);
+
+// Add flag to track if any action is in progress (prevents multiple clicks)
+const isProcessing = ref(false);
 
 // Helper function to get damage value for an item type
 const getItemTypeDamage = (itemType) => {
@@ -799,11 +822,14 @@ const toggleConsumable = (item) => {
 };
 
 const finalizeBattleWithConsumables = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
   if (!props.battleInfo.battleId) {
     console.error('No battleId available, cannot finalize battle');
     return;
   }
   
+  isProcessing.value = true;
   battleFinalized.value = true;
   emit('finalize-battle', {
     battleId: props.battleInfo.battleId,
@@ -817,6 +843,9 @@ const finalizeBattleWithConsumables = () => {
 };
 
 const finalizeBattleWithoutConsumables = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
+  isProcessing.value = true;
   battleFinalized.value = true;
   emit('finalize-battle', {
     battleId: props.battleInfo.battleId,
@@ -830,11 +859,14 @@ const finalizeBattleWithoutConsumables = () => {
 };
 
 const finalizeBattleAndPickUp = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
   console.log('🟢 Green button clicked - finalizeBattleAndPickUp called');
   console.log('Battle ID:', props.battleInfo.battleId);
   console.log('Selected consumables:', selectedConsumables.value);
   console.log('Replace item ID:', selectedItemForReplacement.value?.itemId);
   
+  isProcessing.value = true;
   battleFinalized.value = true;
   
   // Hide modal since we'll handle inventory selection separately after battle finalization
@@ -852,6 +884,9 @@ const finalizeBattleAndPickUp = () => {
 };
 
 const finalizeBattleAndLeaveItem = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
+  isProcessing.value = true;
   battleFinalized.value = true;
   
   // Hide the modal immediately to prevent showing intermediate state
@@ -868,14 +903,21 @@ const finalizeBattleAndLeaveItem = () => {
 };
 
 const pickUpAndEndTurn = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
+  isProcessing.value = true;
   // Emit to parent component to handle the pickup
   emit('pick-item-and-end-turn');
 };
 
 const confirmReplacement = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
   if (!selectedItemForReplacement.value) {
     return;
   }
+  
+  isProcessing.value = true;
 
   // Check if we have selected consumables - if so, we're in the finalize-battle flow
   if (selectedConsumables.value && selectedConsumables.value.length > 0) {
@@ -907,6 +949,9 @@ const confirmReplacement = () => {
 };
 
 const cancelReplacement = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
+  isProcessing.value = false; // Reset since we're canceling
   showInventorySelection.value = false;
   inventoryForSelection.value = [];
   selectedItemForReplacement.value = null;
@@ -919,10 +964,14 @@ const cancelReplacement = () => {
 };
 
 const leaveItemAndEndTurn = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
   // Debug logging to see what we have
   console.log('leaveItemAndEndTurn called with battleInfo:', props.battleInfo);
   console.log('Battle result:', props.battleInfo.result);
   console.log('Battle ID:', props.battleInfo.battleId);
+  
+  isProcessing.value = true;
   
   // If this battle has a battleId and needs finalization (defeats/draws/wins where item is left), call finalize-battle
   // This ensures the backend processes the battle result properly
@@ -943,9 +992,13 @@ const leaveItemAndEndTurn = () => {
 
 // Function to handle retreat (accept defeat without using consumables)
 const handleRetreat = () => {
+  if (isProcessing.value) return; // Prevent multiple clicks
+  
   console.log('handleRetreat called with battleInfo:', props.battleInfo);
   console.log('Battle result:', props.battleInfo.result);
   console.log('Battle ID:', props.battleInfo.battleId);
+  
+  isProcessing.value = true;
   
   // Finalize the battle without consumables (accept the defeat or draw)
   if (props.battleInfo.battleId) {
@@ -1059,6 +1112,21 @@ const displayItemEmoji = computed(() => {
     default:
       return '💰'; // Default treasure
   }
+});
+
+// Get item image for chests
+const displayItemImage = computed(() => {
+  if (!props.battleInfo.reward) return null;
+  
+  const item = props.battleInfo.reward;
+  if (item.type === 'chest') {
+    // Battle rewards show opened chests
+    return '/images/chest-opened.png';
+  } else if (item.type === 'ruby_chest') {
+    return '/images/ruby-chest.png';
+  }
+  
+  return null;
 });
 
 // Get inventory item emoji
@@ -1731,6 +1799,12 @@ const potentialRewardTip = computed(() => {
   font-size: 2rem;
 }
 
+.reward-icon .item-image {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
 .potential-badge {
   position: absolute;
   top: -4px;
@@ -2162,10 +2236,17 @@ const potentialRewardTip = computed(() => {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.pick-up-btn:hover {
+.pick-up-btn:hover:not(:disabled) {
   background: linear-gradient(145deg, #45a049, #388e3c);
   transform: translateY(-1px);
   box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+}
+
+.pick-up-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .leave-item-btn {
@@ -2181,10 +2262,17 @@ const potentialRewardTip = computed(() => {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.leave-item-btn:hover {
+.leave-item-btn:hover:not(:disabled) {
   background: linear-gradient(145deg, #555, #444);
   transform: translateY(-1px);
   box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+}
+
+.leave-item-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .confirm-replacement-btn {
@@ -2220,9 +2308,16 @@ const potentialRewardTip = computed(() => {
   transition: all 0.2s;
 }
 
-.cancel-replacement-btn:hover {
+.cancel-replacement-btn:hover:not(:disabled) {
   background: linear-gradient(145deg, #d32f2f, #b71c1c);
   transform: translateY(-1px);
+}
+
+.cancel-replacement-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .end-turn-btn {
@@ -2236,9 +2331,16 @@ const potentialRewardTip = computed(() => {
   transition: all 0.2s;
 }
 
-.end-turn-btn:hover {
+.end-turn-btn:hover:not(:disabled) {
   background: linear-gradient(145deg, #1976d2, #1565c0);
   transform: translateY(-1px);
+}
+
+.end-turn-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .button-group {
@@ -2267,9 +2369,16 @@ const potentialRewardTip = computed(() => {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.finalize-battle-btn:hover {
+.finalize-battle-btn:hover:not(:disabled) {
   background: linear-gradient(145deg, #1976d2, #1565c0);
   transform: translateY(-1px);
+}
+
+.finalize-battle-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .accept-defeat-btn {
@@ -2285,9 +2394,16 @@ const potentialRewardTip = computed(() => {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.accept-defeat-btn:hover {
+.accept-defeat-btn:hover:not(:disabled) {
   background: linear-gradient(145deg, #616161, #424242);
   transform: translateY(-1px);
+}
+
+.accept-defeat-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .reward-item.generic-reward {

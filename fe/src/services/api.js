@@ -400,6 +400,12 @@ export const gameApi = {
       console.log('Turn ended:', response.data);
       return response.data;
     } catch (error) {
+      // Handle 422 (validation error) gracefully without console error
+      if (error.response && error.response.status === 422) {
+        console.log('Turn end validation failed:', error.response.data.message);
+        return error.response.data;
+      }
+      // For other errors, log and throw
       console.error('Error ending turn:', error);
       throw error;
     }

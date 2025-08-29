@@ -42,15 +42,16 @@ class Bag extends AggregateRoot
         $items = [];
 
         for ($i = 0; $i < 10; ++$i) {
-            $items[] = Item::createGiantRat();
-            $items[] = Item::createMummy();
-            $items[] = Item::createSkeletonKing();
-            $items[] = Item::createSkeletonKing();
+            $items[] = Item::createSkeletonTurnkey();
+            $items[] = Item::createSkeletonTurnkey();
+            $items[] = Item::createTreasureChest();
+            $items[] = Item::createTreasureChest();
         }
         $items[] = Item::createFallen();
 
         for ($i = 0; $i < 4; ++$i) {
-            $items[] = Item::createMummy();
+            $items[] = Item::createSkeletonTurnkey();
+            $items[] = Item::createTreasureChest();
         }
 
         return new self($event->gameId, $items);

@@ -6,28 +6,31 @@
     <div class="dialog-content">
       <div class="item-preview">
         <div class="item-icon">
-          {{ itemEmoji }}
+          <img
+            v-if="itemImage"
+            :src="itemImage"
+            :alt="itemName"
+            class="item-image"
+          />
+          <span v-else>{{ itemEmoji }}</span>
         </div>
         <div class="item-details">
           <h3>{{ itemName }}</h3>
-          <p class="item-type">
-            {{ itemType }}
-          </p>
           <p
             v-if="itemDamage > 0"
             class="item-stat"
           >
             Damage: +{{ itemDamage }}
           </p>
-          <p
-            v-if="itemValue > 0"
-            class="item-stat"
-          >
-            Value: {{ itemValue }}
-          </p>
         </div>
       </div>
       <div class="dialog-message">
+        <p
+          v-if="itemValue > 0"
+          class="item-value"
+        >
+          Value: {{ itemValue }}
+        </p>
         <p>You found an item! Would you like to pick it up?</p>
       </div>
       <div class="dialog-actions">
@@ -50,7 +53,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { getItemEmoji, formatItemName, formatItemType } from '@/utils/itemUtils';
+import { getItemEmoji, formatItemName } from '@/utils/itemUtils';
 
 const props = defineProps({
   show: {
@@ -87,7 +90,8 @@ const getDisplayName = (item) => {
     if (item.type === 'sword') return 'Sword';
     if (item.type === 'axe') return 'Axe';
     if (item.type === 'fireball') return 'Fireball';
-    if (item.type === 'chest' || item.type === 'ruby_chest') return formatItemType(item.type);
+    if (item.type === 'chest') return 'Treasure Chest';
+    if (item.type === 'ruby_chest') return 'Ruby Chest';
     return 'Treasure';
   }
   
@@ -97,8 +101,19 @@ const getDisplayName = (item) => {
 
 // Computed properties for item display
 const itemEmoji = computed(() => getItemEmoji(props.item));
+const itemImage = computed(() => {
+  if (!props.item) return null;
+  
+  if (props.item.type === 'chest') {
+    // In pickup dialog, show closed chest (it's still on the field)
+    return '/images/chest-closed.png';
+  } else if (props.item.type === 'ruby_chest') {
+    return '/images/ruby-chest.png';
+  }
+  
+  return null;
+});
 const itemName = computed(() => getDisplayName(props.item));
-const itemType = computed(() => formatItemType(props.item?.type || ''));
 const itemDamage = computed(() => {
   // Damage based on item type
   if (!props.item?.type) return 0;
@@ -169,21 +184,32 @@ const skipItem = () => {
   border-radius: var(--radius-md);
 }
 
+.item-image {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
 .item-details h3 {
-  margin: 0 0 var(--spacing-xs) 0;
+  margin: 0;
   color: var(--text-primary);
   font-size: 1.2em;
 }
 
-.item-type {
-  color: var(--text-secondary);
-  margin: 0 0 var(--spacing-xs) 0;
-  font-size: 0.9em;
-}
-
 .item-stat {
   font-weight: bold;
-  margin: var(--spacing-xs) 0;
+  margin: var(--spacing-md) 0 var(--spacing-xs) 0;
+}
+
+.item-stat:last-of-type {
+  margin-bottom: 0;
+}
+
+.item-value {
+  font-weight: bold;
+  color: var(--color-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 1.1em;
 }
 
 .dialog-message {

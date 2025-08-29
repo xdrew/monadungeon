@@ -289,7 +289,13 @@
                     :title="getItemTooltip(item)"
                   >
                     <div class="item-icon">
-                      {{ getInventoryItemEmoji(item) }}
+                      <img
+                        v-if="getInventoryItemImage(item)"
+                        :src="getInventoryItemImage(item)"
+                        :alt="formatItemName(item.type)"
+                        class="item-image-icon"
+                      />
+                      <span v-else>{{ getInventoryItemEmoji(item) }}</span>
                     </div>
                   </div>
 
@@ -301,7 +307,13 @@
                     :title="getItemTooltip(item)"
                   >
                     <div class="item-icon">
-                      {{ getInventoryItemEmoji(item) }}
+                      <img
+                        v-if="getInventoryItemImage(item)"
+                        :src="getInventoryItemImage(item)"
+                        :alt="formatItemName(item.type)"
+                        class="item-image-icon"
+                      />
+                      <span v-else>{{ getInventoryItemEmoji(item) }}</span>
                     </div>
                     <div class="item-damage-small">
                       +{{ getItemDamage(item) }}
@@ -321,7 +333,13 @@
                     @click="item.type === 'teleport' && isPlayerTurn && player.id === currentPlayerId && handleTeleportSpellSelection(item)"
                   >
                     <div class="item-icon">
-                      {{ getInventoryItemEmoji(item) }}
+                      <img
+                        v-if="getInventoryItemImage(item)"
+                        :src="getInventoryItemImage(item)"
+                        :alt="formatItemName(item.type)"
+                        class="item-image-icon"
+                      />
+                      <span v-else>{{ getInventoryItemEmoji(item) }}</span>
                     </div>
                     <div class="item-damage-small">
                       +{{ getItemDamage(item) }}
@@ -336,7 +354,13 @@
                     :title="getItemTooltip(item)"
                   >
                     <div class="item-icon">
-                      {{ getInventoryItemEmoji(item) }}
+                      <img
+                        v-if="getInventoryItemImage(item)"
+                        :src="getInventoryItemImage(item)"
+                        :alt="formatItemName(item.type)"
+                        class="item-image-icon"
+                      />
+                      <span v-else>{{ getInventoryItemEmoji(item) }}</span>
                     </div>
                     <div
                       v-if="item.treasureValue > 0"
@@ -378,9 +402,10 @@
               <button
                 class="end-turn-btn btn--block"
                 @click="handleManualEndTurn"
-                :disabled="loading || isRequestInProgress"
+                :disabled="loading || isRequestInProgress || !!pickedTileId"
+                :title="pickedTileId ? 'You must place the picked tile before ending your turn' : ''"
               >
-                End Turn
+                {{ pickedTileId ? 'Place Tile First' : 'End Turn' }}
               </button>
             </div>
             
@@ -623,6 +648,20 @@ import { closeBattleReportAndEndTurn as closeBattleReportAndEndTurnUtil } from '
 // Import keyboard utility functions
 import { handleKeyboardEvents as handleKeyboardEventsUtil } from '@/utils/keyboardUtils';
 
+// Helper function to get inventory item image
+const getInventoryItemImage = (item) => {
+  if (!item) return null;
+  
+  if (item.type === 'chest') {
+    // In inventory, show opened chest
+    return '/images/chest-opened.png';
+  } else if (item.type === 'ruby_chest') {
+    return '/images/ruby-chest.png';
+  }
+  
+  return null;
+};
+
 // Helper function for calculating item damage values
 const getItemDamage = (item) => {
   if (!item) return 0;
@@ -808,6 +847,7 @@ const showBattleReportModal = ref(false);
 const battleInfo = ref(null);
 const battleReportModalRef = ref(null);
 const skipBattleModalReshow = ref(false);
+const lastProcessedBattleId = ref(null);
 
 // Computed property to determine if the game can be started
 // Computed properties for ghost tile to ensure reactivity
@@ -1346,14 +1386,20 @@ const loadGameData = async (showLoading = true) => {
     if (fetchedGameData.field && fetchedGameData.field.lastBattleInfo) {
       const battleData = fetchedGameData.field.lastBattleInfo;
 
-      // Only show battle modal if it's for the current player and modal isn't already shown
-      // and we haven't explicitly skipped re-showing it
-      if (battleData.player === currentPlayerId.value && !showBattleReportModal.value && !skipBattleModalReshow.value) {
-        console.log('Found pending battle info for current player:', battleData);
+      // Check if this battle has already been processed
+      const isAlreadyProcessed = lastProcessedBattleId.value === battleData.battleId;
+      
+      // Only show battle modal if:
+      // 1. It's for the current player
+      // 2. Modal isn't already shown
+      // 3. We haven't explicitly skipped re-showing it
+      // 4. This battle hasn't been processed yet
+      if (battleData.player === currentPlayerId.value && !showBattleReportModal.value && !skipBattleModalReshow.value && !isAlreadyProcessed) {
+        console.log('Found new pending battle info for current player:', battleData);
         battleInfo.value = battleData;
         showBattleReportModal.value = true;
-      } else if (skipBattleModalReshow.value) {
-        console.log('Skipping battle modal reshow due to flag');
+      } else if (skipBattleModalReshow.value || isAlreadyProcessed) {
+        console.log('Skipping battle modal reshow:', skipBattleModalReshow.value ? 'due to flag' : `battle ${battleData.battleId} already processed`);
         skipBattleModalReshow.value = false; // Reset the flag for future battles
       }
     } else {
@@ -3516,6 +3562,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
         const currentKeys = getCurrentPlayerData.value?.inventory?.keys || [];
         if (currentKeys.length > 0) {
           finalizeBattleData.replaceItemId = currentKeys[0].itemId;
+          // Set the skip flag BEFORE any async operations to prevent race conditions
           skipBattleModalReshow.value = true;
         }
       } else {
@@ -3560,7 +3607,18 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     
     console.log('✅ Battle finalized with pickup:', response);
     
-    // Close the modal
+    // Mark this battle as processed to prevent re-showing
+    if (finalizeBattleData.battleId) {
+      lastProcessedBattleId.value = finalizeBattleData.battleId;
+    }
+    
+    // Ensure skip flag is set if we auto-replaced a key (check before clearing battleInfo)
+    const wasKeyReplacement = battleInfo.value?.reward?.type === 'key' && finalizeBattleData.replaceItemId;
+    if (wasKeyReplacement) {
+      skipBattleModalReshow.value = true;
+    }
+    
+    // Close the modal and clear battle info BEFORE refreshing data
     showBattleReportModal.value = false;
     battleInfo.value = null;
     
@@ -3584,6 +3642,11 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
 
 // Function to handle finalize battle
 const handleFinalizeBattle = async (finalizeBattleData) => {
+  // Mark this battle as processed to prevent re-showing
+  if (finalizeBattleData.battleId) {
+    lastProcessedBattleId.value = finalizeBattleData.battleId;
+  }
+  
   // Hide modal immediately if requested (to prevent showing intermediate battle state)
   if (finalizeBattleData.hideModalImmediately) {
     showBattleReportModal.value = false;
@@ -4044,6 +4107,14 @@ const reloadPage = () => {
 // Function to handle manual end turn by player
 const handleManualEndTurn = async () => {
   try {
+    // Check if there's a picked tile that hasn't been placed
+    if (pickedTileId.value) {
+      console.log('Cannot end turn with a picked but unplaced tile');
+      error.value = 'You must place the picked tile before ending your turn';
+      setTimeout(() => { error.value = null; }, 5000);
+      return;
+    }
+    
     const currentTurnId = gameData.value?.state?.currentTurnId;
     if (!currentTurnId) {
       console.error('No current turn ID found');
@@ -4059,11 +4130,20 @@ const handleManualEndTurn = async () => {
     loading.value = true;
     loadingStatus.value = 'Ending turn...';
     
-    await gameApi.endTurn({
+    const result = await gameApi.endTurn({
       gameId: id.value,
       playerId: currentPlayerId.value,
       turnId: currentTurnId
     });
+    
+    // Check if there was an error
+    if (result && result.message) {
+      error.value = result.message;
+      setTimeout(() => { error.value = null; }, 5000);
+      loading.value = false;
+      loadingStatus.value = '';
+      return;
+    }
     
     // Clear loading state before refreshing
     loading.value = false;
@@ -4507,6 +4587,12 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .inventory-item.compact .item-icon {
   font-size: 1.2rem;
+}
+
+.item-image-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .item-damage-small {

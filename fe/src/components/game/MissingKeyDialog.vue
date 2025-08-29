@@ -7,8 +7,18 @@
       
       <div class="dialog-body">
         <div class="missing-key-icon">
-          <span v-if="chestType === 'ruby_chest'">💎</span>
-          <span v-else>📦</span>
+          <img
+            v-if="chestType === 'ruby_chest'"
+            src="/images/ruby-chest.png"
+            alt="Ruby Chest"
+            class="chest-icon"
+          />
+          <img
+            v-else
+            src="/images/chest-closed.png"
+            alt="Treasure Chest"
+            class="chest-icon"
+          />
           <span class="key-missing">🔑❌</span>
         </div>
         
@@ -133,9 +143,17 @@ const close = () => {
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
+  align-items: center;
 }
 
 .missing-key-icon span {
+  margin: 0 10px;
+}
+
+.chest-icon {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
   margin: 0 10px;
 }
 

@@ -8,13 +8,16 @@
         <h4>Found Item:</h4>
         <div class="item-card new-item">
           <div class="item-header">
-            <span class="item-emoji">{{ getItemEmoji(droppedItem) }}</span>
+            <img
+              v-if="getItemImage(droppedItem)"
+              :src="getItemImage(droppedItem)"
+              :alt="getDisplayName(droppedItem)"
+              class="item-image"
+            />
+            <span v-else class="item-emoji">{{ getItemEmoji(droppedItem) }}</span>
             <div class="item-details">
               <div class="item-name">
                 {{ getDisplayName(droppedItem) }}
-              </div>
-              <div class="item-type">
-                {{ formatItemType(droppedItem.type) }}
               </div>
             </div>
           </div>
@@ -55,13 +58,16 @@
             @click="selectItemToReplace(item)"
           >
             <div class="item-header">
-              <span class="item-emoji">{{ getItemEmoji(item) }}</span>
+              <img
+                v-if="getItemImage(item)"
+                :src="getItemImage(item)"
+                :alt="getDisplayName(item)"
+                class="item-image"
+              />
+              <span v-else class="item-emoji">{{ getItemEmoji(item) }}</span>
               <div class="item-details">
                 <div class="item-name">
                   {{ getDisplayName(item) }}
-                </div>
-                <div class="item-type">
-                  {{ formatItemType(item.type) }}
                 </div>
               </div>
             </div>
@@ -112,7 +118,7 @@
 
 <script setup>
 import { defineProps, defineEmits, ref } from 'vue';
-import { getItemEmoji, formatItemName, formatItemType, getItemDamage } from '@/utils/itemUtils';
+import { getItemEmoji, formatItemName, getItemDamage } from '@/utils/itemUtils';
 
 const props = defineProps({
   droppedItem: {
@@ -133,6 +139,25 @@ const emit = defineEmits(['replace-item', 'skip-item', 'select-item']);
 
 const selectedItemToReplace = ref(null);
 
+// Helper function to get item image for chests
+const getItemImage = (item) => {
+  if (!item) return null;
+  
+  if (item.type === 'chest') {
+    // In inventory, show opened chest
+    return '/images/chest-opened.png';
+  } else if (item.type === 'ruby_chest') {
+    return '/images/ruby-chest.png';
+  }
+  
+  return null;
+};
+
+// Helper function to check if item is a chest type
+const isChestType = (item) => {
+  return item && (item.type === 'chest' || item.type === 'ruby_chest');
+};
+
 // Helper function to get display name (hide monster names)
 const getDisplayName = (item) => {
   if (!item || !item.name) return 'Unknown Item';
@@ -151,10 +176,13 @@ const getDisplayName = (item) => {
   if (isMonster) {
     // Return generic name based on item type
     if (item.type === 'key') return 'Key';
-    if (item.type === 'dagger' || item.type === 'sword' || item.type === 'axe') return formatItemType(item.type);
+    if (item.type === 'dagger') return 'Dagger';
+    if (item.type === 'sword') return 'Sword';
+    if (item.type === 'axe') return 'Axe';
     if (item.type === 'fireball') return 'Fireball';
     if (item.type === 'teleport') return 'Teleport';
-    if (item.type === 'chest' || item.type === 'ruby_chest') return formatItemType(item.type);
+    if (item.type === 'chest') return 'Treasure Chest';
+    if (item.type === 'ruby_chest') return 'Ruby Chest';
     return 'Treasure';
   }
   
@@ -287,6 +315,13 @@ h4 {
   text-align: center;
 }
 
+.item-image {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  margin-right: 0.75rem;
+}
+
 .item-details {
   flex: 1;
 }
@@ -295,13 +330,6 @@ h4 {
   font-weight: 600;
   color: #fff;
   font-size: 1rem;
-  margin-bottom: 0.1rem;
-}
-
-.item-type {
-  color: #aaa;
-  font-size: 0.85rem;
-  text-transform: capitalize;
 }
 
 .item-stats {

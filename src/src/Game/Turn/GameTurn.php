@@ -253,6 +253,13 @@ class GameTurn extends AggregateRoot
             return;
         }
 
+        // Check if there's an unplaced tile
+        $field = $messageContext->dispatch(new \App\Game\Field\GetField($command->gameId));
+        $unplacedTile = $field->getUnplacedTile();
+        if ($unplacedTile !== null && isset($unplacedTile['tileId']) && $unplacedTile['tileId'] !== null) {
+            throw new \App\Game\Turn\Error\UnplacedTileException('Cannot end turn with an unplaced tile. Please place the tile first.');
+        }
+
         $this->endTurn($command->at);
         $messageContext->dispatch(new TurnEnded(
             turnId: $this->turnId,

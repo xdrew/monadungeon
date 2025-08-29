@@ -6,7 +6,9 @@ namespace App\Api\Game\EndTurn;
 
 use App\Api\Error;
 use App\Game\Turn\EndTurn;
+use App\Game\Turn\Error\UnplacedTileException;
 use App\Infrastructure\Uuid\Uuid;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 use Telephantast\MessageBus\MessageBus;
@@ -26,6 +28,12 @@ final readonly class Action
                 gameId: $request->gameId,
                 playerId: $request->playerId,
             ));
+        } catch (UnplacedTileException $e) {
+            return new Error(
+                Uuid::v7(), 
+                $e->getMessage(),
+                HttpResponse::HTTP_UNPROCESSABLE_ENTITY
+            );
         } catch (\Throwable $e) {
             return new Error(Uuid::v7(), 'Could not end turn: ' . $e->getMessage());
         }
