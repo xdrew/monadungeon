@@ -27,9 +27,9 @@ final class SmartVirtualPlayer
     private static array $turnsSinceLastProgress = [];  // Track turns without progress per game/player
     private static array $lastFieldStateHash = [];  // Track field state to detect when new tiles are placed
     private static array $unPickableItems = [];  // Track items that couldn't be picked up due to full inventory
+    private static array $persistentTargets = [];  // Track current target position across turns per game/player
+    private static array $persistentTargetReasons = [];  // Track why we're pursuing targets across turns
     private int $moveCount = 0;  // Track number of moves in current turn
-    private ?string $currentTargetPosition = null;  // Track current target to prevent oscillation
-    private ?string $currentTargetReason = null;  // Track why we're pursuing current target
     
     public function __construct(
         private readonly MessageBus $messageBus,
@@ -55,8 +55,6 @@ final class SmartVirtualPlayer
         // Clear visited positions and reset move counter at the start of each turn
         $this->visitedPositions = [];
         $this->moveCount = 0;
-        $this->currentTargetPosition = null;
-        $this->currentTargetReason = null;
         
         try {
             // Check if game is already finished
@@ -88,6 +86,12 @@ final class SmartVirtualPlayer
             if (!isset(self::$turnsSinceLastProgress[$trackingKey])) {
                 self::$turnsSinceLastProgress[$trackingKey] = [];
             }
+            if (!isset(self::$persistentTargets[$trackingKey])) {
+                self::$persistentTargets[$trackingKey] = null;
+            }
+            if (!isset(self::$persistentTargetReasons[$trackingKey])) {
+                self::$persistentTargetReasons[$trackingKey] = null;
+            }
             
             // Check if field state has changed (new tiles placed)
             $field = $this->messageBus->dispatch(new GetField(gameId: $gameId));
@@ -95,9 +99,11 @@ final class SmartVirtualPlayer
             
             if (isset(self::$lastFieldStateHash[$trackingKey]) && self::$lastFieldStateHash[$trackingKey] !== $currentFieldHash) {
                 // Field has changed, clear unreachable targets as paths may have opened
-                error_log("DEBUG AI: Field state changed, clearing unreachable targets");
+                error_log("DEBUG AI: Field state changed, clearing unreachable targets and persistent target");
                 self::$unreachableTargets[$trackingKey] = [];
                 self::$turnsSinceLastProgress[$trackingKey] = [];
+                self::$persistentTargets[$trackingKey] = null;
+                self::$persistentTargetReasons[$trackingKey] = null;
             }
             
             // Also periodically clear unreachable targets every 5 turns to re-evaluate
@@ -1224,12 +1230,24 @@ final class SmartVirtualPlayer
     {
         $trackingKey = "{$gameId}_{$playerId}";
         
-        // If we have a current target weapon, check if it's still available
-        if ($this->currentTargetPosition !== null && isset($betterWeaponsOnField[$this->currentTargetPosition])) {
-            error_log("DEBUG AI: Continuing pursuit of {$this->currentTargetReason} at {$this->currentTargetPosition}");
-            $reachableWeapons = [$this->currentTargetPosition => $betterWeaponsOnField[$this->currentTargetPosition]];
+        // If we have a persistent target weapon from a previous turn, check if it's still available
+        if (self::$persistentTargets[$trackingKey] !== null) {
+            if (isset($betterWeaponsOnField[self::$persistentTargets[$trackingKey]])) {
+                error_log("DEBUG AI: Continuing pursuit of " . self::$persistentTargetReasons[$trackingKey] . " at " . self::$persistentTargets[$trackingKey] . " from previous turn");
+                $reachableWeapons = [self::$persistentTargets[$trackingKey] => $betterWeaponsOnField[self::$persistentTargets[$trackingKey]]];
+            } else {
+                // Target no longer available (picked up by someone else or disappeared)
+                error_log("DEBUG AI: Previous target at " . self::$persistentTargets[$trackingKey] . " is no longer available, clearing and finding new target");
+                self::$persistentTargets[$trackingKey] = null;
+                self::$persistentTargetReasons[$trackingKey] = null;
+                
+                // Filter out unreachable targets for new selection
+                $reachableWeapons = array_filter($betterWeaponsOnField, function($pos) use ($trackingKey) {
+                    return !isset(self::$unreachableTargets[$trackingKey][$pos]);
+                }, ARRAY_FILTER_USE_KEY);
+            }
         } else {
-            // Filter out unreachable targets
+            // No persistent target, filter out unreachable targets
             $reachableWeapons = array_filter($betterWeaponsOnField, function($pos) use ($trackingKey) {
                 return !isset(self::$unreachableTargets[$trackingKey][$pos]);
             }, ARRAY_FILTER_USE_KEY);
@@ -1336,9 +1354,10 @@ final class SmartVirtualPlayer
             
             error_log("DEBUG AI: Best move is {$bestMove} towards {$targetWeapon} (distance: {$shortestDistance})");
             
-            // Set current target so we persist it across moves within this turn
-            $this->currentTargetPosition = $targetPos;
-            $this->currentTargetReason = $targetWeapon;
+            // Set persistent target so we continue pursuing it across multiple turns
+            self::$persistentTargets[$trackingKey] = $targetPos;
+            self::$persistentTargetReasons[$trackingKey] = $targetWeapon;
+            error_log("DEBUG AI: Set persistent target to {$targetWeapon} at {$targetPos} for multi-turn pursuit");
             
             // Track progress towards this weapon position (not the full description)
             if (!isset(self::$turnsSinceLastProgress[$trackingKey][$targetPos])) {
@@ -1354,6 +1373,13 @@ final class SmartVirtualPlayer
                     if (self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] >= 3) {
                         self::$unreachableTargets[$trackingKey][$targetPos] = true;
                         error_log("DEBUG AI: Marking weapon at {$targetPos} as UNREACHABLE for now!");
+                        
+                        // Clear persistent target if it's now unreachable
+                        if (self::$persistentTargets[$trackingKey] === $targetPos) {
+                            error_log("DEBUG AI: Clearing persistent target at {$targetPos} as it's now unreachable");
+                            self::$persistentTargets[$trackingKey] = null;
+                            self::$persistentTargetReasons[$trackingKey] = null;
+                        }
                         
                         $actions[] = $this->createAction('ai_reasoning', [
                             'message' => "Weapon at {$targetWeapon} appears unreachable for now, will try placing tiles to open new paths"
@@ -1734,7 +1760,17 @@ final class SmartVirtualPlayer
                 $actions[] = $this->createAction('pickup_result', ['result' => $pickupResult]);
                 
                 if ($pickupResult['success']) {
-                    // Item picked up, end turn
+                    // Item picked up, clear persistent target and end turn
+                    $trackingKey = "{$gameId}_{$playerId}";
+                    $currentPos = "{$x},{$y}";
+                    
+                    // Clear persistent target if we just picked it up
+                    if (isset(self::$persistentTargets[$trackingKey]) && self::$persistentTargets[$trackingKey] === $currentPos) {
+                        error_log("DEBUG AI: Successfully picked up persistent target at {$currentPos}, clearing target");
+                        self::$persistentTargets[$trackingKey] = null;
+                        self::$persistentTargetReasons[$trackingKey] = null;
+                    }
+                    
                     $actions[] = $this->createAction('ai_info', ['message' => 'Item picked up, ending turn']);
                     $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                     $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
@@ -2573,15 +2609,16 @@ final class SmartVirtualPlayer
         }
         
         // If we have a current target and it's reachable from one of our move options, prioritize moves towards it
-        if ($this->currentTargetPosition !== null) {
-            error_log("DEBUG AI: Have current target {$this->currentTargetReason} at {$this->currentTargetPosition}, finding best move towards it");
+        $trackingKey = "{$gameId}_{$playerId}";
+        if (isset(self::$persistentTargets[$trackingKey]) && self::$persistentTargets[$trackingKey] !== null) {
+            error_log("DEBUG AI: Have persistent target " . self::$persistentTargetReasons[$trackingKey] . " at " . self::$persistentTargets[$trackingKey] . ", finding best move towards it");
             
             $bestMoveTowardsTarget = null;
             $shortestDistance = PHP_INT_MAX;
             
             foreach ($moveOptions as $option) {
                 [$moveX, $moveY] = explode(',', $option);
-                [$targetX, $targetY] = explode(',', $this->currentTargetPosition);
+                [$targetX, $targetY] = explode(',', self::$persistentTargets[$trackingKey]);
                 $distance = abs((int)$moveX - (int)$targetX) + abs((int)$moveY - (int)$targetY);
                 
                 if ($distance < $shortestDistance) {

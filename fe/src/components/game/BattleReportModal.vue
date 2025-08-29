@@ -46,7 +46,7 @@
                   </div>
                 </div>
                 <div
-                  v-if="equippedWeapons.length > 0 || consumableDamageTotal > 0"
+                  v-if="equippedWeapons.length > 0 || usedConsumableDamageTotal > 0"
                   class="damage-breakdown"
                 >
                   <span
@@ -57,10 +57,10 @@
                     {{ getUsedItemEmoji(weapon) }} +{{ getItemTypeDamage(weapon.type) }}
                   </span>
                   <span
-                    v-if="consumableDamageTotal > 0"
+                    v-if="usedConsumableDamageTotal > 0"
                     class="consumable-text"
                   >
-                    🔮 +{{ consumableDamageTotal }}
+                    🔮 +{{ usedConsumableDamageTotal }}
                   </span>
                 </div>
               </div>
@@ -174,21 +174,21 @@
           </div>
         </div>
         
-        <!-- Merged items section - shows used consumables and selectable consumables -->
+        <!-- Merged items section - shows used damage-dealing consumables and selectable consumables -->
         <div
-          v-if="!isRolling && ((usedConsumables && usedConsumables.length > 0) || showConsumableSelection || showInventorySelection)"
+          v-if="!isRolling && ((usedDamageConsumables && usedDamageConsumables.length > 0) || showConsumableSelection || showInventorySelection)"
           class="used-items-section"
           :class="{ 'fade-in': showResults }"
         >
           <div class="used-items-title">
             {{ showConsumableSelection ? 'Select consumables to use:' : 
               showInventorySelection ? 'Choose an item to replace:' : 
-              usedConsumables && usedConsumables.length > 0 ? 'Used consumables:' : '' }}
+              usedDamageConsumables && usedDamageConsumables.length > 0 ? 'Used consumables:' : '' }}
           </div>
           <div class="used-items-list">
-            <!-- Show only used consumables (non-selectable) only when not doing inventory replacement -->
+            <!-- Show only used damage-dealing consumables (non-selectable) only when not doing inventory replacement -->
             <div
-              v-for="(item, index) in usedConsumables"
+              v-for="(item, index) in usedDamageConsumables"
               v-if="!showInventorySelection && !showConsumableSelection"
               :key="`used-${index}`"
               class="used-item consumable-chip"
@@ -198,9 +198,9 @@
               <span class="item-damage">+{{ getItemTypeDamage(item.type) }}</span>
             </div>
             
-            <!-- Show selectable consumable items -->
+            <!-- Show selectable consumable items (only damage-dealing ones) -->
             <div 
-              v-for="(item, index) in availableConsumables"
+              v-for="(item, index) in availableDamageConsumables"
               v-if="showConsumableSelection" 
               :key="`consumable-${index}`"
               class="used-item selectable-item"
@@ -441,6 +441,13 @@ const showConsumableSelection = ref(false);
 const availableConsumables = ref([]);
 const selectedConsumables = ref([]);
 
+// Computed to filter available consumables for only damage-dealing ones
+const availableDamageConsumables = computed(() => {
+  if (!availableConsumables.value) return [];
+  // Only show consumables that provide damage (fireball)
+  return availableConsumables.value.filter(item => getItemTypeDamage(item.type) > 0);
+});
+
 // Add flag to track if battle has been finalized
 const battleFinalized = ref(false);
 
@@ -536,7 +543,16 @@ const dynamicResultText = computed(() => {
   return 'Defeat';
 });
 
-// Computed to filter used consumables
+// Computed to filter used consumables that actually provide damage
+const usedDamageConsumables = computed(() => {
+  if (!props.battleInfo.usedItems) return [];
+  // Filter for consumables that provide damage boost (only fireball)
+  return props.battleInfo.usedItems.filter(item => 
+    item.type && item.type === 'fireball'
+  );
+});
+
+// Computed to filter all used consumables (including non-damage ones)
 const usedConsumables = computed(() => {
   if (!props.battleInfo.usedItems) return [];
   // Filter for consumables only (fireball, teleport)
@@ -564,6 +580,17 @@ const weaponDamageTotal = computed(() => {
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
 });
 
+// Computed for damage total from USED consumables (already consumed in battle)
+const usedConsumableDamageTotal = computed(() => {
+  if (!props.battleInfo.usedItems) return 0;
+  
+  // Calculate damage from already-used damage-dealing consumables
+  return props.battleInfo.usedItems
+    .filter(item => item.type === 'fireball') // Only fireball provides damage
+    .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+});
+
+// Computed for damage total from SELECTED consumables (for potential use)
 const consumableDamageTotal = computed(() => {
   if (!availableConsumables.value || selectedConsumables.value.length === 0) return 0;
   
@@ -678,7 +705,8 @@ const initializeConsumableSelection = () => {
       if (maxPossibleDamage > props.battleInfo.monster) {
         console.log(`Consumables could change outcome: ${maxPossibleDamage} damage vs ${props.battleInfo.monster} HP`);
         showConsumableSelection.value = true;
-        availableConsumables.value = props.battleInfo.availableConsumables;
+        // Only store damage-dealing consumables
+        availableConsumables.value = consumablesWithDamage;
         // Start with no consumables selected - let player choose
         selectedConsumables.value = [];
         return;
@@ -688,7 +716,8 @@ const initializeConsumableSelection = () => {
       if (maxPossibleDamage >= props.battleInfo.monster) {
         console.log(`Consumables could achieve draw: ${maxPossibleDamage} damage vs ${props.battleInfo.monster} HP`);
         showConsumableSelection.value = true;
-        availableConsumables.value = props.battleInfo.availableConsumables;
+        // Only store damage-dealing consumables
+        availableConsumables.value = consumablesWithDamage;
         selectedConsumables.value = [];
         return;
       }
