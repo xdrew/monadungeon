@@ -29,6 +29,8 @@ final class SmartVirtualPlayer
     private static array $unPickableItems = [];  // Track items that couldn't be picked up due to full inventory
     private static array $persistentTargets = [];  // Track current target position across turns per game/player
     private static array $persistentTargetReasons = [];  // Track why we're pursuing targets across turns
+    private static array $explorationTargets = [];  // Track exploration targets to prevent loops
+    private static array $explorationHistory = [];  // Track positions explored across turns
     private int $moveCount = 0;  // Track number of moves in current turn
     
     public function __construct(
@@ -92,6 +94,12 @@ final class SmartVirtualPlayer
             if (!isset(self::$persistentTargetReasons[$trackingKey])) {
                 self::$persistentTargetReasons[$trackingKey] = null;
             }
+            if (!isset(self::$explorationTargets[$trackingKey])) {
+                self::$explorationTargets[$trackingKey] = null;
+            }
+            if (!isset(self::$explorationHistory[$trackingKey])) {
+                self::$explorationHistory[$trackingKey] = [];
+            }
             
             // Check if field state has changed (new tiles placed)
             $field = $this->messageBus->dispatch(new GetField(gameId: $gameId));
@@ -104,6 +112,8 @@ final class SmartVirtualPlayer
                 self::$turnsSinceLastProgress[$trackingKey] = [];
                 self::$persistentTargets[$trackingKey] = null;
                 self::$persistentTargetReasons[$trackingKey] = null;
+                self::$explorationTargets[$trackingKey] = null;
+                self::$explorationHistory[$trackingKey] = [];  // Clear exploration history when new tiles are placed
             }
             
             // Also periodically clear unreachable targets every 5 turns to re-evaluate
@@ -1565,8 +1575,13 @@ final class SmartVirtualPlayer
         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
         
         if ($moveResult['success']) {
-            // Mark the new position as visited to prevent oscillation
+            // Mark the new position as visited to prevent oscillation within turn
             $this->visitedPositions[$targetPosition] = true;
+            
+            // Also mark in exploration history to track across turns
+            $trackingKey = "{$gameId}_{$playerId}";
+            self::$explorationHistory[$trackingKey][$targetPosition] = true;
+            
             $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
         } else {
             $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
@@ -2652,17 +2667,74 @@ final class SmartVirtualPlayer
             }
         }
         
-        // Filter out visited positions to prevent oscillation
+        // Check if we have an exploration target that we haven't reached yet
+        if (isset(self::$explorationTargets[$trackingKey]) && self::$explorationTargets[$trackingKey] !== null) {
+            $explorationTarget = self::$explorationTargets[$trackingKey];
+            
+            // Check if we've reached our exploration target
+            if (in_array($explorationTarget, $moveOptions)) {
+                // We can reach it, so go there
+                error_log("DEBUG AI: Continuing to exploration target at {$explorationTarget}");
+                self::$explorationHistory[$trackingKey][$explorationTarget] = true;
+                self::$explorationTargets[$trackingKey] = null; // Clear target once reached
+                return $explorationTarget;
+            }
+            
+            // Find best move towards exploration target
+            $bestMoveTowardsExploration = null;
+            $shortestDistance = PHP_INT_MAX;
+            
+            foreach ($moveOptions as $option) {
+                [$moveX, $moveY] = explode(',', $option);
+                [$targetX, $targetY] = explode(',', $explorationTarget);
+                $distance = abs((int)$moveX - (int)$targetX) + abs((int)$moveY - (int)$targetY);
+                
+                if ($distance < $shortestDistance) {
+                    $shortestDistance = $distance;
+                    $bestMoveTowardsExploration = $option;
+                }
+            }
+            
+            if ($bestMoveTowardsExploration !== null) {
+                error_log("DEBUG AI: Moving towards exploration target - to {$bestMoveTowardsExploration} (distance to target: {$shortestDistance})");
+                return $bestMoveTowardsExploration;
+            }
+        }
+        
+        // Filter out visited positions to prevent oscillation within a turn
         $unvisitedOptions = array_filter($moveOptions, function($option) {
             return !isset($this->visitedPositions[$option]);
         });
         
-        // If all options are visited, we've explored the entire reachable area
-        if (empty($unvisitedOptions)) {
-            error_log("DEBUG AI: All reachable positions have been visited this turn - exploration complete");
-            // Return null to indicate no valid move available
-            // The caller should handle this by either placing tiles or ending turn
-            return null;
+        // Also filter out positions explored in recent turns to avoid loops
+        $unexploredOptions = array_filter($unvisitedOptions, function($option) use ($trackingKey) {
+            return !isset(self::$explorationHistory[$trackingKey][$option]);
+        });
+        
+        // If we have unexplored options, use those; otherwise fall back to unvisited this turn
+        if (!empty($unexploredOptions)) {
+            $unvisitedOptions = $unexploredOptions;
+            error_log("DEBUG AI: Found " . count($unexploredOptions) . " unexplored positions to choose from");
+        } else if (empty($unvisitedOptions)) {
+            error_log("DEBUG AI: All reachable positions have been visited - checking if we should clear exploration history");
+            
+            // If we've explored everything multiple times, clear the history to allow re-exploration
+            $totalExplored = count(self::$explorationHistory[$trackingKey] ?? []);
+            if ($totalExplored >= 10) {  // Arbitrary limit to prevent getting stuck
+                error_log("DEBUG AI: Clearing exploration history after exploring {$totalExplored} positions");
+                self::$explorationHistory[$trackingKey] = [];
+                
+                // Try again with cleared history
+                $unvisitedOptions = array_filter($moveOptions, function($option) {
+                    return !isset($this->visitedPositions[$option]);
+                });
+            }
+            
+            if (empty($unvisitedOptions)) {
+                // Return null to indicate no valid move available
+                // The caller should handle this by either placing tiles or ending turn
+                return null;
+            }
         }
         
         // PRIORITY 1: Look for treasure locations (chests)
@@ -2734,12 +2806,41 @@ final class SmartVirtualPlayer
             return $safePos;
         }
         
-        // Default: pick based on strategy preference
+        // Default: pick based on strategy preference and set exploration target
+        // Find the farthest unexplored position to set as an exploration goal
+        $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+        [$currentX, $currentY] = explode(',', $currentPosition->toString());
+        
+        $farthestOption = null;
+        $maxDistance = 0;
+        
+        // Find the farthest unexplored tile as our exploration target
+        foreach ($unvisitedOptions as $option) {
+            [$optionX, $optionY] = explode(',', $option);
+            $distance = abs((int)$optionX - (int)$currentX) + abs((int)$optionY - (int)$currentY);
+            
+            if ($distance > $maxDistance) {
+                $maxDistance = $distance;
+                $farthestOption = $option;
+            }
+        }
+        
+        // Set the farthest position as our exploration target to ensure we explore systematically
+        if ($farthestOption !== null && !isset(self::$explorationTargets[$trackingKey])) {
+            self::$explorationTargets[$trackingKey] = $farthestOption;
+            error_log("DEBUG AI: Set exploration target to farthest unexplored position at {$farthestOption}");
+        }
+        
         if ($this->strategyConfig['preferBattles'] ?? false) {
             // Re-index array to ensure sequential keys
             $moveOptionsIndexed = array_values($unvisitedOptions);
-            error_log("DEBUG AI Reasoning: Aggressive strategy - exploring new area at {$moveOptionsIndexed[0]}");
-            return $moveOptionsIndexed[0];  // Aggressive: explore actively
+            $selectedPos = $moveOptionsIndexed[0];  // Aggressive: explore actively
+            
+            // Mark this position as part of exploration history
+            self::$explorationHistory[$trackingKey][$selectedPos] = true;
+            
+            error_log("DEBUG AI Reasoning: Aggressive strategy - exploring new area at {$selectedPos}");
+            return $selectedPos;
         }
         
         // Balanced: pick middle option from unvisited positions
@@ -2747,6 +2848,10 @@ final class SmartVirtualPlayer
         $moveOptionsIndexed = array_values($unvisitedOptions);
         $middleIndex = intval(count($moveOptionsIndexed) / 2);
         $balancedPos = $moveOptionsIndexed[$middleIndex] ?? $moveOptionsIndexed[0];
+        
+        // Mark this position as part of exploration history
+        self::$explorationHistory[$trackingKey][$balancedPos] = true;
+        
         error_log("DEBUG AI Reasoning: Balanced exploration - moving to {$balancedPos}");
         return $balancedPos;
     }
