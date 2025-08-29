@@ -4136,8 +4136,8 @@ const handleManualEndTurn = async () => {
       turnId: currentTurnId
     });
     
-    // Check if there was an error
-    if (result && result.message) {
+    // Check if there was an error (check for success flag or error status)
+    if (result && result.message && !result.success) {
       error.value = result.message;
       setTimeout(() => { error.value = null; }, 5000);
       loading.value = false;
