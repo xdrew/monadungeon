@@ -178,8 +178,8 @@ const getMonsterImage = (monsterName) => {
     'giant_rat': '/images/items/ikan.webp',
     'giant_spider': '/images/items/moyaki.webp',
     'mummy': '/images/items/ubur.webp',
-    'treasure_chest': '/assets/treasure.png', // Keep treasure as is
-    'chest': '/assets/treasure.png'
+    'treasure_chest': '/images/chest-opened.webp',
+    'chest': '/images/chest-opened.webp'
   };
   
   const imagePath = monsterSprites[monsterName.toLowerCase()] || '/images/items/ubur.webp'; // Default fallback
