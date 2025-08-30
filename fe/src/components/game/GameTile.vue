@@ -70,6 +70,12 @@
           :alt="item.type"
           class="chest-image"
         />
+        <img
+          v-else-if="weaponImage"
+          :src="weaponImage"
+          :alt="item.type"
+          class="weapon-image"
+        />
         <span v-else>{{ itemEmoji }}</span>
         <span
           v-if="item && !item.guardDefeated && item.guardHP > 0"
@@ -394,6 +400,33 @@ const chestImage = computed(() => {
     } else if (props.item.type === 'chest') {
       // Chests on the field are always closed (they disappear when opened)
       return '/images/chest-closed.png';
+    }
+  }
+  
+  return null;
+});
+
+// Computed property to get weapon image
+const weaponImage = computed(() => {
+  if (!props.item) return null;
+  
+  // Check if guard is defeated and it's a weapon
+  const guardDefeated = props.item.guardDefeated || props.item.guardHP === 0;
+  
+  if (guardDefeated && props.item.type) {
+    switch (props.item.type) {
+      case 'key':
+        return '/images/key.png';
+      case 'dagger':
+        return '/images/dagger.png';
+      case 'sword':
+        return '/images/sword.png';
+      case 'axe':
+        return '/images/axe.png';
+      case 'fireball':
+        return '/images/fireball.png';
+      case 'teleport':
+        return '/images/hf-teleport.png';
     }
   }
   
@@ -748,6 +781,12 @@ const onItemClick = () => {
 }
 
 .monster-image {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.weapon-image {
   width: 32px;
   height: 32px;
   object-fit: contain;

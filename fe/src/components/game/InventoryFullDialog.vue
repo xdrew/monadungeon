@@ -139,18 +139,31 @@ const emit = defineEmits(['replace-item', 'skip-item', 'select-item']);
 
 const selectedItemToReplace = ref(null);
 
-// Helper function to get item image for chests
+// Helper function to get item image
 const getItemImage = (item) => {
   if (!item) return null;
   
-  if (item.type === 'chest') {
-    // In inventory, show opened chest
-    return '/images/chest-opened.png';
-  } else if (item.type === 'ruby_chest') {
-    return '/images/ruby-chest.png';
+  switch (item.type) {
+    case 'key':
+      return '/images/key.png';
+    case 'chest':
+      // In inventory, show opened chest
+      return '/images/chest-opened.png';
+    case 'ruby_chest':
+      return '/images/ruby-chest.png';
+    case 'dagger':
+      return '/images/dagger.png';
+    case 'sword':
+      return '/images/sword.png';
+    case 'axe':
+      return '/images/axe.png';
+    case 'fireball':
+      return '/images/fireball.png';
+    case 'teleport':
+      return '/images/hf-teleport.png';
+    default:
+      return null;
   }
-  
-  return null;
 };
 
 // Helper function to check if item is a chest type

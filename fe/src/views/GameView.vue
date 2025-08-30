@@ -627,7 +627,7 @@ import MusicToggle from '@/components/game/MusicToggle.vue';
 import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';
-import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil } from '@/utils/itemUtils';
+import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage } from '@/utils/itemUtils';
 
 // Import field utility functions
 import { playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
@@ -650,16 +650,8 @@ import { handleKeyboardEvents as handleKeyboardEventsUtil } from '@/utils/keyboa
 
 // Helper function to get inventory item image
 const getInventoryItemImage = (item) => {
-  if (!item) return null;
-  
-  if (item.type === 'chest') {
-    // In inventory, show opened chest
-    return '/images/chest-opened.png';
-  } else if (item.type === 'ruby_chest') {
-    return '/images/ruby-chest.png';
-  }
-  
-  return null;
+  // Use the getItemImage function from itemUtils for consistency
+  return getItemImage(item);
 };
 
 // Helper function for calculating item damage values
@@ -4534,21 +4526,20 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .player-inventory-section {
   margin-bottom: 1rem;
   padding: 0.75rem;
-  background: rgba(42, 42, 74, 0.1);
+  background: #3a404c;
   border-radius: 8px;
-  border: 1px solid rgba(42, 42, 74, 0.2);
+  border: none;
   transition: all 0.3s ease;
 }
 
 .player-inventory-section.current-turn {
-  background: rgba(42, 42, 74, 0.2);
-  border-color: #ffcc00;
-  box-shadow: 0 0 10px rgba(255, 204, 0, 0.2);
+  background: #3a404c;
+  box-shadow: 0 0 15px rgba(255, 204, 0, 0.4), inset 0 0 0 2px #ffcc00;
 }
 
 .player-inventory-section.is-current-user {
-  border-color: #4a90e2;
-  background: rgba(74, 144, 226, 0.1);
+  background: #3a404c;
+  box-shadow: inset 0 0 0 2px #4a90e2;
 }
 
 .player-inventory-header {
@@ -4574,37 +4565,59 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .unified-inventory-grid.compact {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
   gap: 4px;
 }
 
 .inventory-item.compact {
-  width: 40px;
-  height: 40px;
-  padding: 2px;
+  width: 50px;
+  height: 50px;
+  padding: 4px;
   position: relative;
+  border: none !important;
+  background: rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.inventory-item.weapon-item {
+  border: none !important;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .inventory-item.compact .item-icon {
   font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 .item-image-icon {
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
+}
+
+.weapon-item .item-image-icon {
+  width: 42px;
+  height: 42px;
 }
 
 .item-damage-small {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  background: rgba(0, 0, 0, 0.8);
+  bottom: 0px;
+  right: 0px;
+  background: rgba(0, 0, 0, 0.9);
   color: #ffcc00;
-  font-size: 0.6rem;
-  padding: 1px 3px;
+  font-size: 0.65rem;
+  padding: 2px 4px;
   border-radius: 3px;
   font-weight: bold;
+  z-index: 2;
 }
 
 .item-value-small {
@@ -5111,8 +5124,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 /* Active teleport spell indicator */
 .inventory-item.spell-item.teleport-active {
   animation: pulse-glow 1.5s ease-in-out infinite;
-  border: 2px solid #8a2be2;
-  box-shadow: 0 0 15px rgba(138, 43, 226, 0.8);
+  box-shadow: 0 0 15px rgba(138, 43, 226, 0.8), inset 0 0 0 2px #8a2be2;
   background: rgba(138, 43, 226, 0.3);
 }
 

@@ -54,7 +54,14 @@
                     :key="`breakdown-weapon-${index}`"
                     class="weapon-text"
                   >
-                    {{ getUsedItemEmoji(weapon) }} +{{ getItemTypeDamage(weapon.type) }}
+                    <img
+                      v-if="getWeaponImage(weapon)"
+                      :src="getWeaponImage(weapon)"
+                      :alt="weapon.type"
+                      class="weapon-breakdown-image"
+                    />
+                    <span v-else>{{ getUsedItemEmoji(weapon) }}</span>
+                    <span class="weapon-damage-value">+{{ getItemTypeDamage(weapon.type) }}</span>
                   </span>
                   <span
                     v-if="usedConsumableDamageTotal > 0"
@@ -213,7 +220,13 @@
               :class="{ 'selected': selectedConsumables.includes(item.itemId) }"
               @click="toggleConsumable(item)"
             >
-              <span class="item-emoji">{{ getInventoryItemEmoji(item) }}</span>
+              <img
+                v-if="getInventoryItemImage(item)"
+                :src="getInventoryItemImage(item)"
+                :alt="getSpellDisplayName(item)"
+                class="item-image-small"
+              />
+              <span v-else class="item-emoji">{{ getInventoryItemEmoji(item) }}</span>
               <span class="item-name">{{ getSpellDisplayName(item) }}</span>
               <span class="item-damage">+{{ getItemTypeDamage(item.type) }}</span>
             </div>
@@ -227,7 +240,13 @@
               :class="{ 'selected': selectedItemForReplacement?.itemId === item.itemId }"
               @click="selectedItemForReplacement = item"
             >
-              <span class="item-emoji">{{ getInventoryItemEmoji(item) }}</span>
+              <img
+                v-if="getInventoryItemImage(item)"
+                :src="getInventoryItemImage(item)"
+                :alt="formatItemName(item.type || item.name)"
+                class="item-image-small"
+              />
+              <span v-else class="item-emoji">{{ getInventoryItemEmoji(item) }}</span>
               <span class="item-name">{{ formatItemName(item.type || item.name) }}</span>
               <span
                 v-if="getItemTypeDamage(item.type || item.name) > 0"
@@ -1114,20 +1133,59 @@ const displayItemEmoji = computed(() => {
   }
 });
 
-// Get item image for chests
+// Get item image for chests and consumables
 const displayItemImage = computed(() => {
   if (!props.battleInfo.reward) return null;
   
   const item = props.battleInfo.reward;
-  if (item.type === 'chest') {
+  if (item.type === 'key') {
+    return '/images/key.png';
+  } else if (item.type === 'chest') {
     // Battle rewards show opened chests
     return '/images/chest-opened.png';
   } else if (item.type === 'ruby_chest') {
     return '/images/ruby-chest.png';
+  } else if (item.type === 'fireball') {
+    return '/images/fireball.png';
+  } else if (item.type === 'teleport') {
+    return '/images/hf-teleport.png';
+  } else if (item.type === 'dagger') {
+    return '/images/dagger.png';
+  } else if (item.type === 'sword') {
+    return '/images/sword.png';
+  } else if (item.type === 'axe') {
+    return '/images/axe.png';
   }
   
   return null;
 });
+
+// Get inventory item image
+const getInventoryItemImage = (item) => {
+  if (!item) return null;
+  
+  const itemType = item.type || item.name;
+  switch (itemType) {
+    case 'key':
+      return '/images/key.png';
+    case 'chest':
+      return '/images/chest-opened.png';
+    case 'ruby_chest':
+      return '/images/ruby-chest.png';
+    case 'fireball':
+      return '/images/fireball.png';
+    case 'teleport':
+      return '/images/hf-teleport.png';
+    case 'dagger':
+      return '/images/dagger.png';
+    case 'sword':
+      return '/images/sword.png';
+    case 'axe':
+      return '/images/axe.png';
+    default:
+      return null;
+  }
+};
 
 // Get inventory item emoji
 const getInventoryItemEmoji = (item) => {
@@ -1217,6 +1275,22 @@ const getUsedItemEmoji = (item) => {
       return '✨';
     default:
       return '🧪'; // Default item
+  }
+};
+
+// Get weapon image for damage breakdown
+const getWeaponImage = (item) => {
+  if (!item || !item.type) return null;
+  
+  switch (item.type) {
+    case 'dagger':
+      return '/images/dagger.png';
+    case 'sword':
+      return '/images/sword.png';
+    case 'axe':
+      return '/images/axe.png';
+    default:
+      return null;
   }
 };
 
@@ -1422,12 +1496,25 @@ const potentialRewardTip = computed(() => {
   flex: 1;
 }
 
+.player-damage {
+  padding-top: 32px;
+}
+
+.monster-stats {
+  padding-top: 10px;
+}
+
 .big-number {
   font-size: 2.5rem;
   font-weight: bold;
-  margin-bottom: 0.3rem;
   color: #fff;
   text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  line-height: 1;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 
 .dice-container {
@@ -1690,9 +1777,10 @@ const potentialRewardTip = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.6rem;
-  margin-top: 0.4rem;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
   font-size: 0.8rem;
+  flex-wrap: wrap;
 }
 
 .weapon-text,
@@ -1706,6 +1794,41 @@ const potentialRewardTip = computed(() => {
 
 .weapon-text {
   color: #81c784;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.weapon-breakdown-image {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  vertical-align: middle;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 2px;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+  display: inline-block;
+}
+
+.dice-results {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.monster-details {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weapon-damage-value {
+  font-weight: 600;
+  vertical-align: middle;
 }
 
 .consumable-text {
@@ -1966,6 +2089,13 @@ const potentialRewardTip = computed(() => {
 
 .used-item .item-emoji {
   font-size: 1rem;
+}
+
+.used-item .item-image-small {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  vertical-align: middle;
 }
 
 .used-item .item-name {

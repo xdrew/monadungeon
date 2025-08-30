@@ -332,4 +332,34 @@ export const getItemDamage = (item) => {
   };
   
   return damageMap[item.type] || 0;
+};
+
+/**
+ * Gets the image path for an item based on its type
+ * @param {Object} item - The item object containing type property
+ * @returns {string|null} The image path for the item or null if no image available
+ */
+export const getItemImage = (item) => {
+  if (!item || !item.type) return null;
+  
+  switch (item.type) {
+    case 'key':
+      return '/images/key.png';
+    case 'dagger':
+      return '/images/dagger.png';
+    case 'sword':
+      return '/images/sword.png';
+    case 'axe':
+      return '/images/axe.png';
+    case 'fireball':
+      return '/images/fireball.png';
+    case 'teleport':
+      return '/images/hf-teleport.png';
+    case 'chest':
+      return '/images/chest-opened.png';
+    case 'ruby_chest':
+      return '/images/ruby-chest.png';
+    default:
+      return null;
+  }
 }; 
