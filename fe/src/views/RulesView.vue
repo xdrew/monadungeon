@@ -165,17 +165,17 @@
           <h3>⚔️ Weapons (Permanent Damage Bonus)</h3>
           <div class="items-list">
             <div class="item">
-              <img class="item-image" src="/images/dagger.png" alt="Dagger" />
+              <img class="item-image" src="/images/dagger.webp" alt="Dagger" />
               <span class="item-name">Dagger</span>
               <span class="item-effect">+1 damage to all attacks</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/sword.png" alt="Sword" />
+              <img class="item-image" src="/images/sword.webp" alt="Sword" />
               <span class="item-name">Sword</span>
               <span class="item-effect">+2 damage to all attacks</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/axe.png" alt="Axe" />
+              <img class="item-image" src="/images/axe.webp" alt="Axe" />
               <span class="item-name">Axe</span>
               <span class="item-effect">+3 damage to all attacks</span>
             </div>
@@ -186,12 +186,12 @@
           <h3>🪄 Spells (One-Time Use)</h3>
           <div class="items-list">
             <div class="item">
-              <img class="item-image" src="/images/fireball.png" alt="Fireball" />
+              <img class="item-image" src="/images/fireball.webp" alt="Fireball" />
               <span class="item-name">Fireball</span>
               <span class="item-effect">+1 damage to next attack</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/hf-teleport.png" alt="Teleport" />
+              <img class="item-image" src="/images/hf-teleport.webp" alt="Teleport" />
               <span class="item-name">Teleport</span>
               <span class="item-effect">Move to any healing fountain</span>
             </div>
@@ -202,17 +202,17 @@
           <h3>🗝️ Keys & Treasures</h3>
           <div class="items-list">
             <div class="item">
-              <img class="item-image" src="/images/key.png" alt="Key" />
+              <img class="item-image" src="/images/key.webp" alt="Key" />
               <span class="item-name">Key</span>
               <span class="item-effect">Unlocks treasure chests</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/chest-opened.png" alt="Treasure Chest" />
+              <img class="item-image" src="/images/chest-opened.webp" alt="Treasure Chest" />
               <span class="item-name">Treasure Chest</span>
               <span class="item-effect">2 Victory Points</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/ruby-chest.png" alt="Ruby Chest" />
+              <img class="item-image" src="/images/ruby-chest.webp" alt="Ruby Chest" />
               <span class="item-name">Ruby Chest</span>
               <span class="item-effect">3 Victory Points</span>
             </div>
@@ -325,15 +325,15 @@
         <h2>💡 Strategy Tips</h2>
         <div class="tips-grid">
           <div class="tip">
-            <span class="tip-icon"><img class="item-tip-image" src="/images/key.png" alt="Key" /></span>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/key.webp" alt="Key" /></span>
             <p>Always keep a key - chests give victory points!</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><img class="item-tip-image" src="/images/axe.png" alt="Axe" /></span>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/axe.webp" alt="Axe" /></span>
             <p>Prioritize getting better weapons early</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><img class="item-tip-image" src="/images/hf-teleport.png" alt="Healing" /></span>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/hf-teleport.webp" alt="Healing" /></span>
             <p>Save healing spells for emergencies</p>
           </div>
           <div class="tip">
