@@ -102,18 +102,17 @@
           :title="`Player ${player.playerId}`"
         >
           <img 
-            v-if="isCurrentPlayerPosition && index === 0"
+            v-if="isCurrentUser(player.playerId)"
             src="/images/player.webp" 
             alt="Current Player" 
             class="player-image"
           />
           <img 
-            v-else-if="isAIPlayer(player.playerId)"
+            v-else
             src="/images/ai.webp" 
             alt="AI Player" 
             class="ai-player-image"
           />
-          <span v-else>{{ player.emoji }}</span>
         </span>
       </div>
       <div
@@ -355,6 +354,12 @@ const tileBackgroundStyle = computed(() => {
 const isAIPlayer = (playerId) => {
   const virtualPlayerId = typeof localStorage !== 'undefined' ? localStorage.getItem('virtualPlayerId') : null;
   return virtualPlayerId && playerId === virtualPlayerId;
+};
+
+// Helper function to check if player is current user
+const isCurrentUser = (playerId) => {
+  const currentPlayerId = typeof localStorage !== 'undefined' ? localStorage.getItem('currentPlayerId') : null;
+  return currentPlayerId && playerId === currentPlayerId;
 };
 
 // Computed properties for openings

@@ -17,12 +17,11 @@
               class="player-avatar-small"
             />
             <img 
-              v-else-if="isAIPlayer(turn.playerId)"
+              v-else
               src="/images/ai.webp" 
               alt="AI Player" 
               class="ai-avatar-small"
             />
-            <span v-else>{{ getPlayerEmoji(turn.playerId) }}</span>
           </span>
           <span class="turn-number">
             {{ (typeof localStorage !== 'undefined' && localStorage.getItem('virtualPlayerId') === turn.playerId) ? 'AI Player' : 'Player' }} - Turn {{ turn.turnNumber }}

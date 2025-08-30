@@ -274,12 +274,11 @@
                       class="player-avatar-image"
                     />
                     <img 
-                      v-else-if="isVirtualPlayer(player.id)"
+                      v-else
                       src="/images/ai.webp" 
                       alt="AI Player" 
                       class="ai-avatar-image"
                     />
-                    <span v-else>{{ getPlayerEmoji(player.id) }}</span>
                   </span>
                   <span class="player-name">
                     {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : 'Player' }}
