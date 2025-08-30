@@ -326,7 +326,7 @@ final class BagTest extends TestCase
 
         $result = $item->attack(3); // Less damage than HP
 
-        self::assertEquals(BattleResult::LOOSE, $result);
+        self::assertEquals(BattleResult::LOSE, $result);
         self::assertFalse($item->guardDefeated);
     }
 
@@ -450,7 +450,7 @@ final class BagTest extends TestCase
     public function itTestsBattleResultEnum(): void
     {
         self::assertEquals('win', BattleResult::WIN->value);
-        self::assertEquals('loose', BattleResult::LOOSE->value);
+        self::assertEquals('lose', BattleResult::LOSE->value);
         self::assertEquals('draw', BattleResult::DRAW->value);
     }
 }

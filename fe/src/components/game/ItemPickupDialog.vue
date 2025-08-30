@@ -104,14 +104,27 @@ const itemEmoji = computed(() => getItemEmoji(props.item));
 const itemImage = computed(() => {
   if (!props.item) return null;
   
-  if (props.item.type === 'chest') {
-    // In pickup dialog, show closed chest (it's still on the field)
-    return '/images/chest-closed.webp';
-  } else if (props.item.type === 'ruby_chest') {
-    return '/images/ruby-chest.webp';
+  switch (props.item.type) {
+    case 'chest':
+      // In pickup dialog, show closed chest (it's still on the field)
+      return '/images/chest-closed.webp';
+    case 'ruby_chest':
+      return '/images/ruby-chest.webp';
+    case 'key':
+      return '/images/key.webp';
+    case 'dagger':
+      return '/images/dagger.webp';
+    case 'sword':
+      return '/images/sword.webp';
+    case 'axe':
+      return '/images/axe.webp';
+    case 'fireball':
+      return '/images/fireball.webp';
+    case 'teleport':
+      return '/images/hf-teleport.webp';
+    default:
+      return null;
   }
-  
-  return null;
 });
 const itemName = computed(() => getDisplayName(props.item));
 const itemDamage = computed(() => {

@@ -566,13 +566,46 @@ export class GameHelpers {
     
     switch (action) {
       case 'pickup':
-        // Click "Pick up and end turn" button
-        const pickupButton = page.locator('.pick-up-btn').first();
-        if (await pickupButton.isVisible()) {
-          await pickupButton.click();
-          console.log('Clicked pick up and end turn button');
-        } else {
-          console.log('Pick up button not visible - might need inventory replacement or battle not won');
+        // Click "Pick up and end turn" button (may appear after dice animation)
+        {
+          const tryClickPickup = async () => {
+            // Primary: class-based selector
+            const btn = page.locator('.pick-up-btn').first();
+            if (await btn.isVisible().catch(() => false)) {
+              await btn.click();
+              console.log('Clicked pick up and end turn button');
+              return true;
+            }
+            // Alternative: text-based selector
+            const textBtn = page.locator('button').filter({ hasText: /pick\s*up/i }).first();
+            if (await textBtn.isVisible().catch(() => false)) {
+              await textBtn.click();
+              console.log('Clicked pick up button by text');
+              return true;
+            }
+            return false;
+          };
+
+          // Wait for the button to become available, accounting for ~1.1s animation
+          let clicked = await tryClickPickup();
+          if (!clicked) {
+            // Wait a bit for animation/state to settle
+            await page.waitForTimeout(TIMEOUTS.ANIMATION_WAIT + 800);
+            // Retry within a small window
+            try {
+              await page.waitForSelector('.pick-up-btn, button:has-text("Pick up")', {
+                state: 'visible',
+                timeout: TIMEOUTS.MODAL_WAIT
+              });
+            } catch {
+              // continue to attempt click anyway
+            }
+            clicked = await tryClickPickup();
+          }
+
+          if (!clicked) {
+            console.log('Pick up button still not visible after waiting - cannot proceed with pickup');
+          }
         }
         break;
         

@@ -41,13 +41,20 @@ class Bag extends AggregateRoot
     {
         $items = [];
 
-        for ($i = 0; $i < 10; ++$i) {
-            $items[] = Item::createSkeletonTurnkey();
-            $items[] = Item::createSkeletonTurnkey();
-            $items[] = Item::createTreasureChest();
-            $items[] = Item::createTreasureChest();
+        $items[] = Item::createGiantRat();
+        for ($i = 0; $i < 4; ++$i) {
+            $items[] = Item::createGiantRat();
+            $items[] = Item::createGiantRat();
+            $items[] = Item::createSkeletonWarrior();
+            $items[] = Item::createSkeletonWarrior();
+            $items[] = Item::createMummy();
+            $items[] = Item::createMummy();
+            $items[] = Item::createMummy();
+            $items[] = Item::createMummy();
+            $items[] = Item::createSkeletonKing();
+            $items[] = Item::createSkeletonKing();
         }
-        $items[] = Item::createFallen();
+//        $items[] = Item::createFallen();
 
         for ($i = 0; $i < 4; ++$i) {
             $items[] = Item::createSkeletonTurnkey();
@@ -60,7 +67,7 @@ class Bag extends AggregateRoot
     #[Handler]
     public static function createClassic(DeckCreated $event): self
     {
-//                return self::createForTest($event);
+                return self::createForTest($event);
         $items = [];
 
         $testMode = TestMode::getInstance();

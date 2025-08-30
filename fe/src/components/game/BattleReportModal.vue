@@ -5,7 +5,7 @@
         <h3
           :class="{
             'victory-title': dynamicResult === 'win',
-            'defeat-title': dynamicResult === 'loose',
+            'defeat-title': dynamicResult === 'lose',
             'draw-title': dynamicResult === 'draw',
             'rolling-title': isRolling
           }"
@@ -230,7 +230,6 @@
               <span class="item-name">{{ getSpellDisplayName(item) }}</span>
               <span class="item-damage">+{{ getItemTypeDamage(item.type) }}</span>
             </div>
-            
             <!-- Show selectable inventory items for replacement -->
             <div 
               v-for="(item, index) in inventoryForSelection"
@@ -238,7 +237,7 @@
               :key="`inventory-${index}`"
               class="used-item selectable-item inventory-item-replace"
               :class="{ 'selected': selectedItemForReplacement?.itemId === item.itemId }"
-              @click="selectedItemForReplacement = item"
+              @click="setSelectedItemForReplacement(item)"
             >
               <img
                 v-if="getInventoryItemImage(item)"
@@ -361,7 +360,7 @@
           </button>
         </div>
         <!-- Add retreat button for battles without consumable selection (lost or draw battles) -->
-        <div v-else-if="(battleInfo.result === 'loose' || battleInfo.result === 'draw') && !showInventorySelection" class="button-group">
+        <div v-else-if="(battleInfo.result === 'lose' || battleInfo.result === 'draw') && !showInventorySelection" class="button-group">
           <button
             class="accept-defeat-btn"
             :disabled="isProcessing"
@@ -372,11 +371,11 @@
         </div>
         <div v-else-if="showInventorySelection" class="button-group">
           <button 
-            :disabled="!selectedItemForReplacement || isProcessing" 
-            class="confirm-replacement-btn"
+            :disabled="!selectedItemForReplacement || isProcessing"
+            :class="potentialVictoryWithConsumables ? 'pick-item-btn' : 'confirm-replacement-btn'"
             @click="confirmReplacement"
           >
-            ✅ Replace and end turn
+            {{ potentialVictoryWithConsumables ? '✅ Replace & Pick Up Reward' : '✅ Replace and end turn' }}
           </button>
           <button
             class="cancel-replacement-btn"
@@ -473,12 +472,32 @@ watch(() => props.battleInfo?.battleId, (newId, oldId) => {
 const showInventorySelection = ref(false);
 const inventoryForSelection = ref([]);
 const selectedItemForReplacement = ref(null);
+// Helper to select an inventory item to be replaced
+const setSelectedItemForReplacement = (item) => {
+  selectedItemForReplacement.value = item;
+  try {
+    console.log('[BattleReportModal] Selected item for replacement:', item?.itemId || item);
+  } catch (e) {}
+};
 const pendingPickupItem = ref(null);
 
 // Reactive data for consumable selection
 const showConsumableSelection = ref(false);
 const availableConsumables = ref([]);
 const selectedConsumables = ref([]);
+
+// Centralized setter to mutate showConsumableSelection with optional reason for easier tracing
+const setShowConsumableSelection = (value, reason = '') => {
+  if (showConsumableSelection.value === value) return;
+  // Log to help debug all state changes in browser
+  try {
+    const ts = new Date().toISOString();
+    console.log(`[BattleReportModal] ${ts} showConsumableSelection ->`, value, reason ? `reason: ${reason}` : '');
+    // Optional stack to see where it came from (uncomment if needed):
+    // console.log(new Error().stack);
+  } catch (e) { /* no-op */ }
+  showConsumableSelection.value = value;
+};
 
 // Computed to filter available consumables for only damage-dealing ones
 const availableDamageConsumables = computed(() => {
@@ -510,12 +529,26 @@ const getItemTypeDamage = (itemType) => {
 
 // Computed to check if using all consumables would result in victory
 const potentialVictoryWithConsumables = computed(() => {
-  if (!showConsumableSelection.value || !availableConsumables.value) return false;
+  if (!availableConsumables.value) {
+    // console.log('Log damage:', {
+    //   showConsumableSelection: showConsumableSelection.value,
+    //   availableConsumables: availableConsumables.value,
+    // });
+
+    return false;
+  }
   
   const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
   const maxConsumableDamage = availableConsumables.value
     .filter(item => getItemTypeDamage(item.type) > 0)
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+  console.log('Log damage:', {
+    dice: props.battleInfo.diceRollDamage,
+    weaponDamageTotal: weaponDamageTotal.value,
+    maxConsumableDamage: maxConsumableDamage,
+    monsterHp: props.battleInfo.monster,
+    potentialVictory: (currentDamage + maxConsumableDamage) > props.battleInfo.monster,
+  });
   
   // Only return true for actual victory (not draw)
   return (currentDamage + maxConsumableDamage) > props.battleInfo.monster;
@@ -533,7 +566,7 @@ const potentialImprovementWithConsumables = computed(() => {
   const totalPossibleDamage = currentDamage + maxConsumableDamage;
   
   // Return true if consumables would improve the outcome
-  if (props.battleInfo.result === 'loose') {
+  if (props.battleInfo.result === 'lose') {
     return totalPossibleDamage >= props.battleInfo.monster; // Can achieve draw or win
   }
   if (props.battleInfo.result === 'draw') {
@@ -551,7 +584,7 @@ const dynamicResult = computed(() => {
     
     if (totalDamage > monsterHP) return 'win';
     if (totalDamage === monsterHP) return 'draw';
-    return 'loose';
+    return 'lose';
   }
   
   // Otherwise use the actual battle result
@@ -566,7 +599,8 @@ const dynamicResultText = computed(() => {
   }
   
   // If consumables would change the outcome, show updated text
-  if (showConsumableSelection.value && selectedConsumables.value.length > 0) {
+  // Check even during inventory selection if we have selected consumables
+  if (selectedConsumables.value.length > 0 && (showConsumableSelection.value || showInventorySelection.value)) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
     
@@ -703,7 +737,7 @@ const initializeConsumableSelection = () => {
   // Don't show consumable selection if battle has already been finalized
   if (battleFinalized.value) {
     console.log('Battle already finalized, skipping consumable selection');
-    showConsumableSelection.value = false;
+    setShowConsumableSelection(false, 'battle already finalized');
     return;
   }
   
@@ -731,7 +765,7 @@ const initializeConsumableSelection = () => {
       if (consumablesWithDamage.length === 0) {
         console.log('No damage-dealing consumables available, skipping consumables interface');
         console.log('Setting showConsumableSelection to false');
-        showConsumableSelection.value = false;
+        setShowConsumableSelection(false, 'no damage-dealing consumables available');
         
         // IMPORTANT: Don't emit any events here - let the template handle the UI
         console.log('Template should now show End Turn button in final else clause');
@@ -746,7 +780,7 @@ const initializeConsumableSelection = () => {
       // Even for draws, player might want to win to avoid having to retreat
       if (maxPossibleDamage > props.battleInfo.monster) {
         console.log(`Consumables could change outcome: ${maxPossibleDamage} damage vs ${props.battleInfo.monster} HP`);
-        showConsumableSelection.value = true;
+        setShowConsumableSelection(true, 'maxPossibleDamage > monster');
         // Only store damage-dealing consumables
         availableConsumables.value = consumablesWithDamage;
         // Start with no consumables selected - let player choose
@@ -757,7 +791,7 @@ const initializeConsumableSelection = () => {
       // Show interface if consumables can achieve a draw (avoiding HP loss)
       if (maxPossibleDamage >= props.battleInfo.monster) {
         console.log(`Consumables could achieve draw: ${maxPossibleDamage} damage vs ${props.battleInfo.monster} HP`);
-        showConsumableSelection.value = true;
+        setShowConsumableSelection(true, 'maxPossibleDamage >= monster (draw)');
         // Only store damage-dealing consumables
         availableConsumables.value = consumablesWithDamage;
         selectedConsumables.value = [];
@@ -766,16 +800,16 @@ const initializeConsumableSelection = () => {
       
       // If consumables can't change the outcome at all, don't show interface
       console.log(`Consumables can't change outcome: ${maxPossibleDamage} damage vs ${props.battleInfo.monster} HP, skipping interface`);
-      showConsumableSelection.value = false;
+      setShowConsumableSelection(false, "consumables can't change outcome");
       return;
     }
     
     // If player won initially, no need for consumable selection
     console.log('Player won initially, no consumable selection needed');
-    showConsumableSelection.value = false;
+    setShowConsumableSelection(false, 'player already won');
   } else {
     console.log('No consumable confirmation needed or no available consumables');
-    showConsumableSelection.value = false;
+    setShowConsumableSelection(false, 'no confirmation needed or no consumables in battleInfo');
   }
 };
 
@@ -856,7 +890,7 @@ const finalizeBattleWithConsumables = () => {
   });
   
   // Reset state
-  showConsumableSelection.value = false;
+  setShowConsumableSelection(false, 'finalizeBattleWithConsumables reset');
   selectedConsumables.value = [];
   availableConsumables.value = [];
 };
@@ -872,7 +906,7 @@ const finalizeBattleWithoutConsumables = () => {
   });
   
   // Reset state
-  showConsumableSelection.value = false;
+  setShowConsumableSelection(false, 'finalizeBattleWithoutConsumables reset');
   selectedConsumables.value = [];
   availableConsumables.value = [];
 };
@@ -916,7 +950,7 @@ const finalizeBattleAndLeaveItem = () => {
   });
   
   // Reset state
-  showConsumableSelection.value = false;
+  setShowConsumableSelection(false, 'finalizeBattleAndLeaveItem reset');
   selectedConsumables.value = [];
   availableConsumables.value = [];
 };
@@ -963,7 +997,7 @@ const confirmReplacement = () => {
   inventoryForSelection.value = [];
   selectedItemForReplacement.value = null;
   pendingPickupItem.value = null;
-  showConsumableSelection.value = false;
+  setShowConsumableSelection(false, 'confirmReplacement reset after replacement');
   availableConsumables.value = [];  // Now safe to clear after full flow completes
 };
 
@@ -978,7 +1012,7 @@ const cancelReplacement = () => {
   
   // If we had consumables selected, show them again
   if (selectedConsumables.value.length > 0) {
-    showConsumableSelection.value = true;
+    setShowConsumableSelection(true, 'cancelReplacement showing consumable selection again');
   }
 };
 
@@ -995,7 +1029,7 @@ const leaveItemAndEndTurn = () => {
   // If this battle has a battleId and needs finalization (defeats/draws/wins where item is left), call finalize-battle
   // This ensures the backend processes the battle result properly
   if (props.battleInfo.battleId && 
-      (props.battleInfo.result === 'loose' || props.battleInfo.result === 'draw' || props.battleInfo.result === 'win')) {
+      (props.battleInfo.result === 'lose' || props.battleInfo.result === 'draw' || props.battleInfo.result === 'win')) {
     console.log('Finalizing battle for result:', props.battleInfo.result);
     battleFinalized.value = true;
     emit('finalize-battle', {
@@ -1037,25 +1071,32 @@ const handleRetreat = () => {
 // Method to show inventory replacement UI when inventory is full
 // This can be called from parent component
 const showInventoryFullSelection = (inventory, item) => {
+  // Entering inventory selection is a user decision point; ensure buttons are interactable
+  isProcessing.value = false;
   showInventorySelection.value = true;
   inventoryForSelection.value = inventory || [];
   pendingPickupItem.value = item;
   selectedItemForReplacement.value = null;
   
   // When showing inventory selection, hide consumable selection
-  showConsumableSelection.value = false;
+  setShowConsumableSelection(false, 'showInventoryFullSelection hides consumable selection');
+  
+  // Debug aid
+  try { console.log('[BattleReportModal] Inventory full selection opened. isProcessing:', isProcessing.value); } catch (e) {}
 };
 
 // Method to handle finalize-battle-and-pick-up with inventory full
 const showFinalizeBattleInventoryFullSelection = (inventory) => {
   console.log('showFinalizeBattleInventoryFullSelection called with inventory:', inventory);
+  // We are awaiting user choice; allow interactions
+  isProcessing.value = false;
   showInventorySelection.value = true;
   inventoryForSelection.value = inventory || [];
   selectedItemForReplacement.value = null;
   
   // Keep consumable selection values - we'll use them when finalizing
   // But hide the consumable selection UI
-  showConsumableSelection.value = false;
+  setShowConsumableSelection(false, 'showFinalizeBattleInventoryFullSelection hides consumable selection');
   
   // IMPORTANT: Keep availableConsumables so totalCalculatedDamage works
   // Don't clear availableConsumables.value here!
@@ -1064,12 +1105,21 @@ const showFinalizeBattleInventoryFullSelection = (inventory) => {
   // They are already stored in selectedConsumables.value
   console.log('Keeping selected consumables for later:', selectedConsumables.value);
   console.log('Available consumables still present:', availableConsumables.value);
+  try { console.log('[BattleReportModal] Finalize battle inventory selection opened. isProcessing:', isProcessing.value); } catch (e) {}
 };
 
 // Expose methods to parent component
 defineExpose({
   showInventoryFullSelection,
   showFinalizeBattleInventoryFullSelection
+});
+
+// Safety: whenever inventory selection UI is shown, ensure processing state allows interaction
+watch(() => showInventorySelection.value, (now) => {
+  if (now) {
+    isProcessing.value = false;
+    try { console.log('[BattleReportModal] showInventorySelection became true. isProcessing reset to', isProcessing.value); } catch (e) {}
+  }
 });
 
 // Helper function to format item names for display
@@ -2115,6 +2165,18 @@ const potentialRewardTip = computed(() => {
   border-color: #4caf50;
 }
 
+/* Inventory selection message */
+.inventory-selection-message {
+  width: 100%;
+  text-align: center;
+  color: #ff6b6b;
+  margin-bottom: 10px;
+  padding: 8px;
+  background-color: rgba(244, 67, 54, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
 /* Style for inventory replacement items */
 .used-item.inventory-item-replace {
   border: 2px solid #f44336;
@@ -2122,6 +2184,7 @@ const potentialRewardTip = computed(() => {
   position: relative;
   transform: scale(1);
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .used-item.inventory-item-replace:hover {

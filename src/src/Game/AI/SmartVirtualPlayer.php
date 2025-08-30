@@ -1839,7 +1839,7 @@ final class SmartVirtualPlayer
                     'reason' => "Defeated $monster, earned $reward - checking for item pickup"
                 ]);
                 $this->handleBattleWin($gameId, $playerId, $currentTurnId, $moveResponse, $actions);
-            } elseif ($battleResult === 'draw' || $battleResult === 'loose') {
+            } elseif ($battleResult === 'draw' || $battleResult === 'lose') {
                 $monster = $battleInfo['monsterType'] ?? 'unknown';
                 $damage = $battleInfo['totalDamage'] ?? 0;
                 $monsterHP = $battleInfo['monster'] ?? 0;

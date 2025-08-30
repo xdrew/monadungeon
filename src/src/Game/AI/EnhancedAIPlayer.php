@@ -590,7 +590,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                 return $this->handleBattleVictory($gameId, $playerId, $turnId, $battleInfo);
             case 'draw':
                 return $this->handleBattleDraw($gameId, $playerId, $turnId, $battleId, $battleInfo);
-            case 'loose':
+            case 'lose':
                 return $this->handleBattleDefeat($gameId, $playerId, $turnId, $battleId, $battleInfo);
             default:
                 $this->logger->error("Unknown battle result", ['result' => $result]);

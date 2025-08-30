@@ -334,7 +334,7 @@ class Battle extends AggregateRoot
                 if ($currentPosition !== null && $finalResult !== BattleResult::WIN) {
                     // We don't know the exact from position, so we can't move them back properly
                     // But we should still handle HP reduction for losses
-                    if ($finalResult === BattleResult::LOOSE) {
+                    if ($finalResult === BattleResult::LOSE) {
                         $messageContext->dispatch(new ReducePlayerHP(
                             playerId: $command->playerId,
                             gameId: $command->gameId,
@@ -378,8 +378,8 @@ class Battle extends AggregateRoot
         $field = $messageContext->dispatch(new GetField($this->gameId));
 
         $this->diceResults = [
-            $field->getNextDiceRoll(1, 6),
-            $field->getNextDiceRoll(1, 6),
+            $field->getNextDiceRoll(5, 5),
+            $field->getNextDiceRoll(1, 1),
         ];
 
         $this->totalDamage = array_sum($this->diceResults);
@@ -473,7 +473,7 @@ class Battle extends AggregateRoot
         // Handle player movement and HP changes based on battle result
         if ($result !== BattleResult::WIN) {
             // If the player lost, reduce their HP FIRST (before moving)
-            if ($result === BattleResult::LOOSE) {
+            if ($result === BattleResult::LOSE) {
                 $messageContext->dispatch(new ReducePlayerHP(
                     playerId: $this->playerId,
                     gameId: $this->gameId,

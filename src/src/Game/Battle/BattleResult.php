@@ -7,6 +7,6 @@ namespace App\Game\Battle;
 enum BattleResult: string
 {
     case WIN = 'win';
-    case LOOSE = 'loose';
+    case LOSE = 'lose';
     case DRAW = 'draw';
 }

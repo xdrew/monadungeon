@@ -51,7 +51,7 @@ class BattleTurnEndingTest extends TestCase
             action: TurnAction::FIGHT_MONSTER,
             additionalData: [
                 'monster' => ['name' => 'Skeleton', 'hp' => 5],
-                'result' => 'LOOSE',
+                'result' => 'LOSE',
             ],
             at: $at
         );
@@ -100,7 +100,7 @@ class BattleTurnEndingTest extends TestCase
             action: TurnAction::FIGHT_MONSTER,
             additionalData: [
                 'monster' => ['name' => 'Skeleton', 'hp' => 5],
-                'result' => 'LOOSE',
+                'result' => 'LOSE',
             ],
             at: $at
         );
@@ -130,9 +130,9 @@ class BattleTurnEndingTest extends TestCase
     #[Test]
     public function it_automatically_ends_turn_after_any_battle_result(): void
     {
-        // Test that turn ends automatically for LOOSE and DRAW results
+        // Test that turn ends automatically for LOSE and DRAW results
         // WIN does not end turn immediately (to allow item pickup)
-        $battleResults = ['LOOSE', 'DRAW'];
+        $battleResults = ['LOSE', 'DRAW'];
         
         foreach ($battleResults as $result) {
             $gameId = Uuid::v7();

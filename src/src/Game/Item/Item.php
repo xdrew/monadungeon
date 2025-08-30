@@ -237,7 +237,7 @@ final class Item
             return BattleResult::DRAW;
         }
 
-        return BattleResult::LOOSE;
+        return BattleResult::LOSE;
     }
 
     public function defeatMonster(): self
