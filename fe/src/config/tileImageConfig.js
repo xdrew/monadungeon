@@ -50,7 +50,7 @@ export const getTileImageWithRotation = (orientationChar, isRoom = false) => {
   if (config) {
     const prefix = isRoom ? 'r' : 'c';
     return {
-      image: `/assets/tiles/${prefix}-${config.base}.png`,
+      image: `/assets/tiles/${prefix}-${config.base}.webp`,
       rotation: config.rotation
     };
   }
@@ -133,14 +133,14 @@ export const getTileImageWithFallback = async (orientationChar, isRoom, features
 export const preloadTileImages = async () => {
   // Only preload the tiles we actually have
   const tilePaths = [
-    '/assets/tiles/c-1111.png', // Corridor crossroads
-    '/assets/tiles/c-1110.png', // Corridor T-junction
-    '/assets/tiles/c-1100.png', // Corridor corner
-    '/assets/tiles/c-1010.png', // Corridor straight vertical
-    '/assets/tiles/r-1111.png', // Room crossroads
-    '/assets/tiles/r-1110.png', // Room T-junction
-    '/assets/tiles/r-1100.png', // Room corner
-    '/assets/tiles/r-1010.png', // Room straight vertical
+    '/assets/tiles/c-1111.webp', // Corridor crossroads
+    '/assets/tiles/c-1110.webp', // Corridor T-junction
+    '/assets/tiles/c-1100.webp', // Corridor corner
+    '/assets/tiles/c-1010.webp', // Corridor straight vertical
+    '/assets/tiles/r-1111.webp', // Room crossroads
+    '/assets/tiles/r-1110.webp', // Room T-junction
+    '/assets/tiles/r-1100.webp', // Room corner
+    '/assets/tiles/r-1010.webp', // Room straight vertical
   ];
   
   // Preload images

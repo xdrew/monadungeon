@@ -1139,22 +1139,22 @@ const displayItemImage = computed(() => {
   
   const item = props.battleInfo.reward;
   if (item.type === 'key') {
-    return '/images/key.png';
+    return '/images/key.webp';
   } else if (item.type === 'chest') {
     // Battle rewards show opened chests
-    return '/images/chest-opened.png';
+    return '/images/chest-opened.webp';
   } else if (item.type === 'ruby_chest') {
-    return '/images/ruby-chest.png';
+    return '/images/ruby-chest.webp';
   } else if (item.type === 'fireball') {
-    return '/images/fireball.png';
+    return '/images/fireball.webp';
   } else if (item.type === 'teleport') {
-    return '/images/hf-teleport.png';
+    return '/images/hf-teleport.webp';
   } else if (item.type === 'dagger') {
-    return '/images/dagger.png';
+    return '/images/dagger.webp';
   } else if (item.type === 'sword') {
-    return '/images/sword.png';
+    return '/images/sword.webp';
   } else if (item.type === 'axe') {
-    return '/images/axe.png';
+    return '/images/axe.webp';
   }
   
   return null;
@@ -1167,21 +1167,21 @@ const getInventoryItemImage = (item) => {
   const itemType = item.type || item.name;
   switch (itemType) {
     case 'key':
-      return '/images/key.png';
+      return '/images/key.webp';
     case 'chest':
-      return '/images/chest-opened.png';
+      return '/images/chest-opened.webp';
     case 'ruby_chest':
-      return '/images/ruby-chest.png';
+      return '/images/ruby-chest.webp';
     case 'fireball':
-      return '/images/fireball.png';
+      return '/images/fireball.webp';
     case 'teleport':
-      return '/images/hf-teleport.png';
+      return '/images/hf-teleport.webp';
     case 'dagger':
-      return '/images/dagger.png';
+      return '/images/dagger.webp';
     case 'sword':
-      return '/images/sword.png';
+      return '/images/sword.webp';
     case 'axe':
-      return '/images/axe.png';
+      return '/images/axe.webp';
     default:
       return null;
   }

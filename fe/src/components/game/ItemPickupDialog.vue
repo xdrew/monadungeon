@@ -106,9 +106,9 @@ const itemImage = computed(() => {
   
   if (props.item.type === 'chest') {
     // In pickup dialog, show closed chest (it's still on the field)
-    return '/images/chest-closed.png';
+    return '/images/chest-closed.webp';
   } else if (props.item.type === 'ruby_chest') {
-    return '/images/ruby-chest.png';
+    return '/images/ruby-chest.webp';
   }
   
   return null;

@@ -344,21 +344,21 @@ export const getItemImage = (item) => {
   
   switch (item.type) {
     case 'key':
-      return '/images/key.png';
+      return '/images/key.webp';
     case 'dagger':
-      return '/images/dagger.png';
+      return '/images/dagger.webp';
     case 'sword':
-      return '/images/sword.png';
+      return '/images/sword.webp';
     case 'axe':
-      return '/images/axe.png';
+      return '/images/axe.webp';
     case 'fireball':
-      return '/images/fireball.png';
+      return '/images/fireball.webp';
     case 'teleport':
-      return '/images/hf-teleport.png';
+      return '/images/hf-teleport.webp';
     case 'chest':
-      return '/images/chest-opened.png';
+      return '/images/chest-opened.webp';
     case 'ruby_chest':
-      return '/images/ruby-chest.png';
+      return '/images/ruby-chest.webp';
     default:
       return null;
   }

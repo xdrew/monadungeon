@@ -414,10 +414,10 @@ const chestImage = computed(() => {
   if (isChest && guardDefeated) {
     // Determine which chest image to use
     if (props.item.type === 'ruby_chest') {
-      return '/images/ruby-chest.png';
+      return '/images/ruby-chest.webp';
     } else if (props.item.type === 'chest') {
       // Chests on the field are always closed (they disappear when opened)
-      return '/images/chest-closed.png';
+      return '/images/chest-closed.webp';
     }
   }
   
@@ -434,17 +434,17 @@ const weaponImage = computed(() => {
   if (guardDefeated && props.item.type) {
     switch (props.item.type) {
       case 'key':
-        return '/images/key.png';
+        return '/images/key.webp';
       case 'dagger':
-        return '/images/dagger.png';
+        return '/images/dagger.webp';
       case 'sword':
-        return '/images/sword.png';
+        return '/images/sword.webp';
       case 'axe':
-        return '/images/axe.png';
+        return '/images/axe.webp';
       case 'fireball':
-        return '/images/fireball.png';
+        return '/images/fireball.webp';
       case 'teleport':
-        return '/images/hf-teleport.png';
+        return '/images/hf-teleport.webp';
     }
   }
   
