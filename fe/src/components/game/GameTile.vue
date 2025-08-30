@@ -175,7 +175,7 @@ import { defineProps, defineEmits, computed, ref, onMounted } from 'vue';
 import { getPlayerEmoji } from '@/utils/playerUtils';
 import { getItemDamage } from '@/utils/itemUtils';
 import { getMonsterImage } from '@/utils/monsterUtils';
-import { getTileImageWithFallback, getTileImageWithRotation } from '@/config/tileImageConfig';
+import { getTileImageWithRotation } from '@/config/tileImageConfig';
 
 const props = defineProps({
   position: {
@@ -316,21 +316,14 @@ const tileBackgroundImage = ref(null);
 const tileRotation = ref(0);
 
 // Load tile image on mount
-onMounted(async () => {
+onMounted(() => {
   // Get the base image and rotation for this tile
   const imageConfig = getTileImageWithRotation(props.orientationChar, props.isRoom);
   
   if (imageConfig) {
-    // Check if the image exists
-    try {
-      const response = await fetch(imageConfig.image, { method: 'HEAD' });
-      if (response.ok) {
-        tileBackgroundImage.value = imageConfig.image;
-        tileRotation.value = imageConfig.rotation;
-      }
-    } catch (error) {
-      console.error('Failed to load tile image:', imageConfig.image, error);
-    }
+    // Directly set the image since we know our tile images exist
+    tileBackgroundImage.value = imageConfig.image;
+    tileRotation.value = imageConfig.rotation;
   }
 });
 
