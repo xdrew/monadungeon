@@ -1949,11 +1949,6 @@ const potentialRewardTip = computed(() => {
   width: 56px;
   height: 56px;
   object-fit: contain;
-  background: var(--monad-bg-card, #1A1830);
-  padding: 4px;
-  border-radius: 8px;
-  border: 2px solid var(--monad-purple-light, #9F6EFF);
-  box-shadow: 0 3px 6px rgba(123, 63, 242, 0.2);
   animation: monsterPulse 2s infinite;
 }
 
@@ -1961,21 +1956,14 @@ const potentialRewardTip = computed(() => {
   width: 48px;
   height: 48px;
   object-fit: contain;
-  background: var(--monad-bg-card, #1A1830);
-  padding: 3px;
-  border-radius: 6px;
-  border: 2px solid var(--monad-purple-light, #9F6EFF);
-  box-shadow: 0 3px 6px rgba(123, 63, 242, 0.2);
 }
 
 @keyframes monsterPulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 4px 8px rgba(123, 63, 242, 0.25);
   }
   50% {
     transform: scale(1.02);
-    box-shadow: 0 6px 12px rgba(159, 110, 255, 0.35);
   }
 }
 

@@ -63,7 +63,7 @@ export const getMonsterImage = (battle) => {
     'skeleton_king': '/images/items/Molandak.webp',
     'skeleton_warrior': '/images/items/taekwonNad1.webp',
     'skeleton_turnkey': '/images/items/IMG_20231110_131522.webp',
-    'dragon': '/images/items/e-For-The.webp',
+    'dragon': '/images/items/bullish.png',
     'fallen': '/images/items/adacv.webp',
     'giant_rat': '/images/items/monad_ikan.webp',
     'giant_spider': '/images/items/moyaki.webp',
@@ -79,7 +79,7 @@ export const getMonsterImage = (battle) => {
 
   // Default images based on HP value
   if (battle.monster >= 10) {
-    return '/images/items/e-For-The.webp'; // Big monster
+    return '/images/items/bullish.png'; // Big monster
   } else if (battle.monster >= 7) {
     return '/images/items/taekwonNad1.webp'; // Medium monster
   } else {

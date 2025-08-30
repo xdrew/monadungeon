@@ -145,7 +145,7 @@ const getMonsterImage = (monsterName) => {
     'skeleton_king': '/images/items/Molandak.webp',
     'skeleton_warrior': '/images/items/taekwonNad1.webp',
     'skeleton_turnkey': '/images/items/IMG_20231110_131522.webp',
-    'dragon': '/images/items/e-For-The.webp',
+    'dragon': '/images/items/bullish.png',
     'fallen': '/images/items/adacv.webp',
     'giant_rat': '/images/items/monad_ikan.webp',
     'giant_spider': '/images/items/moyaki.webp',

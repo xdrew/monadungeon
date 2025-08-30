@@ -145,7 +145,7 @@
 
           <div class="monster-card boss-card">
             <div class="monster-header">
-              <img class="monster-image boss-image" src="/images/items/e-For-The.webp" alt="Bullish" />
+              <img class="monster-image boss-image" src="/images/items/bullish.png" alt="Bullish" />
               <span class="monster-name">Bullish (BOSS)</span>
             </div>
             <div class="monster-stats">
@@ -337,7 +337,7 @@
             <p>Save healing spells for emergencies</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><img class="monster-image" src="/images/items/e-For-The.webp" alt="Bullish" /></span>
+            <span class="tip-icon"><img class="monster-image" src="/images/items/bullish.png" alt="Bullish" /></span>
             <p>Prepare well before fighting the Bullish!</p>
           </div>
         </div>

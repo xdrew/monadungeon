@@ -185,15 +185,11 @@
   width: 80px;
   height: 80px;
   object-fit: cover;
-  border-radius: 8px;
-  border: 2px solid var(--monad-purple-light);
-  box-shadow: 0 0 20px rgba(123, 63, 242, 0.4);
   transition: all 0.3s ease;
 }
 
 .monster-image:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 30px rgba(159, 110, 255, 0.6);
 }
 
 /* Monad Battle Effects */
