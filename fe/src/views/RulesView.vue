@@ -134,7 +134,7 @@
 
           <div class="monster-card">
             <div class="monster-header">
-              <img class="monster-image" src="/images/items/adacv.webp" alt="Bee" />
+              <img class="monster-image" src="/images/items/bee.png" alt="Bee" />
               <span class="monster-name">Bee</span>
             </div>
             <div class="monster-stats">
