@@ -266,7 +266,21 @@
                 }"
               >
                 <div class="player-inventory-header">
-                  <span class="player-emoji">{{ getPlayerEmoji(player.id) }}</span>
+                  <span class="player-emoji">
+                    <img 
+                      v-if="isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })"
+                      src="/images/player.webp" 
+                      alt="Player" 
+                      class="player-avatar-image"
+                    />
+                    <img 
+                      v-else-if="isVirtualPlayer(player.id)"
+                      src="/images/ai.webp" 
+                      alt="AI Player" 
+                      class="ai-avatar-image"
+                    />
+                    <span v-else>{{ getPlayerEmoji(player.id) }}</span>
+                  </span>
                   <span class="player-name">
                     {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : 'Player' }}
                   </span>
@@ -4552,6 +4566,22 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .player-emoji {
   font-size: 1.5rem;
+}
+
+.player-avatar-image {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 4px rgba(0, 255, 0, 0.6));
+}
+
+.ai-avatar-image {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 4px rgba(0, 150, 255, 0.6));
 }
 
 .player-name {

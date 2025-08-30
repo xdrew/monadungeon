@@ -98,10 +98,22 @@
           v-for="(player, index) in allPlayerEmojis" 
           :key="player.playerId"
           class="player-emoji"
-          :style="{ right: `${index * 8}px` }"
+          :style="{ left: `${index * 8}px` }"
           :title="`Player ${player.playerId}`"
         >
-          {{ player.emoji }}
+          <img 
+            v-if="isCurrentPlayerPosition && index === 0"
+            src="/images/player.webp" 
+            alt="Current Player" 
+            class="player-image"
+          />
+          <img 
+            v-else-if="isAIPlayer(player.playerId)"
+            src="/images/ai.webp" 
+            alt="AI Player" 
+            class="ai-player-image"
+          />
+          <span v-else>{{ player.emoji }}</span>
         </span>
       </div>
       <div
@@ -109,14 +121,14 @@
         class="healing-fountain-indicator"
         title="Healing Fountain - Restores HP when you enter this tile"
       >
-        ⛲
+        <img src="/images/hf.webp" alt="Healing Fountain" class="healing-fountain-image" />
       </div>
       <div
         v-if="hasTeleportationGate"
         class="teleportation-gate-indicator"
         title="Teleportation Gate - Travel to other portal tiles"
       >
-        🌀
+        <img src="/images/portal.webp" alt="Portal" class="portal-image" />
       </div>
       <div
         v-if="isHighlighted"
@@ -346,6 +358,12 @@ const tileBackgroundStyle = computed(() => {
   return style;
 });
 
+// Helper function to check if player is AI
+const isAIPlayer = (playerId) => {
+  const virtualPlayerId = typeof localStorage !== 'undefined' ? localStorage.getItem('virtualPlayerId') : null;
+  return virtualPlayerId && playerId === virtualPlayerId;
+};
+
 // Computed properties for openings
 const hasTopOpening = computed(() => props.openings.top);
 const hasRightOpening = computed(() => props.openings.right);
@@ -545,7 +563,7 @@ const onItemClick = () => {
 .player-indicator {
   position: absolute;
   top: 10px;
-  right: 5px;
+  left: 5px;
   font-size: 24px;
   z-index: 5;
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
@@ -556,6 +574,50 @@ const onItemClick = () => {
   top: 10px;
   font-size: 24px;
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
+}
+
+.player-image {
+  width: 45px;
+  height: 45px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.8)) 
+          drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
+  animation: playerGlow 2s ease-in-out infinite;
+}
+
+@keyframes playerGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.8)) 
+            drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(0, 255, 0, 1)) 
+            drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))
+            drop-shadow(0 0 35px rgba(0, 255, 0, 0.4));
+  }
+}
+
+.ai-player-image {
+  width: 45px;
+  height: 45px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 8px rgba(0, 150, 255, 0.8)) 
+          drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
+  animation: aiGlow 2s ease-in-out infinite;
+}
+
+@keyframes aiGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(0, 150, 255, 0.8)) 
+            drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(0, 150, 255, 1)) 
+            drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))
+            drop-shadow(0 0 35px rgba(0, 150, 255, 0.4));
+  }
 }
 
 /* Keep the glow effect for current player position */
@@ -811,22 +873,33 @@ const onItemClick = () => {
 
 .healing-fountain-indicator {
   position: absolute;
-  top: 35px;
-  left: 35px;
+  top: 25px;
+  left: 33px;
   font-size: 20px;
   z-index: 4;
   filter: drop-shadow(0 0 4px rgba(64, 224, 208, 0.8));
   animation: fountain-glow 2s ease-in-out infinite;
 }
 
+.healing-fountain-image {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
 .teleportation-gate-indicator {
   position: absolute;
-  top: 35px;
-  left: 35px;
+  top: 30px;
+  left: 33px;
   font-size: 20px;
   z-index: 4;
   filter: drop-shadow(0 0 4px rgba(138, 43, 226, 0.8));
-  animation: portal-spin 3s linear infinite;
+}
+
+.portal-image {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
 }
 
 @keyframes portal-spin {

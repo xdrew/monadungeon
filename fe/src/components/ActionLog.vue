@@ -9,7 +9,21 @@
         :class="{ 'current-player': turn.isCurrentPlayer }"
       >
         <div class="turn-header">
-          <span class="turn-player">{{ getPlayerEmoji(turn.playerId) }}</span>
+          <span class="turn-player">
+            <img 
+              v-if="isCurrentUser(turn.playerId)"
+              src="/images/player.webp" 
+              alt="Player" 
+              class="player-avatar-small"
+            />
+            <img 
+              v-else-if="isAIPlayer(turn.playerId)"
+              src="/images/ai.webp" 
+              alt="AI Player" 
+              class="ai-avatar-small"
+            />
+            <span v-else>{{ getPlayerEmoji(turn.playerId) }}</span>
+          </span>
           <span class="turn-number">
             {{ (typeof localStorage !== 'undefined' && localStorage.getItem('virtualPlayerId') === turn.playerId) ? 'AI Player' : 'Player' }} - Turn {{ turn.turnNumber }}
           </span>
@@ -98,6 +112,20 @@ const recentTurns = computed(() => {
   });
 });
 
+// Check if the player is the current user
+const isCurrentUser = (playerId) => {
+  if (!playerId) return false;
+  const currentPlayerId = typeof localStorage !== 'undefined' ? localStorage.getItem('currentPlayerId') : null;
+  return currentPlayerId === playerId;
+};
+
+// Check if the player is AI
+const isAIPlayer = (playerId) => {
+  if (!playerId) return false;
+  const virtualPlayerId = typeof localStorage !== 'undefined' ? localStorage.getItem('virtualPlayerId') : null;
+  return virtualPlayerId && playerId === virtualPlayerId;
+};
+
 // Player emoji mapping (same as in main game)
 const getPlayerEmoji = (playerId) => {
   if (!playerId) return '❓';
@@ -142,19 +170,19 @@ const getMonsterImage = (monsterName) => {
   
   // Map monster names to their proper sprite images in /images/items/
   const monsterSprites = {
-    'skeleton_king': '/images/items/Molandak.webp',
-    'skeleton_warrior': '/images/items/taekwonNad1.webp',
-    'skeleton_turnkey': '/images/items/IMG_20231110_131522.webp',
-    'dragon': '/images/items/bullish.png',
-    'fallen': '/images/items/bee.png',
-    'giant_rat': '/images/items/monad_ikan.webp',
+    'skeleton_king': '/images/items/molandak.webp',
+    'skeleton_warrior': '/images/items/taekwonnad.webp',
+    'skeleton_turnkey': '/images/items/bearded.webp',
+    'dragon': '/images/items/bullish.webp',
+    'fallen': '/images/items/bee.webp',
+    'giant_rat': '/images/items/ikan.webp',
     'giant_spider': '/images/items/moyaki.webp',
-    'mummy': '/images/items/monad_Ubur.webp',
+    'mummy': '/images/items/ubur.webp',
     'treasure_chest': '/assets/treasure.png', // Keep treasure as is
     'chest': '/assets/treasure.png'
   };
   
-  const imagePath = monsterSprites[monsterName.toLowerCase()] || '/images/items/monad_Ubur.webp'; // Default fallback
+  const imagePath = monsterSprites[monsterName.toLowerCase()] || '/images/items/ubur.webp'; // Default fallback
   return `<img src="${imagePath}" style="width: 20px; height: 20px; vertical-align: middle; image-rendering: pixelated;" title="${monsterName}" />`;
 };
 
@@ -619,6 +647,24 @@ const formatActionText = (action) => {
 
 .turn-player {
   font-size: 16px;
+}
+
+.player-avatar-small {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
+  filter: drop-shadow(0 0 2px rgba(0, 255, 0, 0.6));
+}
+
+.ai-avatar-small {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
+  filter: drop-shadow(0 0 2px rgba(0, 150, 255, 0.6));
 }
 
 .turn-number {

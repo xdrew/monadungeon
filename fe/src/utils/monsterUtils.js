@@ -60,14 +60,14 @@ export const getMonsterImage = (battle) => {
   
   // Map monster names to Monad images
   const monsterImageMap = {
-    'skeleton_king': '/images/items/Molandak.webp',
-    'skeleton_warrior': '/images/items/taekwonNad1.webp',
-    'skeleton_turnkey': '/images/items/IMG_20231110_131522.webp',
-    'dragon': '/images/items/bullish.png',
-    'fallen': '/images/items/bee.png',
-    'giant_rat': '/images/items/monad_ikan.webp',
+    'skeleton_king': '/images/items/molandak.webp',
+    'skeleton_warrior': '/images/items/taekwonnad.webp',
+    'skeleton_turnkey': '/images/items/bearded.webp',
+    'dragon': '/images/items/bullish.webp',
+    'fallen': '/images/items/bee.webp',
+    'giant_rat': '/images/items/ikan.webp',
     'giant_spider': '/images/items/moyaki.webp',
-    'mummy': '/images/items/monad_Ubur.webp'
+    'mummy': '/images/items/ubur.webp'
   };
 
   // Check for exact matches first
@@ -79,10 +79,10 @@ export const getMonsterImage = (battle) => {
 
   // Default images based on HP value
   if (battle.monster >= 10) {
-    return '/images/items/bullish.png'; // Big monster
+    return '/images/items/bullish.webp'; // Big monster
   } else if (battle.monster >= 7) {
-    return '/images/items/taekwonNad1.webp'; // Medium monster
+    return '/images/items/taekwonnad.webp'; // Medium monster
   } else {
-    return '/images/items/monad_ikan.webp'; // Small monster
+    return '/images/items/ikan.webp'; // Small monster
   }
 };

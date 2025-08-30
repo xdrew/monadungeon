@@ -68,7 +68,7 @@
         <div class="monsters-grid">
           <div class="monster-card">
             <div class="monster-header">
-              <img class="monster-image" src="/images/items/monad_ikan.webp" alt="Salmonad" />
+              <img class="monster-image" src="/images/items/ikan.webp" alt="Salmonad" />
               <span class="monster-name">Salmonad</span>
             </div>
             <div class="monster-stats">
@@ -90,7 +90,7 @@
 
           <div class="monster-card">
             <div class="monster-header">
-              <img class="monster-image" src="/images/items/monad_Ubur.webp" alt="Jellyfish" />
+              <img class="monster-image" src="/images/items/ubur.webp" alt="Jellyfish" />
               <span class="monster-name">Jellyfish</span>
             </div>
             <div class="monster-stats">
@@ -101,7 +101,7 @@
 
           <div class="monster-card">
             <div class="monster-header">
-              <img class="monster-image" src="/images/items/IMG_20231110_131522.webp" alt="Bearded nad" />
+              <img class="monster-image" src="/images/items/bearded.webp" alt="Bearded nad" />
               <span class="monster-name">Bearded nad</span>
             </div>
             <div class="monster-stats">
@@ -112,7 +112,7 @@
 
           <div class="monster-card">
             <div class="monster-header">
-              <img class="monster-image" src="/images/items/taekwonNad1.webp" alt="Taekwonnad" />
+              <img class="monster-image" src="/images/items/taekwonnad.webp" alt="Taekwonnad" />
               <span class="monster-name">Taekwonnad</span>
             </div>
             <div class="monster-stats">
@@ -123,7 +123,7 @@
 
           <div class="monster-card">
             <div class="monster-header">
-              <img class="monster-image" src="/images/items/Molandak.webp" alt="Molandak" />
+              <img class="monster-image" src="/images/items/molandak.webp" alt="Molandak" />
               <span class="monster-name">Molandak</span>
             </div>
             <div class="monster-stats">
@@ -134,7 +134,7 @@
 
           <div class="monster-card">
             <div class="monster-header">
-              <img class="monster-image" src="/images/items/bee.png" alt="Bee" />
+              <img class="monster-image" src="/images/items/bee.webp" alt="Bee" />
               <span class="monster-name">Bee</span>
             </div>
             <div class="monster-stats">
@@ -145,7 +145,7 @@
 
           <div class="monster-card boss-card">
             <div class="monster-header">
-              <img class="monster-image boss-image" src="/images/items/bullish.png" alt="Bullish" />
+              <img class="monster-image boss-image" src="/images/items/bullish.webp" alt="Bullish" />
               <span class="monster-name">Bullish (BOSS)</span>
             </div>
             <div class="monster-stats">
@@ -165,17 +165,17 @@
           <h3>⚔️ Weapons (Permanent Damage Bonus)</h3>
           <div class="items-list">
             <div class="item">
-              <span class="item-icon">🗡️</span>
+              <img class="item-image" src="/images/dagger.png" alt="Dagger" />
               <span class="item-name">Dagger</span>
               <span class="item-effect">+1 damage to all attacks</span>
             </div>
             <div class="item">
-              <span class="item-icon">⚔️</span>
+              <img class="item-image" src="/images/sword.png" alt="Sword" />
               <span class="item-name">Sword</span>
               <span class="item-effect">+2 damage to all attacks</span>
             </div>
             <div class="item">
-              <span class="item-icon">🪓</span>
+              <img class="item-image" src="/images/axe.png" alt="Axe" />
               <span class="item-name">Axe</span>
               <span class="item-effect">+3 damage to all attacks</span>
             </div>
@@ -186,12 +186,12 @@
           <h3>🪄 Spells (One-Time Use)</h3>
           <div class="items-list">
             <div class="item">
-              <span class="item-icon">🔥</span>
+              <img class="item-image" src="/images/fireball.png" alt="Fireball" />
               <span class="item-name">Fireball</span>
               <span class="item-effect">+1 damage to next attack</span>
             </div>
             <div class="item">
-              <span class="item-icon">✨</span>
+              <img class="item-image" src="/images/hf-teleport.png" alt="Teleport" />
               <span class="item-name">Teleport</span>
               <span class="item-effect">Move to any healing fountain</span>
             </div>
@@ -202,17 +202,17 @@
           <h3>🗝️ Keys & Treasures</h3>
           <div class="items-list">
             <div class="item">
-              <span class="item-icon">🗝️</span>
+              <img class="item-image" src="/images/key.png" alt="Key" />
               <span class="item-name">Key</span>
               <span class="item-effect">Unlocks treasure chests</span>
             </div>
             <div class="item">
-              <span class="item-icon">🎁</span>
+              <img class="item-image" src="/images/chest-opened.png" alt="Treasure Chest" />
               <span class="item-name">Treasure Chest</span>
               <span class="item-effect">2 Victory Points</span>
             </div>
             <div class="item">
-              <span class="item-icon">💎</span>
+              <img class="item-image" src="/images/ruby-chest.png" alt="Ruby Chest" />
               <span class="item-name">Ruby Chest</span>
               <span class="item-effect">3 Victory Points</span>
             </div>
@@ -325,19 +325,19 @@
         <h2>💡 Strategy Tips</h2>
         <div class="tips-grid">
           <div class="tip">
-            <span class="tip-icon">🗝️</span>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/key.png" alt="Key" /></span>
             <p>Always keep a key - chests give victory points!</p>
           </div>
           <div class="tip">
-            <span class="tip-icon">🪓</span>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/axe.png" alt="Axe" /></span>
             <p>Prioritize getting better weapons early</p>
           </div>
           <div class="tip">
-            <span class="tip-icon">💚</span>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/hf-teleport.png" alt="Healing" /></span>
             <p>Save healing spells for emergencies</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><img class="monster-image" src="/images/items/bullish.png" alt="Bullish" /></span>
+            <span class="tip-icon"><img class="monster-image" src="/images/items/bullish.webp" alt="Bullish" /></span>
             <p>Prepare well before fighting the Bullish!</p>
           </div>
         </div>
@@ -591,7 +591,7 @@ onBeforeUnmount(() => {
   padding: 15px;
   border-radius: 8px;
   display: grid;
-  grid-template-columns: 40px 150px 1fr;
+  grid-template-columns: 48px 150px 1fr;
   align-items: center;
   gap: 15px;
   border: 1px solid #222;
@@ -601,13 +601,24 @@ onBeforeUnmount(() => {
   font-size: 1.5rem;
 }
 
+.item-image {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  object-fit: contain;
+  border: 2px solid rgba(255, 215, 0, 0.2);
+  border-radius: 8px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
 .item-name {
   font-weight: bold;
-  color: #776622;
+  color: #ffd700;
 }
 
 .item-effect {
-  color: #555;
+  color: #b0b0b0;
 }
 
 .inventory-limits {
@@ -722,6 +733,16 @@ onBeforeUnmount(() => {
 
 .tip-icon {
   font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-tip-image {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  object-fit: contain;
 }
 
 .tip p {
