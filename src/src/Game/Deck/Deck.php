@@ -68,7 +68,7 @@ class Deck extends AggregateRoot
     #[Handler]
     public static function createClassic(GameCreated $command, MessageContext $messageContext): self
     {
-                return self::createOnlyCrossroads($command, $messageContext);
+//                return self::createOnlyCrossroads($command, $messageContext);
         // count: 1,     4 side heal start
         // count: 2,     2 side corner heal
         // count: 4,     2 side straight

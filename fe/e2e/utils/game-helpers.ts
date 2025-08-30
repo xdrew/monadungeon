@@ -240,24 +240,62 @@ export class GameHelpers {
     const hasClickableClass = await firstPlace.evaluate(el => el.classList.contains('clickable'));
     console.log(`Has clickable class: ${hasClickableClass}`);
     
-    // Try clicking with different strategies
+    // Try clicking with different strategies (prefer clean, reliable normal clicks)
     if (hasClickableClass) {
-      try {
-        // If it has clickable class, try normal click
-        await firstPlace.click();
-        console.log('Normal click on clickable element completed');
-      } catch (clickError) {
-        console.log('Normal click failed, trying force click...');
-        await firstPlace.click({ force: true });
-        console.log('Force click completed');
+      // Ensure target is stable and visible
+      await firstPlace.scrollIntoViewIfNeeded().catch(() => {});
+      await firstPlace.waitFor({ state: 'visible', timeout: TIMEOUTS.SHORT_WAIT }).catch(() => {});
+
+      // Prefer clicking the inner place-icon if present (usually has better hit area)
+      const preferredTarget = (await firstPlace.locator('.place-icon').count()) > 0
+        ? firstPlace.locator('.place-icon').first()
+        : firstPlace;
+
+      // Helper: verify center is not covered by another element
+      const isCenterUnobstructed = await preferredTarget.evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const topEl = document.elementFromPoint(cx, cy);
+        return !!topEl && (el === topEl || el.contains(topEl));
+      }).catch(() => true);
+
+      if (!isCenterUnobstructed) {
+        console.log('Target center appears obstructed; waiting briefly before retrying normal click');
+        await page.waitForTimeout(TIMEOUTS.ANIMATION_WAIT);
+      }
+
+      // Try a few normal-click retries before forcing
+      let clickedNormally = false;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await preferredTarget.click({ trial: true }).catch(() => {}); // warm up
+          await preferredTarget.click({ force: false });
+          console.log(`Normal click completed (attempt ${attempt})`);
+          clickedNormally = true;
+          break;
+        } catch (err) {
+          console.log(`Normal click attempt ${attempt} failed: ${err?.message || err}`);
+          await page.waitForTimeout(attempt * 100); // backoff a bit
+        }
+      }
+
+      if (!clickedNormally) {
+        console.log('Normal click failed after retries, trying force click as last resort...');
+        await preferredTarget.click({ force: true });
+        console.log('Force click completed (fallback)');
       }
     } else {
-      console.log('Element not clickable, trying to click the inner place-icon...');
-      // Try to click the inner place-icon element instead
+      console.log('Element not marked clickable, trying the inner place-icon first...');
       const placeIcon = firstPlace.locator('.place-icon');
       if (await placeIcon.count() > 0) {
-        await placeIcon.first().click({ force: true });
-        console.log('Clicked on place-icon');
+        try {
+          await placeIcon.first().click({ force: false });
+          console.log('Clicked on place-icon (normal)');
+        } catch {
+          await placeIcon.first().click({ force: true });
+          console.log('Clicked on place-icon (force fallback)');
+        }
       } else {
         // Fallback: dispatch click event directly
         await firstPlace.evaluate(element => {

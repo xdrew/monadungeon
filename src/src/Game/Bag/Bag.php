@@ -67,7 +67,7 @@ class Bag extends AggregateRoot
     #[Handler]
     public static function createClassic(DeckCreated $event): self
     {
-                return self::createForTest($event);
+//                return self::createForTest($event);
         $items = [];
 
         $testMode = TestMode::getInstance();
