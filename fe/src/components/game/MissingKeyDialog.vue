@@ -9,13 +9,13 @@
         <div class="missing-key-icon">
           <img
             v-if="chestType === 'ruby_chest'"
-            src="/images/ruby-chest.png"
+            src="/images/ruby-chest.webp"
             alt="Ruby Chest"
             class="chest-icon"
           />
           <img
             v-else
-            src="/images/chest-closed.png"
+            src="/images/chest-closed.webp"
             alt="Treasure Chest"
             class="chest-icon"
           />

@@ -1284,11 +1284,11 @@ const getWeaponImage = (item) => {
   
   switch (item.type) {
     case 'dagger':
-      return '/images/dagger.png';
+      return '/images/dagger.webp';
     case 'sword':
-      return '/images/sword.png';
+      return '/images/sword.webp';
     case 'axe':
-      return '/images/axe.png';
+      return '/images/axe.webp';
     default:
       return null;
   }

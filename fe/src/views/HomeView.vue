@@ -970,7 +970,7 @@ const createNewGame = async () => {
   transform: translateY(-50%);
   width: 60%;
   height: 80%;
-  background-image: url('/images/hero.png');
+  background-image: url('/images/hero.webp');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
