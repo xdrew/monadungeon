@@ -3557,9 +3557,38 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
 
     console.log('✅ Prerequisites passed');
     
+    // Calculate if inventory will have space after consuming the selected items
+    let willHaveSpace = hasInventorySpaceForReward.value;
+    
+    // If consumables were used, check if removing them creates space
+    if (!hasInventorySpaceForReward.value && finalizeBattleData.selectedConsumableIds && finalizeBattleData.selectedConsumableIds.length > 0) {
+      const rewardType = battleInfo.value?.reward?.type;
+      
+      // If the reward is a spell (fireball/teleport), check if we're freeing up spell slots
+      if (rewardType === 'fireball' || rewardType === 'teleport') {
+        const currentSpells = getCurrentPlayerData.value?.inventory?.spells || [];
+        const consumedSpellCount = finalizeBattleData.selectedConsumableIds.filter(id => 
+          currentSpells.some(spell => spell.itemId === id)
+        ).length;
+        
+        const spellsAfterConsumption = currentSpells.length - consumedSpellCount;
+        const spellLimit = rewardType === 'fireball' ? 3 : 3;
+        
+        willHaveSpace = spellsAfterConsumption < spellLimit;
+        
+        console.log('📊 Spell inventory check:', {
+          currentSpells: currentSpells.length,
+          consumedSpells: consumedSpellCount,
+          afterConsumption: spellsAfterConsumption,
+          limit: spellLimit,
+          willHaveSpace
+        });
+      }
+    }
+    
     // Check if we need to select a replacement item first
-    if (!finalizeBattleData.replaceItemId && !hasInventorySpaceForReward.value) {
-      console.log('⚠️ No inventory space, need to select replacement first');
+    if (!finalizeBattleData.replaceItemId && !willHaveSpace) {
+      console.log('⚠️ No inventory space even after consuming items, need to select replacement first');
       
       // Special case for keys: auto-replace
       if (battleInfo.value?.reward?.type === 'key') {
@@ -3585,7 +3614,17 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
           inventoryCategory = 'keys';
         }
         
-        const inventoryForCategory = getCurrentPlayerData.value?.inventory?.[inventoryCategory] || [];
+        let inventoryForCategory = getCurrentPlayerData.value?.inventory?.[inventoryCategory] || [];
+        
+        // Filter out consumables that were just used in the battle
+        // They haven't been removed from inventory yet but shouldn't be shown as replacement options
+        if (finalizeBattleData.selectedConsumableIds && finalizeBattleData.selectedConsumableIds.length > 0) {
+          inventoryForCategory = inventoryForCategory.filter(item => 
+            !finalizeBattleData.selectedConsumableIds.includes(item.itemId)
+          );
+          console.log('Filtered out used consumables:', finalizeBattleData.selectedConsumableIds);
+        }
+        
         console.log('Showing inventory selection for category:', inventoryCategory);
         
         if (battleReportModalRef.value) {
