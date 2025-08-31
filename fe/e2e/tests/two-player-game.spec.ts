@@ -877,10 +877,7 @@ test.describe('Two Player Game', () => {
     await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Dragon battle modal appeared - Player 1 will win');
 
-    // Wait a bit for the battle result to render
-    await page.waitForTimeout(1000);
-
-    // Debug: Get the damage values shown in the modal
+    // Debug: Get the damage values shown in the modal (no need to wait)
     const playerDamage = await page.locator('.player-stats .big-number').textContent().catch(() => 'unknown');
     const monsterHP = await page.locator('.monster-stats .big-number').textContent().catch(() => 'unknown');
     const monsterName = await page.locator('.monster-name').textContent().catch(() => 'unknown');
