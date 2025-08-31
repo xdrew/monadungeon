@@ -57,6 +57,7 @@ class Deck extends AggregateRoot
             orientation: TileOrientation::fourSide(),
             room: true,
             amount: max(1, $command->deckSize),
+            features: [TileFeature::HEALING_FOUNTAIN],
         );
         $tiles = \is_array($tilesFromCreate) ? $tilesFromCreate : [$tilesFromCreate];
         $deck = new self($command->gameId, $tiles);

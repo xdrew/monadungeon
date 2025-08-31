@@ -124,29 +124,26 @@
                   />
 
                   <!-- Render healing fountain markers in teleport mode -->
+                  <!-- Use healingFountainTiles from gameData to ensure ALL healing fountains are shown, excluding current position -->
                   <div
-                    v-for="position in gameData.field.healingFountainPositions"
-                    v-if="isTeleportMode && gameData.field && gameData.field.healingFountainPositions"
-                    :key="`teleport-${position}`"
+                    v-for="tile in teleportableHealingFountains"
+                    v-if="isTeleportMode"
+                    :key="`teleport-${tile.position}`"
                     class="healing-fountain-marker"
                     :style="{
                       position: 'absolute',
-                      left: `${(parseInt(position.split(',')[0]) - (gameData.field.size.minX || 0)) * tileSize}px`,
-                      top: `${(parseInt(position.split(',')[1]) - (gameData.field.size.minY || 0)) * tileSize}px`,
+                      left: `${(tile.x - (gameData.field.size.minX || 0)) * tileSize}px`,
+                      top: `${(tile.y - (gameData.field.size.minY || 0)) * tileSize}px`,
                       width: `${tileSize}px`,
                       height: `${tileSize}px`,
-                      pointerEvents: !isCurrentPlayerPosition(position) ? 'auto' : 'none',
-                      opacity: isCurrentPlayerPosition(position) ? 0.3 : 1,
-                      cursor: !isCurrentPlayerPosition(position) ? 'pointer' : 'default'
+                      pointerEvents: 'auto',
+                      opacity: 1,
+                      cursor: 'pointer'
                     }"
-                    @click="!isCurrentPlayerPosition(position) && handleTeleportClick(position)"
+                    @click="handleTeleportClick(tile.position)"
                   >
                     <div class="healing-fountain-indicator">
                       <span class="fountain-emoji">🌿</span>
-                      <span
-                        v-if="isCurrentPlayerPosition(position)"
-                        class="current-position-label"
-                      >Current</span>
                     </div>
                   </div>
 
@@ -1025,6 +1022,74 @@ const processedTiles = computed(() => {
     getAllPlayersAtPosition,
     true // Enable limited logging
   );
+});
+
+// Get healing fountain tiles that can be teleported to (excluding current position)
+const teleportableHealingFountains = computed(() => {
+  const allFountains = healingFountainTiles.value;
+  
+  // Get current player position from gameData
+  let currentPosStr = null;
+  
+  // Try to get from currentPlayerFieldPosition first
+  const currentPos = currentPlayerFieldPosition.value;
+  if (currentPos) {
+    currentPosStr = `${currentPos.x},${currentPos.y}`;
+  } else if (gameData.value?.field?.playerPositions && currentPlayerId.value) {
+    // Fallback to getting directly from gameData
+    currentPosStr = gameData.value.field.playerPositions[currentPlayerId.value];
+  }
+  
+  if (!currentPosStr) {
+    // If we still don't know current position, show all fountains
+    console.log('Warning: Could not determine current player position');
+    return allFountains;
+  }
+  
+  // Filter out the current position
+  return allFountains.filter(tile => tile.position !== currentPosStr);
+});
+
+// Get all healing fountain tiles for teleportation
+const healingFountainTiles = computed(() => {
+  const tiles = [];
+  
+  // First, try to get from gameData.field.tiles
+  if (gameData.value?.field?.tiles) {
+    const tilesWithFountains = gameData.value.field.tiles
+      .filter(tile => tile && tile.features && tile.features.includes('healing_fountain'))
+      .map(tile => ({
+        x: tile.x,
+        y: tile.y,
+        position: tile.position
+      }))
+      .filter(tile => tile.position); // Ensure position exists
+    tiles.push(...tilesWithFountains);
+  }
+  
+  // Also check processedTiles as a fallback
+  if (processedTiles.value) {
+    const processedFountains = processedTiles.value
+      .filter(tile => tile && tile.hasHealingFountain)
+      .map(tile => ({
+        x: tile.x,
+        y: tile.y,
+        position: tile.position
+      }))
+      .filter(tile => tile.position); // Ensure position exists
+    
+    // Add any that aren't already in the list
+    processedFountains.forEach(pf => {
+      if (!tiles.some(t => t.position === pf.position)) {
+        tiles.push(pf);
+      }
+    });
+  }
+  
+  // Filter out any invalid entries
+  const validTiles = tiles.filter(t => t && t.position && typeof t.x === 'number' && typeof t.y === 'number');
+  
+  return validTiles;
 });
 
 // Get available places for rendering
@@ -2444,6 +2509,7 @@ const formatTime = (timestamp) => {
 const centerViewOnCurrentPlayer = () => {
   centerViewOnCurrentPlayerUtil(gameData.value, centerViewOnMiddle, processedTiles.value, centerViewOnTile);
 };
+
 
 // Watch for changes in the game state to center on player when needed
 watch(() => gameData.value?.state?.currentPlayerId, async (newPlayerId, oldPlayerId) => {
@@ -3953,31 +4019,33 @@ const skipItemAndEndTurn = async () => {
 
 // Teleport spell handling functions
 const handleTeleportSpellSelection = async (spell) => {
-  console.log('handleTeleportSpellSelection called with spell:', spell);
-  console.log('Spell itemId:', spell.itemId);
-  console.log('Spell type:', spell.type);
-  
   // If already in teleport mode with the same spell, cancel it (toggle behavior)
   if (isTeleportMode.value && selectedTeleportSpell.value?.itemId === spell.itemId) {
     cancelTeleportMode();
     return;
   }
   
-  // Get healing fountain positions from the game data
-  if (gameData.value && gameData.value.field && gameData.value.field.healingFountainPositions) {
+  // Check if there are any healing fountain tiles available (excluding current position)
+  const currentPos = currentPlayerFieldPosition.value;
+  const currentPosStr = currentPos ? `${currentPos.x},${currentPos.y}` : null;
+  const availableFountains = healingFountainTiles.value.filter(t => t.position !== currentPosStr);
+  
+  if (availableFountains.length > 0) {
     // Enter teleport mode
     isTeleportMode.value = true;
     selectedTeleportSpell.value = spell;
-    
-    console.log('Entered teleport mode with spell:', spell);
   } else {
-    console.error('No healing fountain positions found in game data');
-    error.value = 'No healing fountain positions available';
+    error.value = 'No other healing fountain tiles available for teleportation';
   }
 };
 
 const handleTeleportClick = async (position) => {
   if (!isTeleportMode.value || !selectedTeleportSpell.value) return;
+  
+  // Double-check we're not teleporting to the same position
+  if (isCurrentPlayerPosition(position)) {
+    return;
+  }
   
   try {
     loading.value = true;
@@ -3987,13 +4055,6 @@ const handleTeleportClick = async (position) => {
     const [x, y] = position.split(',').map(n => parseInt(n));
     const targetPosition = { positionX: x, positionY: y };
     
-    console.log('Using teleport spell with parameters:', {
-      gameId: id.value,
-      playerId: currentPlayerId.value,
-      turnId: gameData.value.state.currentTurnId,
-      spellId: selectedTeleportSpell.value.itemId,
-      targetPosition
-    });
     
     // Use the teleport spell
     await gameApi.useSpell(
@@ -5130,12 +5191,15 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 /* Healing fountain markers */
 .healing-fountain-marker {
-  z-index: 20;
+  z-index: 100 !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle, rgba(76, 175, 80, 0.3) 0%, rgba(76, 175, 80, 0.1) 70%);
+  background: radial-gradient(circle, rgba(76, 175, 80, 0.5) 0%, rgba(76, 175, 80, 0.2) 70%);
   animation: pulse 2s infinite;
+  border: 2px solid rgba(76, 175, 80, 0.8);
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+  border-radius: 8px;
 }
 
 .healing-fountain-indicator {

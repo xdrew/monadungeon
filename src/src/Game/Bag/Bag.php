@@ -43,13 +43,13 @@ class Bag extends AggregateRoot
 
         $items[] = Item::createGiantRat();
         for ($i = 0; $i < 4; ++$i) {
-            $items[] = Item::createMummy();
-            $items[] = Item::createMummy();
-            $items[] = Item::createMummy();
-            $items[] = Item::createMummy();
-            $items[] = Item::createMummy();
-            $items[] = Item::createMummy();
-            $items[] = Item::createMummy();
+            $items[] = Item::createGiantSpider();
+            $items[] = Item::createGiantSpider();
+            $items[] = Item::createGiantSpider();
+            $items[] = Item::createGiantSpider();
+            $items[] = Item::createGiantSpider();
+            $items[] = Item::createGiantSpider();
+            $items[] = Item::createGiantSpider();
         }
 //        $items[] = Item::createFallen();
 
