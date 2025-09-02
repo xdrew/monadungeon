@@ -434,6 +434,82 @@ final class SmartVirtualPlayer
                 }
             }
             
+            // PRIORITY 0.6: Check if we can win the game by defeating the dragon boss
+            $dragonInfo = $this->findDragonBoss($field);
+            if ($dragonInfo !== null) {
+                $dragonPosition = $dragonInfo['position'];
+                $dragonHP = $dragonInfo['hp'];
+                $playerStrength = $this->calculateEffectiveStrength($player);
+                
+                error_log("DEBUG AI: Dragon boss found at {$dragonPosition} with {$dragonHP} HP");
+                error_log("DEBUG AI: Player strength: {$playerStrength}");
+                
+                // Check if we can defeat the dragon
+                if ($playerStrength >= $dragonHP) {
+                    // Check if defeating the dragon would give us victory
+                    $currentChestScore = $this->calculateChestScore($player);
+                    $opponentScores = $this->getOpponentChestScores($gameId, $playerId);
+                    $maxOpponentScore = !empty($opponentScores) ? max($opponentScores) : 0;
+                    
+                    // Dragon drops ruby chest worth 3 points
+                    $scoreAfterDragon = $currentChestScore + 3;
+                    
+                    error_log("DEBUG AI: Current chest score: {$currentChestScore}, max opponent: {$maxOpponentScore}");
+                    error_log("DEBUG AI: Score after dragon: {$scoreAfterDragon}");
+                    
+                    // If defeating dragon would win or we're already ahead, prioritize it
+                    if ($scoreAfterDragon > $maxOpponentScore || $currentChestScore >= $maxOpponentScore) {
+                        error_log("DEBUG AI: Defeating dragon would win the game! Prioritizing boss attack.");
+                        
+                        // Check if we're adjacent to the dragon
+                        $adjacentPositions = $this->getAdjacentPositions($dragonPosition);
+                        $currentPosStr = $currentPosition->toString();
+                        
+                        if (in_array($currentPosStr, $adjacentPositions)) {
+                            // We're adjacent! Attack the dragon
+                            error_log("DEBUG AI: Adjacent to dragon, attacking!");
+                            $actions[] = $this->createAction('ai_reasoning', [
+                                'decision' => 'Attack dragon boss to win game',
+                                'reason' => "Can defeat dragon (HP: {$dragonHP}, Strength: {$playerStrength}) for victory!",
+                                'priority' => 0.6
+                            ]);
+                            
+                            // Move to dragon position to attack
+                            [$toX, $toY] = explode(',', $dragonPosition);
+                            [$fromX, $fromY] = explode(',', $currentPosStr);
+                            $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                            $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                            
+                            $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+                            return $actions;
+                        } else {
+                            // Need to move closer to dragon
+                            error_log("DEBUG AI: Need to move closer to dragon at {$dragonPosition}");
+                            
+                            // Find best move toward dragon
+                            $placedTiles = $field->getPlacedTiles();
+                            $bestMoveTowardDragon = $this->findBestMoveToward($currentPosStr, $dragonPosition, $moveToOptions, $placedTiles);
+                            
+                            if ($bestMoveTowardDragon !== null) {
+                                $actions[] = $this->createAction('ai_reasoning', [
+                                    'decision' => 'Move toward dragon boss',
+                                    'reason' => "Moving closer to dragon to attack and win game",
+                                    'priority' => 0.6
+                                ]);
+                                
+                                [$toX, $toY] = explode(',', $bestMoveTowardDragon);
+                                [$fromX, $fromY] = explode(',', $currentPosStr);
+                                $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                                $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                                
+                                $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+                                return $actions;
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Decide action based on strategy: movement or tile placement
             // PRIORITY 1: Always move to treasures if we have a key
             // PRIORITY 2: Move to or towards better weapons
@@ -3755,6 +3831,124 @@ final class SmartVirtualPlayer
             // Continue playing even if pickup failed
             $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
         }
+    }
+    
+    /**
+     * Find the dragon boss on the field
+     */
+    private function findDragonBoss($field): ?array
+    {
+        $items = $field->getItems();
+        
+        foreach ($items as $position => $item) {
+            // Dragon has type 'ruby_chest' and name 'dragon'
+            if ($item->name->value === 'dragon' || 
+                ($item->type->value === 'ruby_chest' && $item->guardHP > 0)) {
+                return [
+                    'position' => $position,
+                    'hp' => $item->guardHP,
+                    'locked' => $item->isLocked(),
+                    'defeated' => $item->guardDefeated
+                ];
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Calculate chest score for a player
+     */
+    private function calculateChestScore($player): int
+    {
+        $inventory = $player->getInventory();
+        $score = 0;
+        
+        // Count chests in inventory
+        $chests = $inventory['chest'] ?? [];
+        foreach ($chests as $chest) {
+            // Ruby chest = 3 points, other chests = 1 point
+            $chestType = $chest instanceof \App\Game\Item\Item ? $chest->type->value : ($chest['type'] ?? '');
+            $score += ($chestType === 'ruby_chest') ? 3 : 1;
+        }
+        
+        return $score;
+    }
+    
+    /**
+     * Get opponent chest scores
+     */
+    private function getOpponentChestScores(Uuid $gameId, Uuid $playerId): array
+    {
+        $scores = [];
+        
+        try {
+            $players = $this->messageBus->dispatch(new GetActivePlayers($gameId));
+            foreach ($players as $player) {
+                if ($player->getId()->toString() !== $playerId->toString()) {
+                    $scores[] = $this->calculateChestScore($player);
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("DEBUG AI: Error getting opponent scores: " . $e->getMessage());
+        }
+        
+        return $scores;
+    }
+    
+    /**
+     * Get adjacent positions to a given position
+     */
+    private function getAdjacentPositions(string $position): array
+    {
+        [$x, $y] = explode(',', $position);
+        $x = (int)$x;
+        $y = (int)$y;
+        
+        return [
+            ($x - 1) . ',' . $y,  // Left
+            ($x + 1) . ',' . $y,  // Right
+            $x . ',' . ($y - 1),  // Up
+            $x . ',' . ($y + 1),  // Down
+        ];
+    }
+    
+    /**
+     * Find best move toward a target position
+     */
+    private function findBestMoveToward(string $currentPos, string $targetPos, array $moveOptions, array $placedTiles): ?string
+    {
+        [$currentX, $currentY] = explode(',', $currentPos);
+        $currentX = (int)$currentX;
+        $currentY = (int)$currentY;
+        
+        [$targetX, $targetY] = explode(',', $targetPos);
+        $targetX = (int)$targetX;
+        $targetY = (int)$targetY;
+        
+        $bestMove = null;
+        $shortestDistance = PHP_INT_MAX;
+        
+        foreach ($moveOptions as $moveOption) {
+            // Ensure the move option has a tile
+            if (!isset($placedTiles[$moveOption])) {
+                continue;
+            }
+            
+            [$moveX, $moveY] = explode(',', $moveOption);
+            $moveX = (int)$moveX;
+            $moveY = (int)$moveY;
+            
+            // Calculate Manhattan distance to target
+            $distance = abs($moveX - $targetX) + abs($moveY - $targetY);
+            
+            if ($distance < $shortestDistance) {
+                $shortestDistance = $distance;
+                $bestMove = $moveOption;
+            }
+        }
+        
+        return $bestMove;
     }
     
     /**
