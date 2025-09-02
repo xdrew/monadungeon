@@ -1153,13 +1153,20 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         $selectedIds = [];
         $monsterHp = $battleInfo['monster'] ?? 0;
         $currentDamage = $battleInfo['totalDamage'] ?? 0;
+        $damageNeeded = $monsterHp - $currentDamage;
 
+        // Keep adding consumables until we have enough damage or run out
         foreach ($availableConsumables as $consumable) {
+            if ($damageNeeded <= 0) {
+                break; // We have enough damage
+            }
+            
             $consumableDamage = $this->getConsumableDamage($consumable['type'] ?? '');
             
-            if ($currentDamage + $consumableDamage > $monsterHp) {
+            if ($consumableDamage > 0) {
                 $selectedIds[] = Uuid::fromString($consumable['itemId']);
-                break; // One consumable is enough
+                $currentDamage += $consumableDamage;
+                $damageNeeded -= $consumableDamage;
             }
         }
 
@@ -1725,14 +1732,15 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             return 0;
         }
         
-        $damage = 0;
+        $fireballCount = 0;
         foreach ($this->currentPlayer->inventory as $item) {
             if (($item['type'] ?? '') === 'fireball') {
-                $damage += 9; // Fireball does 9 damage
+                $fireballCount++;
             }
         }
         
-        return $damage;
+        // Each fireball adds 1 damage, so total is 1 * count
+        return $fireballCount * 1;
     }
     
     /**

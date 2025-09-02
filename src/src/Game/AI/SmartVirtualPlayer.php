@@ -3699,9 +3699,9 @@ final class SmartVirtualPlayer
             }
         }
         
-        // Add fireball damage if available
+        // Add fireball damage if available (each fireball adds 1 damage)
         if ($fireballCount > 0) {
-            $totalDamage += 9; // Fireball does 9 damage
+            $totalDamage += $fireballCount * 1; // Each fireball adds 1 damage
         }
         
         // Calculate victory chance
@@ -3709,10 +3709,12 @@ final class SmartVirtualPlayer
             return 1.0; // Guaranteed victory
         } else if ($totalDamage + 3 >= $monsterHp) {
             return 0.7; // Good chance with slightly better roll
-        } else if ($fireballCount > 0 && $totalDamage >= $monsterHp - 5) {
-            return 0.5; // Might win with consumables
+        } else if ($totalDamage + 2 >= $monsterHp) {
+            return 0.5; // Decent chance with good roll
+        } else if ($fireballCount > 0 && $totalDamage >= $monsterHp - 2) {
+            return 0.3; // Small chance with consumables
         } else {
-            return 0.2; // Low chance
+            return 0.1; // Very low chance
         }
     }
     
