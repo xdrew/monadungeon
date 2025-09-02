@@ -2809,6 +2809,14 @@ final class SmartVirtualPlayer
             return $battlePosition;
         }
         
+        // PRIORITY 3.5: Check for locked monsters (like dragon) that we need to move adjacent to
+        $adjacentMonsterPosition = $this->findPositionAdjacentToWinnableMonster($unvisitedOptions, $field, $player, $gameId, $playerId);
+        if ($adjacentMonsterPosition !== null) {
+            $playerStrength = $this->calculateEffectiveStrength($player);
+            error_log("DEBUG AI: Moving to {$adjacentMonsterPosition} to attack nearby locked monster (strength: {$playerStrength})");
+            return $adjacentMonsterPosition;
+        }
+        
         // PRIORITY 4: Check for healing fountain ONLY if HP is low
         // Only move to healing fountain if HP is below threshold
         $currentHP = $player->getHP();
@@ -3747,6 +3755,60 @@ final class SmartVirtualPlayer
             // Continue playing even if pickup failed
             $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
         }
+    }
+    
+    /**
+     * Find a position adjacent to a winnable locked monster (like the dragon)
+     */
+    private function findPositionAdjacentToWinnableMonster(array $moveOptions, $field, $player, $gameId, $playerId): ?string
+    {
+        $items = $field->getItems();
+        $playerStrength = $this->calculateEffectiveStrength($player);
+        $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+        [$currentX, $currentY] = explode(',', $currentPosition->toString());
+        
+        // Check all items on the field for locked monsters we can defeat
+        foreach ($items as $monsterPos => $item) {
+            if (!($item instanceof \App\Game\Item\Item)) {
+                continue;
+            }
+            
+            // Check if this is a locked monster we can defeat
+            if ($item->isLocked() && $item->guardHP > 0 && !$item->guardDefeated) {
+                // Special check for dragon
+                $isMonster = ($item->name->value === 'dragon') || 
+                            ($item->type->value === 'ruby_chest' && $item->guardHP > 0) ||
+                            ($item->guardHP > 0 && !in_array($item->type->value, ['chest', 'treasure_chest']));
+                
+                if ($isMonster && $playerStrength >= $item->guardHP) {
+                    error_log("DEBUG AI: Found locked monster {$item->name->value} at {$monsterPos} with HP {$item->guardHP} (we can defeat it!)");
+                    
+                    // Find adjacent positions we can move to
+                    [$monsterX, $monsterY] = explode(',', $monsterPos);
+                    $adjacentPositions = [
+                        ($monsterX + 1) . ',' . $monsterY,
+                        ($monsterX - 1) . ',' . $monsterY,
+                        $monsterX . ',' . ($monsterY + 1),
+                        $monsterX . ',' . ($monsterY - 1),
+                    ];
+                    
+                    // Return the first adjacent position we can move to
+                    foreach ($adjacentPositions as $adjPos) {
+                        if (in_array($adjPos, $moveOptions)) {
+                            error_log("DEBUG AI: Can move to {$adjPos} which is adjacent to monster at {$monsterPos}");
+                            return $adjPos;
+                        }
+                    }
+                    
+                    // If we're already adjacent, that's even better - but we should have attacked already
+                    if (in_array($currentPosition->toString(), $adjacentPositions)) {
+                        error_log("DEBUG AI: Already adjacent to monster at {$monsterPos}, should attack!");
+                    }
+                }
+            }
+        }
+        
+        return null;
     }
     
     /**
