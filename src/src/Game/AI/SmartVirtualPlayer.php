@@ -579,7 +579,8 @@ final class SmartVirtualPlayer
             $shouldMoveTowardsMonster = false;
             $targetMonsterToMoveTowards = null;
             
-            if (!$shouldMoveTowardsChest && !$shouldMoveTowardsBetterWeapon && !empty($monstersOnField)) {
+            // Always evaluate monsters, even if we're going for chests - the multi-objective pathfinding will optimize
+            if (!empty($monstersOnField)) {
                 // First check if any monsters are immediately reachable
                 $reachableMonsters = [];
                 $valuableDistantMonsters = [];
@@ -1186,7 +1187,7 @@ final class SmartVirtualPlayer
             }
             // Primary target gets highest weight (negative because lower distance is better)
             if ($minDistanceToTarget < PHP_INT_MAX) {
-                $moveScore -= $minDistanceToTarget * 100;
+                $moveScore -= $minDistanceToTarget * 50; // Reduced from 100 to allow more monster influence
                 $moveReasons[] = "{$targetType}_dist:{$minDistanceToTarget}";
             }
             
@@ -1218,8 +1219,21 @@ final class SmartVirtualPlayer
                 // Bonus if we're getting closer to a valuable monster
                 if ($newDistToMonster < $currentDistToMonster) {
                     $improvement = $currentDistToMonster - $newDistToMonster;
-                    $moveScore += $improvement * 20; // Secondary objective weight
-                    $moveReasons[] = "closer_to_{$monster['name']}:{$improvement}";
+                    // Check if monster is roughly on the way to our primary target
+                    $monsterDistToTarget = PHP_INT_MAX;
+                    if ($closestTargetForMove) {
+                        [$targetX, $targetY] = explode(',', $closestTargetForMove);
+                        $monsterDistToTarget = abs($monsterX - (int)$targetX) + abs($monsterY - (int)$targetY);
+                    }
+                    
+                    // Higher weight if monster is on the way (within 3 tiles of path to target)
+                    if ($monsterDistToTarget <= 3) {
+                        $moveScore += $improvement * 40; // Higher weight for monsters on the path
+                        $moveReasons[] = "monster_on_path:{$monster['name']}:{$improvement}";
+                    } else {
+                        $moveScore += $improvement * 20; // Normal weight for monsters off the path
+                        $moveReasons[] = "closer_to_{$monster['name']}:{$improvement}";
+                    }
                 }
             }
             
