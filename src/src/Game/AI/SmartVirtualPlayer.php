@@ -1129,10 +1129,22 @@ final class SmartVirtualPlayer
             return;
         }
         
-        // Find the valid move option that gets us closer to a target
+        // Enhanced pathfinding: Consider multiple objectives along the path
+        $player = $this->messageBus->dispatch(new GetPlayer($gameId, $playerId));
+        
+        // Get all valuable targets on the field (monsters with good loot)
+        $monstersOnField = $this->getMonstersOnField($field, $player);
+        $valuableMonsters = [];
+        foreach ($monstersOnField as $monster) {
+            if ($this->isItemWorthAttackingFor($monster['type'], $player)) {
+                $valuableMonsters[$monster['position']] = $monster;
+            }
+        }
+        
+        // Find the valid move option that optimizes multiple objectives
         $bestMove = null;
-        $shortestDistance = PHP_INT_MAX;
-        $closestTarget = null;
+        $bestScore = -PHP_INT_MAX;
+        $bestReason = '';
         
         [$currentX, $currentY] = explode(',', $currentPosition->toString());
         $currentX = (int)$currentX;
@@ -1144,18 +1156,17 @@ final class SmartVirtualPlayer
                 continue;
             }
             
-            // Check if we can defeat the monster at this position
-            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
-            if (!$this->canDefeatMonsterAt($moveOption, $player)) {
-                error_log("DEBUG AI: Skipping {$moveOption} - cannot defeat monster there");
-                continue;
-            }
-            
             [$moveX, $moveY] = explode(',', $moveOption);
             $moveX = (int)$moveX;
             $moveY = (int)$moveY;
             
-            // Calculate distance from this move option to all targets
+            // Calculate score for this move based on multiple factors
+            $moveScore = 0;
+            $moveReasons = [];
+            
+            // Factor 1: Distance to primary target (chest)
+            $minDistanceToTarget = PHP_INT_MAX;
+            $closestTargetForMove = null;
             foreach ($targetPositions as $targetPos) {
                 // Handle both array format (chests) and key-value format (weapons)
                 if (is_string($targetPos)) {
@@ -1167,59 +1178,116 @@ final class SmartVirtualPlayer
                 [$targetX, $targetY] = explode(',', $targetPosition);
                 $targetX = (int)$targetX;
                 $targetY = (int)$targetY;
-                
-                // Manhattan distance from move option to target
                 $distance = abs($moveX - $targetX) + abs($moveY - $targetY);
-                
-                if ($distance < $shortestDistance) {
-                    $shortestDistance = $distance;
-                    $bestMove = $moveOption;
-                    $closestTarget = $targetPosition;
+                if ($distance < $minDistanceToTarget) {
+                    $minDistanceToTarget = $distance;
+                    $closestTargetForMove = $targetPosition;
                 }
+            }
+            // Primary target gets highest weight (negative because lower distance is better)
+            if ($minDistanceToTarget < PHP_INT_MAX) {
+                $moveScore -= $minDistanceToTarget * 100;
+                $moveReasons[] = "{$targetType}_dist:{$minDistanceToTarget}";
+            }
+            
+            // Factor 2: Check if there's a valuable monster at this position we can defeat
+            if (isset($valuableMonsters[$moveOption])) {
+                $monster = $valuableMonsters[$moveOption];
+                $playerStrength = $this->calculateEffectiveStrength($player);
+                $monsterHP = $monster['hp'] ?? 0;
+                
+                if ($playerStrength >= $monsterHP) {
+                    // Big bonus for defeating a monster along the way
+                    $moveScore += 500;
+                    $moveReasons[] = "defeats_monster:{$monster['name']}";
+                    error_log("DEBUG AI: Move to {$moveOption} would defeat {$monster['name']} for {$monster['type']}!");
+                }
+            }
+            
+            // Factor 3: Progress towards valuable monsters (secondary objectives)
+            foreach ($valuableMonsters as $monsterPos => $monster) {
+                if ($monsterPos === $moveOption) continue; // Already handled above
+                
+                [$monsterX, $monsterY] = explode(',', $monsterPos);
+                $monsterX = (int)$monsterX;
+                $monsterY = (int)$monsterY;
+                
+                $currentDistToMonster = abs($currentX - $monsterX) + abs($currentY - $monsterY);
+                $newDistToMonster = abs($moveX - $monsterX) + abs($moveY - $monsterY);
+                
+                // Bonus if we're getting closer to a valuable monster
+                if ($newDistToMonster < $currentDistToMonster) {
+                    $improvement = $currentDistToMonster - $newDistToMonster;
+                    $moveScore += $improvement * 20; // Secondary objective weight
+                    $moveReasons[] = "closer_to_{$monster['name']}:{$improvement}";
+                }
+            }
+            
+            // Check if we can defeat the monster at this position (legacy check)
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            if (!$this->canDefeatMonsterAt($moveOption, $player)) {
+                error_log("DEBUG AI: Skipping {$moveOption} - cannot defeat monster there");
+                continue;
+            }
+            
+            error_log("DEBUG AI: Move option {$moveOption} score: {$moveScore} (" . implode(', ', $moveReasons) . ")");
+            
+            if ($moveScore > $bestScore) {
+                $bestScore = $moveScore;
+                $bestMove = $moveOption;
+                $bestReason = implode(', ', $moveReasons);
+                $closestTarget = $closestTargetForMove;
             }
         }
         
         if ($bestMove) {
-            error_log("DEBUG AI: Best move is {$bestMove} towards {$targetType} at {$closestTarget} (distance: {$shortestDistance})");
+            error_log("DEBUG AI: Best move is {$bestMove} with score {$bestScore} (reasons: {$bestReason})");
             
             // Track progress towards this target
-            if (!isset(self::$turnsSinceLastProgress[$trackingKey][$closestTarget])) {
-                self::$turnsSinceLastProgress[$trackingKey][$closestTarget] = ['distance' => $shortestDistance, 'turns' => 0];
-            } else {
-                $previousDistance = self::$turnsSinceLastProgress[$trackingKey][$closestTarget]['distance'];
-                if ($shortestDistance >= $previousDistance) {
-                    // Not making progress
-                    self::$turnsSinceLastProgress[$trackingKey][$closestTarget]['turns']++;
-                    error_log("DEBUG AI: No progress towards {$closestTarget} for " . self::$turnsSinceLastProgress[$trackingKey][$closestTarget]['turns'] . " turns");
-                    
-                    // If we haven't made progress for 2+ turns, mark as unreachable
-                    if (self::$turnsSinceLastProgress[$trackingKey][$closestTarget]['turns'] >= 2) {
-                        self::$unreachableTargets[$trackingKey][$closestTarget] = true;
-                        error_log("DEBUG AI: Marking {$closestTarget} as UNREACHABLE!");
-                        
-                        $actions[] = $this->createAction('ai_reasoning', [
-                            'message' => "Target at {$closestTarget} appears unreachable, abandoning pursuit"
-                        ]);
-                        
-                        // Try placing a tile instead
-                        $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
-                            gameId: $gameId,
-                            playerId: $playerId,
-                            messageBus: $this->messageBus,
-                        ));
-                        $placeTileOptions = $availablePlaces['placeTile'] ?? [];
-                        
-                        if (!empty($placeTileOptions)) {
-                            $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
-                        } else {
-                            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
-                        }
-                        return;
-                    }
+            if ($closestTarget) {
+                // Calculate actual distance to the closest target
+                [$targetX, $targetY] = explode(',', $closestTarget);
+                [$bestX, $bestY] = explode(',', $bestMove);
+                $distanceToTarget = abs((int)$bestX - (int)$targetX) + abs((int)$bestY - (int)$targetY);
+                
+                if (!isset(self::$turnsSinceLastProgress[$trackingKey][$closestTarget])) {
+                    self::$turnsSinceLastProgress[$trackingKey][$closestTarget] = ['distance' => $distanceToTarget, 'turns' => 0];
                 } else {
-                    // We're making progress, reset counter
-                    self::$turnsSinceLastProgress[$trackingKey][$closestTarget] = ['distance' => $shortestDistance, 'turns' => 0];
+                    $previousDistance = self::$turnsSinceLastProgress[$trackingKey][$closestTarget]['distance'];
+                    if ($distanceToTarget >= $previousDistance) {
+                        // Not making progress
+                        self::$turnsSinceLastProgress[$trackingKey][$closestTarget]['turns']++;
+                        error_log("DEBUG AI: No progress towards {$closestTarget} for " . self::$turnsSinceLastProgress[$trackingKey][$closestTarget]['turns'] . " turns");
+                        
+                        // If we haven't made progress for 2+ turns, mark as unreachable
+                        if (self::$turnsSinceLastProgress[$trackingKey][$closestTarget]['turns'] >= 2) {
+                            self::$unreachableTargets[$trackingKey][$closestTarget] = true;
+                            error_log("DEBUG AI: Marking {$closestTarget} as UNREACHABLE!");
+                            
+                            $actions[] = $this->createAction('ai_reasoning', [
+                                'message' => "Target at {$closestTarget} appears unreachable, abandoning pursuit"
+                            ]);
+                            
+                            // Try placing a tile instead
+                            $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
+                                gameId: $gameId,
+                                playerId: $playerId,
+                                messageBus: $this->messageBus,
+                            ));
+                            $placeTileOptions = $availablePlaces['placeTile'] ?? [];
+                            
+                            if (!empty($placeTileOptions)) {
+                                $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
+                            } else {
+                                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                            }
+                            return;
+                        }
+                    } else {
+                        // We're making progress, reset counter
+                        self::$turnsSinceLastProgress[$trackingKey][$closestTarget] = ['distance' => $distanceToTarget, 'turns' => 0];
+                    }
                 }
             }
             
@@ -3383,6 +3451,79 @@ final class SmartVirtualPlayer
     }
     
     /**
+     * Get all monsters on the field with their positions and details
+     */
+    private function getMonstersOnField($field, $player): array
+    {
+        $monsters = [];
+        $items = $field->getItems();
+        
+        foreach ($items as $position => $item) {
+            // Check if it's a monster (has HP and not defeated)
+            if ($item instanceof \App\Game\Item\Item) {
+                if (!$item->guardDefeated && $item->guardHP > 0) {
+                    $monsterType = $item->type->value ?? '';
+                    $monsterName = $monsterType;
+                    
+                    // Get the reward this monster drops
+                    $reward = null;
+                    if (in_array($monsterType, ['skeleton_turnkey', 'skeleton_warrior', 'skeleton_king'])) {
+                        $reward = match($monsterType) {
+                            'skeleton_turnkey' => 'key',
+                            'skeleton_warrior' => 'sword',
+                            'skeleton_king' => 'axe',
+                            default => null
+                        };
+                    } else if (in_array($monsterType, ['giant_rat', 'mummy'])) {
+                        $reward = match($monsterType) {
+                            'giant_rat' => 'dagger',
+                            'mummy' => 'fireball',
+                            default => null
+                        };
+                    }
+                    
+                    $monsters[] = [
+                        'position' => $position,
+                        'name' => $monsterName,
+                        'type' => $reward ?? $monsterType,
+                        'hp' => $item->guardHP
+                    ];
+                }
+            } else if (is_array($item)) {
+                // Handle array format
+                if (isset($item['monster']) && !empty($item['monster']['hp'])) {
+                    $monsterName = $item['monster']['name'] ?? 'unknown';
+                    $monsterType = $item['monster']['type'] ?? $monsterName;
+                    $monsterHP = (int)$item['monster']['hp'];
+                    
+                    // Get the reward
+                    $reward = $item['monster']['reward'] ?? null;
+                    if (!$reward) {
+                        // Infer reward from monster type
+                        $reward = match($monsterType) {
+                            'skeleton_turnkey' => 'key',
+                            'skeleton_warrior' => 'sword',
+                            'skeleton_king' => 'axe',
+                            'giant_rat' => 'dagger',
+                            'mummy' => 'fireball',
+                            default => null
+                        };
+                    }
+                    
+                    $monsters[] = [
+                        'position' => $position,
+                        'name' => $monsterName,
+                        'type' => $reward ?? $monsterType,
+                        'hp' => $monsterHP
+                    ];
+                }
+            }
+        }
+        
+        return $monsters;
+    }
+    
+    /**
      * Check if we should move to collect treasure (chest with key)
      */
     private function shouldMoveToTreasure($player, $field, array $moveOptions): bool
@@ -3615,27 +3756,78 @@ final class SmartVirtualPlayer
         $targetX = (int)$targetX;
         $targetY = (int)$targetY;
         
-        // Find the move that gets us closest to the target monster
+        // Get field info for multi-objective pathfinding
+        $field = $this->messageBus->dispatch(new GetField($gameId));
+        $player = $this->messageBus->dispatch(new GetPlayer($gameId, $playerId));
+        
+        // Check for other valuable targets on field (chests, other monsters)
+        $hasKey = $this->playerHasKey($player);
+        $secondaryTargets = [];
+        
+        // Add chests as secondary targets if we have a key
+        if ($hasKey) {
+            $allChestsOnField = [];
+            $items = $field->getItems();
+            foreach ($items as $position => $item) {
+                if ($item instanceof \App\Game\Item\Item && $item->type->value === 'chest' && !$item->guardDefeated) {
+                    $allChestsOnField[] = $position;
+                }
+            }
+            foreach ($allChestsOnField as $chestPos) {
+                $secondaryTargets[$chestPos] = ['type' => 'chest', 'priority' => 50];
+            }
+        }
+        
+        // Find the move that optimizes multiple objectives
         $bestMove = null;
-        $minDistance = PHP_INT_MAX;
+        $bestScore = -PHP_INT_MAX;
+        $bestReason = '';
+        
+        [$currentX, $currentY] = explode(',', $currentPosition->toString());
+        $currentX = (int)$currentX;
+        $currentY = (int)$currentY;
         
         foreach ($moveToOptions as $moveOption) {
             [$moveX, $moveY] = explode(',', $moveOption);
             $moveX = (int)$moveX;
             $moveY = (int)$moveY;
             
-            // Calculate Manhattan distance from this move option to the target
-            $distance = abs($moveX - $targetX) + abs($moveY - $targetY);
+            $moveScore = 0;
+            $moveReasons = [];
             
-            if ($distance < $minDistance) {
-                $minDistance = $distance;
+            // Primary objective: Distance to target monster
+            $distance = abs($moveX - $targetX) + abs($moveY - $targetY);
+            $moveScore -= $distance * 100; // High weight for primary target
+            $moveReasons[] = "monster_dist:{$distance}";
+            
+            // Secondary objectives: Progress towards other valuable targets
+            foreach ($secondaryTargets as $secPos => $secInfo) {
+                [$secX, $secY] = explode(',', $secPos);
+                $secX = (int)$secX;
+                $secY = (int)$secY;
+                
+                $currentDistToSec = abs($currentX - $secX) + abs($currentY - $secY);
+                $newDistToSec = abs($moveX - $secX) + abs($moveY - $secY);
+                
+                if ($newDistToSec < $currentDistToSec) {
+                    $improvement = $currentDistToSec - $newDistToSec;
+                    $moveScore += $improvement * $secInfo['priority'];
+                    $moveReasons[] = "{$secInfo['type']}_closer:{$improvement}";
+                }
+            }
+            
+            error_log("DEBUG AI: Move option {$moveOption} score: {$moveScore} (" . implode(', ', $moveReasons) . ")");
+            
+            if ($moveScore > $bestScore) {
+                $bestScore = $moveScore;
                 $bestMove = $moveOption;
+                $bestReason = implode(', ', $moveReasons);
             }
         }
         
         if ($bestMove) {
             $actions[] = $this->createAction('ai_reasoning', [
-                'message' => "Moving from {$currentPosition->toString()} to {$bestMove} towards monster at {$targetPos}"
+                'message' => "Moving to {$bestMove} (score: {$bestScore}, {$bestReason})"
             ]);
             
             [$toX, $toY] = explode(',', $bestMove);
