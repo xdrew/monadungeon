@@ -453,10 +453,26 @@ final class SmartVirtualPlayer
                 $dragonHP = $dragonInfo['hp'];
                 $playerStrength = $this->calculateEffectiveStrength($player);
                 
-                // Dragon found, calculate if we can defeat it
+                // For dragon, also consider consumables we could use
+                $inventory = $player->getInventory();
+                $availableFireballs = 0;
+                foreach ($inventory['spell'] ?? [] as $spell) {
+                    if ($spell instanceof \App\Game\Item\Item) {
+                        if ($spell->type->value === 'fireball') {
+                            $availableFireballs++;
+                        }
+                    } elseif (is_array($spell)) {
+                        if (($spell['type'] ?? '') === 'fireball' && ($spell['uses'] ?? 0) > 0) {
+                            $availableFireballs += $spell['uses'];
+                        }
+                    }
+                }
                 
-                // Check if we can defeat the dragon
-                if ($playerStrength >= $dragonHP) {
+                // Calculate strength including consumables for dragon fight
+                $strengthWithConsumables = $playerStrength + $availableFireballs;
+                
+                // Check if we can defeat the dragon (with or without consumables)
+                if ($strengthWithConsumables >= $dragonHP) {
                     // Check if defeating the dragon would give us victory
                     $currentChestScore = $this->calculateChestScore($player);
                     $opponentScores = $this->getOpponentChestScores($gameId, $playerId);
@@ -517,8 +533,9 @@ final class SmartVirtualPlayer
                     }
                 } else {
                     // Can't defeat dragon yet, but note its presence
+                    $fireballInfo = $availableFireballs > 0 ? " (+{$availableFireballs} fireballs = " . ($playerStrength + $availableFireballs) . " total)" : "";
                     $actions[] = $this->createAction('ai_info', [
-                        'message' => "Dragon found at {$dragonPosition} but can't defeat it yet (HP: {$dragonHP}, Strength: {$playerStrength})"
+                        'message' => "Dragon found at {$dragonPosition} but can't defeat it yet (HP: {$dragonHP}, Strength: {$playerStrength}{$fireballInfo})"
                     ]);
                 }
             }
