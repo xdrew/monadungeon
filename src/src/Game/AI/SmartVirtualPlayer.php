@@ -2728,22 +2728,44 @@ final class SmartVirtualPlayer
         $needsConsumableConfirmation = $battleInfo['needsConsumableConfirmation'] ?? false;
         $availableConsumables = $battleInfo['availableConsumables'] ?? [];
         $battleResult = $battleInfo['result'] ?? 'unknown';
+        $monsterHP = $battleInfo['monster'] ?? 0;
+        $totalDamage = $battleInfo['totalDamage'] ?? 0;
+        $monsterType = $battleInfo['monsterType'] ?? 'unknown';
         
         $selectedConsumableIds = [];
         $pickupItem = false;
         
-        // On draw, use consumables to win if available
-        if ($battleResult === 'draw' && !empty($availableConsumables)) {
-            // Use fireball if available (adds 9 damage)
+        // Calculate how many consumables we need to win
+        $damageNeeded = $monsterHP - $totalDamage;
+        $fireballsNeeded = $damageNeeded; // Each fireball adds 1 damage
+        
+        // Use consumables if we can turn a loss/draw into a win
+        if (($battleResult === 'draw' || $battleResult === 'lose') && !empty($availableConsumables) && $damageNeeded > 0) {
+            $fireballsUsed = 0;
+            
+            // Use fireballs to win (each adds 1 damage)
             foreach ($availableConsumables as $consumable) {
-                if ($consumable['type'] === 'fireball') {
+                if ($consumable['type'] === 'fireball' && $fireballsUsed < $fireballsNeeded) {
                     $selectedConsumableIds[] = \App\Infrastructure\Uuid\Uuid::fromString($consumable['itemId']);
-                    $pickupItem = true; // We'll win with fireball
+                    $fireballsUsed++;
+                    
+                    // Check if this is the dragon boss
+                    $reason = ($monsterType === 'dragon') 
+                        ? "To defeat dragon boss and win game!" 
+                        : "To turn {$battleResult} into victory";
+                    
                     $actions[] = $this->createAction('using_consumable', [
                         'type' => 'fireball',
-                        'reason' => 'To win on draw'
+                        'reason' => $reason,
+                        'damage_added' => 1,
+                        'total_after' => $totalDamage + $fireballsUsed
                     ]);
-                    break;
+                    
+                    // If we now have enough damage to win, we'll pick up the item
+                    if ($fireballsUsed >= $fireballsNeeded) {
+                        $pickupItem = true;
+                        break;
+                    }
                 }
             }
         }
@@ -2759,6 +2781,32 @@ final class SmartVirtualPlayer
                 $pickupItem
             );
             $actions[] = $this->createAction('finalize_battle', ['result' => $finalizeResult]);
+            
+            // Check if we won with consumables
+            $finalBattleResult = $finalizeResult['response']['battleResult'] ?? $battleResult;
+            if ($finalBattleResult === 'win' && $pickupItem) {
+                // We won! Check if this was the dragon
+                if ($monsterType === 'dragon') {
+                    $actions[] = $this->createAction('game_won', [
+                        'message' => 'Defeated dragon boss with consumables! Game won!',
+                        'final_damage' => $totalDamage + count($selectedConsumableIds)
+                    ]);
+                }
+            } else if ($finalBattleResult === 'lose') {
+                // Still lost even with consumables - player was likely moved back
+                $actions[] = $this->createAction('ai_info', [
+                    'message' => 'Lost battle even with consumables, position may have changed'
+                ]);
+                
+                // Clear dragon pursuit flag if we lost to the dragon
+                if ($monsterType === 'dragon') {
+                    $trackingKey = "{$gameId}_{$playerId}";
+                    self::$pursuingDragon[$trackingKey] = false;
+                    $actions[] = $this->createAction('ai_info', [
+                        'message' => 'Lost to dragon, will need to get stronger before trying again'
+                    ]);
+                }
+            }
         }
         
         // End turn
