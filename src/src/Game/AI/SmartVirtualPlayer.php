@@ -1130,7 +1130,7 @@ final class SmartVirtualPlayer
         }
         
         // Enhanced pathfinding: Consider multiple objectives along the path
-        $player = $this->messageBus->dispatch(new GetPlayer($gameId, $playerId));
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
         
         // Get all valuable targets on the field (monsters with good loot)
         $monstersOnField = $this->getMonstersOnField($field, $player);
@@ -3758,7 +3758,7 @@ final class SmartVirtualPlayer
         
         // Get field info for multi-objective pathfinding
         $field = $this->messageBus->dispatch(new GetField($gameId));
-        $player = $this->messageBus->dispatch(new GetPlayer($gameId, $playerId));
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
         
         // Check for other valuable targets on field (chests, other monsters)
         $hasKey = $this->playerHasKey($player);
