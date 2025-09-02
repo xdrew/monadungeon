@@ -3584,8 +3584,8 @@ final class SmartVirtualPlayer
             $gameId,
             $playerId,
             $currentTurnId,
-            $currentPosition->positionX(),
-            $currentPosition->positionY(),
+            $currentPosition->positionX,
+            $currentPosition->positionY,
             (int)explode(',', $targetPos)[0],
             (int)explode(',', $targetPos)[1],
             false
