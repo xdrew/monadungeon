@@ -575,30 +575,53 @@ final class SmartVirtualPlayer
                 error_log("DEBUG AI: Should move towards better weapons on field");
             }
             
-            // Priority 3: Attack monsters guarding valuable items we can reach
+            // Priority 3: Consider ALL monsters guarding valuable items on the field
+            $shouldMoveTowardsMonster = false;
+            $targetMonsterToMoveTowards = null;
+            
             if (!$shouldMoveTowardsChest && !$shouldMoveTowardsBetterWeapon && !empty($monstersOnField)) {
-                // Check if any monsters are immediately reachable and guard valuable items
+                // First check if any monsters are immediately reachable
                 $reachableMonsters = [];
+                $valuableDistantMonsters = [];
+                
                 foreach ($monstersOnField as $monster) {
                     $monsterPos = $monster['position'];
-                    // Check if we can reach this monster
-                    foreach ($moveToOptions as $moveOption) {
-                        if ($moveOption === $monsterPos) {
-                            // Check if the item is worth attacking for
-                            if ($this->isItemWorthAttackingFor($monster['type'], $player)) {
-                                $reachableMonsters[] = $monster;
-                                error_log("DEBUG AI: Can attack {$monster['name']} at {$monsterPos} for {$monster['type']}");
+                    
+                    // Check if the item is worth attacking for
+                    if ($this->isItemWorthAttackingFor($monster['type'], $player)) {
+                        // Check if we can reach this monster immediately
+                        $isReachable = false;
+                        foreach ($moveToOptions as $moveOption) {
+                            if ($moveOption === $monsterPos) {
+                                $isReachable = true;
+                                break;
                             }
+                        }
+                        
+                        if ($isReachable) {
+                            $reachableMonsters[] = $monster;
+                            error_log("DEBUG AI: Can immediately attack {$monster['name']} at {$monsterPos} for {$monster['type']}");
+                        } else {
+                            $valuableDistantMonsters[] = $monster;
+                            error_log("DEBUG AI: Valuable monster {$monster['name']} at {$monsterPos} for {$monster['type']} (not immediately reachable)");
                         }
                     }
                 }
                 
+                // If we can immediately attack a valuable monster, do it
                 if (!empty($reachableMonsters)) {
-                    // Choose the best monster to attack (highest value item)
                     $targetMonster = $this->chooseBestMonsterTarget($reachableMonsters, $player);
                     if ($targetMonster) {
                         $shouldAttackMonsterForItem = true;
-                        error_log("DEBUG AI: Will attack {$targetMonster['name']} for {$targetMonster['type']}");
+                        error_log("DEBUG AI: Will immediately attack {$targetMonster['name']} for {$targetMonster['type']}");
+                    }
+                }
+                // Otherwise, consider moving towards valuable distant monsters
+                else if (!empty($valuableDistantMonsters)) {
+                    $targetMonsterToMoveTowards = $this->chooseBestMonsterTarget($valuableDistantMonsters, $player);
+                    if ($targetMonsterToMoveTowards) {
+                        $shouldMoveTowardsMonster = true;
+                        error_log("DEBUG AI: Will move towards {$targetMonsterToMoveTowards['name']} at {$targetMonsterToMoveTowards['position']} for {$targetMonsterToMoveTowards['type']}");
                     }
                 }
             }
@@ -607,7 +630,8 @@ final class SmartVirtualPlayer
                 (!empty($betterWeaponsImmediate)) ||
                 ($shouldMoveTowardsChest && !empty($moveToOptions)) ||
                 ($shouldAttackMonsterForItem && $targetMonster) ||
-                ($shouldMoveTowardsBetterWeapon && !empty($moveToOptions))) {
+                ($shouldMoveTowardsBetterWeapon && !empty($moveToOptions)) ||
+                ($shouldMoveTowardsMonster && $targetMonsterToMoveTowards && !empty($moveToOptions))) {
                 
                 $reason = $this->getMovementReason($player, $field, $moveToOptions, $hasKey);
                 
@@ -618,6 +642,8 @@ final class SmartVirtualPlayer
                     $reason = "Collecting available weapons on field: " . implode(', ', $betterWeaponsOnField);
                 } elseif ($shouldAttackMonsterForItem && $targetMonster) {
                     $reason = "Attacking {$targetMonster['name']} to get {$targetMonster['type']}";
+                } elseif ($shouldMoveTowardsMonster && $targetMonsterToMoveTowards) {
+                    $reason = "Moving towards {$targetMonsterToMoveTowards['name']} at {$targetMonsterToMoveTowards['position']} to get {$targetMonsterToMoveTowards['type']}";
                 }
                 
                 $actions[] = $this->createAction('ai_reasoning', [
@@ -632,8 +658,11 @@ final class SmartVirtualPlayer
                 } elseif ($shouldMoveTowardsBetterWeapon) {
                     $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
                 } elseif ($shouldAttackMonsterForItem && $targetMonster) {
-                    // Move to attack the monster
+                    // Move to attack the monster immediately
                     $this->executeAttackMonster($gameId, $playerId, $currentTurnId, $currentPosition, $targetMonster, $actions);
+                } elseif ($shouldMoveTowardsMonster && $targetMonsterToMoveTowards) {
+                    // Move towards distant monster
+                    $this->executeMoveTowardsMonster($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $targetMonsterToMoveTowards, $actions);
                 } else {
                     $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
                 }
@@ -3574,6 +3603,62 @@ final class SmartVirtualPlayer
         }
         
         return $bestMonster;
+    }
+    
+    /**
+     * Execute movement towards a distant monster
+     */
+    private function executeMoveTowardsMonster(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, $currentPosition, array $moveToOptions, array $targetMonster, array &$actions): void
+    {
+        $targetPos = $targetMonster['position'];
+        [$targetX, $targetY] = explode(',', $targetPos);
+        $targetX = (int)$targetX;
+        $targetY = (int)$targetY;
+        
+        // Find the move that gets us closest to the target monster
+        $bestMove = null;
+        $minDistance = PHP_INT_MAX;
+        
+        foreach ($moveToOptions as $moveOption) {
+            [$moveX, $moveY] = explode(',', $moveOption);
+            $moveX = (int)$moveX;
+            $moveY = (int)$moveY;
+            
+            // Calculate Manhattan distance from this move option to the target
+            $distance = abs($moveX - $targetX) + abs($moveY - $targetY);
+            
+            if ($distance < $minDistance) {
+                $minDistance = $distance;
+                $bestMove = $moveOption;
+            }
+        }
+        
+        if ($bestMove) {
+            $actions[] = $this->createAction('ai_reasoning', [
+                'message' => "Moving from {$currentPosition->toString()} to {$bestMove} towards monster at {$targetPos}"
+            ]);
+            
+            [$toX, $toY] = explode(',', $bestMove);
+            $moveResult = $this->apiClient->movePlayer(
+                $gameId,
+                $playerId,
+                $currentTurnId,
+                $currentPosition->positionX,
+                $currentPosition->positionY,
+                (int)$toX,
+                (int)$toY,
+                false
+            );
+            
+            $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+            
+            // Track this position as visited
+            $this->visitedPositions[$bestMove] = true;
+            $this->moveCount++;
+            
+            // Handle any battle or item that might occur during movement
+            $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+        }
     }
     
     /**
