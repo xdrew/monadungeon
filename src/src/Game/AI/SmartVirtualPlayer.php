@@ -507,6 +507,9 @@ final class SmartVirtualPlayer
                             }
                         }
                     }
+                } else {
+                    // Can't defeat dragon yet, but note its presence
+                    error_log("DEBUG AI: Dragon found but can't defeat it yet (HP: {$dragonHP}, Strength: {$playerStrength})");
                 }
             }
             
@@ -3841,14 +3844,25 @@ final class SmartVirtualPlayer
         $items = $field->getItems();
         
         foreach ($items as $position => $item) {
-            // Dragon has type 'ruby_chest' and name 'dragon'
-            if ($item->name->value === 'dragon' || 
-                ($item->type->value === 'ruby_chest' && $item->guardHP > 0)) {
+            // Convert to Item object if needed
+            if (!($item instanceof \App\Game\Item\Item)) {
+                $item = \App\Game\Item\Item::fromAnything($item);
+            }
+            
+            $itemName = $item->name->value ?? 'unknown';
+            $itemType = $item->type->value ?? 'unknown';
+            $guardHP = $item->guardHP ?? 0;
+            $isLocked = $item->isLocked();
+            
+            // Dragon has type 'ruby_chest' and name 'dragon' 
+            // It's locked and has HP > 0
+            if (($itemName === 'dragon' || $itemType === 'ruby_chest') && 
+                $isLocked && $guardHP > 0 && !$item->guardDefeated) {
                 return [
                     'position' => $position,
-                    'hp' => $item->guardHP,
-                    'locked' => $item->isLocked(),
-                    'defeated' => $item->guardDefeated
+                    'hp' => $guardHP,
+                    'locked' => true,
+                    'defeated' => false
                 ];
             }
         }
