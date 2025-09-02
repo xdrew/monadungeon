@@ -3617,13 +3617,34 @@ final class SmartVirtualPlayer
     {
         $bestValue = 0;
         
-        // Check weapon category
+        // Handle both formats: categorized array or flat array of Item objects
         if (isset($inventory['weapon']) && is_array($inventory['weapon'])) {
+            // Categorized format
             foreach ($inventory['weapon'] as $item) {
-                if (isset($item['type'])) {
-                    $value = $this->getWeaponValue($item['type']);
+                $itemType = '';
+                if (is_array($item) && isset($item['type'])) {
+                    $itemType = $item['type'];
+                } elseif (is_object($item) && property_exists($item, 'type')) {
+                    $itemType = $item->type->value ?? '';
+                }
+                
+                if ($itemType) {
+                    $value = $this->getWeaponValue($itemType);
                     if ($value > $bestValue) {
                         $bestValue = $value;
+                    }
+                }
+            }
+        } else {
+            // Flat array of Item objects
+            foreach ($inventory as $item) {
+                if (is_object($item) && property_exists($item, 'type')) {
+                    $itemType = $item->type->value ?? '';
+                    if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
+                        $value = $this->getWeaponValue($itemType);
+                        if ($value > $bestValue) {
+                            $bestValue = $value;
+                        }
                     }
                 }
             }
@@ -3667,8 +3688,20 @@ final class SmartVirtualPlayer
     {
         $count = 0;
         
+        // Handle both formats: categorized array or flat array of Item objects
         if (isset($inventory['weapon']) && is_array($inventory['weapon'])) {
+            // Categorized format
             $count = count($inventory['weapon']);
+        } else {
+            // Flat array of Item objects
+            foreach ($inventory as $item) {
+                if (is_object($item) && property_exists($item, 'type')) {
+                    $itemType = $item->type->value ?? '';
+                    if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
+                        $count++;
+                    }
+                }
+            }
         }
         
         return $count;
@@ -3691,10 +3724,29 @@ final class SmartVirtualPlayer
         
         // Check for fireballs
         $fireballCount = 0;
+        
+        // Handle both formats: categorized array or flat array of Item objects
         if (isset($inventory['spell']) && is_array($inventory['spell'])) {
+            // Categorized format
             foreach ($inventory['spell'] as $item) {
-                if (isset($item['type']) && $item['type'] === 'fireball') {
+                $isFireball = false;
+                if (is_array($item) && isset($item['type']) && $item['type'] === 'fireball') {
+                    $isFireball = true;
+                } elseif (is_object($item) && property_exists($item, 'type') && ($item->type->value ?? '') === 'fireball') {
+                    $isFireball = true;
+                }
+                if ($isFireball) {
                     $fireballCount++;
+                }
+            }
+        } else {
+            // Flat array of Item objects
+            foreach ($inventory as $item) {
+                if (is_object($item) && property_exists($item, 'type')) {
+                    $itemType = $item->type->value ?? '';
+                    if ($itemType === 'fireball') {
+                        $fireballCount++;
+                    }
                 }
             }
         }
