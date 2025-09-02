@@ -202,33 +202,19 @@ final class SmartVirtualPlayer
             // Debug: Log available options
             $hasKey = $this->playerHasKey($player);
             
-            // Debug: Log all items on the field
+            // Get all items on the field
             $items = $field->getItems();
-            error_log('DEBUG AI: All items on field: ' . json_encode(array_keys($items)));
-            error_log('DEBUG AI: MoveToOptions: ' . json_encode($moveToOptions));
             
-            // Log details about each item
+            // Process items to find chests
             foreach ($items as $pos => $item) {
                 if ($item instanceof \App\Game\Item\Item) {
                     $itemType = $item->type->value ?? 'unknown';
                     $itemName = $item->name->value ?? 'unknown';
-                    $guardHP = $item->guardHP;
-                    $guardDefeated = $item->guardDefeated ? 'true' : 'false';
-                    $isLocked = $item->isLocked() ? 'true' : 'false';
-                    $treasureValue = $item->treasureValue;
-                    
-                    error_log("DEBUG AI: Item at {$pos}:");
-                    error_log("  - type: {$itemType}");
-                    error_log("  - name: {$itemName}");
-                    error_log("  - guardHP: {$guardHP}");
-                    error_log("  - guardDefeated: {$guardDefeated}");
-                    error_log("  - isLocked: {$isLocked}");
-                    error_log("  - treasureValue: {$treasureValue}");
                     
                     // Check if this is a chest
                     if ($itemType === 'chest' || $itemName === 'treasure_chest' || 
-                        ($guardHP === 0 && $treasureValue > 0)) {
-                        error_log("  -> This appears to be a CHEST!");
+                        ($item->guardHP === 0 && $item->treasureValue > 0)) {
+                        // This is a chest
                     }
                 } elseif (is_array($item)) {
                     error_log("DEBUG AI: Item at {$pos} (array): " . json_encode($item));
@@ -321,6 +307,30 @@ final class SmartVirtualPlayer
                 }
             }
             
+            // Find all monsters on the field
+            $monstersOnField = [];
+            foreach ($items as $pos => $item) {
+                if ($item instanceof \App\Game\Item\Item) {
+                    // Check if this is a monster (has HP and not defeated)
+                    if ($item->guardHP > 0 && !$item->guardDefeated) {
+                        $monsterInfo = [
+                            'position' => $pos,
+                            'name' => $item->name->value ?? 'unknown',
+                            'type' => $item->type->value ?? 'unknown',
+                            'hp' => $item->guardHP,
+                            'locked' => $item->isLocked()
+                        ];
+                        
+                        // Mark if this is the dragon boss
+                        if ($item->name->value === 'dragon' || $item->type->value === 'ruby_chest') {
+                            $monsterInfo['isBoss'] = true;
+                        }
+                        
+                        $monstersOnField[] = $monsterInfo;
+                    }
+                }
+            }
+            
             $actions[] = $this->createAction('ai_options', [
                 'moveOptions' => count($moveToOptions),
                 'tileOptions' => count($placeTileOptions),
@@ -330,7 +340,8 @@ final class SmartVirtualPlayer
                 'chestCount' => count($visibleChests),
                 'chestsOnField' => $allChestsOnField,  // All chests on the field
                 'betterWeaponsImmediate' => $betterWeaponsImmediate,
-                'betterWeaponsOnField' => $betterWeaponsOnField
+                'betterWeaponsOnField' => $betterWeaponsOnField,
+                'monstersOnField' => $monstersOnField  // All monsters including dragon
             ]);
             
             // PRIORITY -1: Check if we're on a healing fountain and need healing
@@ -436,13 +447,13 @@ final class SmartVirtualPlayer
             
             // PRIORITY 0.6: Check if we can win the game by defeating the dragon boss
             $dragonInfo = $this->findDragonBoss($field);
+            
             if ($dragonInfo !== null) {
                 $dragonPosition = $dragonInfo['position'];
                 $dragonHP = $dragonInfo['hp'];
                 $playerStrength = $this->calculateEffectiveStrength($player);
                 
-                error_log("DEBUG AI: Dragon boss found at {$dragonPosition} with {$dragonHP} HP");
-                error_log("DEBUG AI: Player strength: {$playerStrength}");
+                // Dragon found, calculate if we can defeat it
                 
                 // Check if we can defeat the dragon
                 if ($playerStrength >= $dragonHP) {
@@ -454,12 +465,11 @@ final class SmartVirtualPlayer
                     // Dragon drops ruby chest worth 3 points
                     $scoreAfterDragon = $currentChestScore + 3;
                     
-                    error_log("DEBUG AI: Current chest score: {$currentChestScore}, max opponent: {$maxOpponentScore}");
-                    error_log("DEBUG AI: Score after dragon: {$scoreAfterDragon}");
+                    // Calculate scores for victory determination
                     
                     // If defeating dragon would win or we're already ahead, prioritize it
                     if ($scoreAfterDragon > $maxOpponentScore || $currentChestScore >= $maxOpponentScore) {
-                        error_log("DEBUG AI: Defeating dragon would win the game! Prioritizing boss attack.");
+                        // Defeating dragon would win the game!
                         
                         // Check if we're adjacent to the dragon
                         $adjacentPositions = $this->getAdjacentPositions($dragonPosition);
@@ -467,7 +477,6 @@ final class SmartVirtualPlayer
                         
                         if (in_array($currentPosStr, $adjacentPositions)) {
                             // We're adjacent! Attack the dragon
-                            error_log("DEBUG AI: Adjacent to dragon, attacking!");
                             $actions[] = $this->createAction('ai_reasoning', [
                                 'decision' => 'Attack dragon boss to win game',
                                 'reason' => "Can defeat dragon (HP: {$dragonHP}, Strength: {$playerStrength}) for victory!",
@@ -484,7 +493,6 @@ final class SmartVirtualPlayer
                             return $actions;
                         } else {
                             // Need to move closer to dragon
-                            error_log("DEBUG AI: Need to move closer to dragon at {$dragonPosition}");
                             
                             // Find best move toward dragon
                             $placedTiles = $field->getPlacedTiles();
@@ -509,7 +517,9 @@ final class SmartVirtualPlayer
                     }
                 } else {
                     // Can't defeat dragon yet, but note its presence
-                    error_log("DEBUG AI: Dragon found but can't defeat it yet (HP: {$dragonHP}, Strength: {$playerStrength})");
+                    $actions[] = $this->createAction('ai_info', [
+                        'message' => "Dragon found at {$dragonPosition} but can't defeat it yet (HP: {$dragonHP}, Strength: {$playerStrength})"
+                    ]);
                 }
             }
             
