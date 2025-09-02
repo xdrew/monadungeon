@@ -2073,6 +2073,74 @@ final class SmartVirtualPlayer
             
             $actions[] = $this->createAction('continue_turn', ['message' => 'Looking for more actions']);
             
+            // Check if we're pursuing the dragon - maintain pursuit across moves
+            $trackingKey = "{$gameId}_{$playerId}";
+            if (isset(self::$pursuingDragon[$trackingKey]) && self::$pursuingDragon[$trackingKey] !== false) {
+                $dragonPosition = self::$pursuingDragon[$trackingKey];
+                $field = $this->messageBus->dispatch(new GetField($gameId));
+                
+                // Check if we're adjacent to dragon now
+                $adjacentPositions = $this->getAdjacentPositions($dragonPosition);
+                if (in_array($currentPosition->toString(), $adjacentPositions)) {
+                    // We're adjacent! Attack the dragon
+                    $actions[] = $this->createAction('ai_reasoning', [
+                        'decision' => 'Attack dragon boss (adjacent after move)',
+                        'reason' => "Now adjacent to dragon, attacking to win game!",
+                        'priority' => 0.6
+                    ]);
+                    
+                    // Clear pursuit flag
+                    self::$pursuingDragon[$trackingKey] = false;
+                    
+                    // Attack dragon
+                    [$toX, $toY] = explode(',', $dragonPosition);
+                    [$fromX, $fromY] = explode(',', $currentPosition->toString());
+                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                    $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                    
+                    // This will handle the battle result
+                    $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                    return;
+                }
+                
+                // Continue moving toward dragon
+                $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
+                    gameId: $gameId,
+                    playerId: $playerId,
+                    messageBus: $this->messageBus,
+                ));
+                $moveToOptions = $availablePlaces['moveTo'] ?? [];
+                
+                if (!empty($moveToOptions)) {
+                    $placedTiles = $field->getPlacedTiles();
+                    $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveToOptions, $placedTiles);
+                    
+                    if ($bestMove !== null && !isset($this->visitedPositions[$bestMove])) {
+                        $actions[] = $this->createAction('ai_reasoning', [
+                            'decision' => 'Continue pursuit of dragon',
+                            'reason' => "Moving toward dragon boss at {$dragonPosition}",
+                            'priority' => 0.6
+                        ]);
+                        
+                        // Mark as visited to prevent oscillation
+                        $this->visitedPositions[$bestMove] = true;
+                        
+                        [$toX, $toY] = explode(',', $bestMove);
+                        [$fromX, $fromY] = explode(',', $currentPosition->toString());
+                        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                        $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                        
+                        if ($moveResult['success']) {
+                            $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                        } else {
+                            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                        }
+                        return;
+                    }
+                }
+            }
+            
             // Get available actions from current position
             $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
                 gameId: $gameId,
@@ -2799,11 +2867,12 @@ final class SmartVirtualPlayer
                 ]);
                 
                 // Clear dragon pursuit flag if we lost to the dragon
+                // But we'll re-evaluate on next turn if we have consumables
                 if ($monsterType === 'dragon') {
                     $trackingKey = "{$gameId}_{$playerId}";
                     self::$pursuingDragon[$trackingKey] = false;
                     $actions[] = $this->createAction('ai_info', [
-                        'message' => 'Lost to dragon, will need to get stronger before trying again'
+                        'message' => 'Lost to dragon, but will try again with consumables on next turn'
                     ]);
                 }
             }
