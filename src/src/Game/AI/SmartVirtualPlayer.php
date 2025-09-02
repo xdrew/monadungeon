@@ -2877,6 +2877,27 @@ final class SmartVirtualPlayer
             }
         }
         
+        // PRIORITY: Move to positions that are on the edge of explored area
+        // These positions are more likely to allow placing new tiles
+        $edgePositions = $this->findEdgePositions($unvisitedOptions, $field);
+        if (!empty($edgePositions)) {
+            // Pick the closest edge position to move towards
+            $closestEdge = null;
+            $minDistance = PHP_INT_MAX;
+            foreach ($edgePositions as $edgePos) {
+                [$edgeX, $edgeY] = explode(',', $edgePos);
+                $distance = abs((int)$edgeX - $currentX) + abs((int)$edgeY - $currentY);
+                if ($distance < $minDistance) {
+                    $minDistance = $distance;
+                    $closestEdge = $edgePos;
+                }
+            }
+            if ($closestEdge !== null) {
+                error_log("DEBUG AI: Moving to edge position {$closestEdge} to explore and potentially place new tiles");
+                return $closestEdge;
+            }
+        }
+        
         $farthestOption = null;
         $maxDistance = 0;
         
@@ -3245,12 +3266,18 @@ final class SmartVirtualPlayer
             $itemName = $item->name->value ?? '';
             
             // Chests typically have:
-            // - type: 'chest' or 'ruby_chest'
+            // - type: 'chest' (NOT ruby_chest - that's the dragon!)
             // - name: 'treasure_chest' or 'fallen' (which drops a chest)
             // - guardHP: 0 (no guard, just locked)
             // - treasureValue: > 0
             
-            if ($itemType === 'chest' || $itemType === 'ruby_chest') {
+            // Dragon has type 'ruby_chest' but is a BOSS not a chest!
+            // Check if it's a dragon first
+            if ($itemName === 'dragon' || ($itemType === 'ruby_chest' && $item->guardHP > 0)) {
+                return false; // Dragon is a boss to fight, not a chest to unlock
+            }
+            
+            if ($itemType === 'chest') {
                 return true;
             }
             
@@ -3274,7 +3301,12 @@ final class SmartVirtualPlayer
             $treasureValue = $item['treasureValue'] ?? 0;
             $locked = $item['locked'] ?? false;
             
-            if ($type === 'chest' || $type === 'ruby_chest') {
+            // Dragon has type 'ruby_chest' but is a BOSS not a chest!
+            if ($name === 'dragon' || ($type === 'ruby_chest' && $guardHP > 0)) {
+                return false; // Dragon is a boss to fight, not a chest to unlock
+            }
+            
+            if ($type === 'chest') {
                 return true;
             }
             
@@ -3715,6 +3747,44 @@ final class SmartVirtualPlayer
             // Continue playing even if pickup failed
             $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
         }
+    }
+    
+    /**
+     * Find positions that are on the edge of explored area (likely to have tile placement options)
+     */
+    private function findEdgePositions(array $positions, $field): array
+    {
+        $edgePositions = [];
+        $placedTiles = $field->getPlacedTiles();
+        
+        foreach ($positions as $position) {
+            [$x, $y] = explode(',', $position);
+            $x = (int)$x;
+            $y = (int)$y;
+            
+            // Check if this position has empty adjacent spaces where tiles could be placed
+            $adjacentPositions = [
+                ($x + 1) . ',' . $y,  // East
+                ($x - 1) . ',' . $y,  // West
+                $x . ',' . ($y + 1),  // North
+                $x . ',' . ($y - 1),  // South
+            ];
+            
+            $hasEmptyAdjacent = false;
+            foreach ($adjacentPositions as $adjPos) {
+                if (!isset($placedTiles[$adjPos])) {
+                    // This adjacent position has no tile, so current position is on the edge
+                    $hasEmptyAdjacent = true;
+                    break;
+                }
+            }
+            
+            if ($hasEmptyAdjacent) {
+                $edgePositions[] = $position;
+            }
+        }
+        
+        return $edgePositions;
     }
     
     /**
