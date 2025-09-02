@@ -201,6 +201,18 @@ final class SmartVirtualPlayer
             $moveToOptions = $availablePlaces['moveTo'] ?? [];
             $placeTileOptions = $availablePlaces['placeTile'] ?? [];
             
+            // Validate moveToOptions - ensure they actually have tiles
+            $placedTiles = $field->getPlacedTiles();
+            $validMoveOptions = [];
+            foreach ($moveToOptions as $moveOption) {
+                if (isset($placedTiles[$moveOption])) {
+                    $validMoveOptions[] = $moveOption;
+                } else {
+                    error_log("DEBUG AI: WARNING - Move option {$moveOption} has no tile! Filtering out.");
+                }
+            }
+            $moveToOptions = $validMoveOptions;
+            
             // Debug: Log available options
             $hasKey = $this->playerHasKey($player);
             
@@ -442,7 +454,7 @@ final class SmartVirtualPlayer
                     $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                     
-                    $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+                    $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
                     return $actions;
                 }
             }
@@ -511,7 +523,7 @@ final class SmartVirtualPlayer
                             $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
                             $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                             
-                            $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+                            $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
                             return $actions;
                         } else {
                             // Need to move closer to dragon
@@ -536,7 +548,7 @@ final class SmartVirtualPlayer
                                 $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
                                 $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                                 
-                                $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+                                $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
                                 return $actions;
                             }
                         }
@@ -2299,12 +2311,24 @@ final class SmartVirtualPlayer
             $moveToOptions = $availablePlaces['moveTo'] ?? [];
             $placeTileOptions = $availablePlaces['placeTile'] ?? [];
             
-            error_log('DEBUG AI after move - moveToOptions: ' . json_encode($moveToOptions));
+            // Validate moveToOptions - ensure they actually have tiles
+            $field = $this->messageBus->dispatch(new GetField($gameId));
+            $placedTiles = $field->getPlacedTiles();
+            $validMoveOptions = [];
+            foreach ($moveToOptions as $moveOption) {
+                if (isset($placedTiles[$moveOption])) {
+                    $validMoveOptions[] = $moveOption;
+                } else {
+                    error_log("DEBUG AI continueAfterAction: Move option {$moveOption} has no tile! Filtering out.");
+                }
+            }
+            $moveToOptions = $validMoveOptions;
+            
+            error_log('DEBUG AI after move - valid moveToOptions: ' . json_encode($moveToOptions));
             error_log('DEBUG AI after move - placeTileOptions: ' . json_encode($placeTileOptions));
             error_log('DEBUG AI action count: ' . count($actions));
             
             // Check if we should continue moving towards better weapons
-            $field = $this->messageBus->dispatch(new GetField($gameId));
             $items = $field->getItems();
             $betterWeaponsOnField = [];
             $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
@@ -2595,7 +2619,7 @@ final class SmartVirtualPlayer
                 $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
                 $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                 
-                $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+                $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
                 return;
             }
             
@@ -2623,7 +2647,7 @@ final class SmartVirtualPlayer
                     $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                     
-                    $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+                    $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
                     return;
                 }
             }
@@ -3886,7 +3910,7 @@ final class SmartVirtualPlayer
             $this->moveCount++;
             
             // Handle any battle or item that might occur during movement
-            $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveToOptions, $actions);
+            $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
         }
     }
     
