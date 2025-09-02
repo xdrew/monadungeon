@@ -43,7 +43,8 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         'preferTreasures' => true,
         'riskTolerance' => 0.7,
         'healingThreshold' => 1,
-        'inventoryPriority' => ['sword', 'axe', 'dagger', 'fireball', 'key'],
+        'inventoryPriority' => ['axe', 'sword', 'dagger', 'fireball', 'key', 'teleport'],
+        'targetMonsterItems' => true, // Attack monsters guarding valuable items
     ];
 
     // State tracking
@@ -295,7 +296,27 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             }
         }
         
-        // Priority 3: Look for valuable movements (items, teleports)
+        // Priority 3: Look for monsters guarding valuable items
+        if ($this->strategyConfig['targetMonsterItems']) {
+            $monsterTarget = $this->findMonsterWithValuableItem($playerId);
+            if ($monsterTarget) {
+                $result = $this->executeMovement($gameId, $playerId, $turnId, $monsterTarget);
+                if ($result) {
+                    // Check if battle occurred during this movement
+                    $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
+                    
+                    return [
+                        'action' => 'attack_monster',
+                        'type' => $monsterTarget['type'],
+                        'target_item' => $monsterTarget['targetItem'] ?? 'unknown',
+                        'success' => $result,
+                        'endsNow' => $battleOccurred
+                    ];
+                }
+            }
+        }
+        
+        // Priority 4: Look for other valuable movements (items, teleports)
         $movement = $this->findBeneficialMovement($playerId);
         if ($movement) {
             $result = $this->executeMovement($gameId, $playerId, $turnId, $movement);
@@ -312,7 +333,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             }
         }
         
-        // Priority 4: Explore more tiles if we have actions left
+        // Priority 5: Explore more tiles if we have actions left
         if ($this->currentTurnActions < self::MAX_ACTIONS_PER_TURN - 1) {
             $availablePlaces = $this->messageBus->dispatch(
                 new GetAvailablePlacesForPlayer($gameId, $playerId)
@@ -913,6 +934,70 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
+     * Find monsters guarding valuable items that we should attack
+     */
+    private function findMonsterWithValuableItem(Uuid $playerId): ?array
+    {
+        if (!$this->currentField || !$this->currentPlayer) {
+            return null;
+        }
+
+        $availablePlaces = $this->messageBus->dispatch(
+            new GetAvailablePlacesForPlayer($this->currentGame->gameId, $playerId)
+        );
+
+        $bestTarget = null;
+        $bestValue = 0;
+
+        foreach ($availablePlaces->moveTo as $position) {
+            $positionString = $position->toString();
+            
+            // Check if there's an item at this position with an undefeated guard
+            if (isset($this->currentField->items[$positionString])) {
+                $item = $this->currentField->items[$positionString];
+                
+                // Check if guard is not defeated and item is valuable
+                if (!($item['guardDefeated'] ?? true)) {
+                    $itemValue = $this->getItemValue($item);
+                    
+                    // Check if this item would be an upgrade for us
+                    if ($this->isItemUpgrade($item)) {
+                        // Calculate priority based on item value and whether we can win
+                        $priority = $itemValue * 10;
+                        
+                        // Higher priority for items we don't have yet
+                        if (!$this->hasItemType($item['type'])) {
+                            $priority += 20;
+                        }
+                        
+                        // Consider if we can likely defeat the monster
+                        $estimatedMonsterStrength = $this->estimateMonsterStrength($item['type']);
+                        $ourStrength = $this->calculateOurCombatStrength();
+                        
+                        if ($ourStrength >= $estimatedMonsterStrength) {
+                            $priority += 10; // We can likely win
+                        } else if ($ourStrength + $this->getTotalConsumableDamage() >= $estimatedMonsterStrength) {
+                            $priority += 5; // We can win with consumables
+                        }
+                        
+                        if ($priority > $bestValue) {
+                            $bestValue = $priority;
+                            $bestTarget = [
+                                'type' => 'attack_for_item',
+                                'to' => $position,
+                                'targetItem' => $item['type'],
+                                'endsAfterMove' => true, // Battle will occur
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        return $bestTarget;
+    }
+
+    /**
      * Find beneficial movement opportunities
      */
     private function findBeneficialMovement(Uuid $playerId): ?array
@@ -944,7 +1029,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                 ];
             }
 
-            // Check for valuable items
+            // Check for valuable items (already defeated guards)
             if ($this->hasValuableItem($position)) {
                 return [
                     'type' => 'collect_item',
@@ -1098,14 +1183,44 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     private function chooseItemToReplace(array $newItem, array $currentInventory): ?array
     {
         $newItemValue = $this->getItemValue($newItem);
+        $newItemType = $newItem['type'] ?? '';
         $lowestValueItem = null;
         $lowestValue = $newItemValue;
 
-        foreach ($currentInventory as $item) {
-            $itemValue = $this->getItemValue($item);
-            if ($itemValue < $lowestValue) {
-                $lowestValue = $itemValue;
-                $lowestValueItem = $item;
+        // Special case: if we're picking up a weapon and already have one, keep the better one
+        if (in_array($newItemType, ['axe', 'sword', 'dagger'])) {
+            // First try to replace teleport spells or lower value non-weapons
+            foreach ($currentInventory as $item) {
+                $itemType = $item['type'] ?? '';
+                if ($itemType === 'teleport') {
+                    return $item; // Always replace teleport first
+                }
+            }
+            
+            // Then look for lower-value weapons to replace
+            foreach ($currentInventory as $item) {
+                $itemType = $item['type'] ?? '';
+                $itemValue = $this->getItemValue($item);
+                
+                // Replace lower value weapons
+                if (in_array($itemType, ['axe', 'sword', 'dagger']) && $itemValue < $newItemValue) {
+                    return $item;
+                }
+                
+                // Track the overall lowest value item
+                if ($itemValue < $lowestValue) {
+                    $lowestValue = $itemValue;
+                    $lowestValueItem = $item;
+                }
+            }
+        } else {
+            // For non-weapons, find the lowest value item to replace
+            foreach ($currentInventory as $item) {
+                $itemValue = $this->getItemValue($item);
+                if ($itemValue < $lowestValue) {
+                    $lowestValue = $itemValue;
+                    $lowestValueItem = $item;
+                }
             }
         }
 
@@ -1118,10 +1233,13 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     private function getItemValue(array $item): int
     {
         return match ($item['type'] ?? '') {
-            'axe' => 3,
-            'sword' => 2,
-            'dagger' => 1,
-            default => 0,
+            'axe' => 5,
+            'sword' => 4,
+            'dagger' => 3,
+            'fireball' => 2,
+            'key' => 1,
+            'teleport' => 0, // Lowest priority, replace first
+            default => -1,
         };
     }
 
@@ -1501,6 +1619,136 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         }
         
         return $result['success'];
+    }
+
+    /**
+     * Check if item would be an upgrade for us
+     */
+    private function isItemUpgrade(array $item): bool
+    {
+        $itemType = $item['type'] ?? '';
+        $itemValue = $this->getItemValue($item);
+        
+        // Always pick up items we don't have
+        if (!$this->hasItemType($itemType)) {
+            return $itemValue > 0; // As long as it's not teleport
+        }
+        
+        // For weapons, check if it's better than what we have
+        if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
+            $currentBestWeaponValue = $this->getBestWeaponValue();
+            return $itemValue > $currentBestWeaponValue;
+        }
+        
+        // For consumables, always useful to have more
+        if (in_array($itemType, ['fireball', 'key'])) {
+            return true;
+        }
+        
+        // Teleport spells are lowest priority
+        return $itemType !== 'teleport';
+    }
+    
+    /**
+     * Check if we have a specific item type in inventory
+     */
+    private function hasItemType(string $type): bool
+    {
+        if (!$this->currentPlayer) {
+            return false;
+        }
+        
+        foreach ($this->currentPlayer->inventory as $item) {
+            if (($item['type'] ?? '') === $type) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Get the value of our best weapon
+     */
+    private function getBestWeaponValue(): int
+    {
+        if (!$this->currentPlayer) {
+            return 0;
+        }
+        
+        $bestValue = 0;
+        foreach ($this->currentPlayer->inventory as $item) {
+            $itemType = $item['type'] ?? '';
+            if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
+                $value = $this->getItemValue($item);
+                if ($value > $bestValue) {
+                    $bestValue = $value;
+                }
+            }
+        }
+        
+        return $bestValue;
+    }
+    
+    /**
+     * Calculate our current combat strength
+     */
+    private function calculateOurCombatStrength(): int
+    {
+        if (!$this->currentPlayer) {
+            return 0;
+        }
+        
+        // Base strength from HP
+        $strength = $this->currentPlayer->hp * 2; // Assuming 2 damage per HP
+        
+        // Add weapon bonuses
+        foreach ($this->currentPlayer->inventory as $item) {
+            $itemType = $item['type'] ?? '';
+            $strength += match($itemType) {
+                'axe' => 3,
+                'sword' => 2,
+                'dagger' => 1,
+                default => 0,
+            };
+        }
+        
+        return $strength;
+    }
+    
+    /**
+     * Get total damage from all consumables in inventory
+     */
+    private function getTotalConsumableDamage(): int
+    {
+        if (!$this->currentPlayer) {
+            return 0;
+        }
+        
+        $damage = 0;
+        foreach ($this->currentPlayer->inventory as $item) {
+            if (($item['type'] ?? '') === 'fireball') {
+                $damage += 9; // Fireball does 9 damage
+            }
+        }
+        
+        return $damage;
+    }
+    
+    /**
+     * Estimate monster strength based on item it guards
+     */
+    private function estimateMonsterStrength(string $itemType): int
+    {
+        // Stronger items are typically guarded by stronger monsters
+        return match($itemType) {
+            'axe' => 10,     // Usually guarded by strong monsters like skeleton_king
+            'sword' => 8,    // Usually guarded by skeleton_warrior or skeleton_turnkey
+            'dagger' => 5,   // Usually guarded by giant_rat
+            'fireball' => 7, // Usually guarded by mummy
+            'key' => 8,      // Usually guarded by skeleton_turnkey
+            default => 6,
+        };
     }
 
     /**
