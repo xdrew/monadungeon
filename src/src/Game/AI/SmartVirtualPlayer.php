@@ -3521,18 +3521,29 @@ final class SmartVirtualPlayer
         
         // For weapons, check if it's an upgrade
         if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
-            $currentBestWeaponValue = $this->getBestWeaponValue($inventory);
             $newWeaponValue = $this->getWeaponValue($itemType);
             
-            // Attack if it's better than what we have
-            if ($newWeaponValue > $currentBestWeaponValue) {
+            // Get our current weapons and their values
+            $currentWeapons = $this->getWeaponsInInventory($inventory);
+            $weaponCount = count($currentWeapons);
+            
+            // If we have less than 2 weapons, always worth getting more
+            if ($weaponCount < 2) {
                 return true;
             }
             
-            // Also attack if we have room for another weapon (e.g., have dagger, see sword)
-            $weaponCount = $this->countWeaponsInInventory($inventory);
-            if ($weaponCount < 2 && $newWeaponValue >= $currentBestWeaponValue) {
-                return true; // Can carry multiple weapons
+            // If we have 2 weapons, check if new weapon is better than our worst
+            if ($weaponCount >= 2) {
+                $worstWeaponValue = $this->getWorstWeaponValue($inventory);
+                if ($newWeaponValue > $worstWeaponValue) {
+                    return true; // Worth replacing worst weapon
+                }
+                
+                // Also worth getting if it's the same as our best (e.g., 2 swords better than sword + dagger)
+                $bestWeaponValue = $this->getBestWeaponValue($inventory);
+                if ($newWeaponValue == $bestWeaponValue && $worstWeaponValue < $bestWeaponValue) {
+                    return true; // e.g., getting 2nd sword when we have sword + dagger
+                }
             }
         }
         
@@ -3682,29 +3693,65 @@ final class SmartVirtualPlayer
     }
     
     /**
-     * Count weapons in inventory
+     * Get weapons in inventory
      */
-    private function countWeaponsInInventory(array $inventory): int
+    private function getWeaponsInInventory(array $inventory): array
     {
-        $count = 0;
+        $weapons = [];
         
         // Handle both formats: categorized array or flat array of Item objects
         if (isset($inventory['weapon']) && is_array($inventory['weapon'])) {
             // Categorized format
-            $count = count($inventory['weapon']);
+            $weapons = $inventory['weapon'];
         } else {
             // Flat array of Item objects
             foreach ($inventory as $item) {
                 if (is_object($item) && property_exists($item, 'type')) {
                     $itemType = $item->type->value ?? '';
                     if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
-                        $count++;
+                        $weapons[] = $item;
                     }
                 }
             }
         }
         
-        return $count;
+        return $weapons;
+    }
+    
+    /**
+     * Count weapons in inventory
+     */
+    private function countWeaponsInInventory(array $inventory): int
+    {
+        return count($this->getWeaponsInInventory($inventory));
+    }
+    
+    /**
+     * Get the value of the worst weapon in inventory
+     */
+    private function getWorstWeaponValue(array $inventory): int
+    {
+        $worstValue = PHP_INT_MAX;
+        $weapons = $this->getWeaponsInInventory($inventory);
+        
+        foreach ($weapons as $weapon) {
+            $itemType = '';
+            if (is_array($weapon) && isset($weapon['type'])) {
+                $itemType = $weapon['type'];
+            } elseif (is_object($weapon) && property_exists($weapon, 'type')) {
+                $itemType = $weapon->type->value ?? '';
+            }
+            
+            if ($itemType) {
+                $value = $this->getWeaponValue($itemType);
+                if ($value < $worstValue) {
+                    $worstValue = $value;
+                }
+            }
+        }
+        
+        // If no weapons found, return 0
+        return $worstValue === PHP_INT_MAX ? 0 : $worstValue;
     }
     
     /**
