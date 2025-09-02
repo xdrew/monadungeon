@@ -2861,6 +2861,22 @@ final class SmartVirtualPlayer
         $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
         [$currentX, $currentY] = explode(',', $currentPosition->toString());
         
+        // If player doesn't have a key, exclude chest positions from exploration
+        $hasKey = $this->playerHasKey($player);
+        if (!$hasKey) {
+            $unvisitedOptions = array_filter($unvisitedOptions, function($option) use ($field) {
+                // Skip positions with chests if we don't have a key
+                return !$this->positionHasChest($option, $field);
+            });
+            
+            // If all remaining options are chests and we have no key, we need to find a key first
+            if (empty($unvisitedOptions)) {
+                error_log("DEBUG AI: All unvisited positions have chests but we have no key - need to find a key first");
+                // Return the first move option anyway to continue exploring
+                return array_values($moveOptions)[0] ?? null;
+            }
+        }
+        
         $farthestOption = null;
         $maxDistance = 0;
         
@@ -3575,7 +3591,12 @@ final class SmartVirtualPlayer
     {
         // Check what's at the target position
         if ($this->positionHasChest($targetPosition, $field)) {
-            return 'Target has a chest - moving to collect treasure';
+            // Only say we're moving to collect treasure if we have a key
+            if ($this->playerHasKey($player)) {
+                return 'Target has a chest - moving to collect treasure';
+            } else {
+                return 'Exploring area (chest present but no key)';
+            }
         }
         
         $items = $field->getItems();
