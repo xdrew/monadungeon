@@ -298,6 +298,16 @@ final class SmartVirtualPlayer
                     continue;
                 }
                 
+                // Skip if this item is marked as unpickable (inventory full)
+                if (isset(self::$unPickableItems[$trackingKey][$pos])) {
+                    $itemType = 'unknown';
+                    if ($item instanceof \App\Game\Item\Item) {
+                        $itemType = $item->type->value ?? 'unknown';
+                    }
+                    error_log("DEBUG AI: Skipping unpickable {$itemType} at {$pos} (inventory full)");
+                    continue;
+                }
+                
                 if ($this->shouldPickupItem($item, $player)) {
                     $itemType = '';
                     if ($item instanceof \App\Game\Item\Item) {
@@ -1775,10 +1785,26 @@ final class SmartVirtualPlayer
                     $reason = 'Already have a key, skipping';
                 }
             }
-            // Pick up spells
+            // Pick up spells (if we have room)
             elseif (in_array($itemType, ['fireball', 'teleport'])) {
-                $shouldPickup = true;
-                $reason = "Found {$itemType} spell - useful for combat/movement!";
+                $inventory = $player->getInventory();
+                $spellCount = isset($inventory['spell']) ? count($inventory['spell']) : 0;
+                
+                if ($spellCount < 3) { // MAX_SPELLS is 3
+                    $shouldPickup = true;
+                    $reason = "Found {$itemType} spell - useful for combat/movement!";
+                } else {
+                    $reason = "Spell inventory full (3/3), skipping {$itemType}";
+                    
+                    // Track this item as unpickable due to full inventory
+                    $trackingKey = "{$gameId}_{$playerId}";
+                    $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+                    $positionStr = $currentPosition->toString();
+                    if (!isset(self::$unPickableItems[$trackingKey])) {
+                        self::$unPickableItems[$trackingKey] = [];
+                    }
+                    self::$unPickableItems[$trackingKey][$positionStr] = true;
+                }
             }
             
             if ($shouldPickup) {
@@ -1793,8 +1819,13 @@ final class SmartVirtualPlayer
                 $pickupResult = $this->apiClient->pickItem($gameId, $playerId, $currentTurnId, (int)$x, (int)$y);
                 $actions[] = $this->createAction('pickup_result', ['result' => $pickupResult]);
                 
-                if ($pickupResult['success']) {
-                    // Item picked up, clear persistent target and end turn
+                // Check if pickup actually succeeded (not just API call success)
+                $actuallyPickedUp = $pickupResult['success'] && 
+                                   (!isset($pickupResult['response']['inventoryFull']) || 
+                                    $pickupResult['response']['inventoryFull'] !== true);
+                
+                if ($actuallyPickedUp) {
+                    // Item was actually picked up, clear persistent target and end turn
                     $trackingKey = "{$gameId}_{$playerId}";
                     $currentPos = "{$x},{$y}";
                     
@@ -1808,8 +1839,22 @@ final class SmartVirtualPlayer
                     $actions[] = $this->createAction('ai_info', ['message' => 'Item picked up, ending turn']);
                     $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                     $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                } else if (isset($pickupResult['response']['inventoryFull']) && $pickupResult['response']['inventoryFull'] === true) {
+                    // Inventory was full, mark this item as unpickable
+                    $trackingKey = "{$gameId}_{$playerId}";
+                    $currentPos = "{$x},{$y}";
+                    
+                    if (!isset(self::$unPickableItems[$trackingKey])) {
+                        self::$unPickableItems[$trackingKey] = [];
+                    }
+                    self::$unPickableItems[$trackingKey][$currentPos] = true;
+                    
+                    $actions[] = $this->createAction('ai_info', ['message' => 'Inventory full, cannot pick up item']);
+                    
+                    // Continue turn after failed pickup
+                    $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
                 } else {
-                    // Failed to pick up, continue turn
+                    // Other failure, continue turn
                     $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
                 }
             } else {
@@ -1937,6 +1982,11 @@ final class SmartVirtualPlayer
             foreach ($items as $pos => $item) {
                 // Skip if this target is marked as unreachable
                 if (isset(self::$unreachableTargets[$trackingKey][$pos])) {
+                    continue;
+                }
+                
+                // Skip if this item is marked as unpickable (inventory full)
+                if (isset(self::$unPickableItems[$trackingKey][$pos])) {
                     continue;
                 }
                 
