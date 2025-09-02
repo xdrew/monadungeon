@@ -558,6 +558,8 @@ final class SmartVirtualPlayer
             // Check if we should move towards chests or better weapons even if not immediately reachable
             $shouldMoveTowardsChest = false;
             $shouldMoveTowardsBetterWeapon = false;
+            $shouldAttackMonsterForItem = false;
+            $targetMonster = null;
             
             // Priority 1: Move towards chests if we have a key
             if ($hasKey && !empty($allChestsOnField) && empty($visibleChests)) {
@@ -565,7 +567,7 @@ final class SmartVirtualPlayer
                 error_log("DEBUG AI: Have key and chests on field - should move towards them!");
             }
             
-            // Priority 2: Move towards better weapons
+            // Priority 2: Move towards better weapons that are already available (guard defeated)
             if (!$shouldMoveTowardsChest && !empty($betterWeaponsOnField) && empty($betterWeaponsImmediate)) {
                 // We have better weapons on field but can't reach them immediately
                 // We should move towards them if we can
@@ -573,18 +575,49 @@ final class SmartVirtualPlayer
                 error_log("DEBUG AI: Should move towards better weapons on field");
             }
             
+            // Priority 3: Attack monsters guarding valuable items we can reach
+            if (!$shouldMoveTowardsChest && !$shouldMoveTowardsBetterWeapon && !empty($monstersOnField)) {
+                // Check if any monsters are immediately reachable and guard valuable items
+                $reachableMonsters = [];
+                foreach ($monstersOnField as $monster) {
+                    $monsterPos = $monster['position'];
+                    // Check if we can reach this monster
+                    foreach ($moveToOptions as $moveOption) {
+                        if ($moveOption === $monsterPos) {
+                            // Check if the item is worth attacking for
+                            if ($this->isItemWorthAttackingFor($monster['type'], $player)) {
+                                $reachableMonsters[] = $monster;
+                                error_log("DEBUG AI: Can attack {$monster['name']} at {$monsterPos} for {$monster['type']}");
+                            }
+                        }
+                    }
+                }
+                
+                if (!empty($reachableMonsters)) {
+                    // Choose the best monster to attack (highest value item)
+                    $targetMonster = $this->chooseBestMonsterTarget($reachableMonsters, $player);
+                    if ($targetMonster) {
+                        $shouldAttackMonsterForItem = true;
+                        error_log("DEBUG AI: Will attack {$targetMonster['name']} for {$targetMonster['type']}");
+                    }
+                }
+            }
+            
             if ($this->shouldMoveBeforePlacingTile($player, $field, $moveToOptions) || 
                 (!empty($betterWeaponsImmediate)) ||
                 ($shouldMoveTowardsChest && !empty($moveToOptions)) ||
+                ($shouldAttackMonsterForItem && $targetMonster) ||
                 ($shouldMoveTowardsBetterWeapon && !empty($moveToOptions))) {
                 
                 $reason = $this->getMovementReason($player, $field, $moveToOptions, $hasKey);
                 
-                // Update reason based on what we're moving towards
+                // Update reason based on what we're moving towards (priority order)
                 if ($shouldMoveTowardsChest) {
                     $reason = "Moving towards chests on field (have key!): " . implode(', ', $allChestsOnField);
                 } elseif ($shouldMoveTowardsBetterWeapon && empty($betterWeaponsImmediate)) {
-                    $reason = "Moving towards better weapons on field: " . implode(', ', $betterWeaponsOnField);
+                    $reason = "Collecting available weapons on field: " . implode(', ', $betterWeaponsOnField);
+                } elseif ($shouldAttackMonsterForItem && $targetMonster) {
+                    $reason = "Attacking {$targetMonster['name']} to get {$targetMonster['type']}";
                 }
                 
                 $actions[] = $this->createAction('ai_reasoning', [
@@ -598,6 +631,9 @@ final class SmartVirtualPlayer
                     $this->executeMoveTowardsTarget($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $allChestsOnField, 'chest', $actions);
                 } elseif ($shouldMoveTowardsBetterWeapon) {
                     $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
+                } elseif ($shouldAttackMonsterForItem && $targetMonster) {
+                    // Move to attack the monster
+                    $this->executeAttackMonster($gameId, $playerId, $currentTurnId, $currentPosition, $targetMonster, $actions);
                 } else {
                     $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
                 }
@@ -3468,6 +3504,216 @@ final class SmartVirtualPlayer
         }
         
         return null;
+    }
+    
+    /**
+     * Check if an item is worth attacking a monster for
+     */
+    private function isItemWorthAttackingFor(string $itemType, $player): bool
+    {
+        // Get current inventory
+        $inventory = $player->getInventory();
+        
+        // Always worth attacking for keys and fireballs
+        if (in_array($itemType, ['key', 'fireball'])) {
+            return true;
+        }
+        
+        // For weapons, check if it's an upgrade
+        if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
+            $currentBestWeaponValue = $this->getBestWeaponValue($inventory);
+            $newWeaponValue = $this->getWeaponValue($itemType);
+            
+            // Attack if it's better than what we have
+            if ($newWeaponValue > $currentBestWeaponValue) {
+                return true;
+            }
+            
+            // Also attack if we have room for another weapon (e.g., have dagger, see sword)
+            $weaponCount = $this->countWeaponsInInventory($inventory);
+            if ($weaponCount < 2 && $newWeaponValue >= $currentBestWeaponValue) {
+                return true; // Can carry multiple weapons
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Choose the best monster to attack based on item value
+     */
+    private function chooseBestMonsterTarget(array $monsters, $player): ?array
+    {
+        $bestMonster = null;
+        $bestValue = 0;
+        
+        foreach ($monsters as $monster) {
+            $value = $this->getItemValueForCombat($monster['type']);
+            
+            // Consider our ability to defeat the monster
+            $canDefeat = $this->estimateVictoryChance($player, $monster['hp']);
+            
+            // Prioritize by value and chance of victory
+            $score = $value * $canDefeat;
+            
+            if ($score > $bestValue) {
+                $bestValue = $score;
+                $bestMonster = $monster;
+            }
+        }
+        
+        return $bestMonster;
+    }
+    
+    /**
+     * Execute attack on a monster
+     */
+    private function executeAttackMonster(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, $currentPosition, array $targetMonster, array &$actions): void
+    {
+        $targetPos = $targetMonster['position'];
+        
+        $actions[] = $this->createAction('ai_decision', [
+            'decision' => 'Attacking monster',
+            'target' => $targetPos,
+            'monster' => $targetMonster['name'],
+            'reward' => $targetMonster['type']
+        ]);
+        
+        // Move to the monster's position
+        $moveResult = $this->apiClient->movePlayer(
+            $gameId,
+            $playerId,
+            $currentTurnId,
+            $currentPosition->positionX(),
+            $currentPosition->positionY(),
+            (int)explode(',', $targetPos)[0],
+            (int)explode(',', $targetPos)[1],
+            false
+        );
+        
+        $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+        
+        // Track this position as visited
+        $this->visitedPositions[$targetPos] = true;
+        $this->moveCount++;
+        
+        // Handle battle result if it occurred
+        if ($moveResult['success'] && isset($moveResult['response']['battleInfo'])) {
+            $battleInfo = $moveResult['response']['battleInfo'];
+            $actions[] = $this->createAction('battle_detected', ['battleResult' => $battleInfo['result'] ?? 'unknown']);
+            
+            if ($battleInfo['result'] === 'win') {
+                $this->handleBattleWin($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+            } else {
+                $this->handleBattleLossOrDraw($gameId, $playerId, $currentTurnId, $battleInfo, $actions);
+            }
+        }
+    }
+    
+    /**
+     * Get the value of the best weapon in inventory
+     */
+    private function getBestWeaponValue(array $inventory): int
+    {
+        $bestValue = 0;
+        
+        // Check weapon category
+        if (isset($inventory['weapon']) && is_array($inventory['weapon'])) {
+            foreach ($inventory['weapon'] as $item) {
+                if (isset($item['type'])) {
+                    $value = $this->getWeaponValue($item['type']);
+                    if ($value > $bestValue) {
+                        $bestValue = $value;
+                    }
+                }
+            }
+        }
+        
+        return $bestValue;
+    }
+    
+    /**
+     * Get weapon value for comparison
+     */
+    private function getWeaponValue(string $type): int
+    {
+        return match($type) {
+            'axe' => 3,
+            'sword' => 2,
+            'dagger' => 1,
+            default => 0
+        };
+    }
+    
+    /**
+     * Get item value for combat decisions
+     */
+    private function getItemValueForCombat(string $type): int
+    {
+        return match($type) {
+            'axe' => 5,
+            'sword' => 4,
+            'dagger' => 3,
+            'fireball' => 2,
+            'key' => 1,
+            default => 0
+        };
+    }
+    
+    /**
+     * Count weapons in inventory
+     */
+    private function countWeaponsInInventory(array $inventory): int
+    {
+        $count = 0;
+        
+        if (isset($inventory['weapon']) && is_array($inventory['weapon'])) {
+            $count = count($inventory['weapon']);
+        }
+        
+        return $count;
+    }
+    
+    /**
+     * Estimate chance of victory against a monster
+     */
+    private function estimateVictoryChance($player, int $monsterHp): float
+    {
+        $playerHp = $player->getHP();
+        $inventory = $player->getInventory();
+        
+        // Base damage estimate (average dice roll)
+        $avgDamage = 7; // Average of 2d6
+        
+        // Add weapon bonuses
+        $weaponBonus = $this->getBestWeaponValue($inventory);
+        $totalDamage = $avgDamage + $weaponBonus;
+        
+        // Check for fireballs
+        $fireballCount = 0;
+        if (isset($inventory['spell']) && is_array($inventory['spell'])) {
+            foreach ($inventory['spell'] as $item) {
+                if (isset($item['type']) && $item['type'] === 'fireball') {
+                    $fireballCount++;
+                }
+            }
+        }
+        
+        // Add fireball damage if available
+        if ($fireballCount > 0) {
+            $totalDamage += 9; // Fireball does 9 damage
+        }
+        
+        // Calculate victory chance
+        if ($totalDamage >= $monsterHp) {
+            return 1.0; // Guaranteed victory
+        } else if ($totalDamage + 3 >= $monsterHp) {
+            return 0.7; // Good chance with slightly better roll
+        } else if ($fireballCount > 0 && $totalDamage >= $monsterHp - 5) {
+            return 0.5; // Might win with consumables
+        } else {
+            return 0.2; // Low chance
+        }
     }
     
     /**
