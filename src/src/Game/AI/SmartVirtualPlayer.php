@@ -30,6 +30,7 @@ final class SmartVirtualPlayer
     private static array $unPickableItems = [];  // Track items that couldn't be picked up due to full inventory
     private static array $persistentTargets = [];  // Track current target position across turns per game/player
     private static array $persistentTargetReasons = [];  // Track why we're pursuing targets across turns
+    private static array $persistentMonsterTargets = [];  // Track monster targets being pursued within turn
     private static array $explorationTargets = [];  // Track exploration targets to prevent loops
     private static array $explorationHistory = [];  // Track positions explored across turns
     private int $moveCount = 0;  // Track number of moves in current turn
@@ -2333,6 +2334,28 @@ final class SmartVirtualPlayer
             
             // Check if we have unvisited positions to move to
             $unvisitedOptions = array_filter($moveToOptions, fn($option) => !isset($this->visitedPositions[$option]));
+            
+            // Check if we're actively pursuing a monster for valuable loot
+            $field = $this->messageBus->dispatch(new GetField($gameId));
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            $monstersOnField = $this->getMonstersOnField($field, $player);
+            $valuableMonsters = [];
+            foreach ($monstersOnField as $monster) {
+                if ($this->isItemWorthAttackingFor($monster['type'], $player)) {
+                    $valuableMonsters[] = $monster;
+                }
+            }
+            
+            // Continue pursuing valuable monsters even through visited positions
+            if (!empty($valuableMonsters) && !empty($moveToOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+                $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+                $targetMonster = $this->chooseBestMonsterTarget($valuableMonsters, $player);
+                if ($targetMonster) {
+                    $actions[] = $this->createAction('ai_reasoning', ['message' => "Continuing pursuit of {$targetMonster['name']} for {$targetMonster['type']}"]);
+                    $this->executeMoveTowardsMonster($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $targetMonster, $actions);
+                    return; // Exit after moving towards monster
+                }
+            }
             
             // Try to continue moving towards better weapons if they exist (but check move limit)
             if (!empty($betterWeaponsOnField) && !empty($unvisitedOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
