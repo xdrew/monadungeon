@@ -2934,7 +2934,54 @@ final class SmartVirtualPlayer
             return;
         }
         
-        error_log("DEBUG AI: No dragon pursuit active, proceeding with general exploration");
+        // Final failsafe: if dragon exists as only monster and deck is empty, we MUST be pursuing
+        if ($dragonOnField && !$otherMonstersExist && $deck->isEmpty()) {
+            error_log("DEBUG AI: CRITICAL: Dragon is only monster but pursuit flag was false - forcing dragon pursuit!");
+            self::$pursuingDragon[$trackingKey] = $dragonOnField;
+            
+            // Get current position and available moves
+            $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+            $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
+                gameId: $gameId,
+                playerId: $playerId,
+                messageBus: $this->messageBus,
+            ));
+            $moveToOptions = $availablePlaces['moveTo'] ?? [];
+            
+            if (!empty($moveToOptions)) {
+                $placedTiles = $field->getPlacedTiles();
+                $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonOnField, $moveToOptions, $placedTiles);
+                
+                if ($bestMove !== null) {
+                    $actions[] = $this->createAction('ai_reasoning', [
+                        'decision' => 'Continue pursuit of dragon (final failsafe)',
+                        'reason' => "MUST pursue dragon at {$dragonOnField} - it's the only option",
+                        'priority' => 0.6
+                    ]);
+                    
+                    [$toX, $toY] = explode(',', $bestMove);
+                    [$fromX, $fromY] = explode(',', $currentPosition->toString());
+                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                    $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                    
+                    if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                        $this->moveCount++;
+                        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                    } else {
+                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    }
+                    return;
+                }
+            }
+            
+            // No moves available, end turn
+            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            return;
+        }
+        
+        error_log("DEBUG AI: No dragon pursuit needed, proceeding with general exploration");
         
         // Get available actions from current position (only for non-dragon pursuit)
         $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
