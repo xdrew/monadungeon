@@ -2362,23 +2362,44 @@ final class SmartVirtualPlayer
                     $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveToOptions, $placedTiles);
                     
                     if ($bestMove !== null) {
-                        // For dragon pursuit, we MUST allow revisiting positions to make progress
-                        // Check if this would cause immediate oscillation (going back to where we just were)
-                        $lastMove = null;
-                        foreach (array_reverse($actions) as $action) {
-                            if ($action['type'] === 'move_player' && isset($action['details']['result']['from'])) {
-                                $lastMove = $action['details']['result']['from'];
-                                break;
+                        // For dragon pursuit, check if we need to find alternative path to avoid oscillation
+                        // Look at recent moves to detect oscillation pattern
+                        $recentPositions = [];
+                        foreach ($actions as $action) {
+                            if ($action['type'] === 'move_player' && isset($action['details']['result']['to'])) {
+                                $recentPositions[] = $action['details']['result']['to'];
                             }
                         }
                         
-                        // Avoid going immediately back to where we just came from
-                        if ($lastMove === $bestMove) {
-                            error_log("DEBUG AI: Best move {$bestMove} would return to previous position, looking for alternative");
-                            // Try to find an alternative that still moves toward dragon
-                            $alternatives = array_filter($moveOptions, fn($m) => $m !== $bestMove);
+                        // If we've been to this position twice recently, we're oscillating
+                        $positionCount = array_count_values($recentPositions);
+                        if (isset($positionCount[$bestMove]) && $positionCount[$bestMove] >= 2) {
+                            error_log("DEBUG AI: Detected oscillation - been to {$bestMove} multiple times. Finding alternative path.");
+                            // Find alternative moves that haven't been visited as much
+                            $alternatives = [];
+                            foreach ($moveOptions as $move) {
+                                if ($move !== $bestMove && (!isset($positionCount[$move]) || $positionCount[$move] < 2)) {
+                                    $alternatives[] = $move;
+                                }
+                            }
+                            
                             if (!empty($alternatives)) {
-                                $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $alternatives, $placedTiles);
+                                // Pick the alternative that gets us closest to the dragon
+                                $altMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $alternatives, $placedTiles);
+                                if ($altMove !== null) {
+                                    error_log("DEBUG AI: Using alternative move {$altMove} to avoid oscillation");
+                                    $bestMove = $altMove;
+                                }
+                            } else {
+                                error_log("DEBUG AI: No alternatives to avoid oscillation, but must continue toward dragon");
+                                // No alternatives, but we still need to pursue the dragon
+                                // Try moves we haven't been to yet
+                                foreach ($moveOptions as $move) {
+                                    if (!isset($positionCount[$move])) {
+                                        $bestMove = $move;
+                                        break;
+                                    }
+                                }
                             }
                         }
                         
