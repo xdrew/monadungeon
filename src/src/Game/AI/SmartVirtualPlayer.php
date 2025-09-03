@@ -2681,8 +2681,14 @@ final class SmartVirtualPlayer
         
         // Check if we're pursuing the dragon - if so, continue pursuit
         $trackingKey = "{$gameId}_{$playerId}";
+        error_log("DEBUG AI: Checking dragon pursuit flag at start of continueAfterAction for key {$trackingKey}");
+        if (isset(self::$pursuingDragon[$trackingKey])) {
+            error_log("DEBUG AI: Dragon pursuit flag value: " . json_encode(self::$pursuingDragon[$trackingKey]));
+        }
+        
         if (isset(self::$pursuingDragon[$trackingKey]) && self::$pursuingDragon[$trackingKey] !== false) {
             $dragonPosition = self::$pursuingDragon[$trackingKey];
+            error_log("DEBUG AI: Dragon pursuit active! Continuing pursuit to position {$dragonPosition}");
             $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
             $field = $this->messageBus->dispatch(new GetField($gameId));
             
@@ -2775,19 +2781,28 @@ final class SmartVirtualPlayer
                     }
                     
                     // No valid moves toward dragon, end turn
-                    error_log("DEBUG AI: No valid moves toward dragon, ending turn");
+                    error_log("DEBUG AI: No valid moves toward dragon, ending turn but maintaining pursuit flag");
                     $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                     $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                     return;
                 }
             }
+            
+            // If we get here in dragon pursuit mode, return to avoid falling into exploration
+            error_log("DEBUG AI: Exiting continueAfterAction early to maintain dragon pursuit focus");
+            return;
         }
         
         // ALWAYS prioritize dragon pursuit over other actions
         $trackingKey = "{$gameId}_{$playerId}";
+        error_log("DEBUG AI: Checking dragon pursuit before healing/exploration - key: {$trackingKey}");
+        if (isset(self::$pursuingDragon[$trackingKey])) {
+            error_log("DEBUG AI: Dragon pursuit flag exists with value: " . json_encode(self::$pursuingDragon[$trackingKey]));
+        }
+        
         if (isset(self::$pursuingDragon[$trackingKey]) && self::$pursuingDragon[$trackingKey] !== false) {
             // We're pursuing the dragon, don't get distracted by healing or exploration
-            error_log("DEBUG AI: Dragon pursuit is active, continuing pursuit instead of other actions");
+            error_log("DEBUG AI: Dragon pursuit is active, skipping healing/exploration checks");
             // Skip healing check and go directly to continuing actions
         } else {
             // Check if we're on a healing fountain and need healing (only if NOT pursuing dragon)
@@ -2822,16 +2837,23 @@ final class SmartVirtualPlayer
         
         // Check if we're still pursuing the dragon - if so, don't do general exploration
         $trackingKey = "{$gameId}_{$playerId}";
+        error_log("DEBUG AI: Final check before general exploration - dragon pursuit flag for {$trackingKey}");
+        if (isset(self::$pursuingDragon[$trackingKey])) {
+            error_log("DEBUG AI: Dragon pursuit flag value before exploration: " . json_encode(self::$pursuingDragon[$trackingKey]));
+        }
+        
         if (isset(self::$pursuingDragon[$trackingKey]) && self::$pursuingDragon[$trackingKey] !== false) {
             // Dragon pursuit is active but we couldn't find a valid move
             // This can happen if we're stuck or oscillating
             // End turn rather than falling back to general exploration
-            error_log("DEBUG AI: Dragon pursuit active but no valid moves, ending turn to avoid losing focus");
-            $actions[] = $this->createAction('ai_info', ['message' => 'Dragon pursuit blocked, ending turn']);
+            error_log("DEBUG AI: Dragon pursuit active but no valid moves found, ending turn to maintain focus");
+            $actions[] = $this->createAction('ai_info', ['message' => 'Dragon pursuit blocked, ending turn to maintain focus']);
             $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
             $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
             return;
         }
+        
+        error_log("DEBUG AI: No dragon pursuit active, proceeding with general exploration");
         
         // Get available actions from current position (only for non-dragon pursuit)
         $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
