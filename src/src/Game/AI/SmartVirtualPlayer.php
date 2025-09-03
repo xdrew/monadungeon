@@ -2783,24 +2783,32 @@ final class SmartVirtualPlayer
             }
         }
         
-        // Check if we're on a healing fountain and need healing
-        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
-        $currentHP = $player->getHP();
-        $maxHP = $player->getMaxHP();
-        
-        if ($currentHP < $maxHP) {
-            $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
-            $field = $this->messageBus->dispatch(new GetField($gameId));
+        // ALWAYS prioritize dragon pursuit over other actions
+        $trackingKey = "{$gameId}_{$playerId}";
+        if (isset(self::$pursuingDragon[$trackingKey]) && self::$pursuingDragon[$trackingKey] !== false) {
+            // We're pursuing the dragon, don't get distracted by healing or exploration
+            error_log("DEBUG AI: Dragon pursuit is active, continuing pursuit instead of other actions");
+            // Skip healing check and go directly to continuing actions
+        } else {
+            // Check if we're on a healing fountain and need healing (only if NOT pursuing dragon)
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            $currentHP = $player->getHP();
+            $maxHP = $player->getMaxHP();
             
-            if ($this->isOnHealingFountain($currentPosition->toString(), $field)) {
-                $actions[] = $this->createAction('ai_reasoning', [
-                    'decision' => 'End turn on healing fountain',
-                    'reason' => "On healing fountain with {$currentHP}/{$maxHP} HP - ending turn to heal",
-                    'priority' => -1
-                ]);
-                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
-                return;
+            if ($currentHP < $maxHP) {
+                $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+                $field = $this->messageBus->dispatch(new GetField($gameId));
+                
+                if ($this->isOnHealingFountain($currentPosition->toString(), $field)) {
+                    $actions[] = $this->createAction('ai_reasoning', [
+                        'decision' => 'End turn on healing fountain',
+                        'reason' => "On healing fountain with {$currentHP}/{$maxHP} HP - ending turn to heal",
+                        'priority' => -1
+                    ]);
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    return;
+                }
             }
         }
         
@@ -2812,7 +2820,20 @@ final class SmartVirtualPlayer
             return;
         }
         
-        // Get available actions from current position
+        // Check if we're still pursuing the dragon - if so, don't do general exploration
+        $trackingKey = "{$gameId}_{$playerId}";
+        if (isset(self::$pursuingDragon[$trackingKey]) && self::$pursuingDragon[$trackingKey] !== false) {
+            // Dragon pursuit is active but we couldn't find a valid move
+            // This can happen if we're stuck or oscillating
+            // End turn rather than falling back to general exploration
+            error_log("DEBUG AI: Dragon pursuit active but no valid moves, ending turn to avoid losing focus");
+            $actions[] = $this->createAction('ai_info', ['message' => 'Dragon pursuit blocked, ending turn']);
+            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            return;
+        }
+        
+        // Get available actions from current position (only for non-dragon pursuit)
         $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
             gameId: $gameId,
             playerId: $playerId,
