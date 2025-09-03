@@ -2378,14 +2378,28 @@ final class SmartVirtualPlayer
                         
                         if ($moveResult['success']) {
                             $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                            return; // IMPORTANT: Return after handling move result to avoid falling through
                         } else {
                             $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                             $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                            return;
                         }
-                        return;
                     }
+                    // No valid unvisited moves toward dragon, end turn
+                    error_log("DEBUG AI: No unvisited moves toward dragon, ending turn");
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    return;
                 }
+                // No moves available toward dragon at all, end turn
+                error_log("DEBUG AI: No moves available toward dragon, ending turn");
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                return;
             }
+            
+            // This point should ONLY be reached if NOT pursuing dragon
+            error_log("DEBUG AI: Not in dragon pursuit mode, checking for general actions");
             
             // Get available actions from current position
             $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
