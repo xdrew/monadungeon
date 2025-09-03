@@ -7,6 +7,7 @@ namespace App\Game\AI;
 use App\Game\Battle\BattleResult;
 use App\Game\Battle\GetBattle;
 use App\Game\Battle\FinalizeBattle;
+use App\Game\Deck\GetDeck;
 use App\Game\Field\Field;
 use App\Game\Field\FieldPlace;
 use App\Game\Field\GetField;
@@ -154,11 +155,15 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     {
         $this->logger->info("Starting AI turn with up to " . self::MAX_ACTIONS_PER_TURN . " actions");
         
+        // Check if deck has tiles for accurate messaging
+        $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+        $deckEmpty = $deck->isEmpty();
+        
         // Log AI turn start
         $this->actionLog[] = [
             'type' => 'ai_start',
             'timestamp' => date('H:i:s.v'),
-            'details' => ['message' => 'Starting AI turn - 1 tile placement']
+            'details' => ['message' => $deckEmpty ? 'Starting AI turn - movement only' : 'Starting AI turn - 1 tile placement']
         ];
         
         // Keep executing actions until we hit the limit or decide to end
@@ -232,15 +237,30 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             }
         }
         
-        // Priority 2: If this is our first action, always try to place a tile
+        // Priority 2: If this is our first action, try to place a tile (if deck is not empty)
         if ($this->currentTurnActions === 0) {
-            $result = $this->executeTilePlacementStrategy($gameId, $playerId, $turnId);
-            if ($result) {
-                // Check if battle occurred during tile placement
-                $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
-                
-                // Battle forces turn end
-                return ['action' => 'place_tile', 'success' => $result, 'endsNow' => $battleOccurred];
+            // Check if deck has tiles remaining
+            $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+            
+            if (!$deck->isEmpty()) {
+                $result = $this->executeTilePlacementStrategy($gameId, $playerId, $turnId);
+                if ($result) {
+                    // Check if battle occurred during tile placement
+                    $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
+                    
+                    // Battle forces turn end
+                    return ['action' => 'place_tile', 'success' => $result, 'endsNow' => $battleOccurred];
+                }
+            } else {
+                $this->logger->info("Deck is empty, skipping tile placement");
+                $this->actionLog[] = [
+                    'type' => 'ai_decision',
+                    'timestamp' => date('H:i:s.v'),
+                    'details' => [
+                        'decision' => 'Skip tile placement',
+                        'reason' => 'Deck is empty'
+                    ]
+                ];
             }
         }
         

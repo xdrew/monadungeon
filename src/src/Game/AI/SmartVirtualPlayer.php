@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Game\AI;
 
+use App\Game\Deck\GetDeck;
 use App\Game\Field\GetAvailablePlacesForPlayer;
 use App\Game\Field\GetField;
 use App\Game\Field\TileFeature;
@@ -345,9 +346,13 @@ final class SmartVirtualPlayer
                 }
             }
             
+            // Check if deck is empty to adjust tileOptions
+            $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+            $actualTileOptions = $deck->isEmpty() ? 0 : count($placeTileOptions);
+            
             $actions[] = $this->createAction('ai_options', [
                 'moveOptions' => count($moveToOptions),
-                'tileOptions' => count($placeTileOptions),
+                'tileOptions' => $actualTileOptions,
                 'hasKey' => $hasKey,
                 'currentPosition' => $currentPosition->toString(),
                 'visibleChests' => $visibleChests,
@@ -355,7 +360,8 @@ final class SmartVirtualPlayer
                 'chestsOnField' => $allChestsOnField,  // All chests on the field
                 'betterWeaponsImmediate' => $betterWeaponsImmediate,
                 'betterWeaponsOnField' => $betterWeaponsOnField,
-                'monstersOnField' => $monstersOnField  // All monsters including dragon
+                'monstersOnField' => $monstersOnField,  // All monsters including dragon
+                'deckEmpty' => $deck->isEmpty()  // Add deck status
             ]);
             
             // PRIORITY -1: Check if we're on a healing fountain and need healing
@@ -680,7 +686,7 @@ final class SmartVirtualPlayer
                 } else {
                     $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
                 }
-            } elseif (!empty($placeTileOptions)) {
+            } elseif (!empty($placeTileOptions) && !$deck->isEmpty()) {
                 // Explain why not moving to chests
                 $notMovingReason = '';
                 if ($hasKey && !empty($visibleChests)) {
@@ -1890,6 +1896,27 @@ final class SmartVirtualPlayer
      */
     private function executeTilePlacement(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, $currentPosition, array $placeTileOptions, array &$actions, int $sequenceDepth = 0): void
     {
+        // Check if deck is empty before attempting to place tile
+        $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+        if ($deck->isEmpty()) {
+            $actions[] = $this->createAction('ai_info', ['message' => 'Deck is empty, cannot place tiles']);
+            // Try to move instead if possible
+            $availablePlaces = $this->messageBus->dispatch(new GetAvailablePlacesForPlayer(
+                gameId: $gameId,
+                playerId: $playerId,
+                messageBus: $this->messageBus,
+            ));
+            $moveToOptions = $availablePlaces['moveTo'] ?? [];
+            
+            if (!empty($moveToOptions)) {
+                $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
+            } else {
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            }
+            return;
+        }
+        
         // Check action limit to prevent infinite loops
         if (count($actions) > self::MAX_ACTIONS_PER_TURN) {
             $actions[] = $this->createAction('ai_info', ['message' => 'Action limit reached, ending turn']);
