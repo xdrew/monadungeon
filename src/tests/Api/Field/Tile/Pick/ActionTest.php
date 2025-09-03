@@ -11,6 +11,7 @@ use App\Api\Field\Tile\Pick\Response;
 use App\Game\Deck\Deck;
 use App\Game\Deck\GetDeck;
 use App\Game\Field\Field;
+use App\Game\Field\FieldPlace;
 use App\Game\Field\GetField;
 use App\Game\Field\GetTile;
 use App\Game\Field\PickTile;
@@ -65,7 +66,7 @@ final class ActionTest extends TestCase
             },
         );
         
-        $pickTile = new PickTile($this->gameId, $this->tileId, $this->playerId, $this->turnId, TileSide::TOP);
+        $pickTile = new PickTile($this->gameId, $this->tileId, $this->playerId, $this->turnId, TileSide::TOP, new FieldPlace(0, 0));
         [$tile, ] = $tester->handle(Tile::pickFromDeck(...), $pickTile);
         
         return $tile;
@@ -99,6 +100,7 @@ final class ActionTest extends TestCase
             playerId: $this->playerId,
             turnId: $this->turnId,
             requiredOpenSide: TileSide::TOP,
+            fieldPlace: new FieldPlace(0, 0),
         );
 
         // Create a real tile with real orientation
@@ -124,6 +126,7 @@ final class ActionTest extends TestCase
             playerId: $this->playerId,
             turnId: $this->turnId,
             requiredOpenSide: TileSide::TOP,
+            fieldPlace: new FieldPlace(0, 0),
         );
 
         // Create a real tile for GetTile handler
@@ -159,6 +162,7 @@ final class ActionTest extends TestCase
             playerId: $this->playerId,
             turnId: $this->turnId,
             requiredOpenSide: TileSide::TOP,
+            fieldPlace: new FieldPlace(0, 0),
         );
 
         $messageBus = $this->createTestMessageBus(
@@ -185,6 +189,7 @@ final class ActionTest extends TestCase
             playerId: $this->playerId,
             turnId: $this->turnId,
             requiredOpenSide: TileSide::TOP,
+            fieldPlace: new FieldPlace(0, 0),
         );
 
         $messageBus = $this->createTestMessageBus(
@@ -196,13 +201,16 @@ final class ActionTest extends TestCase
             },
         );
 
+        $action = new Action();
+        
         // GetTile failure is not caught by the Action's try-catch
         // so this will throw an exception
-        self::expectException(\RuntimeException::class);
-        self::expectExceptionMessage('Tile not found');
-
-        $action = new Action();
-        $result = $action($request, $messageBus);
+        try {
+            $result = $action($request, $messageBus);
+            self::fail('Expected RuntimeException to be thrown');
+        } catch (\RuntimeException $e) {
+            self::assertEquals('Tile not found', $e->getMessage());
+        }
     }
 
     #[Test]
@@ -214,6 +222,7 @@ final class ActionTest extends TestCase
             playerId: $this->playerId,
             turnId: $this->turnId,
             requiredOpenSide: TileSide::TOP,
+            fieldPlace: new FieldPlace(0, 0),
         );
 
         $receivedCommand = null;
@@ -238,6 +247,7 @@ final class ActionTest extends TestCase
         self::assertEquals($request->playerId, $receivedCommand->playerId);
         self::assertEquals($request->turnId, $receivedCommand->turnId);
         self::assertEquals($request->requiredOpenSide, $receivedCommand->requiredOpenSide);
+        self::assertEquals($request->fieldPlace, $receivedCommand->fieldPlace);
     }
 
     #[Test]
@@ -249,6 +259,7 @@ final class ActionTest extends TestCase
             playerId: $this->playerId,
             turnId: $this->turnId,
             requiredOpenSide: TileSide::TOP,
+            fieldPlace: new FieldPlace(0, 0),
         );
 
         $receivedQuery = null;
@@ -284,6 +295,7 @@ final class ActionTest extends TestCase
                 playerId: $this->playerId,
                 turnId: $this->turnId,
                 requiredOpenSide: TileSide::TOP,
+                fieldPlace: new FieldPlace(0, 0),
             );
 
             $realTile = $this->createRealTile();
@@ -311,18 +323,22 @@ final class ActionTest extends TestCase
     public function itValidatesRequestProperties(): void
     {
         // Test that Request constructor properly accepts all required UUIDs
+        $fieldPlace = new FieldPlace(0, 0);
         $request = new Request(
             gameId: $this->gameId,
             tileId: $this->tileId,
             playerId: $this->playerId,
             turnId: $this->turnId,
             requiredOpenSide: TileSide::TOP,
+            fieldPlace: $fieldPlace,
         );
 
         self::assertEquals($this->gameId, $request->gameId);
         self::assertEquals($this->tileId, $request->tileId);
         self::assertEquals($this->playerId, $request->playerId);
         self::assertEquals($this->turnId, $request->turnId);
+        self::assertEquals(TileSide::TOP, $request->requiredOpenSide);
+        self::assertEquals($fieldPlace, $request->fieldPlace);
     }
 
     #[Test]

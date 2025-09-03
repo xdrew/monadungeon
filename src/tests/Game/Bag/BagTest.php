@@ -95,9 +95,9 @@ final class BagTest extends TestCase
             // Expected when bag is empty
         }
 
-        // Test bag: (10 * 5) + 4 = 54 items
-        // 10 dragons, 20 mummies, 20 skeleton warriors, 4 giant rats
-        self::assertEquals(54, $itemCount);
+        // Test bag: 1 giant rat + (7 * 4) giant spiders + 4 skeleton turnkeys + 4 treasure chests = 37 items
+        // 1 giant rat, 28 giant spiders, 4 skeleton turnkeys, 4 treasure chests
+        self::assertEquals(37, $itemCount);
     }
 
     #[Test]

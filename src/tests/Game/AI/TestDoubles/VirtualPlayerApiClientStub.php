@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Game\AI\TestDoubles;
+namespace App\Tests\Game\AI\TestDoubles;
 
 use App\Game\Field\TileSide;
 use App\Infrastructure\Uuid\Uuid;

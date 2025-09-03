@@ -2688,11 +2688,13 @@ final class SmartVirtualPlayer
         $dragonOnField = null;
         $otherMonstersExist = false;
         foreach ($items as $position => $item) {
-            if (isset($item['name']) && $item['name'] === 'dragon') {
-                $dragonOnField = $position;
-            } elseif (isset($item['type']) && !in_array($item['type'], ['bronze_chest', 'silver_chest', 'gold_chest', 'ruby_chest', 'dagger', 'sword', 'axe', 'key', 'fireball', 'healing_potion'])) {
-                // It's a monster that's not a dragon
-                if (!isset($item['name']) || $item['name'] !== 'dragon') {
+            if ($item instanceof \App\Game\Item\Item) {
+                // Check if it's a dragon
+                if ($item->name === 'dragon') {
+                    $dragonOnField = $position;
+                }
+                // Check if it's another monster (has HP and not defeated)
+                elseif (!$item->guardDefeated && $item->guardHP > 0 && $item->name !== 'dragon') {
                     $otherMonstersExist = true;
                 }
             }
