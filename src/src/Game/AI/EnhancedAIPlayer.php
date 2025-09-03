@@ -1726,8 +1726,14 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             return 0;
         }
         
-        // Base strength from HP
-        $strength = $this->currentPlayer->hp * 2; // Assuming 2 damage per HP
+        // Calculate expected damage from dice rolls
+        // Players always roll 2 d6 dice in combat
+        // Average per die = 3.5, so 2 dice average = 7
+        // For AI decision making, use the average expected value
+        $expectedDiceRoll = 7; // 2 dice * 3.5 average
+        
+        // Start with expected dice damage
+        $strength = $expectedDiceRoll;
         
         // Add weapon bonuses
         foreach ($this->currentPlayer->inventory as $item) {

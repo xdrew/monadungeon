@@ -491,8 +491,32 @@ final class SmartVirtualPlayer
                 // Calculate strength including consumables for dragon fight
                 $strengthWithConsumables = $playerStrength + $availableFireballs;
                 
+                // Check if dragon is the only monster left on the field
+                $otherMonstersExist = false;
+                foreach ($monstersOnField as $monster) {
+                    if ($monster['position'] !== $dragonPosition) {
+                        $otherMonstersExist = true;
+                        break;
+                    }
+                }
+                
+                // If dragon is the only monster left AND deck is empty, we should try even if odds are low
+                // Because there's no other way to improve our situation
+                $shouldAttemptDragon = false;
+                if (!$otherMonstersExist && $deck->isEmpty()) {
+                    // Maximum possible roll with 2d6 + weapons could still win
+                    $maxPossibleDamage = 12 + ($playerStrength - 7) + $availableFireballs; // 12 from dice + weapons + fireballs
+                    if ($maxPossibleDamage >= $dragonHP) {
+                        $shouldAttemptDragon = true;
+                        error_log("DEBUG AI: Dragon is the only monster and deck is empty. Will attempt even with low odds.");
+                    }
+                } else {
+                    // Normal case - only attempt if we have reasonable chance
+                    $shouldAttemptDragon = ($strengthWithConsumables >= $dragonHP);
+                }
+                
                 // Check if we can defeat the dragon (with or without consumables)
-                if ($strengthWithConsumables >= $dragonHP) {
+                if ($shouldAttemptDragon) {
                     // Check if defeating the dragon would give us victory
                     $currentChestScore = $this->calculateChestScore($player);
                     $opponentScores = $this->getOpponentChestScores($gameId, $playerId);
@@ -513,9 +537,13 @@ final class SmartVirtualPlayer
                         
                         if (in_array($currentPosStr, $adjacentPositions)) {
                             // We're adjacent! Attack the dragon
+                            $attackReason = $strengthWithConsumables >= $dragonHP 
+                                ? "Can defeat dragon (HP: {$dragonHP}, Strength: {$playerStrength}) for victory!"
+                                : "Last chance - attempting dragon (HP: {$dragonHP}, Strength: {$playerStrength}) as only option!";
+                            
                             $actions[] = $this->createAction('ai_reasoning', [
                                 'decision' => 'Attack dragon boss to win game',
-                                'reason' => "Can defeat dragon (HP: {$dragonHP}, Strength: {$playerStrength}) for victory!",
+                                'reason' => $attackReason,
                                 'priority' => 0.6
                             ]);
                             
@@ -543,9 +571,13 @@ final class SmartVirtualPlayer
                             $bestMoveTowardDragon = $this->findBestMoveToward($currentPosStr, $dragonPosition, $moveToOptions, $placedTiles);
                             
                             if ($bestMoveTowardDragon !== null) {
+                                $moveReason = $strengthWithConsumables >= $dragonHP
+                                    ? "Moving closer to dragon to attack and win game"
+                                    : "Moving toward dragon - last chance as only monster remaining";
+                                
                                 $actions[] = $this->createAction('ai_reasoning', [
                                     'decision' => 'Move toward dragon boss',
-                                    'reason' => "Moving closer to dragon to attack and win game",
+                                    'reason' => $moveReason,
                                     'priority' => 0.6
                                 ]);
                                 
@@ -562,8 +594,15 @@ final class SmartVirtualPlayer
                 } else {
                     // Can't defeat dragon yet, but note its presence
                     $fireballInfo = $availableFireballs > 0 ? " (+{$availableFireballs} fireballs = " . ($playerStrength + $availableFireballs) . " total)" : "";
+                    
+                    // Check if it's impossible even with max rolls
+                    $maxPossibleDamage = 12 + ($playerStrength - 7) + $availableFireballs;
+                    $impossibleMessage = $maxPossibleDamage < $dragonHP 
+                        ? " (impossible even with max rolls: {$maxPossibleDamage} < {$dragonHP})"
+                        : "";
+                    
                     $actions[] = $this->createAction('ai_info', [
-                        'message' => "Dragon found at {$dragonPosition} but can't defeat it yet (HP: {$dragonHP}, Strength: {$playerStrength}{$fireballInfo})"
+                        'message' => "Dragon found at {$dragonPosition} but can't defeat it yet (HP: {$dragonHP}, Strength: {$playerStrength}{$fireballInfo}){$impossibleMessage}"
                     ]);
                 }
             }
@@ -3497,7 +3536,15 @@ final class SmartVirtualPlayer
     {
         $baseHP = $player->getHP();
         $inventory = $player->getInventory();
-        $totalStrength = $baseHP;
+        
+        // Calculate expected damage from dice rolls
+        // Players always roll 2 d6 dice in combat
+        // Average per die = 3.5, so 2 dice average = 7
+        // For AI decision making, use the average expected value
+        $expectedDiceRoll = 7; // 2 dice * 3.5 average
+        
+        // Start with expected dice damage
+        $totalStrength = $expectedDiceRoll;
         
         // Add weapon bonuses - inventory structure is ['weapon' => [...], 'spell' => [...], etc]
         foreach ($inventory['weapon'] ?? [] as $weapon) {
