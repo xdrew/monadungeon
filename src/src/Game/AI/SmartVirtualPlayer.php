@@ -2719,7 +2719,19 @@ final class SmartVirtualPlayer
                     $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                     
-                    $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                    // IMPORTANT: Don't call handleMoveResult here to avoid infinite recursion
+                    // Just check if we can continue moving
+                    if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                        // Can make more moves, recurse to continue pursuit
+                        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                    } else {
+                        // Either failed or reached move limit
+                        if (!$moveResult['success']) {
+                            error_log("DEBUG AI: Dragon pursuit move failed: " . json_encode($moveResult));
+                        }
+                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    }
                     return;
                 }
             }
