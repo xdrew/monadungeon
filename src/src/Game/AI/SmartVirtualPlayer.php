@@ -2689,15 +2689,16 @@ final class SmartVirtualPlayer
         $otherMonstersExist = false;
         foreach ($items as $position => $item) {
             if ($item instanceof \App\Game\Item\Item) {
+                $itemName = $item->name->value ?? 'unknown';
                 // Check if it's a dragon
-                if ($item->name === 'dragon') {
+                if ($itemName === 'dragon') {
                     $dragonOnField = $position;
                     error_log("DEBUG AI: Found dragon at position {$position}");
                 }
                 // Check if it's another monster (has HP and not defeated)
-                elseif (!$item->guardDefeated && $item->guardHP > 0 && $item->name !== 'dragon') {
+                elseif (!$item->guardDefeated && $item->guardHP > 0 && $itemName !== 'dragon') {
                     $otherMonstersExist = true;
-                    error_log("DEBUG AI: Found other monster: {$item->name} at {$position}");
+                    error_log("DEBUG AI: Found other monster: {$itemName} at {$position}");
                 }
             }
         }
