@@ -586,31 +586,50 @@ final class SmartVirtualPlayer
                             
                             // Plan path to dragon to avoid oscillation
                             $placedTiles = $field->getPlacedTiles();
+                            error_log("DEBUG AI: Checking for existing path. Key: {$trackingKey}");
                             if (!isset(self::$dragonPath[$trackingKey]) || empty(self::$dragonPath[$trackingKey])) {
-                                error_log("DEBUG AI: Planning initial path to dragon at {$dragonPosition} from {$currentPosStr}");
+                                error_log("DEBUG AI: No existing path found. Planning initial path to dragon at {$dragonPosition} from {$currentPosStr}");
                                 $path = $this->findPathToTarget($currentPosStr, $dragonPosition, $placedTiles);
                                 if (!empty($path)) {
                                     self::$dragonPath[$trackingKey] = $path;
-                                    error_log("DEBUG AI: Planned path to dragon: " . implode(' -> ', $path));
+                                    error_log("DEBUG AI: Successfully planned path to dragon with " . count($path) . " steps: " . implode(' -> ', $path));
+                                    // Also log as action for visibility
+                                    $actions[] = $this->createAction('ai_info', [
+                                        'message' => "Planned path to dragon: " . implode(' -> ', array_slice($path, 0, 5)) . (count($path) > 5 ? '...' : '')
+                                    ]);
+                                } else {
+                                    error_log("DEBUG AI: FAILED to find path to dragon! Dragon at {$dragonPosition}, current at {$currentPosStr}");
+                                    $actions[] = $this->createAction('ai_info', ['message' => 'Could not find path to dragon!']);
                                 }
+                            } else {
+                                error_log("DEBUG AI: Using existing path with " . count(self::$dragonPath[$trackingKey]) . " steps remaining");
                             }
                             
                             // Get next move from planned path
                             $bestMoveTowardDragon = null;
                             if (isset(self::$dragonPath[$trackingKey]) && !empty(self::$dragonPath[$trackingKey])) {
-                                $nextStep = array_shift(self::$dragonPath[$trackingKey]);
+                                $nextStep = self::$dragonPath[$trackingKey][0]; // Peek at next step
+                                error_log("DEBUG AI: Next planned step is {$nextStep}, available moves: " . implode(', ', $moveToOptions));
+                                
                                 if (in_array($nextStep, $moveToOptions)) {
+                                    array_shift(self::$dragonPath[$trackingKey]); // Remove from path
                                     $bestMoveTowardDragon = $nextStep;
-                                    error_log("DEBUG AI: Following planned path, moving to {$bestMoveTowardDragon}");
+                                    error_log("DEBUG AI: Following planned path, moving to {$bestMoveTowardDragon}. " . count(self::$dragonPath[$trackingKey]) . " steps remaining.");
+                                    $actions[] = $this->createAction('ai_info', [
+                                        'message' => "Following path: moving to {$bestMoveTowardDragon}"
+                                    ]);
                                 } else {
                                     // Path blocked, replan
-                                    error_log("DEBUG AI: Planned step {$nextStep} not available, using fallback");
+                                    error_log("DEBUG AI: Planned step {$nextStep} not available in moves! Clearing path and using fallback.");
                                     unset(self::$dragonPath[$trackingKey]);
                                     $bestMoveTowardDragon = $this->findBestMoveToward($currentPosStr, $dragonPosition, $moveToOptions, $placedTiles);
+                                    $actions[] = $this->createAction('ai_info', ['message' => 'Path blocked, using direct pathfinding']);
                                 }
                             } else {
                                 // No path, use simple pathfinding
+                                error_log("DEBUG AI: No planned path exists, using simple pathfinding");
                                 $bestMoveTowardDragon = $this->findBestMoveToward($currentPosStr, $dragonPosition, $moveToOptions, $placedTiles);
+                                $actions[] = $this->createAction('ai_info', ['message' => 'No path planned, using direct movement']);
                             }
                             
                             if ($bestMoveTowardDragon !== null) {
