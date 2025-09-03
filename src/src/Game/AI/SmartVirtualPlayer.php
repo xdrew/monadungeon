@@ -2721,38 +2721,63 @@ final class SmartVirtualPlayer
                 $placedTiles = $field->getPlacedTiles();
                 $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveToOptions, $placedTiles);
                 
-                if ($bestMove !== null && !isset($this->visitedPositions[$bestMove])) {
-                    $actions[] = $this->createAction('ai_reasoning', [
-                        'decision' => 'Continue moving toward dragon',
-                        'reason' => "Pursuing dragon boss to win game",
-                        'priority' => 0.6
-                    ]);
-                    
-                    // Mark as visited to prevent oscillation
-                    $this->visitedPositions[$bestMove] = true;
-                    
-                    [$toX, $toY] = explode(',', $bestMove);
-                    [$fromX, $fromY] = explode(',', $currentPosition->toString());
-                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
-                    $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
-                    
-                    // IMPORTANT: Don't call handleMoveResult here to avoid infinite recursion
-                    // Just check if we can continue moving
-                    if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
-                        // Increment move count
-                        $this->moveCount++;
-                        // Can make more moves, recurse to continue pursuit
-                        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
-                    } else {
-                        // Either failed or reached move limit
-                        if (!$moveResult['success']) {
-                            error_log("DEBUG AI: Dragon pursuit move failed: " . json_encode($moveResult));
-                        } else {
-                            error_log("DEBUG AI: Reached move limit during dragon pursuit");
+                if ($bestMove !== null) {
+                    // Check if we're stuck oscillating
+                    $lastMoves = [];
+                    foreach ($actions as $action) {
+                        if ($action['type'] === 'move_player' && isset($action['result']['to'])) {
+                            $lastMoves[] = $action['result']['to'];
                         }
-                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                     }
+                    
+                    // If we've been to this position recently in this turn, try alternative moves
+                    if (in_array($bestMove, $lastMoves)) {
+                        error_log("DEBUG AI: Best move {$bestMove} was already visited this turn, looking for alternatives");
+                        // Filter out the best move and find next best
+                        $alternativeMoves = array_filter($moveToOptions, fn($m) => $m !== $bestMove && !in_array($m, $lastMoves));
+                        if (!empty($alternativeMoves)) {
+                            $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $alternativeMoves, $placedTiles);
+                        } else {
+                            $bestMove = null; // No alternatives
+                        }
+                    }
+                    
+                    if ($bestMove !== null) {
+                        $actions[] = $this->createAction('ai_reasoning', [
+                            'decision' => 'Continue moving toward dragon',
+                            'reason' => "Pursuing dragon boss to win game",
+                            'priority' => 0.6
+                        ]);
+                        
+                        [$toX, $toY] = explode(',', $bestMove);
+                        [$fromX, $fromY] = explode(',', $currentPosition->toString());
+                        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                        $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                        
+                        // IMPORTANT: Don't call handleMoveResult here to avoid infinite recursion
+                        // Just check if we can continue moving
+                        if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                            // Increment move count
+                            $this->moveCount++;
+                            // Can make more moves, recurse to continue pursuit
+                            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                        } else {
+                            // Either failed or reached move limit
+                            if (!$moveResult['success']) {
+                                error_log("DEBUG AI: Dragon pursuit move failed: " . json_encode($moveResult));
+                            } else {
+                                error_log("DEBUG AI: Reached move limit during dragon pursuit");
+                            }
+                            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                        }
+                        return;
+                    }
+                    
+                    // No valid moves toward dragon, end turn
+                    error_log("DEBUG AI: No valid moves toward dragon, ending turn");
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                     return;
                 }
             }
