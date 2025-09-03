@@ -2679,8 +2679,35 @@ final class SmartVirtualPlayer
             return;
         }
         
-        // Check if we're pursuing the dragon - if so, continue pursuit
+        // First, check if there's a dragon on the field and deck is empty
+        // This ensures we always pursue the dragon when it's the only option
+        $field = $this->messageBus->dispatch(new GetField($gameId));
+        $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+        $items = $field->getItems();
+        
+        $dragonOnField = null;
+        $otherMonstersExist = false;
+        foreach ($items as $position => $item) {
+            if (isset($item['name']) && $item['name'] === 'dragon') {
+                $dragonOnField = $position;
+            } elseif (isset($item['type']) && !in_array($item['type'], ['bronze_chest', 'silver_chest', 'gold_chest', 'ruby_chest', 'dagger', 'sword', 'axe', 'key', 'fireball', 'healing_potion'])) {
+                // It's a monster that's not a dragon
+                if (!isset($item['name']) || $item['name'] !== 'dragon') {
+                    $otherMonstersExist = true;
+                }
+            }
+        }
+        
+        // If dragon exists and is the only monster with empty deck, ensure pursuit flag is set
         $trackingKey = "{$gameId}_{$playerId}";
+        if ($dragonOnField && !$otherMonstersExist && $deck->isEmpty()) {
+            if (!isset(self::$pursuingDragon[$trackingKey]) || self::$pursuingDragon[$trackingKey] === false) {
+                self::$pursuingDragon[$trackingKey] = $dragonOnField;
+                error_log("DEBUG AI: Re-establishing dragon pursuit flag for position {$dragonOnField} in continueAfterAction");
+            }
+        }
+        
+        // Check if we're pursuing the dragon - if so, continue pursuit
         error_log("DEBUG AI: Checking dragon pursuit flag at start of continueAfterAction for key {$trackingKey}");
         if (isset(self::$pursuingDragon[$trackingKey])) {
             error_log("DEBUG AI: Dragon pursuit flag value: " . json_encode(self::$pursuingDragon[$trackingKey]));
@@ -2690,7 +2717,6 @@ final class SmartVirtualPlayer
             $dragonPosition = self::$pursuingDragon[$trackingKey];
             error_log("DEBUG AI: Dragon pursuit active! Continuing pursuit to position {$dragonPosition}");
             $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
-            $field = $this->messageBus->dispatch(new GetField($gameId));
             
             // Check if we're adjacent to dragon now
             $adjacentPositions = $this->getAdjacentPositions($dragonPosition);
@@ -2749,9 +2775,10 @@ final class SmartVirtualPlayer
                     }
                     
                     if ($bestMove !== null) {
+                        error_log("DEBUG AI: Found best move toward dragon: {$bestMove} from {$currentPosition->toString()}");
                         $actions[] = $this->createAction('ai_reasoning', [
-                            'decision' => 'Continue moving toward dragon',
-                            'reason' => "Pursuing dragon boss to win game",
+                            'decision' => 'Continue pursuit of dragon',
+                            'reason' => "Moving toward dragon boss at {$dragonPosition}",
                             'priority' => 0.6
                         ]);
                         
@@ -2765,6 +2792,7 @@ final class SmartVirtualPlayer
                         if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
                             // Increment move count
                             $this->moveCount++;
+                            error_log("DEBUG AI: Dragon pursuit move successful, continuing pursuit (move count: {$this->moveCount})");
                             // Can make more moves, recurse to continue pursuit
                             $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
                         } else {
