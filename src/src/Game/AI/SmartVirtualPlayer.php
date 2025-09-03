@@ -2197,9 +2197,11 @@ final class SmartVirtualPlayer
                     
                     // Continue turn after failed pickup
                     $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                    return; // IMPORTANT: Don't continue with general movement after handling item
                 } else {
                     // Other failure, continue turn
                     $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                    return; // IMPORTANT: Don't continue with general movement after handling item
                 }
             } else {
                 $actions[] = $this->createAction('item_reasoning', [
@@ -2208,6 +2210,7 @@ final class SmartVirtualPlayer
                 ]);
                 // Not picking up, continue turn
                 $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                return; // IMPORTANT: Don't continue with general movement after handling item
             }
             return;
         }
