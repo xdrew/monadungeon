@@ -24,6 +24,7 @@ final readonly class Action
                 playerId: $request->playerId,
                 turnId: $request->turnId,
                 requiredOpenSide: $request->requiredOpenSide,
+                fieldPlace: $request->fieldPlace,
             ));
         } catch (\Throwable $e) {
             return new Error(Uuid::v7(), 'Tile pick failed: ' . $e);

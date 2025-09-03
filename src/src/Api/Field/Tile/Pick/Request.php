@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Api\Field\Tile\Pick;
 
+use App\Game\Field\FieldPlace;
 use App\Game\Field\TileSide;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -25,5 +26,7 @@ final readonly class Request
         public Uuid $turnId,
         #[Assert\NotBlank]
         public TileSide $requiredOpenSide,
+        #[Assert\NotBlank]
+        public FieldPlace $fieldPlace,
     ) {}
 }
