@@ -26,7 +26,8 @@ final class SmartVirtualPlayer
     private array $visitedPositions = [];  // Track visited positions in current turn to prevent oscillation
     private static array $unreachableTargets = [];  // Track targets that are unreachable (persists across turns)
     private static array $turnsSinceLastProgress = [];  // Track turns without progress per game/player
-    private static array $pursuingDragon = [];  // Track if we're currently pursuing the dragon boss
+    private static array $pursuingDragon = [];
+    private static array $dragonPath = []; // Store the planned path to dragon  // Track if we're currently pursuing the dragon boss
     private static array $lastFieldStateHash = [];  // Track field state to detect when new tiles are placed
     private static array $unPickableItems = [];  // Track items that couldn't be picked up due to full inventory
     private static array $persistentTargets = [];  // Track current target position across turns per game/player
@@ -2361,47 +2362,38 @@ final class SmartVirtualPlayer
                     $placedTiles = $field->getPlacedTiles();
                     $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveToOptions, $placedTiles);
                     
-                    if ($bestMove !== null) {
-                        // For dragon pursuit, check if we need to find alternative path to avoid oscillation
-                        // Look at recent moves to detect oscillation pattern
-                        $recentPositions = [];
-                        foreach ($actions as $action) {
-                            if ($action['type'] === 'move_player' && isset($action['details']['result']['to'])) {
-                                $recentPositions[] = $action['details']['result']['to'];
-                            }
+                    // Check if we have a planned path to dragon
+                    $trackingKey = "{$gameId}_{$playerId}";
+                    if (!isset(self::$dragonPath[$trackingKey]) || empty(self::$dragonPath[$trackingKey])) {
+                        // Plan a path to the dragon using BFS to avoid oscillation
+                        error_log("DEBUG AI: Planning path to dragon at {$dragonPosition} from {$currentPosition->toString()}");
+                        $path = $this->findPathToTarget($currentPosition->toString(), $dragonPosition, $placedTiles);
+                        if (!empty($path)) {
+                            self::$dragonPath[$trackingKey] = $path;
+                            error_log("DEBUG AI: Planned path to dragon: " . implode(' -> ', $path));
+                        } else {
+                            error_log("DEBUG AI: Could not find path to dragon!");
                         }
+                    }
+                    
+                    // Follow the planned path
+                    if (isset(self::$dragonPath[$trackingKey]) && !empty(self::$dragonPath[$trackingKey])) {
+                        // Get next step in path
+                        $nextStep = array_shift(self::$dragonPath[$trackingKey]);
                         
-                        // If we've been to this position twice recently, we're oscillating
-                        $positionCount = array_count_values($recentPositions);
-                        if (isset($positionCount[$bestMove]) && $positionCount[$bestMove] >= 2) {
-                            error_log("DEBUG AI: Detected oscillation - been to {$bestMove} multiple times. Finding alternative path.");
-                            // Find alternative moves that haven't been visited as much
-                            $alternatives = [];
-                            foreach ($moveOptions as $move) {
-                                if ($move !== $bestMove && (!isset($positionCount[$move]) || $positionCount[$move] < 2)) {
-                                    $alternatives[] = $move;
-                                }
-                            }
-                            
-                            if (!empty($alternatives)) {
-                                // Pick the alternative that gets us closest to the dragon
-                                $altMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $alternatives, $placedTiles);
-                                if ($altMove !== null) {
-                                    error_log("DEBUG AI: Using alternative move {$altMove} to avoid oscillation");
-                                    $bestMove = $altMove;
-                                }
-                            } else {
-                                error_log("DEBUG AI: No alternatives to avoid oscillation, but must continue toward dragon");
-                                // No alternatives, but we still need to pursue the dragon
-                                // Try moves we haven't been to yet
-                                foreach ($moveOptions as $move) {
-                                    if (!isset($positionCount[$move])) {
-                                        $bestMove = $move;
-                                        break;
-                                    }
-                                }
-                            }
+                        // Verify this step is in our available moves
+                        if (in_array($nextStep, $moveOptions)) {
+                            $bestMove = $nextStep;
+                            error_log("DEBUG AI: Following planned path, next step: {$bestMove}");
+                        } else {
+                            error_log("DEBUG AI: Planned step {$nextStep} not available, replanning...");
+                            // Replan if the planned step isn't available
+                            unset(self::$dragonPath[$trackingKey]);
+                            $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveOptions, $placedTiles);
                         }
+                    } else if ($bestMove !== null) {
+                        // Fallback to simple pathfinding if no planned path
+                        error_log("DEBUG AI: No planned path, using simple pathfinding to move toward dragon");
                         
                         if ($bestMove !== null) {
                             $actions[] = $this->createAction('ai_reasoning', [
@@ -2786,8 +2778,9 @@ final class SmartVirtualPlayer
                     'priority' => 0.6
                 ]);
                 
-                // Clear pursuit flag
+                // Clear pursuit flag and path
                 self::$pursuingDragon[$trackingKey] = false;
+                unset(self::$dragonPath[$trackingKey]);
                 
                 // Attack dragon
                 [$toX, $toY] = explode(',', $dragonPosition);
@@ -5191,6 +5184,48 @@ final class SmartVirtualPlayer
     /**
      * Find best move toward a target position
      */
+    /**
+     * Find complete path to target using BFS
+     */
+    private function findPathToTarget(string $start, string $target, array $placedTiles): array
+    {
+        $queue = [[$start]];
+        $visited = [$start => true];
+        
+        while (!empty($queue)) {
+            $path = array_shift($queue);
+            $current = end($path);
+            
+            // Check if we reached the target
+            if ($current === $target) {
+                // Remove the starting position from path
+                array_shift($path);
+                return $path;
+            }
+            
+            // Get neighbors
+            [$x, $y] = explode(',', $current);
+            $neighbors = [
+                ($x-1) . ',' . $y,
+                ($x+1) . ',' . $y,
+                $x . ',' . ($y-1),
+                $x . ',' . ($y+1)
+            ];
+            
+            foreach ($neighbors as $neighbor) {
+                // Check if neighbor has a tile and hasn't been visited
+                if (isset($placedTiles[$neighbor]) && !isset($visited[$neighbor])) {
+                    $visited[$neighbor] = true;
+                    $newPath = $path;
+                    $newPath[] = $neighbor;
+                    $queue[] = $newPath;
+                }
+            }
+        }
+        
+        return []; // No path found
+    }
+    
     private function findBestMoveToward(string $currentPos, string $targetPos, array $moveOptions, array $placedTiles): ?string
     {
         [$currentX, $currentY] = explode(',', $currentPos);
