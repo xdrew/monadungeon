@@ -198,6 +198,10 @@ final readonly class Response
                 if (isset($playerData[$playerIdStr]['externalId'])) {
                     $playerFormattedData['externalId'] = $playerData[$playerIdStr]['externalId'];
                 }
+                // Add username if available
+                if (isset($playerData[$playerIdStr]['username'])) {
+                    $playerFormattedData['username'] = $playerData[$playerIdStr]['username'];
+                }
             }
 
             // If we have no player health data and a message bus is provided, try to get detailed player information
@@ -208,6 +212,7 @@ final readonly class Response
                     $playerFormattedData['defeated'] = $player->isDefeated();
                     $playerFormattedData['isAi'] = $player->isAi();
                     $playerFormattedData['externalId'] = $player->getExternalId();
+                    $playerFormattedData['username'] = $player->getUsername();
                 } catch (\Throwable) {
                     // Unable to get player data, continue with what we have
                 }

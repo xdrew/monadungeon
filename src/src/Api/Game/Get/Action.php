@@ -58,6 +58,8 @@ final readonly class Action
                         'hp' => $player->getHP(),
                         'defeated' => $player->isDefeated(),
                         'isAi' => $player->isAi(),
+                        'externalId' => $player->getExternalId(),
+                        'username' => $player->getUsername(),
                         'inventory' => [
                             'keys' => $this->formatInventoryItems($inventory['key'] ?? []),
                             'weapons' => $this->formatInventoryItems($inventory['weapon'] ?? []),

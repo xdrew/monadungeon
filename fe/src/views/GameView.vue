@@ -278,7 +278,7 @@
                     />
                   </span>
                   <span class="player-name">
-                    {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : 'Player' }}
+                    {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : player.username || 'Player' }}
                   </span>
                   <span class="hp-indicator">
                     ❤️ {{ player.hp !== undefined ? player.hp : 5 }}/5
@@ -3085,9 +3085,13 @@ const showPlayerSwitchNotification = () => {
 
 // Function to show healing notification
 const showHealingNotificationForPlayer = (playerId, healAmount) => {
+  // Try to get player's username from game data
+  const player = gameData.value?.players?.find(p => p.id === playerId);
+  const playerName = player?.username || formatPlayerId(playerId);
+  
   healingNotification.value = {
     playerId: playerId,
-    playerName: formatPlayerId(playerId),
+    playerName: playerName,
     healAmount: healAmount
   };
   showHealingNotification.value = true;
