@@ -2388,8 +2388,8 @@ final class SmartVirtualPlayer
                                 'reason' => "Moving toward dragon boss at {$dragonPosition}",
                                 'priority' => 0.6
                             ]);
-                        
-                        [$toX, $toY] = explode(',', $bestMove);
+                            
+                            [$toX, $toY] = explode(',', $bestMove);
                         [$fromX, $fromY] = explode(',', $currentPosition->toString());
                         $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
                         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
@@ -2402,6 +2402,7 @@ final class SmartVirtualPlayer
                             $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                             return;
                         }
+                        } // Close the if ($bestMove !== null) block
                     }
                     // No valid unvisited moves toward dragon, end turn
                     error_log("DEBUG AI: No unvisited moves toward dragon, ending turn");
