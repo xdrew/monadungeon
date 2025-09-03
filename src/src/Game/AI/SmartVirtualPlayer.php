@@ -508,6 +508,9 @@ final class SmartVirtualPlayer
                     $maxPossibleDamage = 12 + ($playerStrength - 7) + $availableFireballs; // 12 from dice + weapons + fireballs
                     if ($maxPossibleDamage >= $dragonHP) {
                         $shouldAttemptDragon = true;
+                        // IMPORTANT: Mark that we're pursuing the dragon so we don't get distracted
+                        $trackingKey = "{$gameId}_{$playerId}";
+                        self::$pursuingDragon[$trackingKey] = $dragonPosition;
                         error_log("DEBUG AI: Dragon is the only monster and deck is empty. Will attempt even with low odds.");
                     }
                 } else {
