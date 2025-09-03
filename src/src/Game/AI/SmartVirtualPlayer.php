@@ -2361,15 +2361,33 @@ final class SmartVirtualPlayer
                     $placedTiles = $field->getPlacedTiles();
                     $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveToOptions, $placedTiles);
                     
-                    if ($bestMove !== null && !isset($this->visitedPositions[$bestMove])) {
-                        $actions[] = $this->createAction('ai_reasoning', [
-                            'decision' => 'Continue pursuit of dragon',
-                            'reason' => "Moving toward dragon boss at {$dragonPosition}",
-                            'priority' => 0.6
-                        ]);
+                    if ($bestMove !== null) {
+                        // For dragon pursuit, we MUST allow revisiting positions to make progress
+                        // Check if this would cause immediate oscillation (going back to where we just were)
+                        $lastMove = null;
+                        foreach (array_reverse($actions) as $action) {
+                            if ($action['type'] === 'move_player' && isset($action['details']['result']['from'])) {
+                                $lastMove = $action['details']['result']['from'];
+                                break;
+                            }
+                        }
                         
-                        // Mark as visited to prevent oscillation
-                        $this->visitedPositions[$bestMove] = true;
+                        // Avoid going immediately back to where we just came from
+                        if ($lastMove === $bestMove) {
+                            error_log("DEBUG AI: Best move {$bestMove} would return to previous position, looking for alternative");
+                            // Try to find an alternative that still moves toward dragon
+                            $alternatives = array_filter($moveOptions, fn($m) => $m !== $bestMove);
+                            if (!empty($alternatives)) {
+                                $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $alternatives, $placedTiles);
+                            }
+                        }
+                        
+                        if ($bestMove !== null) {
+                            $actions[] = $this->createAction('ai_reasoning', [
+                                'decision' => 'Continue pursuit of dragon',
+                                'reason' => "Moving toward dragon boss at {$dragonPosition}",
+                                'priority' => 0.6
+                            ]);
                         
                         [$toX, $toY] = explode(',', $bestMove);
                         [$fromX, $fromY] = explode(',', $currentPosition->toString());
