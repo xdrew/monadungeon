@@ -2254,6 +2254,9 @@ final class SmartVirtualPlayer
                     
                     $actions[] = $this->createAction('ai_info', ['message' => 'Inventory full, cannot pick up item']);
                     
+                    // Mark current position as visited to prevent oscillation
+                    $this->visitedPositions[$currentPos] = true;
+                    
                     // Continue turn after failed pickup
                     $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
                     return; // IMPORTANT: Don't continue with general movement after handling item
@@ -2846,7 +2849,21 @@ final class SmartVirtualPlayer
             
             if (!empty($moveToOptions)) {
                 $placedTiles = $field->getPlacedTiles();
-                $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveToOptions, $placedTiles);
+                
+                // Filter out visited positions to avoid oscillation
+                $unvisitedMoveOptions = array_filter($moveToOptions, fn($option) => !isset($this->visitedPositions[$option]));
+                
+                // If we have unvisited options, use those; otherwise, check if we should end turn
+                if (!empty($unvisitedMoveOptions)) {
+                    $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $unvisitedMoveOptions, $placedTiles);
+                } else {
+                    // All move options have been visited
+                    error_log("DEBUG AI: All move options visited while pursuing dragon, ending turn to avoid oscillation");
+                    $actions[] = $this->createAction('ai_info', ['message' => 'All positions visited this turn, ending turn']);
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    return;
+                }
                 
                 if ($bestMove !== null) {
                     // Check if we're stuck oscillating
@@ -2857,7 +2874,7 @@ final class SmartVirtualPlayer
                         }
                     }
                     
-                    // If we've been to this position recently in this turn, try alternative moves
+                    // Additional check: If we've been to this position recently in this turn, try alternative moves
                     if (in_array($bestMove, $lastMoves)) {
                         error_log("DEBUG AI: Best move {$bestMove} was already visited this turn, looking for alternatives");
                         // Filter out the best move and find next best
@@ -2885,11 +2902,21 @@ final class SmartVirtualPlayer
                         // IMPORTANT: Don't call handleMoveResult here to avoid infinite recursion
                         // Just check if we can continue moving
                         if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                            // Mark the position as visited to prevent oscillation
+                            $this->visitedPositions[$bestMove] = true;
+                            
                             // Increment move count
                             $this->moveCount++;
                             error_log("DEBUG AI: Dragon pursuit move successful, continuing pursuit (move count: {$this->moveCount})");
-                            // Can make more moves, recurse to continue pursuit
-                            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                            
+                            // Check if the new position has an item
+                            if (isset($moveResult['response']['itemInfo']) && $moveResult['response']['itemInfo'] !== null) {
+                                // Handle the item at the new position
+                                $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                            } else {
+                                // Can make more moves, recurse to continue pursuit
+                                $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                            }
                         } else {
                             // Either failed or reached move limit
                             if (!$moveResult['success']) {
@@ -2933,7 +2960,19 @@ final class SmartVirtualPlayer
             
             if (!empty($moveToOptions)) {
                 $placedTiles = $field->getPlacedTiles();
-                $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonOnField, $moveToOptions, $placedTiles);
+                
+                // Filter out visited positions to avoid oscillation
+                $unvisitedMoveOptions = array_filter($moveToOptions, fn($option) => !isset($this->visitedPositions[$option]));
+                
+                if (!empty($unvisitedMoveOptions)) {
+                    $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonOnField, $unvisitedMoveOptions, $placedTiles);
+                } else {
+                    // All positions visited, end turn
+                    error_log("DEBUG AI: All move options visited during dragon recovery, ending turn");
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                    return;
+                }
                 
                 if ($bestMove !== null) {
                     $actions[] = $this->createAction('ai_reasoning', [
@@ -2948,6 +2987,8 @@ final class SmartVirtualPlayer
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                     
                     if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                        // Mark position as visited
+                        $this->visitedPositions[$bestMove] = true;
                         $this->moveCount++;
                         $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
                     } else {
