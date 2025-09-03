@@ -584,9 +584,34 @@ final class SmartVirtualPlayer
                             $trackingKey = "{$gameId}_{$playerId}";
                             self::$pursuingDragon[$trackingKey] = $dragonPosition;
                             
-                            // Find best move toward dragon
+                            // Plan path to dragon to avoid oscillation
                             $placedTiles = $field->getPlacedTiles();
-                            $bestMoveTowardDragon = $this->findBestMoveToward($currentPosStr, $dragonPosition, $moveToOptions, $placedTiles);
+                            if (!isset(self::$dragonPath[$trackingKey]) || empty(self::$dragonPath[$trackingKey])) {
+                                error_log("DEBUG AI: Planning initial path to dragon at {$dragonPosition} from {$currentPosStr}");
+                                $path = $this->findPathToTarget($currentPosStr, $dragonPosition, $placedTiles);
+                                if (!empty($path)) {
+                                    self::$dragonPath[$trackingKey] = $path;
+                                    error_log("DEBUG AI: Planned path to dragon: " . implode(' -> ', $path));
+                                }
+                            }
+                            
+                            // Get next move from planned path
+                            $bestMoveTowardDragon = null;
+                            if (isset(self::$dragonPath[$trackingKey]) && !empty(self::$dragonPath[$trackingKey])) {
+                                $nextStep = array_shift(self::$dragonPath[$trackingKey]);
+                                if (in_array($nextStep, $moveToOptions)) {
+                                    $bestMoveTowardDragon = $nextStep;
+                                    error_log("DEBUG AI: Following planned path, moving to {$bestMoveTowardDragon}");
+                                } else {
+                                    // Path blocked, replan
+                                    error_log("DEBUG AI: Planned step {$nextStep} not available, using fallback");
+                                    unset(self::$dragonPath[$trackingKey]);
+                                    $bestMoveTowardDragon = $this->findBestMoveToward($currentPosStr, $dragonPosition, $moveToOptions, $placedTiles);
+                                }
+                            } else {
+                                // No path, use simple pathfinding
+                                $bestMoveTowardDragon = $this->findBestMoveToward($currentPosStr, $dragonPosition, $moveToOptions, $placedTiles);
+                            }
                             
                             if ($bestMoveTowardDragon !== null) {
                                 $moveReason = $strengthWithConsumables >= $dragonHP
