@@ -503,19 +503,33 @@ final class SmartVirtualPlayer
                 // If dragon is the only monster left AND deck is empty, we should try even if odds are low
                 // Because there's no other way to improve our situation
                 $shouldAttemptDragon = false;
+                $shouldPursue = false; // Track if we should pursue even if we can't win
+                
                 if (!$otherMonstersExist && $deck->isEmpty()) {
                     // Maximum possible roll with 2d6 + weapons could still win
                     $maxPossibleDamage = 12 + ($playerStrength - 7) + $availableFireballs; // 12 from dice + weapons + fireballs
                     if ($maxPossibleDamage >= $dragonHP) {
                         $shouldAttemptDragon = true;
-                        // IMPORTANT: Mark that we're pursuing the dragon so we don't get distracted
-                        $trackingKey = "{$gameId}_{$playerId}";
-                        self::$pursuingDragon[$trackingKey] = $dragonPosition;
+                        $shouldPursue = true;
                         error_log("DEBUG AI: Dragon is the only monster and deck is empty. Will attempt even with low odds.");
+                    } else {
+                        // Can't win even with max rolls, but should still move toward it if it's the ONLY option
+                        $shouldPursue = true; // Still pursue to try our luck
+                        error_log("DEBUG AI: Dragon is impossible to defeat but it's the only option. Moving toward it anyway.");
                     }
                 } else {
                     // Normal case - only attempt if we have reasonable chance
                     $shouldAttemptDragon = ($strengthWithConsumables >= $dragonHP);
+                    if ($shouldAttemptDragon) {
+                        $shouldPursue = true;
+                    }
+                }
+                
+                // Set pursuit flag if we should pursue the dragon
+                if ($shouldPursue) {
+                    $trackingKey = "{$gameId}_{$playerId}";
+                    self::$pursuingDragon[$trackingKey] = $dragonPosition;
+                    error_log("DEBUG AI: Setting dragon pursuit flag for position {$dragonPosition}");
                 }
                 
                 // Check if we can defeat the dragon (with or without consumables)
@@ -2707,12 +2721,15 @@ final class SmartVirtualPlayer
                 $placedTiles = $field->getPlacedTiles();
                 $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveToOptions, $placedTiles);
                 
-                if ($bestMove !== null) {
+                if ($bestMove !== null && !isset($this->visitedPositions[$bestMove])) {
                     $actions[] = $this->createAction('ai_reasoning', [
                         'decision' => 'Continue moving toward dragon',
                         'reason' => "Pursuing dragon boss to win game",
                         'priority' => 0.6
                     ]);
+                    
+                    // Mark as visited to prevent oscillation
+                    $this->visitedPositions[$bestMove] = true;
                     
                     [$toX, $toY] = explode(',', $bestMove);
                     [$fromX, $fromY] = explode(',', $currentPosition->toString());
@@ -2722,12 +2739,16 @@ final class SmartVirtualPlayer
                     // IMPORTANT: Don't call handleMoveResult here to avoid infinite recursion
                     // Just check if we can continue moving
                     if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                        // Increment move count
+                        $this->moveCount++;
                         // Can make more moves, recurse to continue pursuit
                         $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
                     } else {
                         // Either failed or reached move limit
                         if (!$moveResult['success']) {
                             error_log("DEBUG AI: Dragon pursuit move failed: " . json_encode($moveResult));
+                        } else {
+                            error_log("DEBUG AI: Reached move limit during dragon pursuit");
                         }
                         $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                         $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
