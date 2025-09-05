@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Game\AI;
 
 use App\Game\Deck\GetDeck;
+use App\Game\Field\Field;
+use App\Game\Field\FieldPlace;
 use App\Game\Field\GetAvailablePlacesForPlayer;
 use App\Game\Field\GetField;
 use App\Game\Field\TileFeature;
@@ -589,7 +591,7 @@ final class SmartVirtualPlayer
                             error_log("DEBUG AI: Checking for existing path. Key: {$trackingKey}");
                             if (!isset(self::$dragonPath[$trackingKey]) || empty(self::$dragonPath[$trackingKey])) {
                                 error_log("DEBUG AI: No existing path found. Planning initial path to dragon at {$dragonPosition} from {$currentPosStr}");
-                                $path = $this->findPathToTarget($currentPosStr, $dragonPosition, $placedTiles);
+                                $path = $this->findPathToTarget($currentPosStr, $dragonPosition, $placedTiles, $field);
                                 if (!empty($path)) {
                                     self::$dragonPath[$trackingKey] = $path;
                                     error_log("DEBUG AI: Successfully planned path to dragon with " . count($path) . " steps: " . implode(' -> ', $path));
@@ -2414,7 +2416,7 @@ final class SmartVirtualPlayer
                     if (!isset(self::$dragonPath[$trackingKey]) || empty(self::$dragonPath[$trackingKey])) {
                         // Plan a path to the dragon using BFS to avoid oscillation
                         error_log("DEBUG AI: Planning path to dragon at {$dragonPosition} from {$currentPosition->toString()}");
-                        $path = $this->findPathToTarget($currentPosition->toString(), $dragonPosition, $placedTiles);
+                        $path = $this->findPathToTarget($currentPosition->toString(), $dragonPosition, $placedTiles, $field);
                         if (!empty($path)) {
                             self::$dragonPath[$trackingKey] = $path;
                             error_log("DEBUG AI: Planned path to dragon: " . implode(' -> ', $path));
@@ -4285,7 +4287,7 @@ final class SmartVirtualPlayer
             
             // Plan a new path to the monster using BFS
             error_log("DEBUG AI: Planning path to monster {$targetMonster['name']} at {$targetPos} from {$currentPosition->toString()}");
-            $path = $this->findPathToTarget($currentPosition->toString(), $targetPos, $placedTiles);
+            $path = $this->findPathToTarget($currentPosition->toString(), $targetPos, $placedTiles, $field);
             
             if (!empty($path)) {
                 self::$persistentMonsterTargets[$trackingKey] = [
@@ -4320,7 +4322,7 @@ final class SmartVirtualPlayer
         // If no valid next step found, replan
         if ($nextStep === null) {
             error_log("DEBUG AI: All path steps visited or path empty, replanning...");
-            $path = $this->findPathToTarget($currentPosition->toString(), $targetPos, $placedTiles);
+            $path = $this->findPathToTarget($currentPosition->toString(), $targetPos, $placedTiles, $field);
             
             if (!empty($path)) {
                 // Filter out visited positions from the new path
@@ -5301,10 +5303,16 @@ final class SmartVirtualPlayer
      * Find best move toward a target position
      */
     /**
-     * Find complete path to target using BFS
+     * Find complete path to target using BFS respecting tile transitions
      */
-    private function findPathToTarget(string $start, string $target, array $placedTiles): array
+    private function findPathToTarget(string $start, string $target, array $placedTiles, ?Field $field = null): array
     {
+        // If field not provided, we can't use transitions - fallback to adjacency check
+        if ($field === null) {
+            error_log("DEBUG AI: WARNING - findPathToTarget called without Field, using fallback adjacency check");
+            return $this->findPathToTargetFallback($start, $target, $placedTiles);
+        }
+        
         $queue = [[$start]];
         $visited = [$start => true];
         
@@ -5319,18 +5327,13 @@ final class SmartVirtualPlayer
                 return $path;
             }
             
-            // Get neighbors
-            [$x, $y] = explode(',', $current);
-            $neighbors = [
-                ($x-1) . ',' . $y,
-                ($x+1) . ',' . $y,
-                $x . ',' . ($y-1),
-                $x . ',' . ($y+1)
-            ];
+            // Get valid transitions from current position
+            $currentPlace = FieldPlace::fromString($current);
+            $transitions = $field->getTransitionsFrom($currentPlace);
             
-            foreach ($neighbors as $neighbor) {
-                // Check if neighbor has a tile and hasn't been visited
-                if (isset($placedTiles[$neighbor]) && !isset($visited[$neighbor])) {
+            foreach ($transitions as $neighbor) {
+                // Check if neighbor hasn't been visited
+                if (!isset($visited[$neighbor])) {
                     $visited[$neighbor] = true;
                     $newPath = $path;
                     $newPath[] = $neighbor;
@@ -5340,6 +5343,44 @@ final class SmartVirtualPlayer
         }
         
         return []; // No path found
+    }
+    
+    /**
+     * Fallback pathfinding using simple adjacency (when Field not available)
+     */
+    private function findPathToTargetFallback(string $start, string $target, array $placedTiles): array
+    {
+        $queue = [[$start]];
+        $visited = [$start => true];
+        
+        while (!empty($queue)) {
+            $path = array_shift($queue);
+            $current = end($path);
+            
+            if ($current === $target) {
+                array_shift($path);
+                return $path;
+            }
+            
+            [$x, $y] = explode(',', $current);
+            $neighbors = [
+                ($x-1) . ',' . $y,
+                ($x+1) . ',' . $y,
+                $x . ',' . ($y-1),
+                $x . ',' . ($y+1)
+            ];
+            
+            foreach ($neighbors as $neighbor) {
+                if (isset($placedTiles[$neighbor]) && !isset($visited[$neighbor])) {
+                    $visited[$neighbor] = true;
+                    $newPath = $path;
+                    $newPath[] = $neighbor;
+                    $queue[] = $newPath;
+                }
+            }
+        }
+        
+        return [];
     }
     
     private function findBestMoveToward(string $currentPos, string $targetPos, array $moveOptions, array $placedTiles): ?string
