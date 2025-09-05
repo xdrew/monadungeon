@@ -2568,26 +2568,39 @@ final class SmartVirtualPlayer
                 $targetMonster = $this->chooseBestMonsterTarget($valuableMonsters, $player);
                 if ($targetMonster) {
                     $actions[] = $this->createAction('ai_reasoning', ['message' => "Continuing pursuit of {$targetMonster['name']} for {$targetMonster['type']}"]);
+                    // Store move count before attempting
+                    $moveCountBefore = $this->moveCount;
                     $this->executeMoveTowardsMonster($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $targetMonster, $actions);
-                    return; // Exit after moving towards monster
+                    // Only return if we actually made progress
+                    if ($this->moveCount > $moveCountBefore) {
+                        return; // Successfully moved, exit
+                    }
+                    // Otherwise fall through to try other strategies
+                    error_log("DEBUG AI: Monster pursuit failed, trying other strategies");
                 }
             }
             
             // Try to continue moving towards better weapons if they exist (but check move limit)
+            error_log("DEBUG AI: Checking weapon pursuit - weapons: " . json_encode($betterWeaponsOnField) . ", unvisited: " . count($unvisitedOptions) . ", moves: {$this->moveCount}");
             if (!empty($betterWeaponsOnField) && !empty($unvisitedOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing to move towards better weapons']);
                 $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
+                // Don't return here - executeMoveTowardsBetterWeapon will handle continuation if successful
             } elseif (!empty($placeTileOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
                 // Place tiles to open new areas (but only if we haven't reached max moves)
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $actions[] = $this->createAction('ai_reasoning', ['message' => 'Placing tile to expand exploration area']);
                 $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
+                // Note: executeTilePlacement handles its own continuation
+                return;
             } elseif (!empty($unvisitedOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
                 // Continue exploring unvisited positions
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing exploration of unvisited areas']);
                 $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
+                // Note: executeMovement handles its own continuation
+                return;
             } else {
                 // No unvisited positions, no tiles to place, or reached move limit
                 if (empty($unvisitedOptions)) {
@@ -2597,6 +2610,8 @@ final class SmartVirtualPlayer
                 } else {
                     $actions[] = $this->createAction('ai_info', ['message' => 'No more actions available']);
                 }
+                // Always end turn here
+                error_log("DEBUG AI: Ending turn in continueAfterAction - no more strategies");
                 $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                 $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
             }
