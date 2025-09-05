@@ -2762,8 +2762,26 @@ final class SmartVirtualPlayer
     /**
      * Continue playing after an action (battle, pickup, etc.)
      */
-    private function continueAfterAction(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array &$actions): void
+    private function continueAfterAction(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array &$actions, int $recursionDepth = 0): void
     {
+        // Prevent infinite recursion
+        if ($recursionDepth > 10) {
+            error_log("DEBUG AI: Maximum recursion depth reached in continueAfterAction, ending turn");
+            $actions[] = $this->createAction('ai_info', ['message' => 'Maximum recursion depth reached']);
+            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            return;
+        }
+        
+        // Also check total action count to prevent infinite loops
+        if (count($actions) > self::MAX_ACTIONS_PER_TURN) {
+            error_log("DEBUG AI: Maximum action count reached (" . self::MAX_ACTIONS_PER_TURN . "), ending turn");
+            $actions[] = $this->createAction('ai_info', ['message' => 'Maximum action count reached']);
+            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            return;
+        }
+        
         // Check if battle occurred - if so, must end turn (can't move after battle)
         if ($this->hasBattleOccurred($actions)) {
             $actions[] = $this->createAction('ai_info', ['message' => 'Battle occurred, ending turn']);
@@ -2915,7 +2933,7 @@ final class SmartVirtualPlayer
                                 $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
                             } else {
                                 // Can make more moves, recurse to continue pursuit
-                                $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                                $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
                             }
                         } else {
                             // Either failed or reached move limit
@@ -2990,7 +3008,7 @@ final class SmartVirtualPlayer
                         // Mark position as visited
                         $this->visitedPositions[$bestMove] = true;
                         $this->moveCount++;
-                        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
                     } else {
                         $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                         $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
@@ -3098,7 +3116,7 @@ final class SmartVirtualPlayer
                     
                     if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
                         $this->moveCount++;
-                        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+                        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
                     } else {
                         $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                         $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
@@ -3153,7 +3171,7 @@ final class SmartVirtualPlayer
         
         if (!$pickedUpItem) {
             $actions[] = $this->createAction('ai_reasoning', ['message' => 'No item info available for replacement decision']);
-            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
             return;
         }
         
@@ -3219,7 +3237,7 @@ final class SmartVirtualPlayer
         }
         
         // After handling inventory, continue playing (but remember battle ends turn)
-        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
     }
     
     /**
@@ -3265,7 +3283,7 @@ final class SmartVirtualPlayer
         $reward = $battleInfo['reward'] ?? null;
         if (!$reward) {
             $actions[] = $this->createAction('ai_reasoning', ['message' => 'No reward information available, continuing turn']);
-            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
             return;
         }
         
@@ -3368,7 +3386,7 @@ final class SmartVirtualPlayer
         }
         
         // Continue playing regardless of pickup result
-        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
     }
     
     /**
@@ -4328,10 +4346,10 @@ final class SmartVirtualPlayer
         
         // Verify the next step is in our available moves
         if (!in_array($nextStep, $moveToOptions)) {
-            error_log("DEBUG AI: Next path step {$nextStep} not in available moves, replanning...");
-            // Clear the stored path and try again
+            error_log("DEBUG AI: Next path step {$nextStep} not in available moves, abandoning pursuit");
+            // Clear the stored path and abandon pursuit to avoid infinite loop
             unset(self::$persistentMonsterTargets[$trackingKey]);
-            $this->executeMoveTowardsMonster($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $targetMonster, $actions);
+            $actions[] = $this->createAction('ai_info', ['message' => 'Path step not in available moves, ending pursuit']);
             return;
         }
         
