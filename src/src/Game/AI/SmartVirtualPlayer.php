@@ -18,6 +18,7 @@ use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
 use Telephantast\MessageBus\MessageBus;
 
+
 /**
  * Smart Virtual AI player that plays like a human - uses atomic actions for clean gameplay
  */
@@ -3675,6 +3676,8 @@ final class SmartVirtualPlayer
         $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
         $field = $this->messageBus->dispatch(new GetField($gameId));
         $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+        $currentPos = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+        $currentPosStr = $currentPos->toString();
         
         $playerStrength = $this->calculateEffectiveStrength($player);
         $hasKey = $this->playerHasKey($player);
