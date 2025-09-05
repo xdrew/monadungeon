@@ -2367,6 +2367,14 @@ final class SmartVirtualPlayer
                 }
             }
             
+            // Check if we've reached the maximum move count
+            if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+                $actions[] = $this->createAction('ai_info', ['message' => 'Reached maximum moves for this turn']);
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                return;
+            }
+            
             $actions[] = $this->createAction('continue_turn', ['message' => 'Looking for more actions']);
             
             // Check if we're pursuing the dragon - maintain pursuit across moves
@@ -4298,8 +4306,11 @@ final class SmartVirtualPlayer
                 error_log("DEBUG AI: Successfully planned path to monster with " . count($path) . " steps: " . implode(' -> ', $path));
             } else {
                 error_log("DEBUG AI: No path found to monster at {$targetPos}");
-                // No path exists, end turn or try placing tiles
+                // No path exists, end turn
                 $actions[] = $this->createAction('ai_info', ['message' => "No path to monster at {$targetPos}"]);
+                // End turn since we can't reach the target
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                 return;
             }
         }
@@ -4336,12 +4347,18 @@ final class SmartVirtualPlayer
                     error_log("DEBUG AI: All positions in new path already visited, cannot continue pursuit");
                     $actions[] = $this->createAction('ai_info', ['message' => 'All path positions visited, ending pursuit']);
                     unset(self::$persistentMonsterTargets[$trackingKey]);
+                    // End turn since we can't continue
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                     return;
                 }
             } else {
                 error_log("DEBUG AI: No path available to monster after replan");
                 $actions[] = $this->createAction('ai_info', ['message' => 'No path to monster available']);
                 unset(self::$persistentMonsterTargets[$trackingKey]);
+                // End turn since we can't reach the target
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                 return;
             }
         }
@@ -4352,6 +4369,9 @@ final class SmartVirtualPlayer
             // Clear the stored path and abandon pursuit to avoid infinite loop
             unset(self::$persistentMonsterTargets[$trackingKey]);
             $actions[] = $this->createAction('ai_info', ['message' => 'Path step not in available moves, ending pursuit']);
+            // End turn since we can't continue
+            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
             return;
         }
         
