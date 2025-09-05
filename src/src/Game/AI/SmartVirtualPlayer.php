@@ -39,6 +39,11 @@ final class SmartVirtualPlayer
     private static array $explorationHistory = [];  // Track positions explored across turns
     private int $moveCount = 0;  // Track number of moves in current turn
     
+    // Strategic goal tracking
+    private static array $currentGoal = [];  // Current strategic goal per game/player
+    private static array $goalProgress = [];  // Track progress towards current goal
+    private static array $previousPosition = [];  // Track where we came from to avoid oscillation per game/player
+    
     public function __construct(
         private readonly MessageBus $messageBus,
         private readonly VirtualPlayerStrategy $strategy,
@@ -471,6 +476,19 @@ final class SmartVirtualPlayer
                 }
             }
             
+            // Determine strategic goal for this turn
+            $strategicGoal = $this->determineStrategicGoal($gameId, $playerId);
+            $actions[] = $this->createAction('strategic_goal', [
+                'type' => $strategicGoal['type'],
+                'target' => $strategicGoal['target'] ?? null,
+                'reason' => $strategicGoal['reason'],
+                'priority' => $strategicGoal['priority']
+            ]);
+            
+            // Update goal tracking
+            $trackingKey = "{$gameId}_{$playerId}";
+            self::$currentGoal[$trackingKey] = $strategicGoal;
+            
             // PRIORITY 0.6: Check if we can win the game by defeating the dragon boss
             $dragonInfo = $this->findDragonBoss($field);
             
@@ -790,7 +808,8 @@ final class SmartVirtualPlayer
                     // Move towards distant monster
                     $this->executeMoveTowardsMonster($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $targetMonsterToMoveTowards, $actions);
                 } else {
-                    $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
+                    // Use goal-oriented movement
+                    $this->executeGoalOrientedMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $strategicGoal, $actions);
                 }
             } elseif (!empty($placeTileOptions) && !$deck->isEmpty()) {
                 // Explain why not moving to chests
@@ -3648,6 +3667,174 @@ final class SmartVirtualPlayer
     }
     
     /**
+     * Determine the strategic goal based on current game state
+     */
+    private function determineStrategicGoal(Uuid $gameId, Uuid $playerId): array
+    {
+        $trackingKey = "{$gameId}_{$playerId}";
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+        $field = $this->messageBus->dispatch(new GetField($gameId));
+        $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+        
+        $playerStrength = $this->calculateEffectiveStrength($player);
+        $hasKey = $this->playerHasKey($player);
+        $items = $field->getItems();
+        
+        // Priority 1: If we can win the game (defeat dragon), that's the goal
+        $dragonPos = null;
+        $dragonHP = 0;
+        foreach ($items as $pos => $item) {
+            if ($item instanceof \App\Game\Item\Item && $item->name->value === 'dragon') {
+                $dragonPos = $pos;
+                $dragonHP = $item->guardHP;
+                break;
+            }
+        }
+        
+        if ($dragonPos && $playerStrength >= $dragonHP) {
+            return [
+                'type' => 'WIN_GAME',
+                'target' => $dragonPos,
+                'reason' => "Can defeat dragon (strength {$playerStrength} >= {$dragonHP})",
+                'priority' => 1
+            ];
+        }
+        
+        // Priority 2: If we have a key, find chests to open
+        if ($hasKey) {
+            $chests = [];
+            foreach ($items as $pos => $item) {
+                if ($item instanceof \App\Game\Item\Item && $item->type->value === 'chest' && !$item->guardDefeated) {
+                    $chests[] = $pos;
+                }
+            }
+            if (!empty($chests)) {
+                // Find closest chest
+                $closestChest = null;
+                $minDistance = PHP_INT_MAX;
+                foreach ($chests as $chestPos) {
+                    $distance = $this->calculateManhattanDistance($currentPosStr, $chestPos);
+                    if ($distance < $minDistance) {
+                        $minDistance = $distance;
+                        $closestChest = $chestPos;
+                    }
+                }
+                return [
+                    'type' => 'COLLECT_TREASURE',
+                    'target' => $closestChest,
+                    'reason' => "Have key, collecting treasure at distance {$minDistance}",
+                    'priority' => 2
+                ];
+            }
+        }
+        
+        // Priority 3: Get stronger to defeat dragon
+        if ($dragonPos && $playerStrength < $dragonHP) {
+            $neededStrength = $dragonHP - $playerStrength;
+            
+            // Look for weapons that would help
+            $weapons = [];
+            foreach ($items as $pos => $item) {
+                if ($item instanceof \App\Game\Item\Item) {
+                    $reward = $this->getMonsterReward($item);
+                    if (in_array($reward, ['dagger', 'sword', 'axe'])) {
+                        $weapons[$pos] = [
+                            'type' => $reward,
+                            'hp' => $item->guardHP,
+                            'value' => $reward === 'dagger' ? 1 : ($reward === 'sword' ? 2 : 3)
+                        ];
+                    }
+                }
+            }
+            
+            if (!empty($weapons)) {
+                // Find best weapon to pursue
+                $bestWeapon = null;
+                $bestValue = 0;
+                foreach ($weapons as $pos => $weapon) {
+                    if ($playerStrength >= $weapon['hp'] && $weapon['value'] > $bestValue) {
+                        $bestWeapon = $pos;
+                        $bestValue = $weapon['value'];
+                    }
+                }
+                
+                if ($bestWeapon) {
+                    // Find closest winnable weapon
+                    $closestWeapon = null;
+                    $minDistance = PHP_INT_MAX;
+                    foreach ($weapons as $pos => $weapon) {
+                        if ($playerStrength >= $weapon['hp']) {
+                            $distance = $this->calculateManhattanDistance($currentPosStr, $pos);
+                            if ($distance < $minDistance || 
+                                ($distance === $minDistance && $weapon['value'] > $weapons[$closestWeapon]['value'])) {
+                                $minDistance = $distance;
+                                $closestWeapon = $pos;
+                            }
+                        }
+                    }
+                    
+                    if ($closestWeapon) {
+                        return [
+                            'type' => 'GET_STRONGER',
+                            'target' => $closestWeapon,
+                            'reason' => "Need +{$neededStrength} strength for dragon, pursuing {$weapons[$closestWeapon]['type']}",
+                            'priority' => 3
+                        ];
+                    }
+                }
+            }
+        }
+        
+        // Priority 4: Get a key if we don't have one
+        if (!$hasKey) {
+            $keyMonsters = [];
+            foreach ($items as $pos => $item) {
+                if ($item instanceof \App\Game\Item\Item) {
+                    $reward = $this->getMonsterReward($item);
+                    if ($reward === 'key') {
+                        $keyMonsters[$pos] = [
+                            'hp' => $item->guardHP,
+                            'name' => $item->name->value
+                        ];
+                    }
+                }
+            }
+            
+            if (!empty($keyMonsters)) {
+                // Find closest winnable key monster
+                $closestKeyMonster = null;
+                $minDistance = PHP_INT_MAX;
+                foreach ($keyMonsters as $pos => $monster) {
+                    if ($playerStrength >= $monster['hp']) {
+                        $distance = $this->calculateManhattanDistance($currentPosStr, $pos);
+                        if ($distance < $minDistance) {
+                            $minDistance = $distance;
+                            $closestKeyMonster = $pos;
+                        }
+                    }
+                }
+                
+                if ($closestKeyMonster) {
+                    return [
+                        'type' => 'GET_KEY',
+                        'target' => $closestKeyMonster,
+                        'reason' => "Need key for chests, targeting {$keyMonsters[$closestKeyMonster]['name']}",
+                        'priority' => 4
+                    ];
+                }
+            }
+        }
+        
+        // Priority 5: Systematic exploration
+        return [
+            'type' => 'EXPLORE',
+            'target' => null,
+            'reason' => "Exploring to find opportunities",
+            'priority' => 5
+        ];
+    }
+    
+    /**
      * Choose movement target based on strategy - TREASURES FIRST!
      * @return string|null Returns the target position or null if all positions have been visited
      */
@@ -3914,6 +4101,144 @@ final class SmartVirtualPlayer
         
         error_log("DEBUG AI Reasoning: Balanced exploration - moving to {$balancedPos}");
         return $balancedPos;
+    }
+    
+    /**
+     * Execute movement based on strategic goal
+     */
+    private function executeGoalOrientedMovement(
+        Uuid $gameId,
+        Uuid $playerId,
+        Uuid $currentTurnId,
+        FieldPlace $currentPosition,
+        array $moveToOptions,
+        array $strategicGoal,
+        array &$actions
+    ): void {
+        $trackingKey = "{$gameId}_{$playerId}";
+        $currentPosStr = $currentPosition->toString();
+        
+        // Track previous position to prevent oscillation
+        $previousPos = self::$previousPosition[$trackingKey] ?? null;
+        
+        // If we have a specific target, move towards it
+        if ($strategicGoal['target'] !== null) {
+            $field = $this->messageBus->dispatch(new GetField($gameId));
+            $path = $this->findPathToTarget($currentPosStr, $strategicGoal['target'], $field->getPlacedTiles(), $field);
+            
+            if (!empty($path) && count($path) > 1) {
+                $nextStep = $path[1]; // First step is current position
+                
+                // Check if next step would take us back to previous position (oscillation)
+                if ($previousPos !== null && $nextStep === $previousPos && $strategicGoal['type'] === 'EXPLORE') {
+                    // For exploration, avoid going back. Choose a different direction
+                    $actions[] = $this->createAction('anti_oscillation', [
+                        'message' => 'Avoiding oscillation, choosing different direction',
+                        'avoided' => $nextStep,
+                        'previous' => $previousPos
+                    ]);
+                    
+                    // Filter out the previous position from options
+                    $filteredOptions = array_filter($moveToOptions, fn($opt) => $opt !== $previousPos);
+                    if (!empty($filteredOptions)) {
+                        $moveToOptions = array_values($filteredOptions);
+                    }
+                    // Fall through to exploration logic below
+                } else {
+                    // Check if next step is in available moves
+                    $canMove = false;
+                    foreach ($moveToOptions as $moveOption) {
+                        if ($moveOption === $nextStep) {
+                            $canMove = true;
+                            break;
+                        }
+                    }
+                    
+                    if ($canMove) {
+                        [$toX, $toY] = explode(',', $nextStep);
+                        [$fromX, $fromY] = explode(',', $currentPosStr);
+                        
+                        $actions[] = $this->createAction('goal_movement', [
+                            'goal' => $strategicGoal['type'],
+                            'target' => $strategicGoal['target'],
+                            'next_step' => $nextStep
+                        ]);
+                        
+                        // Update previous position before moving
+                        self::$previousPosition[$trackingKey] = $currentPosStr;
+                        
+                        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                        $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                        $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                        return;
+                    }
+                }
+            }
+        }
+        
+        // EXPLORE: Smart exploration without oscillation
+        if ($strategicGoal['type'] === 'EXPLORE' || $strategicGoal['target'] === null) {
+            // Track exploration history
+            if (!isset(self::$explorationHistory[$trackingKey])) {
+                self::$explorationHistory[$trackingKey] = [];
+            }
+            
+            $explorationHistory = &self::$explorationHistory[$trackingKey];
+            
+            // Score each move option based on exploration value
+            $moveScores = [];
+            foreach ($moveToOptions as $moveOption) {
+                $score = 100; // Base score
+                
+                // Penalize returning to previous position heavily
+                if ($previousPos !== null && $moveOption === $previousPos) {
+                    $score -= 80;
+                }
+                
+                // Penalize recently visited positions
+                $visitCount = isset($explorationHistory[$moveOption]) ? 1 : 0;
+                $score -= $visitCount * 20;
+                
+                // Bonus for unexplored areas
+                if ($visitCount === 0) {
+                    $score += 50;
+                }
+                
+                $moveScores[$moveOption] = $score;
+            }
+            
+            // Sort by score (descending)
+            arsort($moveScores);
+            
+            // Choose the best scoring move
+            if (!empty($moveScores)) {
+                $bestMove = array_key_first($moveScores);
+                $bestScore = $moveScores[$bestMove];
+                
+                $actions[] = $this->createAction('exploration_choice', [
+                    'chosen' => $bestMove,
+                    'score' => $bestScore,
+                    'all_scores' => $moveScores
+                ]);
+                
+                // Update exploration history
+                $explorationHistory[$bestMove] = true;
+                
+                // Update previous position
+                self::$previousPosition[$trackingKey] = $currentPosStr;
+                
+                [$toX, $toY] = explode(',', $bestMove);
+                [$fromX, $fromY] = explode(',', $currentPosStr);
+                
+                $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                return;
+            }
+        }
+        
+        // Fallback to original movement logic if nothing else works
+        $this->executeMovement($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $actions);
     }
     
     /**
@@ -5559,6 +5884,16 @@ final class SmartVirtualPlayer
     /**
      * Check if player is currently on a healing fountain
      */
+    /**
+     * Calculate Manhattan distance between two positions
+     */
+    private function calculateManhattanDistance(string $pos1, string $pos2): int
+    {
+        [$x1, $y1] = explode(',', $pos1);
+        [$x2, $y2] = explode(',', $pos2);
+        return abs((int)$x1 - (int)$x2) + abs((int)$y1 - (int)$y2);
+    }
+    
     private function isOnHealingFountain(string $position, $field): bool
     {
         $placedTiles = $field->getPlacedTiles();
