@@ -64,6 +64,9 @@ final class SmartVirtualPlayer
         $this->visitedPositions = [];
         $this->moveCount = 0;
         
+        // Don't clear paths entirely - we want persistence
+        // The path validation will handle checking if steps are still valid
+        
         try {
             // Check if game is already finished
             $game = $this->messageBus->dispatch(new GetGame($gameId));
@@ -4289,9 +4292,28 @@ final class SmartVirtualPlayer
         $placedTiles = $field->getPlacedTiles();
         
         // Check if we have a stored path for this monster target
+        $needNewPath = false;
         if (!isset(self::$persistentMonsterTargets[$trackingKey]) || 
             self::$persistentMonsterTargets[$trackingKey]['position'] !== $targetPos ||
             empty(self::$persistentMonsterTargets[$trackingKey]['path'])) {
+            $needNewPath = true;
+        } else {
+            // Check if the first step of the stored path is reachable from current position
+            $storedPath = self::$persistentMonsterTargets[$trackingKey]['path'];
+            $firstStep = $storedPath[0] ?? null;
+            
+            // Get valid transitions from current position
+            $currentPlace = FieldPlace::fromString($currentPosition->toString());
+            $transitions = $field->getTransitionsFrom($currentPlace);
+            
+            // If first step isn't directly reachable, we need a new path
+            if ($firstStep && !in_array($firstStep, $transitions)) {
+                error_log("DEBUG AI: Stored path first step {$firstStep} not reachable from {$currentPosition->toString()}, replanning");
+                $needNewPath = true;
+            }
+        }
+        
+        if ($needNewPath) {
             
             // Plan a new path to the monster using BFS
             error_log("DEBUG AI: Planning path to monster {$targetMonster['name']} at {$targetPos} from {$currentPosition->toString()}");
@@ -4306,11 +4328,9 @@ final class SmartVirtualPlayer
                 error_log("DEBUG AI: Successfully planned path to monster with " . count($path) . " steps: " . implode(' -> ', $path));
             } else {
                 error_log("DEBUG AI: No path found to monster at {$targetPos}");
-                // No path exists, end turn
-                $actions[] = $this->createAction('ai_info', ['message' => "No path to monster at {$targetPos}"]);
-                // End turn since we can't reach the target
-                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                // No path exists, return to try other strategies
+                $actions[] = $this->createAction('ai_info', ['message' => "No path to monster at {$targetPos}, trying other options"]);
+                unset(self::$persistentMonsterTargets[$trackingKey]);
                 return;
             }
         }
@@ -4345,20 +4365,14 @@ final class SmartVirtualPlayer
                     error_log("DEBUG AI: Replanned path with " . count($unvisitedPath) . " unvisited steps");
                 } else {
                     error_log("DEBUG AI: All positions in new path already visited, cannot continue pursuit");
-                    $actions[] = $this->createAction('ai_info', ['message' => 'All path positions visited, ending pursuit']);
+                    $actions[] = $this->createAction('ai_info', ['message' => 'All path positions visited, trying other options']);
                     unset(self::$persistentMonsterTargets[$trackingKey]);
-                    // End turn since we can't continue
-                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                     return;
                 }
             } else {
                 error_log("DEBUG AI: No path available to monster after replan");
-                $actions[] = $this->createAction('ai_info', ['message' => 'No path to monster available']);
+                $actions[] = $this->createAction('ai_info', ['message' => 'No path to monster available, trying other options']);
                 unset(self::$persistentMonsterTargets[$trackingKey]);
-                // End turn since we can't reach the target
-                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                 return;
             }
         }
@@ -4366,12 +4380,9 @@ final class SmartVirtualPlayer
         // Verify the next step is in our available moves
         if (!in_array($nextStep, $moveToOptions)) {
             error_log("DEBUG AI: Next path step {$nextStep} not in available moves, abandoning pursuit");
-            // Clear the stored path and abandon pursuit to avoid infinite loop
+            // Clear the stored path and try other strategies
             unset(self::$persistentMonsterTargets[$trackingKey]);
-            $actions[] = $this->createAction('ai_info', ['message' => 'Path step not in available moves, ending pursuit']);
-            // End turn since we can't continue
-            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+            $actions[] = $this->createAction('ai_info', ['message' => 'Path step not in available moves, trying other options']);
             return;
         }
         
