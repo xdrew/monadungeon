@@ -84,6 +84,125 @@
   border: 1px solid #0F0E1C;
 }
 
+/* Mobile Responsive Tiles */
+@media (max-width: 768px) {
+  .tiles-container {
+    min-width: 200px;
+    min-height: 200px;
+  }
+
+  .tile {
+    width: 80px;
+    height: 80px;
+    font-size: 10px;
+  }
+
+  .tile-orientation {
+    font-size: 20px;
+  }
+
+  .tile-items.has-monster-image {
+    width: 32px;
+    height: 32px;
+  }
+
+  .tile-items .monster-image {
+    width: 28px;
+    height: 28px;
+  }
+
+  .tile-items.has-guard .monster-hp {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+  }
+
+  .available-position-marker {
+    width: 70px;
+    height: 70px;
+  }
+
+  .available-move-marker {
+    width: 70px;
+    height: 70px;
+  }
+
+  .player-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .player-health-bar {
+    width: 60px;
+    bottom: -20px;
+  }
+
+  .player-health-bar-fill {
+    height: 3px;
+  }
+
+  .player-health-text {
+    font-size: 9px;
+  }
+}
+
+/* Small Mobile Devices */
+@media (max-width: 480px) {
+  .tile {
+    width: 60px;
+    height: 60px;
+    font-size: 9px;
+  }
+
+  .tile-orientation {
+    font-size: 16px;
+  }
+
+  .tile-items.has-monster-image {
+    width: 24px;
+    height: 24px;
+  }
+
+  .tile-items .monster-image {
+    width: 20px;
+    height: 20px;
+  }
+
+  .tile-items.has-guard .monster-hp {
+    width: 14px;
+    height: 14px;
+    font-size: 8px;
+  }
+
+  .available-position-marker {
+    width: 50px;
+    height: 50px;
+  }
+
+  .available-move-marker {
+    width: 50px;
+    height: 50px;
+  }
+
+  .player-avatar {
+    width: 18px;
+    height: 18px;
+  }
+
+  .player-health-bar {
+    width: 45px;
+    bottom: -16px;
+  }
+
+  .player-health-bar-fill {
+    height: 2px;
+  }
+
+  .player-health-text {
+    font-size: 8px;
+  }
+}
+
 /* Tile Hover Effects */
 .tile:hover {
   z-index: var(--z-tooltip);

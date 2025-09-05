@@ -4254,104 +4254,117 @@ final class SmartVirtualPlayer
     private function executeMoveTowardsMonster(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, $currentPosition, array $moveToOptions, array $targetMonster, array &$actions): void
     {
         $targetPos = $targetMonster['position'];
-        [$targetX, $targetY] = explode(',', $targetPos);
-        $targetX = (int)$targetX;
-        $targetY = (int)$targetY;
+        $trackingKey = "{$gameId}_{$playerId}";
         
-        // Get field info for multi-objective pathfinding
+        // Get field info for pathfinding
         $field = $this->messageBus->dispatch(new GetField($gameId));
-        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+        $placedTiles = $field->getPlacedTiles();
         
-        // Check for other valuable targets on field (chests, other monsters)
-        $hasKey = $this->playerHasKey($player);
-        $secondaryTargets = [];
-        
-        // Add chests as secondary targets if we have a key
-        if ($hasKey) {
-            $allChestsOnField = [];
-            $items = $field->getItems();
-            foreach ($items as $position => $item) {
-                if ($item instanceof \App\Game\Item\Item && $item->type->value === 'chest' && !$item->guardDefeated) {
-                    $allChestsOnField[] = $position;
-                }
-            }
-            foreach ($allChestsOnField as $chestPos) {
-                $secondaryTargets[$chestPos] = ['type' => 'chest', 'priority' => 50];
-            }
-        }
-        
-        // Find the move that optimizes multiple objectives
-        $bestMove = null;
-        $bestScore = -PHP_INT_MAX;
-        $bestReason = '';
-        
-        [$currentX, $currentY] = explode(',', $currentPosition->toString());
-        $currentX = (int)$currentX;
-        $currentY = (int)$currentY;
-        
-        foreach ($moveToOptions as $moveOption) {
-            [$moveX, $moveY] = explode(',', $moveOption);
-            $moveX = (int)$moveX;
-            $moveY = (int)$moveY;
+        // Check if we have a stored path for this monster target
+        if (!isset(self::$persistentMonsterTargets[$trackingKey]) || 
+            self::$persistentMonsterTargets[$trackingKey]['position'] !== $targetPos ||
+            empty(self::$persistentMonsterTargets[$trackingKey]['path'])) {
             
-            $moveScore = 0;
-            $moveReasons = [];
+            // Plan a new path to the monster using BFS
+            error_log("DEBUG AI: Planning path to monster {$targetMonster['name']} at {$targetPos} from {$currentPosition->toString()}");
+            $path = $this->findPathToTarget($currentPosition->toString(), $targetPos, $placedTiles);
             
-            // Primary objective: Distance to target monster
-            $distance = abs($moveX - $targetX) + abs($moveY - $targetY);
-            $moveScore -= $distance * 100; // High weight for primary target
-            $moveReasons[] = "monster_dist:{$distance}";
-            
-            // Secondary objectives: Progress towards other valuable targets
-            foreach ($secondaryTargets as $secPos => $secInfo) {
-                [$secX, $secY] = explode(',', $secPos);
-                $secX = (int)$secX;
-                $secY = (int)$secY;
-                
-                $currentDistToSec = abs($currentX - $secX) + abs($currentY - $secY);
-                $newDistToSec = abs($moveX - $secX) + abs($moveY - $secY);
-                
-                if ($newDistToSec < $currentDistToSec) {
-                    $improvement = $currentDistToSec - $newDistToSec;
-                    $moveScore += $improvement * $secInfo['priority'];
-                    $moveReasons[] = "{$secInfo['type']}_closer:{$improvement}";
-                }
-            }
-            
-            error_log("DEBUG AI: Move option {$moveOption} score: {$moveScore} (" . implode(', ', $moveReasons) . ")");
-            
-            if ($moveScore > $bestScore) {
-                $bestScore = $moveScore;
-                $bestMove = $moveOption;
-                $bestReason = implode(', ', $moveReasons);
+            if (!empty($path)) {
+                self::$persistentMonsterTargets[$trackingKey] = [
+                    'position' => $targetPos,
+                    'path' => $path,
+                    'monster' => $targetMonster
+                ];
+                error_log("DEBUG AI: Successfully planned path to monster with " . count($path) . " steps: " . implode(' -> ', $path));
+            } else {
+                error_log("DEBUG AI: No path found to monster at {$targetPos}");
+                // No path exists, end turn or try placing tiles
+                $actions[] = $this->createAction('ai_info', ['message' => "No path to monster at {$targetPos}"]);
+                return;
             }
         }
         
-        if ($bestMove) {
-            $actions[] = $this->createAction('ai_reasoning', [
-                'message' => "Moving to {$bestMove} (score: {$bestScore}, {$bestReason})"
-            ]);
+        // Get the next step from the planned path
+        $monsterPath = &self::$persistentMonsterTargets[$trackingKey]['path'];
+        $nextStep = null;
+        
+        // Find the next unvisited step in the path
+        while (!empty($monsterPath)) {
+            $candidateStep = array_shift($monsterPath);
+            if (!isset($this->visitedPositions[$candidateStep])) {
+                $nextStep = $candidateStep;
+                break;
+            } else {
+                error_log("DEBUG AI: Skipping already visited position {$candidateStep} in path");
+            }
+        }
+        
+        // If no valid next step found, replan
+        if ($nextStep === null) {
+            error_log("DEBUG AI: All path steps visited or path empty, replanning...");
+            $path = $this->findPathToTarget($currentPosition->toString(), $targetPos, $placedTiles);
             
-            [$toX, $toY] = explode(',', $bestMove);
-            $moveResult = $this->apiClient->movePlayer(
-                $gameId,
-                $playerId,
-                $currentTurnId,
-                $currentPosition->positionX,
-                $currentPosition->positionY,
-                (int)$toX,
-                (int)$toY,
-                false
-            );
-            
-            $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
-            
+            if (!empty($path)) {
+                // Filter out visited positions from the new path
+                $unvisitedPath = array_filter($path, fn($step) => !isset($this->visitedPositions[$step]));
+                
+                if (!empty($unvisitedPath)) {
+                    $nextStep = array_shift($unvisitedPath);
+                    self::$persistentMonsterTargets[$trackingKey]['path'] = array_values($unvisitedPath);
+                    error_log("DEBUG AI: Replanned path with " . count($unvisitedPath) . " unvisited steps");
+                } else {
+                    error_log("DEBUG AI: All positions in new path already visited, cannot continue pursuit");
+                    $actions[] = $this->createAction('ai_info', ['message' => 'All path positions visited, ending pursuit']);
+                    unset(self::$persistentMonsterTargets[$trackingKey]);
+                    return;
+                }
+            } else {
+                error_log("DEBUG AI: No path available to monster after replan");
+                $actions[] = $this->createAction('ai_info', ['message' => 'No path to monster available']);
+                unset(self::$persistentMonsterTargets[$trackingKey]);
+                return;
+            }
+        }
+        
+        // Verify the next step is in our available moves
+        if (!in_array($nextStep, $moveToOptions)) {
+            error_log("DEBUG AI: Next path step {$nextStep} not in available moves, replanning...");
+            // Clear the stored path and try again
+            unset(self::$persistentMonsterTargets[$trackingKey]);
+            $this->executeMoveTowardsMonster($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $targetMonster, $actions);
+            return;
+        }
+        
+        // Execute the move
+        $actions[] = $this->createAction('ai_reasoning', [
+            'message' => "Moving to {$nextStep} following path to {$targetMonster['name']} for {$targetMonster['type']}"
+        ]);
+        
+        [$toX, $toY] = explode(',', $nextStep);
+        $moveResult = $this->apiClient->movePlayer(
+            $gameId,
+            $playerId,
+            $currentTurnId,
+            $currentPosition->positionX,
+            $currentPosition->positionY,
+            (int)$toX,
+            (int)$toY,
+            false
+        );
+        
+        $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+        
+        if ($moveResult['success']) {
             // Track this position as visited
-            $this->visitedPositions[$bestMove] = true;
+            $this->visitedPositions[$nextStep] = true;
             $this->moveCount++;
             
             // Handle any battle or item that might occur during movement
             $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+        } else {
+            error_log("DEBUG AI: Move to {$nextStep} failed: " . json_encode($moveResult));
+            // Clear the stored path on failure
+            unset(self::$persistentMonsterTargets[$trackingKey]);
         }
     }
     

@@ -146,4 +146,63 @@
 
 .stop-replay-button:hover {
   background-color: #e74c3c;
+}
+
+/* Mobile Responsive Controls */
+@media (max-width: 768px) {
+  .zoom-controls {
+    top: 8px;
+    right: 8px;
+    gap: 6px;
+    padding: 4px;
+    background-color: rgba(34, 34, 34, 0.9);
+  }
+
+  .zoom-button {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .center-icon {
+    font-size: 16px;
+  }
+
+  .action-button,
+  .back-button,
+  .add-player-button,
+  .switch-player-button,
+  .stop-replay-button {
+    padding: 8px 12px;
+    font-size: 14px;
+    touch-action: manipulation; /* Prevent zoom on double tap */
+  }
+}
+
+@media (max-width: 480px) {
+  .zoom-controls {
+    top: 5px;
+    right: 5px;
+    gap: 4px;
+    padding: 3px;
+  }
+
+  .zoom-button {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .center-icon {
+    font-size: 14px;
+  }
+
+  .action-button,
+  .back-button,
+  .add-player-button,
+  .switch-player-button,
+  .stop-replay-button {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
 } 

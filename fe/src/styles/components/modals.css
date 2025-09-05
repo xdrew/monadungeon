@@ -97,6 +97,58 @@
   margin-bottom: var(--spacing-sm);
 }
 
+/* Mobile Responsive Modals */
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    max-width: none;
+    padding: var(--spacing-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-header h3 {
+    font-size: 20px;
+  }
+
+  .big-number {
+    font-size: 36px;
+  }
+
+  .damage-comparison {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+  }
+
+  .modal-header h3 {
+    font-size: 18px;
+  }
+
+  .big-number {
+    font-size: 28px;
+  }
+
+  .modal-body {
+    margin-bottom: var(--spacing-md);
+  }
+}
+
 .comparison-symbol {
   font-size: 36px;
   font-weight: bold;
