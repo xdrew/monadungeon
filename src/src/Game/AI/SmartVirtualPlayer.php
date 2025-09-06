@@ -2480,8 +2480,9 @@ final class SmartVirtualPlayer
                                 'message' => "Replacing weaker weapon with {$itemType}"
                             ]);
                             
-                            // Try pickup with replacement
-                            $pickupResult = $this->apiClient->pickItem($gameId, $playerId, $currentTurnId, (int)$x, (int)$y, $weakestWeapon);
+                            // Try pickup with replacement (convert UUID to string if needed)
+                            $weakestWeaponId = $weakestWeapon instanceof Uuid ? $weakestWeapon->toString() : $weakestWeapon;
+                            $pickupResult = $this->apiClient->pickItem($gameId, $playerId, $currentTurnId, (int)$x, (int)$y, $weakestWeaponId);
                             $actions[] = $this->createAction('pickup_with_replace', ['result' => $pickupResult]);
                             
                             if ($pickupResult['success']) {
