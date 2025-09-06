@@ -1775,9 +1775,14 @@ final class SmartVirtualPlayer
         
         // Check if we have a persistent path to follow
         $currentPosStr = $currentPosition->toString();
+        
         if (isset(self::$persistentPaths[$trackingKey]) && !empty(self::$persistentPaths[$trackingKey])) {
             $path = self::$persistentPaths[$trackingKey];
-            error_log("DEBUG AI: Have persistent path: " . json_encode($path));
+            $actions[] = $this->createAction('persistent_path_check', [
+                'has_path' => true,
+                'path' => $path,
+                'current_position' => $currentPosStr
+            ]);
             
             // Remove positions we've already reached
             while (!empty($path) && $path[0] === $currentPosStr) {
@@ -1806,13 +1811,32 @@ final class SmartVirtualPlayer
             
             foreach ($reachableWeapons as $weaponPos => $weaponType) {
                 // Calculate full path to this weapon
-                $path = $this->findPathToTarget($currentPosStr, $weaponPos, $placedTiles, $field);
+                $actions[] = $this->createAction('pathfinding_attempt', [
+                    'from' => $currentPosStr,
+                    'to' => $weaponPos,
+                    'weapon' => $weaponType
+                ]);
                 
-                if (!empty($path) && count($path) < $shortestPathLength) {
-                    $shortestPathLength = count($path);
-                    $bestPath = $path;
-                    $bestTarget = $weaponPos;
-                    $targetWeapon = "{$weaponType} at {$weaponPos}";
+                $path = $this->findPathToTarget($currentPosStr, $weaponPos, $placedTiles, $field, $actions);
+                
+                if (!empty($path)) {
+                    $actions[] = $this->createAction('pathfinding_result', [
+                        'success' => true,
+                        'path_length' => count($path),
+                        'path_preview' => implode(' -> ', array_slice($path, 0, 5)) . (count($path) > 5 ? '...' : '')
+                    ]);
+                    
+                    if (count($path) < $shortestPathLength) {
+                        $shortestPathLength = count($path);
+                        $bestPath = $path;
+                        $bestTarget = $weaponPos;
+                        $targetWeapon = "{$weaponType} at {$weaponPos}";
+                    }
+                } else {
+                    $actions[] = $this->createAction('pathfinding_result', [
+                        'success' => false,
+                        'reason' => 'No valid path found'
+                    ]);
                 }
             }
             
@@ -1832,12 +1856,21 @@ final class SmartVirtualPlayer
             }
         }
         
-        // If still no valid path, fall back to Manhattan distance
+        // If still no valid path through placed tiles, use Manhattan distance to move in general direction
+        // The AI will place tiles when needed to continue progress
         if (!isset($bestMove)) {
-            error_log("DEBUG AI: No valid path found, using Manhattan distance fallback");
+            error_log("DEBUG AI: No path through placed tiles, using Manhattan distance to move towards target");
+            error_log("DEBUG AI: Will place tiles as needed to create path");
+            
+            // Keep the same target we had before if it exists
+            if (isset(self::$persistentTargets[$trackingKey])) {
+                $targetPos = self::$persistentTargets[$trackingKey];
+                $targetWeapon = self::$persistentTargetReasons[$trackingKey];
+                error_log("DEBUG AI: Keeping persistent target: {$targetWeapon}");
+            }
+            
             $bestMove = null;
             $shortestDistance = PHP_INT_MAX;
-            $targetWeapon = null;
             
             [$currentX, $currentY] = explode(',', $currentPosition->toString());
             $currentX = (int)$currentX;
@@ -1863,19 +1896,39 @@ final class SmartVirtualPlayer
             $moveX = (int)$moveX;
             $moveY = (int)$moveY;
             
-            // Calculate distance from this move option to all better weapons
-            foreach ($reachableWeapons as $weaponPos => $weaponType) {
+            // If we have a persistent target, only calculate distance to that
+            // Otherwise, find the closest weapon
+            if (isset(self::$persistentTargets[$trackingKey]) && isset($reachableWeapons[self::$persistentTargets[$trackingKey]])) {
+                $weaponPos = self::$persistentTargets[$trackingKey];
+                $weaponType = $reachableWeapons[$weaponPos];
                 [$weaponX, $weaponY] = explode(',', $weaponPos);
                 $weaponX = (int)$weaponX;
                 $weaponY = (int)$weaponY;
                 
-                // Manhattan distance from move option to weapon
+                // Manhattan distance from move option to our persistent target
                 $distance = abs($moveX - $weaponX) + abs($moveY - $weaponY);
                 
                 if ($distance < $shortestDistance) {
                     $shortestDistance = $distance;
                     $bestMove = $moveOption;
                     $targetWeapon = "{$weaponType} at {$weaponPos}";
+                }
+            } else {
+                // No persistent target, find closest weapon
+                foreach ($reachableWeapons as $weaponPos => $weaponType) {
+                    [$weaponX, $weaponY] = explode(',', $weaponPos);
+                    $weaponX = (int)$weaponX;
+                    $weaponY = (int)$weaponY;
+                    
+                    // Manhattan distance from move option to weapon
+                    $distance = abs($moveX - $weaponX) + abs($moveY - $weaponY);
+                    
+                    if ($distance < $shortestDistance) {
+                        $shortestDistance = $distance;
+                        $bestMove = $moveOption;
+                        $targetWeapon = "{$weaponType} at {$weaponPos}";
+                        $targetPos = $weaponPos; // Set this for persistence
+                    }
                 }
             }
         }
@@ -5846,7 +5899,7 @@ final class SmartVirtualPlayer
     /**
      * Find complete path to target using BFS respecting tile transitions
      */
-    private function findPathToTarget(string $start, string $target, array $placedTiles, ?Field $field = null): array
+    private function findPathToTarget(string $start, string $target, array $placedTiles, ?Field $field = null, array &$actions = []): array
     {
         // If field not provided, we can't use transitions - fallback to adjacency check
         if ($field === null) {
@@ -5856,21 +5909,35 @@ final class SmartVirtualPlayer
         
         $queue = [[$start]];
         $visited = [$start => true];
+        $iterations = 0;
+        $maxIterations = 1000; // Prevent infinite loops
+        $transitionLog = [];
         
-        while (!empty($queue)) {
+        while (!empty($queue) && $iterations < $maxIterations) {
+            $iterations++;
             $path = array_shift($queue);
             $current = end($path);
             
             // Check if we reached the target
             if ($current === $target) {
-                // Remove the starting position from path
-                array_shift($path);
+                if (!empty($actions)) {
+                    $actions[] = $this->createAction('pathfinding_debug', [
+                        'found' => true,
+                        'iterations' => $iterations,
+                        'path' => implode(' -> ', $path)
+                    ]);
+                }
+                // Don't remove starting position - return full path
                 return $path;
             }
             
             // Get valid transitions from current position
             $currentPlace = FieldPlace::fromString($current);
             $transitions = $field->getTransitionsFrom($currentPlace);
+            
+            if ($iterations <= 5) { // Log first few iterations
+                $transitionLog[$current] = $transitions;
+            }
             
             foreach ($transitions as $neighbor) {
                 // Check if neighbor hasn't been visited
@@ -5883,6 +5950,16 @@ final class SmartVirtualPlayer
             }
         }
         
+        if (!empty($actions)) {
+            $actions[] = $this->createAction('pathfinding_debug', [
+                'found' => false,
+                'iterations' => $iterations,
+                'visited_count' => count($visited),
+                'visited_sample' => array_slice(array_keys($visited), 0, 10),
+                'transitions_sample' => $transitionLog,
+                'reason' => "Could not reach {$target} from {$start}"
+            ]);
+        }
         return []; // No path found
     }
     
