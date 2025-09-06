@@ -457,9 +457,12 @@ final class SmartVirtualPlayer
             }
             
             // PRIORITY 0.5: Critical HP - must find healing fountain immediately  
-            if ($player->getHP() <= 1 && !empty($moveToOptions)) {
+            if ($player->getHP() <= 1) {
+                // First check if healing fountain is in immediate move options
                 $healingFountainPosition = $this->findHealingFountainInMoveOptions($moveToOptions, $field);
+                
                 if ($healingFountainPosition !== null) {
+                    // Can reach fountain immediately
                     $actions[] = $this->createAction('ai_reasoning', [
                         'decision' => 'Move to healing fountain (critical HP)',
                         'reason' => "HP is 1 - must heal immediately at fountain at {$healingFountainPosition}",
@@ -474,6 +477,45 @@ final class SmartVirtualPlayer
                     
                     $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
                     return $actions;
+                } else if (!empty($moveToOptions)) {
+                    // Can't reach fountain immediately, but need to move towards it
+                    // The main healing fountain is always at 0,0
+                    $healingFountainTarget = '0,0';
+                    
+                    $actions[] = $this->createAction('ai_reasoning', [
+                        'decision' => 'Move towards healing fountain (critical HP)',
+                        'reason' => "HP is 1 - moving towards healing fountain at {$healingFountainTarget}",
+                        'priority' => 0.5
+                    ]);
+                    
+                    // Find the move option that gets us closest to the healing fountain
+                    $bestMove = null;
+                    $minDistance = PHP_INT_MAX;
+                    foreach ($moveToOptions as $moveOption) {
+                        $distance = $this->calculateManhattanDistance($moveOption, $healingFountainTarget);
+                        if ($distance < $minDistance) {
+                            $minDistance = $distance;
+                            $bestMove = $moveOption;
+                        }
+                    }
+                    
+                    if ($bestMove !== null) {
+                        [$toX, $toY] = explode(',', $bestMove);
+                        [$fromX, $fromY] = explode(',', $currentPosition->toString());
+                        
+                        $actions[] = $this->createAction('critical_hp_movement', [
+                            'message' => "Moving towards healing fountain",
+                            'from' => $currentPosition->toString(),
+                            'to' => $bestMove,
+                            'distance_to_fountain' => $minDistance
+                        ]);
+                        
+                        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                        $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                        
+                        $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                        return $actions;
+                    }
                 }
             }
             
@@ -3683,6 +3725,16 @@ final class SmartVirtualPlayer
         $hasKey = $this->playerHasKey($player);
         $items = $field->getItems();
         
+        // Priority 0: HEALING - If HP is critical, healing is the top priority
+        if ($player->getHP() <= 1) {
+            return [
+                'type' => 'HEAL',
+                'target' => '0,0',  // Main healing fountain
+                'reason' => 'Critical HP - must heal immediately',
+                'priority' => 0
+            ];
+        }
+        
         // Priority 1: If we can win the game (defeat dragon), that's the goal
         $dragonPos = null;
         $dragonHP = 0;
@@ -4127,6 +4179,41 @@ final class SmartVirtualPlayer
         // If we have a specific target, move towards it
         if ($strategicGoal['target'] !== null) {
             $field = $this->messageBus->dispatch(new GetField($gameId));
+            
+            // For HEAL goal, we may not have a direct path but should move towards healing fountain
+            if ($strategicGoal['type'] === 'HEAL') {
+                // Find the move that gets us closest to the healing fountain
+                $bestMove = null;
+                $minDistance = PHP_INT_MAX;
+                foreach ($moveToOptions as $moveOption) {
+                    $distance = $this->calculateManhattanDistance($moveOption, $strategicGoal['target']);
+                    if ($distance < $minDistance) {
+                        $minDistance = $distance;
+                        $bestMove = $moveOption;
+                    }
+                }
+                
+                if ($bestMove !== null) {
+                    [$toX, $toY] = explode(',', $bestMove);
+                    [$fromX, $fromY] = explode(',', $currentPosStr);
+                    
+                    $actions[] = $this->createAction('heal_goal_movement', [
+                        'goal' => 'HEAL',
+                        'target' => $strategicGoal['target'],
+                        'next_step' => $bestMove,
+                        'distance' => $minDistance
+                    ]);
+                    
+                    // Update previous position before moving
+                    self::$previousPosition[$trackingKey] = $currentPosStr;
+                    
+                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int)$fromX, (int)$fromY, (int)$toX, (int)$toY, false);
+                    $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+                    $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
+                    return;
+                }
+            }
+            
             $path = $this->findPathToTarget($currentPosStr, $strategicGoal['target'], $field->getPlacedTiles(), $field);
             
             if (!empty($path) && count($path) > 1) {
