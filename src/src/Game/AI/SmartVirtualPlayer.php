@@ -28,6 +28,7 @@ final class SmartVirtualPlayer
     private array $collectedChests = [];  // Track chests we've already collected or tried
     private array $visitedPositions = [];  // Track visited positions in current turn to prevent oscillation
     private static array $unreachableTargets = [];  // Track targets that are unreachable (persists across turns)
+    private static array $unreachableWeapons = [];  // Track weapons proven unreachable
     private static array $turnsSinceLastProgress = [];  // Track turns without progress per game/player
     private static array $pursuingDragon = [];
     private static array $dragonPath = []; // Store the planned path to dragon  // Track if we're currently pursuing the dragon boss
@@ -44,6 +45,7 @@ final class SmartVirtualPlayer
     private static array $currentGoal = [];  // Current strategic goal per game/player
     private static array $goalProgress = [];  // Track progress towards current goal
     private static array $previousPosition = [];  // Track where we came from to avoid oscillation per game/player
+    private static array $oscillationDetector = [];  // Track last few positions to detect oscillation patterns
     
     public function __construct(
         private readonly MessageBus $messageBus,
@@ -1777,9 +1779,11 @@ final class SmartVirtualPlayer
         $currentY = (int)$currentY;
         
         foreach ($validMoveOptions as $moveOption) {
-            // Skip positions we've already visited to prevent oscillation
-            if (isset($this->visitedPositions[$moveOption])) {
-                error_log("DEBUG AI: Skipping {$moveOption} - already visited this turn");
+            // Only skip visited positions if we have unvisited alternatives
+            // This allows backtracking when necessary to reach distant goals
+            $unvisitedOptions = array_filter($validMoveOptions, fn($opt) => !isset($this->visitedPositions[$opt]));
+            if (isset($this->visitedPositions[$moveOption]) && !empty($unvisitedOptions)) {
+                error_log("DEBUG AI: Skipping {$moveOption} - already visited this turn and have unvisited alternatives");
                 continue;
             }
             
@@ -1861,20 +1865,14 @@ final class SmartVirtualPlayer
                 }
                 self::$turnsSinceLastProgress[$trackingKey][$targetPos]['last_positions'] = $lastPositions;
                 
-                // If we haven't made progress for 2+ turns (reduced from 3 for faster detection), mark as temporarily unreachable
-                if (self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] >= 2) {
-                    self::$unreachableTargets[$trackingKey][$targetPos] = true;
-                    error_log("DEBUG AI: Marking weapon at {$targetPos} as UNREACHABLE for now!");
+                // If we're oscillating or haven't made progress for 5+ turns, consider changing strategy (but not marking as unreachable)
+                if (self::$turnsSinceLastProgress[$trackingKey][$targetPos]['turns'] >= 5) {
+                    error_log("DEBUG AI: No progress towards {$targetPos} for 5+ turns, considering alternative strategies");
                     
-                    // Clear persistent target if it's now unreachable
-                    if (self::$persistentTargets[$trackingKey] === $targetPos) {
-                        error_log("DEBUG AI: Clearing persistent target at {$targetPos} as it's now unreachable");
-                        self::$persistentTargets[$trackingKey] = null;
-                        self::$persistentTargetReasons[$trackingKey] = null;
-                    }
-                    
+                    // Don't mark as unreachable! Just try a different approach
+                    // Keep the persistent target but try placing tiles to open new paths
                     $actions[] = $this->createAction('ai_reasoning', [
-                        'message' => "Weapon at {$targetWeapon} appears unreachable for now, will try placing tiles to open new paths"
+                        'message' => "No direct path to {$targetWeapon}, will continue moving in general direction and place tiles when possible"
                     ]);
                     
                     // Try placing a tile to open new paths instead of backtracking
@@ -1891,17 +1889,10 @@ final class SmartVirtualPlayer
                             'reason' => 'Current target unreachable, trying to create new routes'
                         ]);
                         $this->executeTilePlacement($gameId, $playerId, $currentTurnId, $currentPosition, $placeTileOptions, $actions, 0);
-                    } else {
-                        // No tiles to place, check if we hit move limit
-                        if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
-                            $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
-                        } else {
-                            $actions[] = $this->createAction('ai_info', ['message' => 'Target unreachable and no tiles to place, ending turn']);
-                        }
-                        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-                        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                        return;
                     }
-                    return;
+                    // No tiles to place, but still continue moving in the general direction
+                    // Don't return here - let the normal movement logic continue
                 }
             }
             
