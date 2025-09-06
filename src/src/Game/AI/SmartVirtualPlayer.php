@@ -37,6 +37,7 @@ final class SmartVirtualPlayer
     private static array $persistentTargets = [];  // Track current target position across turns per game/player
     private static array $persistentTargetReasons = [];  // Track why we're pursuing targets across turns
     private static array $persistentMonsterTargets = [];  // Track monster targets being pursued within turn
+    private static array $persistentPaths = [];  // Store calculated paths to targets across turns
     private static array $explorationTargets = [];  // Track exploration targets to prevent loops
     private static array $explorationHistory = [];  // Track positions explored across turns
     private int $moveCount = 0;  // Track number of moves in current turn
@@ -68,9 +69,12 @@ final class SmartVirtualPlayer
         // Add immediate debug to confirm this method is called
         error_log("DEBUG: SmartVirtualPlayer::executeTurn called for game {$gameId->toString()} player {$playerId->toString()}");
         
-        // Clear visited positions and reset move counter at the start of each turn
-        $this->visitedPositions = [];
+        // Reset move counter at the start of each turn
         $this->moveCount = 0;
+        
+        // Keep visited positions within the turn to prevent loops
+        // But also track recent positions across turns for oscillation detection
+        $this->visitedPositions = [];
         
         // Don't clear paths entirely - we want persistence
         // The path validation will handle checking if steps are still valid
@@ -1769,14 +1773,75 @@ final class SmartVirtualPlayer
             return;
         }
         
-        // Find the valid move option that gets us closer to a better weapon
-        $bestMove = null;
-        $shortestDistance = PHP_INT_MAX;
-        $targetWeapon = null;
+        // Check if we have a persistent path to follow
+        $currentPosStr = $currentPosition->toString();
+        if (isset(self::$persistentPaths[$trackingKey]) && !empty(self::$persistentPaths[$trackingKey])) {
+            $path = self::$persistentPaths[$trackingKey];
+            error_log("DEBUG AI: Have persistent path: " . json_encode($path));
+            
+            // Remove positions we've already reached
+            while (!empty($path) && $path[0] === $currentPosStr) {
+                array_shift($path);
+                self::$persistentPaths[$trackingKey] = $path;
+            }
+            
+            // Check if next step in path is available
+            if (!empty($path) && in_array($path[0], $validMoveOptions)) {
+                $bestMove = $path[0];
+                $targetWeapon = self::$persistentTargetReasons[$trackingKey] ?? "weapon";
+                error_log("DEBUG AI: Following persistent path, next step: {$bestMove}");
+            } else {
+                // Path is no longer valid, clear it
+                error_log("DEBUG AI: Persistent path no longer valid, recalculating");
+                self::$persistentPaths[$trackingKey] = [];
+            }
+        }
         
-        [$currentX, $currentY] = explode(',', $currentPosition->toString());
-        $currentX = (int)$currentX;
-        $currentY = (int)$currentY;
+        // If no valid path, calculate a new one
+        if (!isset($bestMove)) {
+            // Find the best weapon target and calculate a complete path to it
+            $bestTarget = null;
+            $bestPath = [];
+            $shortestPathLength = PHP_INT_MAX;
+            
+            foreach ($reachableWeapons as $weaponPos => $weaponType) {
+                // Calculate full path to this weapon
+                $path = $this->findPathToTarget($currentPosStr, $weaponPos, $placedTiles, $field);
+                
+                if (!empty($path) && count($path) < $shortestPathLength) {
+                    $shortestPathLength = count($path);
+                    $bestPath = $path;
+                    $bestTarget = $weaponPos;
+                    $targetWeapon = "{$weaponType} at {$weaponPos}";
+                }
+            }
+            
+            if (!empty($bestPath) && count($bestPath) > 1) {
+                // Store the complete path (excluding current position)
+                array_shift($bestPath); // Remove current position
+                self::$persistentPaths[$trackingKey] = $bestPath;
+                self::$persistentTargets[$trackingKey] = $bestTarget;
+                self::$persistentTargetReasons[$trackingKey] = $targetWeapon;
+                
+                error_log("DEBUG AI: Calculated new path to {$targetWeapon}: " . json_encode($bestPath));
+                
+                // Take the first step if it's available
+                if (in_array($bestPath[0], $validMoveOptions)) {
+                    $bestMove = $bestPath[0];
+                }
+            }
+        }
+        
+        // If still no valid path, fall back to Manhattan distance
+        if (!isset($bestMove)) {
+            error_log("DEBUG AI: No valid path found, using Manhattan distance fallback");
+            $bestMove = null;
+            $shortestDistance = PHP_INT_MAX;
+            $targetWeapon = null;
+            
+            [$currentX, $currentY] = explode(',', $currentPosition->toString());
+            $currentX = (int)$currentX;
+            $currentY = (int)$currentY;
         
         foreach ($validMoveOptions as $moveOption) {
             // Only skip visited positions if we have unvisited alternatives
@@ -1814,6 +1879,7 @@ final class SmartVirtualPlayer
                 }
             }
         }
+        }  // End of Manhattan distance fallback
         
         if ($bestMove) {
             // Extract just the position from targetWeapon for tracking (e.g., "2,1" from "sword at 2,1")
@@ -1825,17 +1891,40 @@ final class SmartVirtualPlayer
                 }
             }
             
-            error_log("DEBUG AI: Best move is {$bestMove} towards {$targetWeapon} (distance: {$shortestDistance})");
+            // Get target position from persistent data or extract from targetWeapon
+            if (!isset($targetPos)) {
+                $targetPos = self::$persistentTargets[$trackingKey] ?? null;
+                if (!$targetPos) {
+                    foreach ($reachableWeapons as $pos => $type) {
+                        if (isset($targetWeapon) && $targetWeapon === "{$type} at {$pos}") {
+                            $targetPos = $pos;
+                            break;
+                        }
+                    }
+                }
+            }
             
-            // Set persistent target so we continue pursuing it across multiple turns
-            self::$persistentTargets[$trackingKey] = $targetPos;
-            self::$persistentTargetReasons[$trackingKey] = $targetWeapon;
-            error_log("DEBUG AI: Set persistent target to {$targetWeapon} at {$targetPos} for multi-turn pursuit");
+            $pathLength = isset(self::$persistentPaths[$trackingKey]) ? count(self::$persistentPaths[$trackingKey]) : 0;
+            error_log("DEBUG AI: Best move is {$bestMove} towards {$targetWeapon} (path length: {$pathLength})");
             
-            // Track progress towards this weapon position (not the full description)
-            // Calculate actual distance from current position to target for progress tracking
-            [$targetX, $targetY] = explode(',', $targetPos);
-            $actualDistanceToTarget = abs($currentX - (int)$targetX) + abs($currentY - (int)$targetY);
+            // Ensure persistent data is set
+            if ($targetPos && !isset(self::$persistentTargets[$trackingKey])) {
+                self::$persistentTargets[$trackingKey] = $targetPos;
+                self::$persistentTargetReasons[$trackingKey] = $targetWeapon;
+                error_log("DEBUG AI: Set persistent target to {$targetWeapon} at {$targetPos} for multi-turn pursuit");
+            }
+            
+            // Track progress towards this weapon position
+            [$currentX, $currentY] = explode(',', $currentPosStr);
+            $currentX = (int)$currentX;
+            $currentY = (int)$currentY;
+            
+            if ($targetPos) {
+                [$targetX, $targetY] = explode(',', $targetPos);
+                $actualDistanceToTarget = abs($currentX - (int)$targetX) + abs($currentY - (int)$targetY);
+            } else {
+                $actualDistanceToTarget = 0;
+            }
             
             if (!isset(self::$turnsSinceLastProgress[$trackingKey][$targetPos])) {
                 self::$turnsSinceLastProgress[$trackingKey][$targetPos] = ['distance' => $actualDistanceToTarget, 'turns' => 0, 'last_positions' => []];
