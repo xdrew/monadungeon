@@ -2443,16 +2443,79 @@ final class SmartVirtualPlayer
                     $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                     $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
                 } else if (isset($pickupResult['response']['inventoryFull']) && $pickupResult['response']['inventoryFull'] === true) {
-                    // Inventory was full, mark this item as unpickable
+                    // Inventory was full, check if we should replace an item
                     $trackingKey = "{$gameId}_{$playerId}";
                     $currentPos = "{$x},{$y}";
                     
+                    // For weapons, check if we should replace a weaker weapon
+                    if (in_array($itemType, ['dagger', 'sword', 'axe'])) {
+                        $inventory = $player->getInventory();
+                        $weapons = isset($inventory['weapon']) ? $inventory['weapon'] : [];
+                        $weaponPriority = ['dagger' => 1, 'sword' => 2, 'axe' => 3];
+                        $newPriority = $weaponPriority[$itemType] ?? 0;
+                        
+                        $weakestWeapon = null;
+                        $weakestPriority = PHP_INT_MAX;
+                        
+                        foreach ($weapons as $weapon) {
+                            // Handle both array and Item object formats
+                            if ($weapon instanceof \App\Game\Item\Item) {
+                                $weaponType = $weapon->type->value ?? '';
+                                $weaponId = $weapon->itemId;
+                            } else {
+                                $weaponType = $weapon['type'] ?? '';
+                                $weaponId = $weapon['itemId'] ?? null;
+                            }
+                            
+                            $invPriority = $weaponPriority[$weaponType] ?? 0;
+                            if ($invPriority < $weakestPriority) {
+                                $weakestPriority = $invPriority;
+                                $weakestWeapon = $weaponId;
+                            }
+                        }
+                        
+                        // If new weapon is better than our weakest, replace it
+                        if ($newPriority > $weakestPriority && $weakestWeapon) {
+                            $actions[] = $this->createAction('ai_reasoning', [
+                                'message' => "Replacing weaker weapon with {$itemType}"
+                            ]);
+                            
+                            // Try pickup with replacement
+                            $pickupResult = $this->apiClient->pickItem($gameId, $playerId, $currentTurnId, (int)$x, (int)$y, $weakestWeapon);
+                            $actions[] = $this->createAction('pickup_with_replace', ['result' => $pickupResult]);
+                            
+                            if ($pickupResult['success']) {
+                                // Clear persistent target if we just picked it up
+                                if (isset(self::$persistentTargets[$trackingKey]) && self::$persistentTargets[$trackingKey] === $currentPos) {
+                                    error_log("DEBUG AI: Successfully picked up persistent target at {$currentPos} with replacement, clearing target");
+                                    self::$persistentTargets[$trackingKey] = null;
+                                    self::$persistentTargetReasons[$trackingKey] = null;
+                                    self::$persistentPaths[$trackingKey] = [];
+                                }
+                                
+                                $actions[] = $this->createAction('ai_info', ['message' => 'Item replaced, ending turn']);
+                                $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+                                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // If we get here, either it's not a weapon or not worth replacing
                     if (!isset(self::$unPickableItems[$trackingKey])) {
                         self::$unPickableItems[$trackingKey] = [];
                     }
                     self::$unPickableItems[$trackingKey][$currentPos] = true;
                     
-                    $actions[] = $this->createAction('ai_info', ['message' => 'Inventory full, cannot pick up item']);
+                    // Also clear this from persistent targets since we can't/won't pick it up
+                    if (isset(self::$persistentTargets[$trackingKey]) && self::$persistentTargets[$trackingKey] === $currentPos) {
+                        error_log("DEBUG AI: Cannot pick up item at {$currentPos} (inventory full, not worth replacing), clearing target");
+                        self::$persistentTargets[$trackingKey] = null;
+                        self::$persistentTargetReasons[$trackingKey] = null;
+                        self::$persistentPaths[$trackingKey] = [];
+                    }
+                    
+                    $actions[] = $this->createAction('ai_info', ['message' => 'Inventory full, item not worth replacing']);
                     
                     // Mark current position as visited to prevent oscillation
                     $this->visitedPositions[$currentPos] = true;
