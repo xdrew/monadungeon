@@ -2701,14 +2701,14 @@ final class SmartVirtualPlayer
                         $nextStep = array_shift(self::$dragonPath[$trackingKey]);
                         
                         // Verify this step is in our available moves
-                        if (in_array($nextStep, $moveOptions)) {
+                        if (in_array($nextStep, $moveToOptions)) {
                             $bestMove = $nextStep;
                             error_log("DEBUG AI: Following planned path, next step: {$bestMove}");
                         } else {
                             error_log("DEBUG AI: Planned step {$nextStep} not available, replanning...");
                             // Replan if the planned step isn't available
                             unset(self::$dragonPath[$trackingKey]);
-                            $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveOptions, $placedTiles);
+                            $bestMove = $this->findBestMoveToward($currentPosition->toString(), $dragonPosition, $moveToOptions, $placedTiles);
                         }
                     } else if ($bestMove !== null) {
                         // Fallback to simple pathfinding if no planned path
