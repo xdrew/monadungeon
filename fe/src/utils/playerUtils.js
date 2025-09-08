@@ -108,15 +108,29 @@ export const getPlayerEmoji = (playerId) => {
 };
 
 /**
- * Generates a UUID v4 compatible string
- * @returns {string} A randomly generated UUID
+ * Generates a UUID v7 compatible string (timestamp-based)
+ * @returns {string} A UUID v7 string with timestamp and random components
  */
 export const generateUUID = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  const timestamp = Date.now();
+  const timestampHex = timestamp.toString(16).padStart(12, '0');
+  
+  const timestampHigh = timestampHex.substring(0, 8);
+  const timestampLow = timestampHex.substring(8, 12);
+  
+  const randomBytes = new Uint8Array(10);
+  crypto.getRandomValues(randomBytes);
+  
+  const version = 0x70;
+  const randomHex = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  return [
+      timestampHigh,
+      timestampLow,
+      ((version << 8) | randomBytes[0]).toString(16).padStart(4, '0'),
+      ((0x80 | (randomBytes[1] & 0x3f)) << 8 | randomBytes[2]).toString(16).padStart(4, '0'),
+      randomHex.substring(6, 18)
+  ].join('-');
 };
 
 /**
