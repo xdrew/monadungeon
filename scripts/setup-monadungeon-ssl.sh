@@ -100,6 +100,7 @@ docker compose -f $COMPOSE_FILE run --rm certbot certonly \
     --no-eff-email \
     --force-renewal \
     -d $DOMAIN \
+    -d showcase.$DOMAIN \
     -d www.$DOMAIN
 
 # Check if certificate was created successfully
