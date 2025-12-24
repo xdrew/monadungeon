@@ -95,13 +95,14 @@ log_info "Requesting SSL certificate from Let's Encrypt..."
 docker compose -f $COMPOSE_FILE run --rm certbot certonly \
     --webroot \
     --webroot-path=/var/www/certbot \
-    --email $EMAIL \
+    --email ripxdrew@gmail.com \
     --agree-tos \
     --no-eff-email \
     --force-renewal \
-    -d $DOMAIN \
-    -d showcase.$DOMAIN \
-    -d www.$DOMAIN
+    -d monadungeon.xyz \
+    -d showcase.monadungeon.xyz \
+    -d watermelon.monadungeon.xyz \
+    -d www.monadungeon.xyz
 
 # Check if certificate was created successfully
 if docker compose -f $COMPOSE_FILE exec nginx test -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem; then

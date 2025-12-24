@@ -45,6 +45,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./docker/nginx/monadungeon-https.conf:/etc/nginx/conf.d/default.conf:ro
+      - /opt/watermelon/frontend/out:/usr/share/nginx/watermelon:ro
       - frontend_dist:/usr/share/nginx/html:ro
       - nginx_cache:/var/cache/nginx
       - letsencrypt:/etc/letsencrypt:ro
