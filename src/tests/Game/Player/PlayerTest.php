@@ -8,7 +8,10 @@ use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
 use App\Game\Item\ItemName;
 use App\Game\Item\ItemType;
+use App\Game\GameLifecycle\CreateGame;
+use App\Game\GameLifecycle\Game;
 use App\Game\GameLifecycle\GetCurrentPlayer;
+use App\Game\GameLifecycle\GetGame;
 use App\Game\GameLifecycle\PlayerAdded;
 use App\Game\Player\AddItemToInventory;
 use App\Game\Player\CharacterPicked;
@@ -224,7 +227,10 @@ final class PlayerTest extends TestCase
             item: $item,
         );
 
-        $tester = MessageBusTester::create();
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         [, $messages] = $tester->handle($player->addItem(...), $addItem);
 
         $inventory = $player->getInventory();
@@ -250,8 +256,11 @@ final class PlayerTest extends TestCase
         $weapon2 = new Item(ItemName::SKELETON_KING, ItemType::AXE);
         $weapon3 = new Item(ItemName::GIANT_RAT, ItemType::DAGGER);
 
-        $tester = MessageBusTester::create();
-        
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
+
         // Add first two weapons
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon1));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon2));
@@ -271,8 +280,11 @@ final class PlayerTest extends TestCase
         [$player, ] = handle(Player::onPlayerAddedToGame(...), $playerAdded);
 
         $item = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD);
-        $tester = MessageBusTester::create();
-        
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
+
         // Add item first
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $item));
         
@@ -304,8 +316,11 @@ final class PlayerTest extends TestCase
         $oldItem = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD);
         $newItem = new Item(ItemName::SKELETON_KING, ItemType::AXE);
         
-        $tester = MessageBusTester::create();
-        
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
+
         // Add old item first
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $oldItem));
         
@@ -363,8 +378,11 @@ final class PlayerTest extends TestCase
 
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD); // 2 damage
         $spell = new Item(ItemName::MUMMY, ItemType::FIREBALL); // 1 damage
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $spell));
 
@@ -383,8 +401,11 @@ final class PlayerTest extends TestCase
 
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD); // 2 damage
         $spell = new Item(ItemName::MUMMY, ItemType::FIREBALL); // 1 damage
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $spell));
 
@@ -403,8 +424,11 @@ final class PlayerTest extends TestCase
 
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD); // 2 damage
         $spell = new Item(ItemName::MUMMY, ItemType::FIREBALL); // 1 damage
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $spell));
 
@@ -424,8 +448,11 @@ final class PlayerTest extends TestCase
 
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD);
         $spell = new Item(ItemName::MUMMY, ItemType::FIREBALL);
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $spell));
 
@@ -445,8 +472,11 @@ final class PlayerTest extends TestCase
 
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD);
         $spell = new Item(ItemName::MUMMY, ItemType::FIREBALL);
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $spell));
 
@@ -467,8 +497,11 @@ final class PlayerTest extends TestCase
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD); // 2 damage
         $spell = new Item(ItemName::MUMMY, ItemType::FIREBALL); // 1 damage
         $key = new Item(ItemName::SKELETON_TURNKEY, ItemType::KEY); // 0 damage
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $spell));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $key));
@@ -490,8 +523,11 @@ final class PlayerTest extends TestCase
 
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD);
         $spell = new Item(ItemName::MUMMY, ItemType::FIREBALL);
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $spell));
 
@@ -510,8 +546,11 @@ final class PlayerTest extends TestCase
         [$player, ] = handle(Player::onPlayerAddedToGame(...), $playerAdded);
 
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD);
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
 
         self::assertTrue($player->hasItemOfType(ItemType::SWORD));
@@ -530,8 +569,11 @@ final class PlayerTest extends TestCase
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD);
         $spell = new Item(ItemName::MUMMY, ItemType::FIREBALL);
         $key = new Item(ItemName::SKELETON_TURNKEY, ItemType::KEY);
-        
-        $tester = MessageBusTester::create();
+
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $spell));
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $key));
@@ -588,7 +630,10 @@ final class PlayerTest extends TestCase
         [$player, ] = handle(Player::onPlayerAddedToGame(...), $playerAdded);
 
         $weapon = new Item(ItemName::SKELETON_WARRIOR, ItemType::SWORD);
-        $tester = MessageBusTester::create();
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
         $tester->handle($player->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $weapon));
 
         $query = new QueryPlayerInventory($this->gameId, $this->playerId);
@@ -623,7 +668,10 @@ final class PlayerTest extends TestCase
         );
         [$player, ] = handle(Player::onPlayerAddedToGame(...), $playerAdded);
 
-        $tester = MessageBusTester::create();
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
 
         // Test key limit (max 1)
         $key1 = new Item(ItemName::SKELETON_TURNKEY, ItemType::KEY);
@@ -643,7 +691,10 @@ final class PlayerTest extends TestCase
         );
         [$player, ] = handle(Player::onPlayerAddedToGame(...), $playerAdded);
 
-        $tester = MessageBusTester::create();
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
 
         // Test spell limit (max 3)
         $spell1 = new Item(ItemName::MUMMY, ItemType::FIREBALL);
@@ -668,7 +719,10 @@ final class PlayerTest extends TestCase
         );
         [$player, ] = handle(Player::onPlayerAddedToGame(...), $playerAdded);
 
-        $tester = MessageBusTester::create();
+        $gameId = $this->gameId;
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+        );
 
         // Add multiple treasures - should not throw exception
         for ($i = 0; $i < 10; $i++) {

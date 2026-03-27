@@ -6,14 +6,14 @@ namespace App\Game\AI;
 
 /**
  * Centralized AI configuration
- * All AI-related configuration should be defined here instead of YAML files
+ * All AI-related configuration should be defined here instead of YAML files.
  */
 final class AIConfiguration
 {
     /**
-     * Available AI strategies with their configuration
+     * Available AI strategies with their configuration.
      */
-    public const STRATEGIES = [
+    public const array STRATEGIES = [
         'aggressive' => [
             'aggressive' => true,
             'preferTreasures' => true,
@@ -55,22 +55,22 @@ final class AIConfiguration
             'description' => 'Fastest possible completion, ignores non-essential items',
         ],
     ];
-    
+
     /**
-     * AI system configuration
+     * AI system configuration.
      */
-    public const SYSTEM_CONFIG = [
+    public const array SYSTEM_CONFIG = [
         'max_actions_per_turn' => 4,
         'action_delay_ms' => 100, // Delay between actions in milliseconds
         'enable_debug_logging' => false,
         'enable_action_history' => true,
         'max_turn_time_seconds' => 30,
     ];
-    
+
     /**
-     * Item value rankings for inventory management
+     * Item value rankings for inventory management.
      */
-    public const ITEM_VALUES = [
+    public const array ITEM_VALUES = [
         'axe' => 3,
         'sword' => 2,
         'dagger' => 1,
@@ -80,11 +80,11 @@ final class AIConfiguration
         'healing_potion' => 4,
         'treasure' => 10,
     ];
-    
+
     /**
-     * Monster difficulty ratings
+     * Monster difficulty ratings.
      */
-    public const MONSTER_DIFFICULTY = [
+    public const array MONSTER_DIFFICULTY = [
         'skeleton' => 1,
         'skeleton_archer' => 2,
         'skeleton_turnkey' => 2,
@@ -93,41 +93,41 @@ final class AIConfiguration
         'orc_berserker' => 3,
         'dragon' => 5,
     ];
-    
+
     /**
-     * Get strategy configuration by name
+     * Get strategy configuration by name.
      */
     public static function getStrategy(string $name): array
     {
         return self::STRATEGIES[$name] ?? self::STRATEGIES['balanced'];
     }
-    
+
     /**
-     * Get all available strategy names
+     * Get all available strategy names.
      */
     public static function getAvailableStrategies(): array
     {
         return array_keys(self::STRATEGIES);
     }
-    
+
     /**
-     * Get item value for inventory decisions
+     * Get item value for inventory decisions.
      */
     public static function getItemValue(string $itemType): int
     {
         return self::ITEM_VALUES[$itemType] ?? 0;
     }
-    
+
     /**
-     * Get monster difficulty rating
+     * Get monster difficulty rating.
      */
     public static function getMonsterDifficulty(string $monsterType): int
     {
         return self::MONSTER_DIFFICULTY[$monsterType] ?? 1;
     }
-    
+
     /**
-     * Check if a strategy exists
+     * Check if a strategy exists.
      */
     public static function isValidStrategy(string $name): bool
     {

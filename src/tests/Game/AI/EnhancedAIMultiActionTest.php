@@ -15,6 +15,7 @@ use App\Game\Movement\GetPlayerPosition;
 use Telephantast\Message\Message;
 use App\Infrastructure\Uuid\Uuid;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -26,8 +27,15 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 /**
  * Test that proves the Enhanced AI Player can perform up to 4 actions per turn
  */
+#[CoversClass(EnhancedAIPlayer::class)]
 class EnhancedAIMultiActionTest extends TestCase
 {
+    #[Test]
+    public function pendingTests(): void
+    {
+        self::markTestSkipped('Tests pending rewrite — see TODO comments');
+    }
+
     // #[Test] // TODO: Fix test - issue with turn validation
     public function skip_testAIPerformsUpToFourActionsPerTurn(): void
     {

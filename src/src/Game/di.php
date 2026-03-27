@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 namespace App\CourseOrganization;
 
+use App\Game\AI\AIPlayerManager;
+use App\Game\AI\BasicVirtualPlayerStrategy;
+use App\Game\AI\EnhancedAIPlayer;
+use App\Game\AI\SmartVirtualPlayer;
+use App\Game\AI\VirtualPlayer;
+use App\Game\AI\VirtualPlayerApiClient;
+use App\Game\AI\VirtualPlayerImproved;
+use App\Game\AI\VirtualPlayerSimple;
+use App\Game\AI\VirtualPlayerStrategy;
 use App\Game\Bag\Bag;
 use App\Game\Bag\DoctrineDBAL\InventoryJsonType;
 use App\Game\Battle\Battle;
@@ -30,22 +39,12 @@ use App\Game\Movement\Movement;
 use App\Game\Player\Player;
 use App\Game\Turn\GameTurn;
 use App\Game\Turn\Repository\GameTurnRepository;
-use App\Game\AI\VirtualPlayer;
-use App\Game\AI\VirtualPlayerSimple;
-use App\Game\AI\VirtualPlayerImproved;
-use App\Game\AI\SmartVirtualPlayer;
-use App\Game\AI\VirtualPlayerStrategy;
-use App\Game\AI\BasicVirtualPlayerStrategy;
-use App\Game\AI\VirtualPlayerApiClient;
-use App\Game\AI\EnhancedAIPlayer;
-use App\Game\AI\AIPlayerManager;
-use App\Game\AI\AIConfiguration;
+use App\Infrastructure\Transaction\SafeDoctrineOrmTransactionProvider;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
-use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use Telephantast\DoctrinePersistence\DoctrineOrmEntityFinderAndSaver;
 use Telephantast\DoctrinePersistence\DoctrineOrmTransactionProvider;
 use Telephantast\DoctrinePersistence\DoctrinePostgresOutboxStorage;
-use App\Infrastructure\Transaction\SafeDoctrineOrmTransactionProvider;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 
 return static function (ContainerConfigurator $di): void {
     $di->extension('telephantast', [
@@ -112,22 +111,22 @@ return static function (ContainerConfigurator $di): void {
         // AI Strategy Configuration
         ->set(BasicVirtualPlayerStrategy::class)
         ->alias(VirtualPlayerStrategy::class, BasicVirtualPlayerStrategy::class)
-        
+
         // Legacy AI Players
         ->set(VirtualPlayer::class)
         ->set(VirtualPlayerSimple::class)
         ->set(VirtualPlayerImproved::class)
-        
+
         // Smart Virtual Player (Currently Active)
         ->set(SmartVirtualPlayer::class)
-        
+
         // Virtual Player API Client
         ->set(VirtualPlayerApiClient::class)
             ->arg('$httpKernel', service('kernel'))
-        
+
         // Enhanced AI Player (Future)
         ->set(EnhancedAIPlayer::class)
-        
+
         // AI Player Manager with configurable default strategy
         ->set(AIPlayerManager::class)
             ->call('setDefaultStrategy', ['%env(string:default:balanced:AI_DEFAULT_STRATEGY)%']);

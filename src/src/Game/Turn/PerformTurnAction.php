@@ -26,6 +26,7 @@ final class PerformTurnAction implements Message
         public ?Uuid $tileId = null,
         public ?array $additionalData = null,
         ?\DateTimeImmutable $at = null,
+        public bool $deferTurnEnd = false,
     ) {
         $this->at = $at ?? self::getClock()->now();
     }

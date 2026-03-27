@@ -19,6 +19,7 @@ use App\Game\Player\Player;
 use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -30,6 +31,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
  * Integration test for Enhanced AI Player's multi-action turn system
  * Tests the complete flow of a turn with multiple actions
  */
+#[CoversClass(EnhancedAIPlayer::class)]
 class EnhancedAIMultiActionIntegrationTest extends TestCase
 {
     private LoggerInterface $logger;
@@ -40,7 +42,13 @@ class EnhancedAIMultiActionIntegrationTest extends TestCase
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->apiCallHistory = [];
     }
-    
+
+    #[Test]
+    public function pendingTests(): void
+    {
+        self::markTestSkipped('Tests pending rewrite — see TODO comments');
+    }
+
     // #[Test] // TODO: Fix test - issue with UUID comparison in isMyTurn check
     public function executesFullFourActionTurn(): void
     {

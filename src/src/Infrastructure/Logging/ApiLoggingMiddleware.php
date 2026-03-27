@@ -8,9 +8,9 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
-use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 final class ApiLoggingMiddleware implements EventSubscriberInterface
@@ -35,7 +35,7 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
         }
 
         $request = $event->getRequest();
-        
+
         // Skip logging for specific endpoints
         $uri = $request->getRequestUri();
         if (str_contains($uri, '/turns') || str_contains($uri, '/action-log')) {
@@ -117,7 +117,7 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
             'request_id' => $requestId,
             'timestamp' => date('Y-m-d H:i:s.v'),
             'type' => 'exception',
-            'exception_class' => get_class($exception),
+            'exception_class' => $exception::class,
             'message' => $exception->getMessage(),
             'file' => $exception->getFile(),
             'line' => $exception->getLine(),
@@ -141,13 +141,14 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
         $content = $request->getContent();
 
         // Handle JSON payload
-        if (str_contains($contentType, 'application/json')) {
+        if (str_contains((string) $contentType, 'application/json')) {
             if (empty($content)) {
                 return null;
             }
 
             try {
                 $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+
                 return $this->sanitizePayload($decoded);
             } catch (\JsonException) {
                 return ['_raw' => $content, '_error' => 'Invalid JSON'];
@@ -155,9 +156,10 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
         }
 
         // Handle form data
-        if (str_contains($contentType, 'application/x-www-form-urlencoded') ||
-            str_contains($contentType, 'multipart/form-data')) {
+        if (str_contains((string) $contentType, 'application/x-www-form-urlencoded')
+            || str_contains((string) $contentType, 'multipart/form-data')) {
             $data = array_merge($request->request->all(), $request->files->all());
+
             return $this->sanitizePayload($data);
         }
 
@@ -184,9 +186,10 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
         }
 
         // Handle JSON response
-        if (str_contains($contentType, 'application/json')) {
+        if (str_contains((string) $contentType, 'application/json')) {
             try {
                 $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+
                 return $this->sanitizePayload($decoded);
             } catch (\JsonException) {
                 return ['_raw' => $this->truncateContent($content), '_error' => 'Invalid JSON'];
@@ -199,11 +202,12 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
 
     private function sanitizePayload(mixed $data): mixed
     {
-        if (is_array($data)) {
+        if (\is_array($data)) {
             $sanitized = [];
             foreach ($data as $key => $value) {
                 $sanitized[$key] = $this->sanitizeValue($key, $value);
             }
+
             return $sanitized;
         }
 
@@ -236,7 +240,7 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
         ];
 
         // Only check for sensitive data if key is a string
-        if (is_string($key)) {
+        if (\is_string($key)) {
             $lowerKey = strtolower($key);
 
             // Check if field contains sensitive data
@@ -248,12 +252,12 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
         }
 
         // Recursively sanitize arrays and objects
-        if (is_array($value)) {
+        if (\is_array($value)) {
             return $this->sanitizePayload($value);
         }
 
         // Truncate long strings
-        if (is_string($value) && strlen($value) > 1000) {
+        if (\is_string($value) && \strlen($value) > 1000) {
             return substr($value, 0, 1000) . '... [TRUNCATED]';
         }
 
@@ -274,7 +278,7 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
         $filtered = [];
         foreach ($headers as $name => $values) {
             $lowerName = strtolower($name);
-            if (in_array($lowerName, $sensitiveHeaders, true)) {
+            if (\in_array($lowerName, $sensitiveHeaders, true)) {
                 $filtered[$name] = ['[REDACTED]'];
             } else {
                 $filtered[$name] = $values;
@@ -286,7 +290,7 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
 
     private function truncateContent(string $content): string
     {
-        if (strlen($content) > 2000) {
+        if (\strlen($content) > 2000) {
             return substr($content, 0, 2000) . '... [TRUNCATED]';
         }
 
@@ -298,9 +302,9 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
         $trace = $exception->getTrace();
         $filtered = [];
 
-        foreach (array_slice($trace, 0, 10) as $frame) {
+        foreach (\array_slice($trace, 0, 10) as $frame) {
             $file = $frame['file'] ?? '';
-            
+
             // Skip vendor files to reduce noise
             if (str_contains($file, '/vendor/')) {
                 continue;
@@ -314,7 +318,7 @@ final class ApiLoggingMiddleware implements EventSubscriberInterface
             ];
 
             // Limit to first 5 application frames
-            if (count($filtered) >= 5) {
+            if (\count($filtered) >= 5) {
                 break;
             }
         }

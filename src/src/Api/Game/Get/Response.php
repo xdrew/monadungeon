@@ -8,6 +8,7 @@ use App\Game\Deck\Deck;
 use App\Game\Deck\GetDeck;
 use App\Game\Field\Field;
 use App\Game\Field\GetAvailablePlacesForPlayer;
+use App\Game\Field\GetTile;
 use App\Game\GameLifecycle\Game as GameLifecycleGame;
 use App\Game\Movement\GetAllPlayerPositions;
 use App\Game\Player\GetPlayer;
@@ -103,9 +104,9 @@ final readonly class Response
                     'tileId' => $unplacedTileData['tileId']->toString(),
                     'fieldPlace' => $unplacedTileData['fieldPlace'] ? $unplacedTileData['fieldPlace']->toString() : null,
                 ];
-                
+
                 // Check if we have tile data stored directly in unplacedTile
-                if (isset($unplacedTileData['orientation']) && isset($unplacedTileData['room'])) {
+                if (isset($unplacedTileData['orientation'], $unplacedTileData['room'])) {
                     // Use the stored tile data
                     $unplacedTile['tile'] = [
                         'tileId' => $unplacedTileData['tileId']->toString(),
@@ -116,7 +117,7 @@ final readonly class Response
                 } elseif ($messageBus !== null) {
                     // Fallback: Try to get tile data from Tile entity if not stored
                     try {
-                        $tile = $messageBus->dispatch(new \App\Game\Field\GetTile($unplacedTileData['tileId']));
+                        $tile = $messageBus->dispatch(new GetTile($unplacedTileData['tileId']));
                         if ($tile !== null) {
                             $unplacedTile['tile'] = [
                                 'tileId' => (string) $tile->getTileId(),
@@ -355,14 +356,14 @@ final readonly class Response
     private static function formatTurns(array $turns): array
     {
         $formattedTurns = [];
-        
+
         foreach ($turns as $turn) {
             // Parse actions JSON if it's a string
             $actions = $turn['actions'] ?? [];
-            if (is_string($actions)) {
+            if (\is_string($actions)) {
                 $actions = json_decode($actions, true) ?? [];
             }
-            
+
             $formattedTurns[] = [
                 'turnId' => $turn['turn_id'] ?? null,
                 'turnNumber' => $turn['turn_number'] ?? 0,
@@ -372,7 +373,7 @@ final readonly class Response
                 'endTime' => $turn['end_time'] ?? null,
             ];
         }
-        
+
         return $formattedTurns;
     }
 }

@@ -12,7 +12,7 @@ use App\Game\Player\Player;
 use App\Infrastructure\Uuid\Uuid;
 
 /**
- * Basic strategy for virtual player - makes simple but reasonable decisions
+ * Basic strategy for virtual player - makes simple but reasonable decisions.
  */
 final readonly class BasicVirtualPlayerStrategy implements VirtualPlayerStrategy
 {
@@ -48,25 +48,25 @@ final readonly class BasicVirtualPlayerStrategy implements VirtualPlayerStrategy
         // Simple strategy: prefer positions closer to the center
         $centerX = 0; // Assuming center is at (0,0)
         $centerY = 0;
-        
+
         $bestPlace = null;
         $bestScore = PHP_FLOAT_MAX;
-        
+
         foreach ($availablePlaces as $place) {
             // Calculate distance from center
-            $distance = sqrt(pow($place->getX() - $centerX, 2) + pow($place->getY() - $centerY, 2));
-            
+            $distance = sqrt(($place->getX() - $centerX) ** 2 + ($place->getY() - $centerY) ** 2);
+
             if ($distance < $bestScore) {
                 $bestScore = $distance;
                 $bestPlace = $place;
             }
         }
-        
+
         return $bestPlace ?? array_values($availablePlaces)[0];
     }
 
     /**
-     * Choose orientation to maximize connectivity and movement options
+     * Choose orientation to maximize connectivity and movement options.
      */
     public function chooseTileOrientation(Tile $tile, FieldPlace $position, Field $field): TileOrientation
     {
@@ -78,7 +78,7 @@ final readonly class BasicVirtualPlayerStrategy implements VirtualPlayerStrategy
     /**
      * Choose movement based on:
      * 1. Moving toward monsters if player is strong enough
-     * 2. Moving toward treasures if player needs items  
+     * 2. Moving toward treasures if player needs items
      * 3. Exploring new areas
      * 4. Avoiding dangerous situations when weak
      */
@@ -91,33 +91,33 @@ final readonly class BasicVirtualPlayerStrategy implements VirtualPlayerStrategy
         // Simple strategy: evaluate each move and pick the best one
         $bestMove = null;
         $bestScore = -1000;
-        
+
         foreach ($availableMoves as $move) {
             $score = $this->evaluatePosition($move, $field, $player);
-            
+
             if ($score > $bestScore) {
                 $bestScore = $score;
                 $bestMove = $move;
             }
         }
-        
+
         return $bestMove ?? array_values($availableMoves)[0];
     }
 
     /**
-     * Evaluate how good a position is for the player
+     * Evaluate how good a position is for the player.
      */
     private function evaluatePosition(FieldPlace $position, Field $field, Player $player): float
     {
         $score = 0.0;
-        
+
         // Check for items at this position
         $items = $field->getItems();
         $positionKey = $position->toString();
-        
+
         if (isset($items[$positionKey])) {
             $item = $items[$positionKey];
-            
+
             // Evaluate items based on player needs
             if ($item['type'] === 'treasure') {
                 $score += 10; // Always good to get treasure
@@ -128,12 +128,12 @@ final readonly class BasicVirtualPlayerStrategy implements VirtualPlayerStrategy
             } elseif ($item['type'] === 'key') {
                 $score += 8; // Keys open chests
             }
-            
+
             // Consider monster difficulty
             if (isset($item['guardHP']) && $item['guardHP'] > 0) {
                 $monsterDifficulty = $item['guardHP'];
                 $playerStrength = $this->calculatePlayerStrength($player);
-                
+
                 if ($playerStrength >= $monsterDifficulty) {
                     $score += 5; // Winnable battle
                 } else {
@@ -141,41 +141,41 @@ final readonly class BasicVirtualPlayerStrategy implements VirtualPlayerStrategy
                 }
             }
         }
-        
+
         // Prefer exploring new areas (positions farther from current)
         // This encourages exploration rather than staying in one area
         $explorationBonus = 2.0;
         $score += $explorationBonus;
-        
+
         // Small random factor to avoid completely predictable behavior
-        $score += (rand(-100, 100) / 100.0) * 0.5;
-        
+        $score += (random_int(-100, 100) / 100.0) * 0.5;
+
         return $score;
     }
 
     /**
-     * Calculate effective combat strength of the player
+     * Calculate effective combat strength of the player.
      */
     private function calculatePlayerStrength(Player $player): int
     {
         $strength = $player->getHP(); // Base HP
-        
+
         // Add weapon bonuses
         $inventory = $player->getInventory();
         foreach ($inventory['weapons'] ?? [] as $weapon) {
             $strength += $this->getWeaponDamage($weapon['name'] ?? '');
         }
-        
+
         // Add spell bonuses (if consumable)
         foreach ($inventory['spells'] ?? [] as $spell) {
             $strength += $this->getSpellDamage($spell['name'] ?? '');
         }
-        
+
         return $strength;
     }
 
     /**
-     * Get damage value for a weapon
+     * Get damage value for a weapon.
      */
     private function getWeaponDamage(string $weaponName): int
     {
@@ -186,12 +186,12 @@ final readonly class BasicVirtualPlayerStrategy implements VirtualPlayerStrategy
             'axe' => 3,
             'bow' => 2,
         ];
-        
+
         return $weaponDamage[strtolower($weaponName)] ?? 0;
     }
 
     /**
-     * Get damage value for a spell (if used)
+     * Get damage value for a spell (if used).
      */
     private function getSpellDamage(string $spellName): int
     {
@@ -202,7 +202,7 @@ final readonly class BasicVirtualPlayerStrategy implements VirtualPlayerStrategy
             'healing' => 0, // Not for combat
             'teleport' => 0, // Utility spell
         ];
-        
+
         return $spellDamage[strtolower($spellName)] ?? 0;
     }
 }

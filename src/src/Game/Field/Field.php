@@ -471,7 +471,7 @@ class Field extends AggregateRoot
         if ($game->getStatus()->isFinished()) {
             throw new GameAlreadyFinishedException();
         }
-        
+
         // Check if it's the player's turn
         $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($command->gameId));
         if ($currentPlayerId === null || !$command->playerId->equals($currentPlayerId)) {
@@ -770,28 +770,6 @@ class Field extends AggregateRoot
     public function getTeleportationConnections(): array
     {
         return $this->teleportationConnections;
-    }
-
-    /**
-     * Rebuild the teleportationConnections array from teleportationGatePositions.
-     */
-    private function rebuildTeleportationConnections(): void
-    {
-        $this->teleportationConnections = [];
-        
-        foreach ($this->teleportationGatePositions as $gate1) {
-            $gate1String = $gate1->toString();
-            /** @var list<FieldPlace> $connections */
-            $connections = [];
-            
-            foreach ($this->teleportationGatePositions as $gate2) {
-                if (!$gate1->equals($gate2)) {
-                    $connections[] = $gate2;
-                }
-            }
-            
-            $this->teleportationConnections[$gate1String] = $connections;
-        }
     }
 
     /**
@@ -1311,7 +1289,7 @@ class Field extends AggregateRoot
             // Game is already finished, don't process item pickup
             return null;
         }
-        
+
         // Validate it's the player's turn
         $currentTurnId = $messageContext->dispatch(new GetCurrentTurn($command->gameId));
         $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($command->gameId));
@@ -1435,8 +1413,8 @@ class Field extends AggregateRoot
                 'itemId' => $item->itemId->toString(),
                 'monster' => [
                     'type' => $item->type->value,
-                    'name' => $item->name->value
-                ]
+                    'name' => $item->name->value,
+                ],
             ];
             if ($command->itemIdToReplace !== null) {
                 $additionalData['replacedItemId'] = $command->itemIdToReplace->toString();
@@ -1757,16 +1735,16 @@ class Field extends AggregateRoot
     {
         $this->unplacedTile = null;
     }
-    
+
     /**
      * Update the orientation of the unplaced tile when it's rotated.
      */
     #[Handler]
     public function onTileRotated(TileRotated $event): void
     {
-        if ($this->unplacedTile !== null && 
-            $this->unplacedTile['tileId'] !== null && 
-            $this->unplacedTile['tileId']->equals($event->tileId)) {
+        if ($this->unplacedTile !== null
+            && $this->unplacedTile['tileId'] !== null
+            && $this->unplacedTile['tileId']->equals($event->tileId)) {
             $this->unplacedTile['orientation'] = $event->orientation->toString();
         }
     }
@@ -1791,11 +1769,11 @@ class Field extends AggregateRoot
             playerId: $command->playerId,
             gameId: $command->gameId,
         ));
-        
+
         $spell = null;
         // Check in the spells category (note: backend uses 'spell' not 'spells')
         $spells = $inventory['spell'] ?? [];
-        
+
         foreach ($spells as $item) {
             // Convert item to Item object if it's an array
             $itemObj = Item::fromAnything($item);
@@ -1875,6 +1853,28 @@ class Field extends AggregateRoot
         $this->tilesCache[$tileId->toString()] = $tile;
 
         return $tile;
+    }
+
+    /**
+     * Rebuild the teleportationConnections array from teleportationGatePositions.
+     */
+    private function rebuildTeleportationConnections(): void
+    {
+        $this->teleportationConnections = [];
+
+        foreach ($this->teleportationGatePositions as $gate1) {
+            $gate1String = $gate1->toString();
+            /** @var list<FieldPlace> $connections */
+            $connections = [];
+
+            foreach ($this->teleportationGatePositions as $gate2) {
+                if (!$gate1->equals($gate2)) {
+                    $connections[] = $gate2;
+                }
+            }
+
+            $this->teleportationConnections[$gate1String] = $connections;
+        }
     }
 
     /**

@@ -50,7 +50,5 @@ final readonly class SetPlayerTestStateHandler
                 $currentTurn->setTestMaxActions($config->maxActions);
             }
         }
-
-        $this->entityManager->flush();
     }
 }

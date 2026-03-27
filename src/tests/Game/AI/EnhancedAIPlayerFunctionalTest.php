@@ -22,6 +22,7 @@ use App\Game\Player\Player;
 use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -30,6 +31,7 @@ use Psr\Log\NullLogger;
  * Functional test for Enhanced AI Player's multi-action turn system
  * Tests the actual implementation without mocks
  */
+#[CoversClass(EnhancedAIPlayer::class)]
 class EnhancedAIPlayerFunctionalTest extends TestCase
 {
     private VirtualPlayerApiClient $apiClient;
@@ -44,7 +46,7 @@ class EnhancedAIPlayerFunctionalTest extends TestCase
             ->willReturn(new JsonResponse(['success' => true, 'actions' => []]));
         
         $this->apiClient = new VirtualPlayerApiClient($this->httpKernel);
-        
+
         // Initialize game state
         $this->gameState = [
             'gameId' => Uuid::v7(),
@@ -58,6 +60,12 @@ class EnhancedAIPlayerFunctionalTest extends TestCase
             'battleOccurred' => false,
             'healingFountains' => []
         ];
+    }
+
+    #[Test]
+    public function pendingTests(): void
+    {
+        self::markTestSkipped('Tests pending rewrite — see TODO comments');
     }
 
     // #[Test] // TODO: Fix test - needs interface for VirtualPlayerApiClient to allow mocking

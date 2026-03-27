@@ -4,25 +4,12 @@ declare(strict_types=1);
 
 namespace App\Game\Field;
 
-final class TileOrientation implements \JsonSerializable
+final readonly class TileOrientation implements \JsonSerializable
 {
     /**
      * @var array<string, list{string, string}>
-     * @psalm-var array{
-     *   '1111': list{string, string},
-     *   '1010': list{string, string},
-     *   '0101': list{string, string},
-     *   '0011': list{string, string},
-     *   '0110': list{string, string},
-     *   '1001': list{string, string},
-     *   '1100': list{string, string},
-     *   '1110': list{string, string},
-     *   '1011': list{string, string},
-     *   '0111': list{string, string},
-     *   '1101': list{string, string}
-     * }
      */
-    private static array $charactersMapping = [
+    private const array CHARACTERS_MAPPING = [
         '1111' => ['╬', '╋'], // All sides open (crossroad)
         '1010' => ['║', '┃'], // Top and bottom open (vertical straight)
         '0101' => ['═', '━'], // Left and right open (horizontal straight)
@@ -109,7 +96,7 @@ final class TileOrientation implements \JsonSerializable
 
     public static function fromCharacter(string $character): self
     {
-        foreach (self::$charactersMapping as $orientation => $characters) {
+        foreach (self::CHARACTERS_MAPPING as $orientation => $characters) {
             if (\in_array($character, $characters, true)) {
                 return new self(...array_map('boolval', str_split((string) $orientation)));
             }
@@ -160,7 +147,7 @@ final class TileOrientation implements \JsonSerializable
     {
         $key = implode('', array_map('intval', $this->orientation));
 
-        return self::$charactersMapping[$key][$room ? 0 : 1] ?? '';
+        return self::CHARACTERS_MAPPING[$key][$room ? 0 : 1] ?? '';
     }
 
     /**
@@ -198,14 +185,5 @@ final class TileOrientation implements \JsonSerializable
     public function jsonSerialize(): string
     {
         return $this->toString();
-    }
-
-    /**
-     * Clone method to ensure proper deep copying of orientation.
-     */
-    public function __clone()
-    {
-        // Ensure orientation array is cloned
-        $this->orientation = [...$this->orientation];
     }
 }

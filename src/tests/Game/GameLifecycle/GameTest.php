@@ -574,7 +574,9 @@ final class GameTest extends TestCase
         [$player2, ] = handle(Player::onPlayerAddedToGame(...), $player2Added);
 
         // Add treasures to player1 (5 points total)
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            static fn (GetGame $_query): Game => $game,
+        );
         $treasure1 = new Item(ItemName::SKELETON_WARRIOR, ItemType::CHEST); // 2 points
         $treasure2 = new Item(ItemName::DRAGON, ItemType::RUBY_CHEST); // 3 points
         $tester->handle($player1->addItem(...), new AddItemToInventory($this->gameId, $this->player1Id, $treasure1));

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Game\Turn;
 
-use App\Game\GameLifecycle\Error\GameAlreadyFinishedException;
+use App\Game\Field\GetField;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\GameLifecycle\NextTurn;
 use App\Game\Turn\Error\InvalidTurnActionException;
 use App\Game\Turn\Error\NotYourTurnException;
 use App\Game\Turn\Error\TurnAlreadyEndedException;
+use App\Game\Turn\Error\UnplacedTileException;
 use App\Infrastructure\Doctrine\AggregateRoot;
 use App\Infrastructure\Uuid\DoctrineDBAL\UuidType;
 use App\Infrastructure\Uuid\Uuid;
@@ -191,8 +192,8 @@ class GameTurn extends AggregateRoot
         // Check if a battle occurred in this turn - if so, don't auto-end turn based on action count
         $hasBattleInTurn = $this->hasBattleInTurn();
 
-        // Only use action count to end turn if no battle occurred
-        if ((!$hasBattleInTurn && $this->performedActionsCount >= self::MAX_ACTIONS_PER_TURN) || $command->action->isEndOfTurn()) {
+        // Only use action count to end turn if no battle occurred and turn end is not deferred (e.g. pickable item at destination)
+        if ((!$hasBattleInTurn && !$command->deferTurnEnd && $this->performedActionsCount >= self::MAX_ACTIONS_PER_TURN) || $command->action->isEndOfTurn()) {
             $this->endTurn($command->at);
             $messageContext->dispatch(new TurnEnded(
                 turnId: $this->turnId,
@@ -244,7 +245,7 @@ class GameTurn extends AggregateRoot
             // Game is already finished, silently ignore the end turn request
             return;
         }
-        
+
         if (!$this->playerId->equals($command->playerId)) {
             throw new NotYourTurnException();
         }
@@ -254,10 +255,10 @@ class GameTurn extends AggregateRoot
         }
 
         // Check if there's an unplaced tile
-        $field = $messageContext->dispatch(new \App\Game\Field\GetField($command->gameId));
+        $field = $messageContext->dispatch(new GetField($command->gameId));
         $unplacedTile = $field->getUnplacedTile();
         if ($unplacedTile !== null && isset($unplacedTile['tileId']) && $unplacedTile['tileId'] !== null) {
-            throw new \App\Game\Turn\Error\UnplacedTileException('Cannot end turn with an unplaced tile. Please place the tile first.');
+            throw new UnplacedTileException('Cannot end turn with an unplaced tile. Please place the tile first.');
         }
 
         $this->endTurn($command->at);

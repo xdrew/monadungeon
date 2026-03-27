@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bfb57ec15f281a6c9d226d444620eb0d",
+    "content-hash": "e8ef714784facf6080036f6a5941fa42",
     "packages": [
         {
             "name": "amphp/amp",
@@ -8289,12 +8289,12 @@
             "version": "0.1.x-dev",
             "source": {
                 "type": "git",
-                "url": "https://github.com/telephantast/message.git",
+                "url": "https://github.com/thesis-php/message.git",
                 "reference": "50d8c3100fd003380eaa6b840d08c5797c0b18d8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/telephantast/message/zipball/50d8c3100fd003380eaa6b840d08c5797c0b18d8",
+                "url": "https://api.github.com/repos/thesis-php/message/zipball/50d8c3100fd003380eaa6b840d08c5797c0b18d8",
                 "reference": "50d8c3100fd003380eaa6b840d08c5797c0b18d8",
                 "shasum": ""
             },
@@ -8329,12 +8329,12 @@
             "version": "0.1.x-dev",
             "source": {
                 "type": "git",
-                "url": "https://github.com/telephantast/message-bus.git",
+                "url": "https://github.com/thesis-php/message-bus.git",
                 "reference": "5c599ead655a7ecf83b5094091e9d08109d65aea"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/telephantast/message-bus/zipball/5c599ead655a7ecf83b5094091e9d08109d65aea",
+                "url": "https://api.github.com/repos/thesis-php/message-bus/zipball/5c599ead655a7ecf83b5094091e9d08109d65aea",
                 "reference": "5c599ead655a7ecf83b5094091e9d08109d65aea",
                 "shasum": ""
             },
@@ -8532,12 +8532,12 @@
             "version": "0.1.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/thesisphp/amqp.git",
+                "url": "https://github.com/thesis-php/amqp.git",
                 "reference": "18dcdcab561da81c60f0ab4d54fc5dc0de26223e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thesisphp/amqp/zipball/18dcdcab561da81c60f0ab4d54fc5dc0de26223e",
+                "url": "https://api.github.com/repos/thesis-php/amqp/zipball/18dcdcab561da81c60f0ab4d54fc5dc0de26223e",
                 "reference": "18dcdcab561da81c60f0ab4d54fc5dc0de26223e",
                 "shasum": ""
             },
@@ -8950,12 +8950,12 @@
             "version": "0.1.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/thesisphp/endian.git",
+                "url": "https://github.com/thesis-php/endian.git",
                 "reference": "a7d22f427dec33eae32383bbe63f379d1c1db64f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thesisphp/endian/zipball/a7d22f427dec33eae32383bbe63f379d1c1db64f",
+                "url": "https://api.github.com/repos/thesis-php/endian/zipball/a7d22f427dec33eae32383bbe63f379d1c1db64f",
                 "reference": "a7d22f427dec33eae32383bbe63f379d1c1db64f",
                 "shasum": ""
             },
@@ -12740,6 +12740,6 @@
         "ext-ctype": "*",
         "ext-iconv": "*"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.6.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }

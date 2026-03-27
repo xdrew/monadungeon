@@ -10,7 +10,7 @@ use Telephantast\Message\Message;
 
 /**
  * @psalm-immutable
- * @implements Message<bool>
+ * @implements Message<void>
  */
 final readonly class MovePlayer implements Message
 {

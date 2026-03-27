@@ -117,7 +117,7 @@ class Movement extends AggregateRoot
         if ($game->getStatus()->isFinished()) {
             throw new GameAlreadyFinishedException();
         }
-        
+
         // Validate it's the player's turn
         $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
         if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId)) {
@@ -184,6 +184,15 @@ class Movement extends AggregateRoot
 
         // Record turn action if not moving to battle
         if (!$destinationHasMonster) {
+            // Check if destination has a pickable item (defeated guard or no guard)
+            $hasPickableItem = false;
+            if (isset($items[$destinationKey])) {
+                $destItem = Item::fromAnything($items[$destinationKey]);
+                if ($destItem->guardDefeated || $destItem->guardHP === 0) {
+                    $hasPickableItem = true;
+                }
+            }
+
             try {
                 $context->dispatch(new PerformTurnAction(
                     turnId: $command->turnId,
@@ -196,6 +205,7 @@ class Movement extends AggregateRoot
                         'to' => $command->toPosition->toString(),
                     ],
                     at: new \DateTimeImmutable(),
+                    deferTurnEnd: $hasPickableItem,
                 ));
             } catch (\RuntimeException) {
                 // Ignore turn-related errors - the turn might have ended

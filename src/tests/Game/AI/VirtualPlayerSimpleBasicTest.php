@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Game\AI;
 
 use App\Game\AI\VirtualPlayerSimple;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Telephantast\MessageBus\MessageBus;
 
+#[CoversClass(VirtualPlayerSimple::class)]
 class VirtualPlayerSimpleBasicTest extends TestCase
 {
     #[Test]

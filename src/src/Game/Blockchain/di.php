@@ -23,7 +23,7 @@ return static function (ContainerConfigurator $di): void {
             '$chainId' => env('MONAD_CHAIN_ID')->int(),
         ])
         ->tag('messenger.message_handler');
-        
+
     $di->services()
         ->set(TestBlockchainSubmissionCommand::class)
         ->args([
@@ -34,7 +34,7 @@ return static function (ContainerConfigurator $di): void {
             '$chainId' => env('MONAD_CHAIN_ID')->int(),
         ])
         ->tag('console.command');
-        
+
     $di->services()
         ->set(RegisterGameCommand::class)
         ->args([
@@ -45,7 +45,7 @@ return static function (ContainerConfigurator $di): void {
             '$chainId' => env('MONAD_CHAIN_ID')->int(),
         ])
         ->tag('console.command');
-        
+
     $di->services()
         ->set(UnregisterGameCommand::class)
         ->args([
@@ -56,7 +56,7 @@ return static function (ContainerConfigurator $di): void {
             '$chainId' => env('MONAD_CHAIN_ID')->int(),
         ])
         ->tag('console.command');
-        
+
     $di->services()
         ->set(CheckContractPermissionsCommand::class)
         ->args([

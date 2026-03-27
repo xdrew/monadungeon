@@ -22,11 +22,13 @@ use App\Game\Player\GetPlayer;
 use App\Game\Player\Player;
 use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Telephantast\MessageBus\MessageBus;
 
+#[CoversClass(EnhancedAIPlayer::class)]
 class EnhancedAIPlayerTest extends TestCase
 {
     private MessageBus $messageBus;

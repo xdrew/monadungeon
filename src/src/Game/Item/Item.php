@@ -7,45 +7,31 @@ namespace App\Game\Item;
 use App\Game\Battle\BattleResult;
 use App\Infrastructure\Uuid\Uuid;
 
-final class Item
+final readonly class Item
 {
-    public bool $guardDefeated = false;
+    public bool $guardDefeated;
 
-    public readonly int $treasureValue;
+    public int $treasureValue;
 
-    public readonly int $guardHP;
+    public int $guardHP;
 
-    public readonly Uuid $itemId;
+    public Uuid $itemId;
 
-    public readonly bool $endsGame;
+    public bool $endsGame;
 
     public function __construct(
-        public readonly ItemName $name,
-        public readonly ItemType $type,
+        public ItemName $name,
+        public ItemType $type,
         ?int $guardHP = null,
         ?int $treasureValue = null,
         ?bool $guardDefeated = null,
         ?Uuid $itemId = null,
         ?bool $endsGame = null,
     ) {
-        if ($guardHP !== null) {
-            $this->guardHP = $guardHP;
-        } else {
-            $this->guardHP = $name->getHp();
-        }
-        if ($treasureValue !== null) {
-            $this->treasureValue = $treasureValue;
-        } else {
-            $this->treasureValue = $type->getTreasureValue();
-        }
-        if ($guardDefeated !== null) {
-            $this->guardDefeated = $guardDefeated;
-        }
-        if ($endsGame !== null) {
-            $this->endsGame = $endsGame;
-        } else {
-            $this->endsGame = $type->endsGame();
-        }
+        $this->guardHP = $guardHP ?? $name->getHp();
+        $this->treasureValue = $treasureValue ?? $type->getTreasureValue();
+        $this->guardDefeated = $guardDefeated ?? false;
+        $this->endsGame = $endsGame ?? $type->endsGame();
         $this->itemId = $itemId ?? Uuid::v7();
     }
 

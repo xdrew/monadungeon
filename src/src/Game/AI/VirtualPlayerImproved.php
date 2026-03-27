@@ -7,19 +7,14 @@ namespace App\Game\AI;
 use App\Game\Deck\GetDeck;
 use App\Game\Field\GetField;
 use App\Game\Field\PickTile;
-use App\Game\Field\PlaceTile;
-use App\Game\Field\RotateTile;
-use App\Game\GameLifecycle\GetGame;
-use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Movement\GetPlayerPosition;
-use App\Game\Player\GetPlayer;
 use App\Game\Turn\EndTurn;
 use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
 use Telephantast\MessageBus\MessageBus;
 
 /**
- * Improved Virtual AI player that actually plays the game
+ * Improved Virtual AI player that actually plays the game.
  */
 final readonly class VirtualPlayerImproved
 {
@@ -29,12 +24,12 @@ final readonly class VirtualPlayerImproved
     ) {}
 
     /**
-     * Execute a complete turn for the virtual player
+     * Execute a complete turn for the virtual player.
      */
     public function executeTurn(Uuid $gameId, Uuid $playerId): array
     {
         $actions = [];
-        
+
         try {
             // Get current game state
             $currentTurnId = $this->messageBus->dispatch(new GetCurrentTurn($gameId));
@@ -46,8 +41,9 @@ final readonly class VirtualPlayerImproved
             if (!$currentTurnId) {
                 $actions[] = $this->createAction('ai_error', [
                     'error' => 'No current turn found',
-                    'decision' => 'Cannot execute turn without turn ID'
+                    'decision' => 'Cannot execute turn without turn ID',
                 ]);
+
                 return $actions;
             }
 
@@ -68,15 +64,14 @@ final readonly class VirtualPlayerImproved
                 gameId: $gameId,
                 playerId: $playerId,
             ));
-            
-            $actions[] = $this->createAction('turn_ended', ['decision' => 'Turn completed successfully']);
 
+            $actions[] = $this->createAction('turn_ended', ['decision' => 'Turn completed successfully']);
         } catch (\Throwable $e) {
             $actions[] = $this->createAction('ai_error', [
                 'error' => $e->getMessage(),
-                'decision' => 'Ending turn due to error'
+                'decision' => 'Ending turn due to error',
             ]);
-            
+
             // Try to end turn gracefully
             try {
                 $currentTurnId = $this->messageBus->dispatch(new GetCurrentTurn($gameId));
@@ -96,7 +91,7 @@ final readonly class VirtualPlayerImproved
     }
 
     /**
-     * Handle tile picking and placement phase
+     * Handle tile picking and placement phase.
      */
     private function handleTilePhase(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, $field, $deck): array
     {
@@ -105,12 +100,12 @@ final readonly class VirtualPlayerImproved
         try {
             $tilesRemaining = $deck->getTilesRemainingCount();
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => "Getting next tile from deck ({$tilesRemaining} remaining)"
+                'decision' => "Getting next tile from deck ({$tilesRemaining} remaining)",
             ]);
 
             // Pick next tile from deck
             $nextTile = $deck->getNextTile();
-            
+
             // Use message bus to pick the tile properly
             $this->messageBus->dispatch(new PickTile(
                 gameId: $gameId, // Generate new tile ID
@@ -121,19 +116,18 @@ final readonly class VirtualPlayerImproved
             ));
 
             $actions[] = $this->createAction('tile_picked', [
-                'decision' => 'Picked tile from deck'
+                'decision' => 'Picked tile from deck',
             ]);
 
             // Simple placement strategy: try to place at first available position
             // In a real implementation, we'd use more sophisticated logic
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => 'Placing tile at available position'
+                'decision' => 'Placing tile at available position',
             ]);
-
         } catch (\Throwable $e) {
             $actions[] = $this->createAction('ai_error', [
                 'phase' => 'tile_placement',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -141,7 +135,7 @@ final readonly class VirtualPlayerImproved
     }
 
     /**
-     * Handle player movement phase
+     * Handle player movement phase.
      */
     private function handleMovementPhase(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, $field): array
     {
@@ -150,25 +144,24 @@ final readonly class VirtualPlayerImproved
         try {
             // Get current player position
             $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
-            
+
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => "Player currently at position: {$currentPosition->toString()}"
+                'decision' => "Player currently at position: {$currentPosition->toString()}",
             ]);
 
             // For now, just acknowledge the movement phase without actually moving
             // In a real implementation, we'd calculate possible moves and choose the best one
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => 'Analyzing movement options...'
+                'decision' => 'Analyzing movement options...',
             ]);
 
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => 'Staying at current position for now'
+                'decision' => 'Staying at current position for now',
             ]);
-
         } catch (\Throwable $e) {
             $actions[] = $this->createAction('ai_error', [
                 'phase' => 'movement',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -176,7 +169,7 @@ final readonly class VirtualPlayerImproved
     }
 
     /**
-     * Create a standardized action log entry
+     * Create a standardized action log entry.
      */
     private function createAction(string $type, array $details = []): array
     {

@@ -13,7 +13,7 @@ use App\Infrastructure\Uuid\Uuid;
 use Telephantast\MessageBus\MessageBus;
 
 /**
- * Simplified Virtual AI player that just ends turns
+ * Simplified Virtual AI player that just ends turns.
  */
 final readonly class VirtualPlayerSimple
 {
@@ -22,12 +22,12 @@ final readonly class VirtualPlayerSimple
     ) {}
 
     /**
-     * Execute a complete turn for the virtual player
+     * Execute a complete turn for the virtual player.
      */
     public function executeTurn(Uuid $gameId, Uuid $playerId): array
     {
         $actions = [];
-        
+
         try {
             // Get current game state
             $game = $this->messageBus->dispatch(new GetGame($gameId));
@@ -41,29 +41,31 @@ final readonly class VirtualPlayerSimple
             if (!$currentTurnId) {
                 $actions[] = $this->createAction('ai_error', [
                     'error' => 'No current turn found',
-                    'decision' => 'Cannot execute turn without turn ID'
+                    'decision' => 'Cannot execute turn without turn ID',
                 ]);
+
                 return $actions;
             }
 
             // Check if player is stunned
             if ($player->isDefeated()) {
                 $actions[] = $this->createAction('player_stunned', ['reason' => 'Skipping turn due to stun']);
-                
+
                 // End turn immediately
                 $this->messageBus->dispatch(new EndTurn(
                     turnId: $currentTurnId,
                     gameId: $gameId,
                     playerId: $playerId,
                 ));
-                
+
                 $actions[] = $this->createAction('turn_ended', ['reason' => 'stunned']);
+
                 return $actions;
             }
 
             // Simple AI: just end turn after thinking
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => 'Simple AI - ending turn after analysis'
+                'decision' => 'Simple AI - ending turn after analysis',
             ]);
 
             // End turn
@@ -72,15 +74,14 @@ final readonly class VirtualPlayerSimple
                 gameId: $gameId,
                 playerId: $playerId,
             ));
-            
-            $actions[] = $this->createAction('turn_ended', ['decision' => 'Turn completed']);
 
+            $actions[] = $this->createAction('turn_ended', ['decision' => 'Turn completed']);
         } catch (\Throwable $e) {
             $actions[] = $this->createAction('ai_error', [
                 'error' => $e->getMessage(),
-                'decision' => 'Ending turn due to error'
+                'decision' => 'Ending turn due to error',
             ]);
-            
+
             // Try to end turn gracefully
             try {
                 $currentTurnId = $this->messageBus->dispatch(new GetCurrentTurn($gameId));
@@ -100,7 +101,7 @@ final readonly class VirtualPlayerSimple
     }
 
     /**
-     * Create a standardized action log entry
+     * Create a standardized action log entry.
      */
     private function createAction(string $type, array $details = []): array
     {

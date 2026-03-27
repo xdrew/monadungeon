@@ -30,9 +30,9 @@ final readonly class Action
             ));
         } catch (UnplacedTileException $e) {
             return new Error(
-                Uuid::v7(), 
+                Uuid::v7(),
                 $e->getMessage(),
-                HttpResponse::HTTP_UNPROCESSABLE_ENTITY
+                HttpResponse::HTTP_UNPROCESSABLE_ENTITY,
             );
         } catch (\Throwable $e) {
             return new Error(Uuid::v7(), 'Could not end turn: ' . $e->getMessage());

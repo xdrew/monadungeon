@@ -6,12 +6,14 @@ namespace Tests\Game\AI;
 
 use App\Game\AI\EnhancedAIPlayer;
 use App\Infrastructure\Uuid\Uuid;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Simple test to verify the Enhanced AI Player multi-action implementation exists and works
  */
+#[CoversClass(EnhancedAIPlayer::class)]
 class EnhancedAIMultiActionSimpleTest extends TestCase
 {
     #[Test]

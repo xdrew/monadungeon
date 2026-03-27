@@ -13,7 +13,6 @@ use App\Game\Item\Item;
 use App\Game\Movement\Commands\ResetPlayerPosition;
 use App\Game\Movement\Events\PlayerMoved;
 use App\Game\Movement\GetPlayerPosition;
-use App\Game\Player\AddItemToInventory;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\PickItem;
 use App\Game\Player\ReducePlayerHP;
@@ -213,7 +212,7 @@ class Battle extends AggregateRoot
             // Game is already finished, don't process battle finalization
             return;
         }
-        
+
         // Get player instance
         $player = $messageContext->dispatch(new GetPlayer(
             playerId: $command->playerId,
@@ -490,7 +489,7 @@ class Battle extends AggregateRoot
                 playerId: $this->playerId,
                 position: $fromPosition,
             ));
-            
+
             // Also dispatch PlayerMoved event for tracking/UI purposes
             $messageContext->dispatch(new PlayerMoved(
                 gameId: $this->gameId,

@@ -7,15 +7,11 @@ namespace App\Game\AI;
 use App\Game\Deck\GetDeck;
 use App\Game\Field\Field;
 use App\Game\Field\GetField;
-use App\Game\Field\PickTile;
 use App\Game\Field\PlaceTile;
 use App\Game\Field\RotateTile;
 use App\Game\Field\Tile;
-use App\Game\Field\TileOrientation;
-use App\Game\Field\TileSide;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Movement\Commands\MovePlayer;
-use App\Game\Movement\GetPlayerPosition;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\Player;
 use App\Game\Turn\EndTurn;
@@ -24,7 +20,7 @@ use App\Infrastructure\Uuid\Uuid;
 use Telephantast\MessageBus\MessageBus;
 
 /**
- * Virtual AI player that makes autonomous decisions
+ * Virtual AI player that makes autonomous decisions.
  */
 final readonly class VirtualPlayer
 {
@@ -34,12 +30,12 @@ final readonly class VirtualPlayer
     ) {}
 
     /**
-     * Execute a complete turn for the virtual player
+     * Execute a complete turn for the virtual player.
      */
     public function executeTurn(Uuid $gameId, Uuid $playerId): array
     {
         $actions = [];
-        
+
         try {
             // Get current game state
             $game = $this->messageBus->dispatch(new GetGame($gameId));
@@ -52,15 +48,16 @@ final readonly class VirtualPlayer
             // Check if player is stunned
             if ($player->isDefeated()) {
                 $actions[] = $this->createAction('player_stunned', ['reason' => 'Skipping turn due to stun']);
-                
+
                 // End turn immediately
                 $this->messageBus->dispatch(new EndTurn(
                     turnId: $currentTurn->getId(),
                     gameId: $gameId,
                     playerId: $playerId,
                 ));
-                
+
                 $actions[] = $this->createAction('turn_ended', ['reason' => 'stunned']);
+
                 return $actions;
             }
 
@@ -80,15 +77,14 @@ final readonly class VirtualPlayer
                 gameId: $gameId,
                 playerId: $playerId,
             ));
-            
-            $actions[] = $this->createAction('turn_ended', ['decision' => 'Turn completed']);
 
+            $actions[] = $this->createAction('turn_ended', ['decision' => 'Turn completed']);
         } catch (\Throwable $e) {
             $actions[] = $this->createAction('ai_error', [
                 'error' => $e->getMessage(),
-                'decision' => 'Ending turn due to error'
+                'decision' => 'Ending turn due to error',
             ]);
-            
+
             // Try to end turn gracefully
             try {
                 $currentTurn = $this->messageBus->dispatch(new GetCurrentTurn($gameId));
@@ -97,7 +93,7 @@ final readonly class VirtualPlayer
                     gameId: $gameId,
                     playerId: $playerId,
                 ));
-            } catch (\Throwable $endTurnError) {
+            } catch (\Throwable) {
                 // Log but don't throw - we've done our best
             }
         }
@@ -106,7 +102,7 @@ final readonly class VirtualPlayer
     }
 
     /**
-     * Handle tile picking and placement phase
+     * Handle tile picking and placement phase.
      */
     private function handleTilePhase(Uuid $gameId, Uuid $playerId, $currentTurn, Field $field): array
     {
@@ -115,30 +111,30 @@ final readonly class VirtualPlayer
         try {
             // Get deck and pick a tile
             $deck = $this->messageBus->dispatch(new GetDeck($gameId));
-            
+
             // For now, just get the next tile from deck - simplified approach
             $nextTile = $deck->getNextTile();
-            
+
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => "Selected next available tile from deck"
+                'decision' => 'Selected next available tile from deck',
             ]);
 
             // For simplicity, just end the turn for now - full tile implementation needs more work
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => "Simplified AI - ending turn after analysis"
+                'decision' => 'Simplified AI - ending turn after analysis',
             ]);
 
             // Choose placement position
             $availablePlaces = $field->getAvailablePlacesForPlayer($playerId);
             $chosenPosition = $this->strategy->chooseTilePlacement($selectedTile, $availablePlaces, $field, $playerId);
-            
+
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => "Placing tile at position: {$chosenPosition}"
+                'decision' => "Placing tile at position: {$chosenPosition}",
             ]);
 
             // Determine optimal rotation
             $optimalOrientation = $this->strategy->chooseTileOrientation($selectedTile, $chosenPosition, $field);
-            
+
             if ($optimalOrientation !== $selectedTile->getOrientation()) {
                 $this->messageBus->dispatch(new RotateTile(
                     tileId: $selectedTile->getId(),
@@ -148,10 +144,10 @@ final readonly class VirtualPlayer
                     topSide: $optimalOrientation->getTopSide(),
                     requiredOpenSide: 0,
                 ));
-                
+
                 $actions[] = $this->createAction('tile_rotated', [
                     'tileId' => $selectedTile->getId()->toString(),
-                    'orientation' => $optimalOrientation->value
+                    'orientation' => $optimalOrientation->value,
                 ]);
             }
 
@@ -166,13 +162,12 @@ final readonly class VirtualPlayer
 
             $actions[] = $this->createAction('tile_placed', [
                 'position' => $chosenPosition->toString(),
-                'tileId' => $selectedTile->getId()->toString()
+                'tileId' => $selectedTile->getId()->toString(),
             ]);
-
         } catch (\Throwable $e) {
             $actions[] = $this->createAction('ai_error', [
                 'phase' => 'tile_placement',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -180,7 +175,7 @@ final readonly class VirtualPlayer
     }
 
     /**
-     * Handle player movement phase
+     * Handle player movement phase.
      */
     private function handleMovementPhase(Uuid $gameId, Uuid $playerId, $currentTurn, Field $field, Player $player): array
     {
@@ -189,16 +184,17 @@ final readonly class VirtualPlayer
         try {
             $currentPosition = $field->getPlayerPosition($playerId);
             $availableMoves = $field->getAvailableMovesForPlayer($playerId);
-            
+
             if (empty($availableMoves)) {
                 $actions[] = $this->createAction('ai_decision', ['decision' => 'No moves available']);
+
                 return $actions;
             }
 
             $chosenMove = $this->strategy->chooseMovement($currentPosition, $availableMoves, $field, $player);
-            
+
             $actions[] = $this->createAction('ai_decision', [
-                'decision' => "Moving from {$currentPosition} to {$chosenMove}"
+                'decision' => "Moving from {$currentPosition} to {$chosenMove}",
             ]);
 
             $this->messageBus->dispatch(new MovePlayer(
@@ -214,16 +210,15 @@ final readonly class VirtualPlayer
 
             $actions[] = $this->createAction('player_moved', [
                 'from' => $currentPosition->toString(),
-                'to' => $chosenMove->toString()
+                'to' => $chosenMove->toString(),
             ]);
 
             // Check if movement triggered a battle or item pickup
             // These will be handled by the existing game mechanics
-
         } catch (\Throwable $e) {
             $actions[] = $this->createAction('ai_error', [
                 'phase' => 'movement',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -231,7 +226,7 @@ final readonly class VirtualPlayer
     }
 
     /**
-     * Check if the virtual player needs to pick a tile
+     * Check if the virtual player needs to pick a tile.
      */
     private function needsToPickTile(Field $field, $currentTurn): bool
     {
@@ -241,7 +236,7 @@ final readonly class VirtualPlayer
     }
 
     /**
-     * Create a standardized action log entry
+     * Create a standardized action log entry.
      */
     private function createAction(string $type, array $details = []): array
     {

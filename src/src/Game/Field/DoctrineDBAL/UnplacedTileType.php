@@ -29,7 +29,7 @@ final class UnplacedTileType extends Type
         }
 
         // Decode JSON if it's a string
-        if (is_string($value)) {
+        if (\is_string($value)) {
             $data = json_decode($value, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw ConversionException::conversionFailed($value, $this->getName());
@@ -37,21 +37,21 @@ final class UnplacedTileType extends Type
         } else {
             $data = $value;
         }
-        
-        if (!is_array($data)) {
+
+        if (!\is_array($data)) {
             return null;
         }
 
         // Convert tileId string back to Uuid object
-        if (isset($data['tileId']) && is_string($data['tileId'])) {
+        if (isset($data['tileId']) && \is_string($data['tileId'])) {
             $data['tileId'] = Uuid::fromString($data['tileId']);
         }
 
         // Convert fieldPlace array back to FieldPlace object
-        if (isset($data['fieldPlace']) && is_array($data['fieldPlace'])) {
+        if (isset($data['fieldPlace']) && \is_array($data['fieldPlace'])) {
             $data['fieldPlace'] = new FieldPlace(
                 $data['fieldPlace']['positionX'],
-                $data['fieldPlace']['positionY']
+                $data['fieldPlace']['positionY'],
             );
         }
 
@@ -87,7 +87,7 @@ final class UnplacedTileType extends Type
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw ConversionException::conversionFailed($data, $this->getName());
         }
-        
+
         return $json;
     }
 

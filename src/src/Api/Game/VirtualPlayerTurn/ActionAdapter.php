@@ -11,7 +11,7 @@ use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * API endpoint for executing virtual player turns
+ * API endpoint for executing virtual player turns.
  */
 final readonly class ActionAdapter
 {
@@ -28,34 +28,34 @@ final readonly class ActionAdapter
     }
 
     /**
-     * Execute turn using Smart AI with strategy support
+     * Execute turn using Smart AI with strategy support.
      */
     private function executeSmartAI(Request $request): Response|Error
     {
         $actions = [];
-        
+
         try {
             $gameId = Uuid::fromString($request->gameId);
             $playerId = Uuid::fromString($request->playerId);
-            
+
             // Determine strategy from request (aggressive, balanced, defensive)
             $strategy = $request->strategy ?? 'balanced';
-            
+
             $actions[] = [
                 'type' => 'api_debug',
                 'details' => [
                     'message' => 'Smart AI executing',
                     'gameId' => $request->gameId,
                     'playerId' => $request->playerId,
-                    'strategy' => $strategy
+                    'strategy' => $strategy,
                 ],
                 'timestamp' => time(),
             ];
-            
+
             try {
                 $aiActions = $this->smartVirtualPlayer->executeTurn($gameId, $playerId, $strategy);
                 $actions = array_merge($actions, $aiActions);
-                
+
                 $actions[] = [
                     'type' => 'ai_turn_complete',
                     'details' => [
@@ -65,7 +65,6 @@ final readonly class ActionAdapter
                     ],
                     'timestamp' => time(),
                 ];
-                
             } catch (\Throwable $aiError) {
                 $actions[] = [
                     'type' => 'ai_execution_error',
@@ -77,21 +76,20 @@ final readonly class ActionAdapter
                     'timestamp' => time(),
                 ];
             }
-            
+
             return new Response(
                 gameId: $request->gameId,
                 playerId: $request->playerId,
                 actions: $actions,
                 success: true,
             );
-            
         } catch (\Throwable $e) {
             $actions[] = [
                 'type' => 'api_error',
                 'details' => ['error' => $e->getMessage()],
                 'timestamp' => time(),
             ];
-            
+
             return new Response(
                 gameId: $request->gameId ?? 'unknown',
                 playerId: $request->playerId ?? 'unknown',

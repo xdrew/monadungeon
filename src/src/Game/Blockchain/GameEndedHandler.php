@@ -46,7 +46,9 @@ final class GameEndedHandler
     ]';
 
     private readonly Web3 $web3;
+
     private readonly Contract $contract;
+
     private readonly ?string $serverAddress;
 
     public function __construct(
@@ -60,7 +62,7 @@ final class GameEndedHandler
         $this->web3 = new Web3(new HttpProvider(new HttpRequestManager($rpcUrl)));
         $this->contract = new Contract($this->web3->provider, self::ABI);
         $this->contract->at($contractAddress);
-        
+
         $this->serverAddress = $this->getAddressFromPrivateKey();
     }
 
@@ -76,6 +78,7 @@ final class GameEndedHandler
         // Skip if no private key is configured
         if (empty($this->privateKey)) {
             $this->logger->warning('Skipping blockchain score submission - no private key configured');
+
             return;
         }
 
@@ -85,12 +88,13 @@ final class GameEndedHandler
 
         foreach ($players as $player) {
             $walletAddress = $player->getWalletAddress();
-            
+
             if (!$walletAddress) {
                 $this->logger->debug('Skipping player without wallet address', [
                     'playerId' => $player->getPlayerId()->toString(),
                     'username' => $player->getUsername(),
                 ]);
+
                 continue;
             }
 
@@ -101,7 +105,7 @@ final class GameEndedHandler
 
             try {
                 $txHash = $this->submitScoreToBlockchain($walletAddress, $score);
-                
+
                 $this->logger->info('Successfully submitted score to blockchain', [
                     'gameId' => $event->gameId->toString(),
                     'playerId' => $playerId->toString(),
@@ -136,18 +140,18 @@ final class GameEndedHandler
         // Encode function call
         $functionName = 'updatePlayerData';
         $functionCall = $this->contract->getData($functionName, $playerAddress, $scoreAmount, $transactionAmount);
-        
+
         // The getData method returns hex without 0x prefix
-        if (!str_starts_with($functionCall, '0x')) {
+        if (!str_starts_with((string) $functionCall, '0x')) {
             // getData returned raw hex, we'll add 0x later for the transaction
         } else {
             // Remove the 0x prefix if present
-            $functionCall = substr($functionCall, 2);
+            $functionCall = substr((string) $functionCall, 2);
         }
 
         // Get nonce
         $nonce = null;
-        $this->web3->eth->getTransactionCount($this->serverAddress, 'pending', function ($err, $result) use (&$nonce) {
+        $this->web3->eth->getTransactionCount($this->serverAddress, 'pending', static function ($err, $result) use (&$nonce): void {
             if ($err !== null) {
                 throw new \RuntimeException('Failed to get nonce: ' . $err->getMessage());
             }
@@ -156,7 +160,7 @@ final class GameEndedHandler
 
         // Get gas price
         $gasPrice = null;
-        $this->web3->eth->gasPrice(function ($err, $result) use (&$gasPrice) {
+        $this->web3->eth->gasPrice(static function ($err, $result) use (&$gasPrice): void {
             if ($err !== null) {
                 throw new \RuntimeException('Failed to get gas price: ' . $err->getMessage());
             }
@@ -167,18 +171,18 @@ final class GameEndedHandler
         $estimatedGas = Utils::toHex(150000, true);
 
         // Build transaction (convert BigInteger objects to hex strings)
-        $nonceHex = is_object($nonce) && method_exists($nonce, 'toHex')
+        $nonceHex = \is_object($nonce) && method_exists($nonce, 'toHex')
             ? '0x' . $nonce->toHex()
-            : (is_object($nonce) && method_exists($nonce, 'toString')
+            : (\is_object($nonce) && method_exists($nonce, 'toString')
                 ? Utils::toHex($nonce->toString(), true)
                 : $nonce);
-        
-        $gasPriceHex = is_object($gasPrice) && method_exists($gasPrice, 'toHex')
+
+        $gasPriceHex = \is_object($gasPrice) && method_exists($gasPrice, 'toHex')
             ? '0x' . $gasPrice->toHex()
-            : (is_object($gasPrice) && method_exists($gasPrice, 'toString')
+            : (\is_object($gasPrice) && method_exists($gasPrice, 'toString')
                 ? Utils::toHex($gasPrice->toString(), true)
                 : $gasPrice);
-        
+
         $transaction = [
             'nonce' => $nonceHex,
             'from' => $this->serverAddress,
@@ -201,7 +205,7 @@ final class GameEndedHandler
 
         // Send transaction
         $txHash = null;
-        $this->web3->eth->sendRawTransaction('0x' . $signedTransaction, function ($err, $result) use (&$txHash) {
+        $this->web3->eth->sendRawTransaction('0x' . $signedTransaction, static function ($err, $result) use (&$txHash): void {
             if ($err !== null) {
                 throw new \RuntimeException('Failed to send transaction: ' . $err->getMessage());
             }
@@ -218,36 +222,37 @@ final class GameEndedHandler
         }
 
         try {
-            $privateKeyHex = str_starts_with($this->privateKey, '0x') 
-                ? substr($this->privateKey, 2) 
+            $privateKeyHex = str_starts_with($this->privateKey, '0x')
+                ? substr($this->privateKey, 2)
                 : $this->privateKey;
-                
+
             $util = new Util();
             $publicKey = $util->privateKeyToPublicKey($privateKeyHex);
             // publicKeyToAddress already returns the address WITH 0x prefix
             $address = $util->publicKeyToAddress($publicKey);
-            
+
             return $address;
         } catch (\Throwable $e) {
             $this->logger->error('Failed to derive address from private key', [
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
 
     private function signTransaction(array $transaction): string
     {
-        $privateKeyHex = str_starts_with($this->privateKey, '0x') 
-            ? substr($this->privateKey, 2) 
+        $privateKeyHex = str_starts_with($this->privateKey, '0x')
+            ? substr($this->privateKey, 2)
             : $this->privateKey;
 
         // Create transaction object
         $tx = new Transaction($transaction);
-        
+
         // Sign transaction
         $signedTx = $tx->sign($privateKeyHex);
-        
+
         // Return hex-encoded signed transaction (without 0x prefix)
         return $signedTx;
     }

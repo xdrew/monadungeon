@@ -12,12 +12,14 @@ use Telephantast\MessageBus\MessageBus;
 
 /**
  * Manages AI players in games
- * Handles AI player creation, turn execution, and strategy management
+ * Handles AI player creation, turn execution, and strategy management.
  */
 final class AIPlayerManager
 {
     private array $activeAIPlayers = [];
+
     private array $playerStrategies = [];
+
     private string $defaultStrategy = 'balanced';
 
     public function __construct(
@@ -26,9 +28,9 @@ final class AIPlayerManager
         private readonly MessageBus $messageBus,
         private readonly LoggerInterface $logger,
     ) {}
-    
+
     /**
-     * Set the default strategy for new AI players
+     * Set the default strategy for new AI players.
      */
     public function setDefaultStrategy(string $strategy): void
     {
@@ -37,17 +39,17 @@ final class AIPlayerManager
     }
 
     /**
-     * Register an AI player for a game
+     * Register an AI player for a game.
      */
     public function registerAIPlayer(
         Uuid $gameId,
         Uuid $playerId,
-        ?string $strategyType = null
+        ?string $strategyType = null,
     ): void {
         // Use provided strategy or fall back to default
-        $strategyType = $strategyType ?? $this->defaultStrategy;
+        $strategyType ??= $this->defaultStrategy;
         $key = $this->getPlayerKey($gameId, $playerId);
-        
+
         $this->activeAIPlayers[$key] = [
             'gameId' => $gameId,
             'playerId' => $playerId,
@@ -60,7 +62,7 @@ final class AIPlayerManager
         // Configure strategy based on type
         $this->configureStrategy($playerId, $strategyType);
 
-        $this->logger->info("AI player registered", [
+        $this->logger->info('AI player registered', [
             'game_id' => $gameId->toString(),
             'player_id' => $playerId->toString(),
             'strategy' => $strategyType,
@@ -68,7 +70,7 @@ final class AIPlayerManager
     }
 
     /**
-     * Execute AI turn if it's the AI player's turn
+     * Execute AI turn if it's the AI player's turn.
      */
     public function executeAITurnIfNeeded(Uuid $gameId): bool
     {
@@ -87,7 +89,7 @@ final class AIPlayerManager
                 return false;
             }
 
-            $this->logger->info("Executing AI turn", [
+            $this->logger->info('Executing AI turn', [
                 'game_id' => $gameId->toString(),
                 'player_id' => $currentPlayerId->toString(),
                 'turn_id' => $currentTurn->turnId->toString(),
@@ -97,23 +99,23 @@ final class AIPlayerManager
             $success = $this->enhancedAIPlayer->executeTurn($gameId, $currentPlayerId);
 
             if ($success) {
-                $this->activeAIPlayers[$key]['turnCount']++;
+                ++$this->activeAIPlayers[$key]['turnCount'];
                 $this->activeAIPlayers[$key]['lastAction'] = new \DateTimeImmutable();
             }
 
             return $success;
-
         } catch (\Throwable $e) {
-            $this->logger->error("Failed to execute AI turn", [
+            $this->logger->error('Failed to execute AI turn', [
                 'game_id' => $gameId->toString(),
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
 
     /**
-     * Execute all AI turns in a game loop
+     * Execute all AI turns in a game loop.
      */
     public function runGameWithAI(Uuid $gameId, int $maxTurns = 100): array
     {
@@ -124,7 +126,7 @@ final class AIPlayerManager
             'game_ended' => false,
         ];
 
-        for ($i = 0; $i < $maxTurns; $i++) {
+        for ($i = 0; $i < $maxTurns; ++$i) {
             // Check if game has ended
             $game = $this->messageBus->dispatch(new GetGame($gameId));
             if ($game->status === 'ended' || $game->status === 'finished') {
@@ -134,9 +136,9 @@ final class AIPlayerManager
 
             // Try to execute AI turn
             if ($this->executeAITurnIfNeeded($gameId)) {
-                $results['ai_turns']++;
-                $results['turns_executed']++;
-                
+                ++$results['ai_turns'];
+                ++$results['turns_executed'];
+
                 // Small delay between turns
                 usleep(500000); // 0.5 second
             } else {
@@ -149,38 +151,17 @@ final class AIPlayerManager
     }
 
     /**
-     * Configure AI strategy based on type
-     */
-    private function configureStrategy(Uuid $playerId, string $strategyType): void
-    {
-        // Use centralized configuration
-        $config = AIConfiguration::getStrategy($strategyType);
-        
-        // Remove description field as it's not needed at runtime
-        unset($config['description']);
-
-        $this->enhancedAIPlayer->setStrategyConfig($config);
-        $this->playerStrategies[$playerId->toString()] = $config;
-        
-        $this->logger->debug('AI strategy configured', [
-            'playerId' => $playerId->toString(),
-            'strategy' => $strategyType,
-            'config' => $config
-        ]);
-    }
-
-    /**
-     * Update AI player strategy during game
+     * Update AI player strategy during game.
      */
     public function updateStrategy(Uuid $gameId, Uuid $playerId, string $newStrategyType): void
     {
         $key = $this->getPlayerKey($gameId, $playerId);
-        
+
         if (isset($this->activeAIPlayers[$key])) {
             $this->activeAIPlayers[$key]['strategyType'] = $newStrategyType;
             $this->configureStrategy($playerId, $newStrategyType);
-            
-            $this->logger->info("AI strategy updated", [
+
+            $this->logger->info('AI strategy updated', [
                 'game_id' => $gameId->toString(),
                 'player_id' => $playerId->toString(),
                 'new_strategy' => $newStrategyType,
@@ -189,16 +170,16 @@ final class AIPlayerManager
     }
 
     /**
-     * Deactivate AI player
+     * Deactivate AI player.
      */
     public function deactivateAIPlayer(Uuid $gameId, Uuid $playerId): void
     {
         $key = $this->getPlayerKey($gameId, $playerId);
-        
+
         if (isset($this->activeAIPlayers[$key])) {
             $this->activeAIPlayers[$key]['active'] = false;
-            
-            $this->logger->info("AI player deactivated", [
+
+            $this->logger->info('AI player deactivated', [
                 'game_id' => $gameId->toString(),
                 'player_id' => $playerId->toString(),
             ]);
@@ -206,12 +187,12 @@ final class AIPlayerManager
     }
 
     /**
-     * Get AI player statistics
+     * Get AI player statistics.
      */
     public function getAIPlayerStats(Uuid $gameId, Uuid $playerId): array
     {
         $key = $this->getPlayerKey($gameId, $playerId);
-        
+
         if (!isset($this->activeAIPlayers[$key])) {
             return [];
         }
@@ -220,12 +201,12 @@ final class AIPlayerManager
     }
 
     /**
-     * Get all active AI players for a game
+     * Get all active AI players for a game.
      */
     public function getActiveAIPlayers(Uuid $gameId): array
     {
         $players = [];
-        
+
         foreach ($this->activeAIPlayers as $key => $player) {
             if ($player['gameId']->equals($gameId) && $player['active']) {
                 $players[] = $player;
@@ -236,7 +217,7 @@ final class AIPlayerManager
     }
 
     /**
-     * Clear all AI players for a game
+     * Clear all AI players for a game.
      */
     public function clearGameAIPlayers(Uuid $gameId): void
     {
@@ -246,13 +227,34 @@ final class AIPlayerManager
             }
         }
 
-        $this->logger->info("All AI players cleared for game", [
+        $this->logger->info('All AI players cleared for game', [
             'game_id' => $gameId->toString(),
         ]);
     }
 
     /**
-     * Get player key for storage
+     * Configure AI strategy based on type.
+     */
+    private function configureStrategy(Uuid $playerId, string $strategyType): void
+    {
+        // Use centralized configuration
+        $config = AIConfiguration::getStrategy($strategyType);
+
+        // Remove description field as it's not needed at runtime
+        unset($config['description']);
+
+        $this->enhancedAIPlayer->setStrategyConfig($config);
+        $this->playerStrategies[$playerId->toString()] = $config;
+
+        $this->logger->debug('AI strategy configured', [
+            'playerId' => $playerId->toString(),
+            'strategy' => $strategyType,
+            'config' => $config,
+        ]);
+    }
+
+    /**
+     * Get player key for storage.
      */
     private function getPlayerKey(Uuid $gameId, Uuid $playerId): string
     {

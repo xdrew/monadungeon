@@ -19,8 +19,15 @@ use App\Infrastructure\Uuid\Uuid;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
+use App\Game\Field\Field;
+use App\Game\Field\GetField;
+use App\Game\GameLifecycle\CreateGame;
+use App\Game\GameLifecycle\Game;
+use App\Game\GameLifecycle\GameCreated;
+use App\Game\GameLifecycle\GetGame;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use function App\Tests\Infrastructure\MessageBus\handle;
+use function App\Tests\Infrastructure\MessageBus\startMessageContext;
 
 #[CoversClass(GameTurn::class)]
 class BattleTurnEndingTest extends TestCase
@@ -105,9 +112,12 @@ class BattleTurnEndingTest extends TestCase
             at: $at
         );
         
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
         $tester->handle($gameTurn->performAction(...), $performBattle);
-        
+
         // End turn should be allowed after battle
         $endTurn = new EndTurn(
             turnId: $turnId,
@@ -115,12 +125,12 @@ class BattleTurnEndingTest extends TestCase
             playerId: $playerId,
             at: $at,
         );
-        
+
         [, $messages] = $tester->handle($gameTurn->end(...), $endTurn);
-        
+
         // Verify turn ended
         $this->assertTrue($gameTurn->isEnded());
-        
+
         // Verify messages dispatched
         // Now only TurnEnded is dispatched (NextTurn is handled by Game aggregate)
         $this->assertCount(1, $messages);
@@ -220,12 +230,15 @@ class BattleTurnEndingTest extends TestCase
             ]
         );
         
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
         $tester->handle($gameTurn->performAction(...), $performBattle);
-        
+
         // Turn should NOT be ended after a WIN
         $this->assertFalse($gameTurn->isEnded(), "Turn should not be ended after battle WIN");
-        
+
         // But we should still be able to perform PICK_ITEM action
         $performPickItem = new PerformTurnAction(
             turnId: $turnId,
@@ -279,9 +292,12 @@ class BattleTurnEndingTest extends TestCase
             at: $at,
         );
         
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
         $tester->handle($gameTurn->performAction(...), $performMove);
-        
+
         // Battle starts with initial LOSE result (weapons only)
         // In real flow, StartBattle would be called and player would select consumables
         // Then FinalizeBattle would be called with WIN result
@@ -360,9 +376,12 @@ class BattleTurnEndingTest extends TestCase
             ]
         );
         
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
         $tester->handle($gameTurn->performAction(...), $performBattle);
-        
+
         // Turn should NOT be ended after a WIN (waiting for pickup decision)
         $this->assertFalse($gameTurn->isEnded(), "Turn should not be ended immediately after battle WIN");
         

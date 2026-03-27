@@ -51,7 +51,7 @@ class Bag extends AggregateRoot
             $items[] = Item::createGiantSpider();
             $items[] = Item::createGiantSpider();
         }
-//        $items[] = Item::createFallen();
+        //        $items[] = Item::createFallen();
 
         for ($i = 0; $i < 4; ++$i) {
             $items[] = Item::createSkeletonTurnkey();
@@ -64,7 +64,7 @@ class Bag extends AggregateRoot
     #[Handler]
     public static function createClassic(DeckCreated $event): self
     {
-//                return self::createForTest($event);
+        //                return self::createForTest($event);
         $items = [];
 
         $testMode = TestMode::getInstance();

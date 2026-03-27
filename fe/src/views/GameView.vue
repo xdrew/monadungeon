@@ -3511,20 +3511,20 @@ const handlePickItemAndEndTurn = async () => {
     } else {
       // Item picked up successfully, now end the turn
       console.log('Item picked up successfully, ending turn...');
-      
+
       // End the turn
       await gameApi.endTurn({
         gameId: id.value,
         playerId: currentPlayerId.value,
         turnId: currentTurnId
       });
-      
+
       // Refresh game data
       await loadGameData();
-      
+
       // Check if the next player is an AI player and trigger their turn
       await checkAndHandleVirtualPlayerTurn();
-      
+
       showBattleReportModal.value = false;
       battleInfo.value = null;
       resetRequestLock();
@@ -3708,7 +3708,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     console.log('🚀 Finalizing battle with pickup');
     loading.value = true;
     loadingStatus.value = 'Finalizing battle and picking up item...';
-    
+
     const response = await gameApi.finalizeBattle({
       battleId: finalizeBattleData.battleId,
       gameId: id.value,
@@ -3718,7 +3718,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
       pickupItem: true,  // Always try to pick up
       replaceItemId: finalizeBattleData.replaceItemId  // Include replacement if selected
     });
-    
+
     console.log('✅ Battle finalized with pickup:', response);
     
     // Mark this battle as processed to prevent re-showing
@@ -3738,7 +3738,13 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     
     // Refresh game data
     await loadGameData();
-    
+
+    // If game hasn't ended yet but we picked up a game-ending item, retry loadGameData
+    if (gameData.value?.state?.status !== 'finished') {
+      await new Promise(r => setTimeout(r, 500));
+      await loadGameData();
+    }
+
     // Check if the next player is an AI player
     await checkAndHandleVirtualPlayerTurn();
 

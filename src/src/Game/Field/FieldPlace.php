@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Game\Field;
 
-final class FieldPlace
+final readonly class FieldPlace
 {
     public function __construct(
         public int $positionX,

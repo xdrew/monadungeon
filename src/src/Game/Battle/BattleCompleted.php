@@ -33,5 +33,6 @@ final readonly class BattleCompleted implements Event
         public ?array $availableConsumables = null,
         public bool $needsConsumableConfirmation = false,
         public bool $itemPickedUp = false,
+        public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}
 }

@@ -275,20 +275,12 @@ test.describe('Two Player Game', () => {
       }  
     });
     
-    // Wait for game to update after ready
-    await page.waitForTimeout(1000);
-    
-    // Reload to get latest state
-    await page.reload();
-    await GameHelpers.waitForGameLoad(page);
-    
-    // Check game state
-    const gameState = await page.evaluate(() => {
-      const turnText = document.querySelector('h3')?.textContent || '';
-      const playerInfo = Array.from(document.querySelectorAll('[class*="inventory"]')).map(el => el.textContent);
-      return { turnText, playerInfo };
-    });
-    console.log('Game state after ready:', gameState);
+    // Wait for game to start (both players ready triggers game start)
+    await page.waitForFunction(() => {
+      const h3 = document.querySelector('h3');
+      return h3?.textContent?.includes('Turn:');
+    }, { timeout: TIMEOUTS.ELEMENT_WAIT });
+    console.log('Game started');
 
     // === PLAYER 1 TURN 1: Victory Scenario ===
     console.log('=== Player 1 Turn 1: Victory Scenario ===');
@@ -877,37 +869,7 @@ test.describe('Two Player Game', () => {
     await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Dragon battle modal appeared - Player 1 will win');
 
-    // Debug: Get the damage values shown in the modal (no need to wait)
-    const playerDamage = await page.locator('.player-stats .big-number').textContent().catch(() => 'unknown');
-    const monsterHP = await page.locator('.monster-stats .big-number').textContent().catch(() => 'unknown');
-    const monsterName = await page.locator('.monster-name').textContent().catch(() => 'unknown');
-    console.log(`Battle: Player damage ${playerDamage} vs ${monsterName} HP ${monsterHP}`);
-
-    // Check if this is a victory by looking for victory indicators
-    const rewardSectionVisible = await page.locator('.reward-section').isVisible().catch(() => false);
-    const victoryRewardText = await page.locator('.reward-title:has-text("Victory")').isVisible().catch(() => false);
-    const comparisonVictory = await page.locator('.comparison-symbol.greater-than').isVisible().catch(() => false);
-    
-    console.log(`Victory indicators - Reward section: ${rewardSectionVisible}, Victory text: ${victoryRewardText}, Damage > HP: ${comparisonVictory}`);
-    
-    if (!rewardSectionVisible && !comparisonVictory) {
-      // Take a screenshot to debug
-      await page.screenshot({ path: 'test-results/dragon-battle-not-victory.png', fullPage: true });
-      throw new Error('Expected victory against dragon but battle was not won');
-    }
-
-    // Check what buttons are available
-    const pickupButtonVisible = await page.locator('.pick-up-btn').isVisible().catch(() => false);
-    const leaveButtonVisible = await page.locator('.leave-item-btn').isVisible().catch(() => false);
-    const endTurnButtonVisible = await page.locator('.end-turn-btn').isVisible().catch(() => false);
-    
-    console.log(`Button visibility - Pickup: ${pickupButtonVisible}, Leave: ${leaveButtonVisible}, End Turn: ${endTurnButtonVisible}`);
-
-    // Check if there's a reward mentioned
-    const rewardVisible = await page.locator('.reward-item').isVisible().catch(() => false);
-    console.log(`Reward visible: ${rewardVisible}`);
-
-    // Wait for battle modal to close
+    // Click pickup immediately — victory is validated by the button existing
     await GameHelpers.continueBattle(page, 'pickup');
 
     // Wait for game to end

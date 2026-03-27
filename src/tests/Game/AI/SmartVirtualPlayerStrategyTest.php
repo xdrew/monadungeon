@@ -16,12 +16,14 @@ use App\Game\Movement\GetPlayerPosition;
 use App\Game\Player\GetPlayer;
 use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\Group;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use App\Game\GameLifecycle\GetGame;
 
+#[CoversClass(BasicVirtualPlayerStrategy::class)]
 #[Group('piy')]
 final class SmartVirtualPlayerStrategyTest extends TestCase
 {
@@ -39,6 +41,12 @@ final class SmartVirtualPlayerStrategyTest extends TestCase
             ->willReturn(new JsonResponse(['success' => true, 'actions' => []]));
         
         $this->apiClient = new VirtualPlayerApiClient($this->httpKernel);
+    }
+
+    #[Test]
+    public function pendingTests(): void
+    {
+        self::markTestSkipped('Tests pending rewrite — see TODO comments');
     }
 
     // #[Test] // TODO: Fix test - needs interface for VirtualPlayerApiClient to allow mocking

@@ -22,18 +22,18 @@ final readonly class Action
         Request $request,
     ): Response|Error {
         $actions = [];
-        
+
         try {
             $gameId = Uuid::fromString($request->gameId);
             $playerId = Uuid::fromString($request->playerId);
-            
+
             // Add debug action to track API call
             $actions[] = [
                 'type' => 'api_debug',
                 'details' => ['message' => 'API endpoint called', 'gameId' => $request->gameId, 'playerId' => $request->playerId],
                 'timestamp' => time(),
             ];
-            
+
             // Execute the virtual player's turn
             try {
                 $aiActions = $this->virtualPlayer->executeTurn($gameId, $playerId);
@@ -46,7 +46,7 @@ final readonly class Action
                 ];
                 // Don't rethrow - we want to see the error in the response
             }
-            
+
             return new Response(
                 gameId: $request->gameId,
                 playerId: $request->playerId,
@@ -60,7 +60,7 @@ final readonly class Action
                 'details' => ['error' => $e->getMessage()],
                 'timestamp' => time(),
             ];
-            
+
             return new Response(
                 gameId: $request->gameId ?? 'unknown',
                 playerId: $request->playerId ?? 'unknown',

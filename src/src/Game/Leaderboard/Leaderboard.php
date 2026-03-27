@@ -27,15 +27,6 @@ class Leaderboard
     #[Column(type: UuidType::class)]
     private readonly Uuid $id;
 
-    #[Column(type: Types::STRING)]
-    private string $username;
-
-    #[Column(type: Types::STRING, nullable: true)]
-    private ?string $walletAddress;
-
-    #[Column(type: Types::STRING, nullable: true)]
-    private ?string $externalId;
-
     #[Column(type: Types::INTEGER)]
     private int $victories = 0;
 
@@ -49,14 +40,14 @@ class Leaderboard
     private \DateTimeImmutable $updatedAt;
 
     public function __construct(
-        string $username,
-        ?string $walletAddress = null,
-        ?string $externalId = null,
+        #[Column(type: Types::STRING)]
+        private string $username,
+        #[Column(type: Types::STRING, nullable: true)]
+        private ?string $walletAddress = null,
+        #[Column(type: Types::STRING, nullable: true)]
+        private ?string $externalId = null,
     ) {
         $this->id = Uuid::v7();
-        $this->username = $username;
-        $this->walletAddress = $walletAddress;
-        $this->externalId = $externalId;
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
     }
@@ -103,21 +94,21 @@ class Leaderboard
 
     public function incrementVictories(): void
     {
-        $this->victories++;
+        ++$this->victories;
         $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function incrementTotalGames(): void
     {
-        $this->totalGames++;
+        ++$this->totalGames;
         $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function updateStats(bool $isWinner): void
     {
-        $this->totalGames++;
+        ++$this->totalGames;
         if ($isWinner) {
-            $this->victories++;
+            ++$this->victories;
         }
         $this->updatedAt = new \DateTimeImmutable();
     }

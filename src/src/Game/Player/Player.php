@@ -51,25 +51,25 @@ class Player extends AggregateRoot
     private bool $ready = false;
 
     /**
-     * External ID from authentication provider (e.g., Privy user ID)
+     * External ID from authentication provider (e.g., Privy user ID).
      */
     #[Column(type: Types::STRING, nullable: true)]
     private ?string $externalId = null;
 
     /**
-     * Username from Monad Games ID
+     * Username from Monad Games ID.
      */
     #[Column(type: Types::STRING, nullable: true)]
     private ?string $username = null;
 
     /**
-     * Wallet address from authentication provider
+     * Wallet address from authentication provider.
      */
     #[Column(type: Types::STRING, nullable: true)]
     private ?string $walletAddress = null;
 
     /**
-     * Whether this player is controlled by AI
+     * Whether this player is controlled by AI.
      */
     #[Column(type: BooleanType::class)]
     private bool $isAi = false;
@@ -119,6 +119,7 @@ class Player extends AggregateRoot
         $player->username = $event->username ?? null;
         $player->walletAddress = $event->walletAddress ?? null;
         $player->isAi = $event->isAi;
+
         return $player;
     }
 
@@ -186,7 +187,7 @@ class Player extends AggregateRoot
             // Game is already finished, don't process inventory changes
             return;
         }
-        
+
         $item = $command->item;
         $added = false;
 
@@ -622,7 +623,7 @@ class Player extends AggregateRoot
     }
 
     /**
-     * Get the external ID (e.g., Privy user ID) for this player
+     * Get the external ID (e.g., Privy user ID) for this player.
      */
     public function getExternalId(): ?string
     {
@@ -630,7 +631,7 @@ class Player extends AggregateRoot
     }
 
     /**
-     * Get the username from Monad Games ID
+     * Get the username from Monad Games ID.
      */
     public function getUsername(): ?string
     {

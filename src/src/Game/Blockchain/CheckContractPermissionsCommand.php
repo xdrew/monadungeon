@@ -14,8 +14,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Web3\Contract;
 use Web3\Providers\HttpProvider;
 use Web3\RequestManagers\HttpRequestManager;
-use Web3\Utils;
 use Web3\Web3;
+use Web3p\EthereumUtil\Util;
 
 #[AsCommand(
     name: 'game:blockchain:check-permissions',
@@ -139,16 +139,17 @@ final class CheckContractPermissionsCommand extends Command
                 'check-address',
                 'a',
                 InputOption::VALUE_REQUIRED,
-                'Check if a specific address has permissions'
+                'Check if a specific address has permissions',
             )
-            ->setHelp(<<<'EOF'
-The <info>%command.name%</info> command checks contract permissions:
+            ->setHelp(
+                <<<'EOF'
+                    The <info>%command.name%</info> command checks contract permissions:
 
-  <info>php %command.full_name%</info>
+                      <info>php %command.full_name%</info>
 
-Check specific address permissions:
-  <info>php %command.full_name% --check-address=0x1234...abcd</info>
-EOF
+                    Check specific address permissions:
+                      <info>php %command.full_name% --check-address=0x1234...abcd</info>
+                    EOF,
             );
     }
 
@@ -164,7 +165,7 @@ EOF
                 ['RPC URL', $this->rpcUrl],
                 ['Contract', $this->contractAddress],
                 ['Chain ID', $this->chainId],
-            ]
+            ],
         );
 
         try {
@@ -175,24 +176,24 @@ EOF
             // Get server address from private key
             $serverAddress = $this->getAddressFromPrivateKey();
             $io->section('Current Server Wallet');
-            $io->info("Address: $serverAddress");
+            $io->info("Address: {$serverAddress}");
 
             // Check owner
             $io->section('Contract Ownership');
             $owner = null;
             $hasOwner = false;
-            
+
             try {
-                $contract->call('owner', function ($err, $result) use (&$owner, &$hasOwner) {
+                $contract->call('owner', static function ($err, $result) use (&$owner, &$hasOwner): void {
                     if ($err === null && $result) {
                         $owner = $result[0] ?? null;
                         $hasOwner = true;
                     }
                 });
-                
+
                 if ($hasOwner && $owner) {
-                    $io->info("Contract Owner: $owner");
-                    if (strtolower($owner) === strtolower($serverAddress)) {
+                    $io->info("Contract Owner: {$owner}");
+                    if (strtolower((string) $owner) === strtolower($serverAddress)) {
                         $io->success('✓ Server wallet IS the owner');
                     } else {
                         $io->warning('✗ Server wallet is NOT the owner');
@@ -205,18 +206,18 @@ EOF
             // Check admin
             $admin = null;
             $hasAdmin = false;
-            
+
             try {
-                $contract->call('admin', function ($err, $result) use (&$admin, &$hasAdmin) {
+                $contract->call('admin', static function ($err, $result) use (&$admin, &$hasAdmin): void {
                     if ($err === null && $result) {
                         $admin = $result[0] ?? null;
                         $hasAdmin = true;
                     }
                 });
-                
+
                 if ($hasAdmin && $admin) {
-                    $io->info("Contract Admin: $admin");
-                    if (strtolower($admin) === strtolower($serverAddress)) {
+                    $io->info("Contract Admin: {$admin}");
+                    if (strtolower((string) $admin) === strtolower($serverAddress)) {
                         $io->success('✓ Server wallet IS the admin');
                     } else {
                         $io->warning('✗ Server wallet is NOT the admin');
@@ -228,20 +229,20 @@ EOF
 
             // Check if server is authorized
             $io->section('Authorization Checks');
-            
+
             try {
                 $isAuthorized = null;
-                $contract->call('isAuthorized', $serverAddress, function ($err, $result) use (&$isAuthorized) {
+                $contract->call('isAuthorized', $serverAddress, static function ($err, $result) use (&$isAuthorized): void {
                     if ($err === null && $result) {
                         $isAuthorized = $result[0] ?? false;
                     }
                 });
-                
+
                 if ($isAuthorized !== null) {
                     if ($isAuthorized) {
-                        $io->success("✓ Server wallet IS authorized");
+                        $io->success('✓ Server wallet IS authorized');
                     } else {
-                        $io->warning("✗ Server wallet is NOT authorized");
+                        $io->warning('✗ Server wallet is NOT authorized');
                     }
                 }
             } catch (\Throwable $e) {
@@ -250,77 +251,78 @@ EOF
 
             // Check for role-based access control
             $io->section('Role-Based Access Control');
-            
+
             try {
                 // Check DEFAULT_ADMIN_ROLE
                 $adminRole = null;
-                $contract->call('DEFAULT_ADMIN_ROLE', function ($err, $result) use (&$adminRole) {
+                $contract->call('DEFAULT_ADMIN_ROLE', static function ($err, $result) use (&$adminRole): void {
                     if ($err === null && $result) {
                         $adminRole = $result[0] ?? null;
                     }
                 });
-                
+
                 if ($adminRole) {
                     $hasAdminRole = null;
-                    $contract->call('hasRole', $adminRole, $serverAddress, function ($err, $result) use (&$hasAdminRole) {
+                    $contract->call('hasRole', $adminRole, $serverAddress, static function ($err, $result) use (&$hasAdminRole): void {
                         if ($err === null && $result) {
                             $hasAdminRole = $result[0] ?? false;
                         }
                     });
-                    
+
                     if ($hasAdminRole !== null) {
                         if ($hasAdminRole) {
-                            $io->success("✓ Server wallet HAS DEFAULT_ADMIN_ROLE");
+                            $io->success('✓ Server wallet HAS DEFAULT_ADMIN_ROLE');
                         } else {
-                            $io->warning("✗ Server wallet does NOT have DEFAULT_ADMIN_ROLE");
+                            $io->warning('✗ Server wallet does NOT have DEFAULT_ADMIN_ROLE');
                         }
                     }
                 }
-            } catch (\Throwable $e) {
+            } catch (\Throwable) {
                 $io->note('No role-based access control found');
             }
 
             // Check REGISTRAR_ROLE
             try {
                 $registrarRole = null;
-                $contract->call('REGISTRAR_ROLE', function ($err, $result) use (&$registrarRole) {
+                $contract->call('REGISTRAR_ROLE', static function ($err, $result) use (&$registrarRole): void {
                     if ($err === null && $result) {
                         $registrarRole = $result[0] ?? null;
                     }
                 });
-                
+
                 if ($registrarRole) {
                     $hasRegistrarRole = null;
-                    $contract->call('hasRole', $registrarRole, $serverAddress, function ($err, $result) use (&$hasRegistrarRole) {
+                    $contract->call('hasRole', $registrarRole, $serverAddress, static function ($err, $result) use (&$hasRegistrarRole): void {
                         if ($err === null && $result) {
                             $hasRegistrarRole = $result[0] ?? false;
                         }
                     });
-                    
+
                     if ($hasRegistrarRole !== null) {
                         if ($hasRegistrarRole) {
-                            $io->success("✓ Server wallet HAS REGISTRAR_ROLE");
+                            $io->success('✓ Server wallet HAS REGISTRAR_ROLE');
                         } else {
-                            $io->warning("✗ Server wallet does NOT have REGISTRAR_ROLE");
+                            $io->warning('✗ Server wallet does NOT have REGISTRAR_ROLE');
                         }
                     }
                 }
-            } catch (\Throwable $e) {
+            } catch (\Throwable) {
                 // Silent fail
             }
 
             // Check specific address if provided
             if ($checkAddress) {
-                if (!preg_match('/^0x[a-fA-F0-9]{40}$/', $checkAddress)) {
-                    $io->error("Invalid address format: $checkAddress");
+                if (!preg_match('/^0x[a-fA-F0-9]{40}$/', (string) $checkAddress)) {
+                    $io->error("Invalid address format: {$checkAddress}");
+
                     return Command::FAILURE;
                 }
 
-                $io->section("Checking permissions for: $checkAddress");
+                $io->section("Checking permissions for: {$checkAddress}");
 
                 // Check if owner
                 if ($hasOwner && $owner) {
-                    if (strtolower($owner) === strtolower($checkAddress)) {
+                    if (strtolower((string) $owner) === strtolower((string) $checkAddress)) {
                         $io->success('✓ This address IS the owner');
                     } else {
                         $io->info('✗ This address is NOT the owner');
@@ -329,7 +331,7 @@ EOF
 
                 // Check if admin
                 if ($hasAdmin && $admin) {
-                    if (strtolower($admin) === strtolower($checkAddress)) {
+                    if (strtolower((string) $admin) === strtolower((string) $checkAddress)) {
                         $io->success('✓ This address IS the admin');
                     } else {
                         $io->info('✗ This address is NOT the admin');
@@ -339,20 +341,20 @@ EOF
                 // Check if authorized
                 try {
                     $isAuthorized = null;
-                    $contract->call('isAuthorized', $checkAddress, function ($err, $result) use (&$isAuthorized) {
+                    $contract->call('isAuthorized', $checkAddress, static function ($err, $result) use (&$isAuthorized): void {
                         if ($err === null && $result) {
                             $isAuthorized = $result[0] ?? false;
                         }
                     });
-                    
+
                     if ($isAuthorized !== null) {
                         if ($isAuthorized) {
-                            $io->success("✓ This address IS authorized");
+                            $io->success('✓ This address IS authorized');
                         } else {
-                            $io->info("✗ This address is NOT authorized");
+                            $io->info('✗ This address is NOT authorized');
                         }
                     }
-                } catch (\Throwable $e) {
+                } catch (\Throwable) {
                     // Silent fail
                 }
             }
@@ -365,34 +367,34 @@ EOF
                 'The registerGame function likely requires:',
                 '- Owner/admin privileges',
                 '- REGISTRAR_ROLE',
-                '- Or being on an authorized list'
+                '- Or being on an authorized list',
             ]);
 
             return Command::SUCCESS;
-
         } catch (\Throwable $e) {
             $io->error([
                 'Failed to check contract permissions',
                 $e->getMessage(),
             ]);
-            
+
             $this->logger->error('Contract permissions check failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return Command::FAILURE;
         }
     }
 
     private function getAddressFromPrivateKey(): string
     {
-        $privateKeyHex = str_starts_with($this->privateKey, '0x') 
-            ? substr($this->privateKey, 2) 
+        $privateKeyHex = str_starts_with($this->privateKey, '0x')
+            ? substr($this->privateKey, 2)
             : $this->privateKey;
-            
-        $util = new \Web3p\EthereumUtil\Util();
+
+        $util = new Util();
         $publicKey = $util->privateKeyToPublicKey($privateKeyHex);
+
         return $util->publicKeyToAddress($publicKey);
     }
 }

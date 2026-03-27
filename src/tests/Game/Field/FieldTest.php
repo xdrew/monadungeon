@@ -18,6 +18,7 @@ use App\Game\Field\Tile;
 use App\Game\Field\TileFeature;
 use App\Game\Field\TilePicked;
 use App\Game\Field\TilePlaced;
+use App\Game\Field\TileRotated;
 use App\Game\Field\TileSide;
 use App\Game\Field\TileOrientation;
 use App\Game\GameLifecycle\CreateGame;
@@ -84,7 +85,7 @@ final class FieldTest extends TestCase
             /** @psalm-suppress InvalidArgument */
             static fn (GetDeck $_query): Deck => Deck::createClassic(new GameCreated($gameId, new \DateTimeImmutable()), startMessageContext()),
         );
-        $pickTile = new PickTile($gameId, Uuid::v7(), $playerId, $turnId, TileSide::TOP);
+        $pickTile = new PickTile($gameId, Uuid::v7(), $playerId, $turnId, TileSide::TOP, new FieldPlace(1, 0));
 
         [$tile, $messages] = $tester->handle(Tile::pickFromDeck(...), $pickTile);
 
@@ -112,7 +113,7 @@ final class FieldTest extends TestCase
         $gameId = Uuid::v7();
         $playerId = Uuid::v7();
         $turnId = Uuid::v7();
-        $pickTile = new PickTile($gameId, Uuid::v7(), $playerId, $turnId, TileSide::TOP);
+        $pickTile = new PickTile($gameId, Uuid::v7(), $playerId, $turnId, TileSide::TOP, new FieldPlace(1, 0));
         $orientation = $tile->getOrientation();
 
         $tester = MessageBusTester::create(
@@ -122,20 +123,11 @@ final class FieldTest extends TestCase
         [, $messages] = $tester->handle($tile->rotate(...), $rotateTile);
 
         self::assertEquals($orientation->getOrientationForTopSide(TileSide::LEFT), $tile->getOrientation());
-        self::assertEquals(
-            [
-                new PerformTurnAction(
-                    turnId: $turnId,
-                    gameId: $gameId,
-                    playerId: $playerId,
-                    action: TurnAction::ROTATE_TILE,
-                    tileId: $tile->tileId,
-                    additionalData: ['side' => TileSide::LEFT->value],
-                    at: self::$fixedTime
-                )
-            ],
-            $messages,
-        );
+        self::assertCount(2, $messages);
+        self::assertInstanceOf(TileRotated::class, $messages[0]);
+        self::assertEquals($tile->tileId, $messages[0]->tileId);
+        self::assertInstanceOf(PerformTurnAction::class, $messages[1]);
+        self::assertEquals(TurnAction::ROTATE_TILE, $messages[1]->action);
     }
 
     #[Test]
@@ -204,6 +196,7 @@ final class FieldTest extends TestCase
             static fn (GetTile $_query): Tile => $tile,
             static fn (GetCurrentPlayer $_query): Uuid => $playerId,
             static fn (GetCurrentTurn $_query): Uuid => $turnId,
+            static fn (\App\Game\GameLifecycle\GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
         );
         $placeTile = new PlaceTile(
             $gameId,

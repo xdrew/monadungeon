@@ -47,17 +47,16 @@ use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\StartTurn;
 use App\Game\Turn\TurnAction;
 use App\Infrastructure\Uuid\Uuid;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use function App\Tests\Infrastructure\MessageBus\handle;
 use function App\Tests\Infrastructure\MessageBus\startMessageContext;
 
-/**
- * @covers \App\Game\Movement\Movement
- * @covers \App\Game\Turn\GameTurn
- * @covers \App\Game\Field\Field
- */
+#[CoversClass(Movement::class)]
+#[CoversClass(GameTurn::class)]
+#[CoversClass(Field::class)]
 class MovementAfterBattleTest extends TestCase
 {
     #[Test]
@@ -137,6 +136,7 @@ class MovementAfterBattleTest extends TestCase
             static fn (GetCurrentPlayer $_query): Uuid => $playerId,
             static fn (GetCurrentTurn $_query): Uuid => $turnId,
             static fn (GetTurn $_query) => $turn,
+            static fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
             static function (\App\Game\Movement\GetPlayerPosition $query) use ($movement): FieldPlace {
                 return $movement->getPlayerPosition($query);
             }

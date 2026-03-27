@@ -4,29 +4,20 @@ declare(strict_types=1);
 
 namespace App\Game\AI;
 
-use App\Game\Battle\BattleResult;
-use App\Game\Battle\GetBattle;
-use App\Game\Battle\FinalizeBattle;
 use App\Game\Deck\GetDeck;
 use App\Game\Field\Field;
 use App\Game\Field\FieldPlace;
-use App\Game\Field\GetField;
 use App\Game\Field\GetAvailablePlacesForPlayer;
-use App\Game\Field\PickTile;
-use App\Game\Field\PlaceTile;
+use App\Game\Field\GetField;
 use App\Game\Field\Tile;
+use App\Game\Field\TileOrientation;
 use App\Game\Field\TileSide;
-use App\Game\GameLifecycle\GetGame;
 use App\Game\GameLifecycle\Game;
+use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
-use App\Game\Item\ItemType;
-use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Movement\GetPlayerPosition;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\Player;
-use App\Game\Player\PickItem;
-use App\Game\Player\ReplaceInventoryItem;
-use App\Game\Turn\EndTurn;
 use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
 use Psr\Log\LoggerInterface;
@@ -34,10 +25,13 @@ use Telephantast\MessageBus\MessageBus;
 
 /**
  * Enhanced AI Player with complete game mechanics support
- * Based on analysis of 19 game scenarios
+ * Based on analysis of 19 game scenarios.
  */
 final class EnhancedAIPlayer implements VirtualPlayerStrategy
 {
+    // Turn management
+    private const int MAX_ACTIONS_PER_TURN = 4;
+
     // Strategy configuration
     private array $strategyConfig = [
         'aggressive' => true,
@@ -50,14 +44,17 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
 
     // State tracking
     private ?Game $currentGame = null;
+
     private ?Player $currentPlayer = null;
+
     private ?Field $currentField = null;
+
     private array $lastBattleInfo = [];
+
     private array $actionLog = [];
-    
-    // Turn management
-    private const MAX_ACTIONS_PER_TURN = 4;
+
     private int $currentTurnActions = 0;
+
     private array $turnActionHistory = [];
 
     public function __construct(
@@ -65,9 +62,9 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         private readonly LoggerInterface $logger,
         private readonly VirtualPlayerApiClient $apiClient,
     ) {}
-    
+
     /**
-     * Get the action log for the current turn
+     * Get the action log for the current turn.
      */
     public function getActionLog(): array
     {
@@ -75,12 +72,12 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Execute a complete AI turn with up to 4 actions
+     * Execute a complete AI turn with up to 4 actions.
      */
     public function executeTurn(Uuid $gameId, Uuid $playerId): bool
     {
         try {
-            $this->logger->info("AI executing turn", [
+            $this->logger->info('AI executing turn', [
                 'game_id' => $gameId->toString(),
                 'player_id' => $playerId->toString(),
             ]);
@@ -99,39 +96,41 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                 $this->actionLog[] = [
                     'type' => 'ai_check_failed',
                     'timestamp' => date('H:i:s.v'),
-                    'details' => ['reason' => 'Not AI player turn']
+                    'details' => ['reason' => 'Not AI player turn'],
                 ];
+
                 return false;
             }
 
             // Check if stunned
             if ($this->isStunned()) {
-                $this->logger->info("AI player is stunned, skipping turn");
+                $this->logger->info('AI player is stunned, skipping turn');
                 $this->actionLog[] = [
                     'type' => 'ai_stunned',
                     'timestamp' => date('H:i:s.v'),
-                    'details' => ['reason' => 'Player is stunned']
+                    'details' => ['reason' => 'Player is stunned'],
                 ];
+
                 return true;
             }
 
             // Get current turn ID
             $currentTurn = $this->messageBus->dispatch(new GetCurrentTurn($gameId));
             if (!$currentTurn) {
-                $this->logger->error("Could not get current turn");
+                $this->logger->error('Could not get current turn');
                 $this->actionLog[] = [
                     'type' => 'ai_check_failed',
                     'timestamp' => date('H:i:s.v'),
-                    'details' => ['reason' => 'Could not get current turn']
+                    'details' => ['reason' => 'Could not get current turn'],
                 ];
+
                 return false;
             }
 
             // Execute turn strategy with multiple actions
             return $this->executeTurnStrategyWithActions($gameId, $playerId, $currentTurn->turnId);
-
         } catch (\Throwable $e) {
-            $this->logger->error("AI turn execution failed", [
+            $this->logger->error('AI turn execution failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -141,609 +140,18 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                 'details' => [
                     'error' => $e->getMessage(),
                     'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]
+                    'line' => $e->getLine(),
+                ],
             ];
+
             return false;
         }
-    }
-
-    /**
-     * Execute turn strategy with support for multiple actions (up to 4)
-     */
-    private function executeTurnStrategyWithActions(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
-    {
-        $this->logger->info("Starting AI turn with up to " . self::MAX_ACTIONS_PER_TURN . " actions");
-        
-        // Check if deck has tiles for accurate messaging
-        $deck = $this->messageBus->dispatch(new GetDeck($gameId));
-        $deckEmpty = $deck->isEmpty();
-        
-        // Log AI turn start
-        $this->actionLog[] = [
-            'type' => 'ai_start',
-            'timestamp' => date('H:i:s.v'),
-            'details' => ['message' => $deckEmpty ? 'Starting AI turn - movement only' : 'Starting AI turn - 1 tile placement']
-        ];
-        
-        // Keep executing actions until we hit the limit or decide to end
-        while ($this->currentTurnActions < self::MAX_ACTIONS_PER_TURN) {
-            $this->logger->debug("AI executing action " . ($this->currentTurnActions + 1) . " of " . self::MAX_ACTIONS_PER_TURN);
-            
-            // Refresh state for each action
-            $this->refreshGameState($gameId, $playerId);
-            
-            // Decide next action based on current state
-            $actionResult = $this->decideAndExecuteNextAction($gameId, $playerId, $turnId);
-            
-            if ($actionResult === null) {
-                // No more beneficial actions, end turn
-                $this->logger->info("No more beneficial actions, ending turn after {$this->currentTurnActions} actions");
-                break;
-            }
-            
-            // Increment action count BEFORE checking for end conditions
-            // This ensures tile placement counts as an action
-            $this->currentTurnActions++;
-            $this->turnActionHistory[] = $actionResult;
-            
-            if ($actionResult['endsNow'] ?? false) {
-                // Action requires turn end (e.g., healing)
-                $this->logger->info("Action requires turn end, ending after {$this->currentTurnActions} actions");
-                break;
-            }
-            
-            // Small delay between actions for game processing
-            usleep(100000); // 0.1 second
-        }
-        
-        // End turn after all actions or when forced
-        return $this->endTurn($gameId, $playerId, $turnId);
-    }
-
-    /**
-     * Decide and execute the next best action
-     */
-    private function decideAndExecuteNextAction(Uuid $gameId, Uuid $playerId, Uuid $turnId): ?array
-    {
-        // Clear battle info from previous action
-        $this->lastBattleInfo = [];
-        
-        // Priority 1: If critically low HP and healing available
-        if ($this->needsHealing()) {
-            $this->logger->info("AI needs healing", [
-                'current_hp' => $this->currentPlayer->hp,
-                'max_hp' => $this->currentPlayer->maxHp,
-                'threshold' => $this->strategyConfig['healingThreshold']
-            ]);
-            
-            // Log healing fountain availability
-            $healingPositions = $this->currentField->healingFountainPositions ?? [];
-            $this->logger->info("Healing fountains available", [
-                'count' => count($healingPositions),
-                'positions' => $healingPositions
-            ]);
-            
-            $result = $this->moveToHealingFountain($gameId, $playerId, $turnId);
-            if ($result) {
-                $this->actionLog[] = [
-                    'type' => 'ai_healing',
-                    'timestamp' => date('H:i:s.v'),
-                    'details' => ['message' => 'Moving to healing fountain due to low HP']
-                ];
-                return ['action' => 'heal', 'success' => $result, 'endsNow' => true];
-            } else {
-                $this->logger->warning("AI needs healing but couldn't move to fountain");
-            }
-        }
-        
-        // Priority 2: If this is our first action, try to place a tile (if deck is not empty)
-        if ($this->currentTurnActions === 0) {
-            // Check if deck has tiles remaining
-            $deck = $this->messageBus->dispatch(new GetDeck($gameId));
-            
-            if (!$deck->isEmpty()) {
-                $result = $this->executeTilePlacementStrategy($gameId, $playerId, $turnId);
-                if ($result) {
-                    // Check if battle occurred during tile placement
-                    $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
-                    
-                    // Battle forces turn end
-                    return ['action' => 'place_tile', 'success' => $result, 'endsNow' => $battleOccurred];
-                }
-            } else {
-                $this->logger->info("Deck is empty, skipping tile placement");
-                $this->actionLog[] = [
-                    'type' => 'ai_decision',
-                    'timestamp' => date('H:i:s.v'),
-                    'details' => [
-                        'decision' => 'Skip tile placement',
-                        'reason' => 'Deck is empty'
-                    ]
-                ];
-            }
-        }
-        
-        // Priority 2.5: Always check if there's an item at current position (from previous battle)
-        $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
-        
-        // Try to pick up any item at current position
-        // This handles cases where a battle occurred in the previous action
-        $pickResult = $this->apiClient->pickItem(
-            $gameId,
-            $playerId,
-            $turnId,
-            $currentPosition->positionX,
-            $currentPosition->positionY
-        );
-        
-        if ($pickResult['success']) {
-            $this->logger->info("AI picked up item at current position", [
-                'position' => $currentPosition->toString()
-            ]);
-            
-            // Check if inventory is full
-            if (isset($pickResult['response']['inventoryFull']) && $pickResult['response']['inventoryFull']) {
-                $this->handleInventoryFull($gameId, $playerId, $turnId, $pickResult['response']);
-            }
-            
-            // Item pickup doesn't end turn anymore, we can continue
-            return ['action' => 'pick_item', 'success' => true, 'endsNow' => false];
-        }
-        
-        // Original check for known items on the map
-        if ($this->hasItemAtPosition($currentPosition)) {
-            $result = $this->apiClient->pickItem(
-                $gameId,
-                $playerId,
-                $turnId,
-                $currentPosition->positionX,
-                $currentPosition->positionY
-            );
-            
-            if ($result['success']) {
-                $this->logger->info("AI picked up item after battle", [
-                    'position' => $currentPosition->toString()
-                ]);
-                
-                // Check if inventory is full
-                if (isset($result['response']['inventoryFull']) && $result['response']['inventoryFull']) {
-                    $this->handleInventoryFull($gameId, $playerId, $turnId, $result['response']);
-                }
-                
-                // Item pickup doesn't end turn anymore, we can continue
-                return ['action' => 'pick_item', 'success' => true, 'endsNow' => false];
-            }
-        }
-        
-        // Priority 3: Look for monsters guarding valuable items
-        if ($this->strategyConfig['targetMonsterItems']) {
-            $monsterTarget = $this->findMonsterWithValuableItem($playerId);
-            if ($monsterTarget) {
-                $result = $this->executeMovement($gameId, $playerId, $turnId, $monsterTarget);
-                if ($result) {
-                    // Check if battle occurred during this movement
-                    $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
-                    
-                    return [
-                        'action' => 'attack_monster',
-                        'type' => $monsterTarget['type'],
-                        'target_item' => $monsterTarget['targetItem'] ?? 'unknown',
-                        'success' => $result,
-                        'endsNow' => $battleOccurred
-                    ];
-                }
-            }
-        }
-        
-        // Priority 4: Look for other valuable movements (items, teleports)
-        $movement = $this->findBeneficialMovement($playerId);
-        if ($movement) {
-            $result = $this->executeMovement($gameId, $playerId, $turnId, $movement);
-            if ($result) {
-                // Check if battle occurred during this movement
-                $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
-                
-                return [
-                    'action' => 'movement',
-                    'type' => $movement['type'],
-                    'success' => $result,
-                    'endsNow' => $battleOccurred || ($movement['endsAfterMove'] ?? false)
-                ];
-            }
-        }
-        
-        // Priority 5: Explore more tiles if we have actions left
-        if ($this->currentTurnActions < self::MAX_ACTIONS_PER_TURN - 1) {
-            $availablePlaces = $this->messageBus->dispatch(
-                new GetAvailablePlacesForPlayer($gameId, $playerId)
-            );
-            
-            if (!empty($availablePlaces->moveTo)) {
-                // Move to explore more of the map
-                $explorationMove = $this->chooseBestExplorationMove($availablePlaces->moveTo);
-                
-                if ($explorationMove) {
-                    $result = $this->apiClient->movePlayer(
-                        $gameId,
-                        $playerId,
-                        $turnId,
-                        $currentPosition->positionX,
-                        $currentPosition->positionY,
-                        $explorationMove->positionX,
-                        $explorationMove->positionY,
-                        false
-                    );
-                    
-                    if ($result['success']) {
-                        // Check if battle occurred
-                        $battleOccurred = isset($result['response']['battleInfo']);
-                        if ($battleOccurred) {
-                            $battleInfo = $result['response']['battleInfo'];
-                            $this->handleBattle($gameId, $playerId, $turnId, $battleInfo);
-                            
-                            // If we won and there's a reward, pick it up immediately
-                            if ($battleInfo['result'] === 'win' && isset($battleInfo['reward'])) {
-                                $position = FieldPlace::fromString($battleInfo['position']);
-                                $pickResult = $this->apiClient->pickItem(
-                                    $gameId,
-                                    $playerId,
-                                    $turnId,
-                                    $position->positionX,
-                                    $position->positionY
-                                );
-                                
-                                if ($pickResult['success']) {
-                                    $this->logger->info("AI picked up battle reward after exploration", [
-                                        'item' => $battleInfo['reward']['name'] ?? 'unknown'
-                                    ]);
-                                    
-                                    if (isset($pickResult['response']['inventoryFull']) && $pickResult['response']['inventoryFull']) {
-                                        $this->handleInventoryFull($gameId, $playerId, $turnId, $pickResult['response']);
-                                    }
-                                }
-                            }
-                        }
-                        return [
-                            'action' => 'exploration_move',
-                            'success' => true,
-                            'endsNow' => $battleOccurred // Battle forces turn end
-                        ];
-                    }
-                }
-            }
-        }
-        
-        // No beneficial action found
-        return null;
-    }
-
-    /**
-     * Execute the main turn strategy (legacy - for single action)
-     */
-    private function executeTurnStrategy(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
-    {
-        // This is kept for backward compatibility but redirects to multi-action
-        return $this->executeTurnStrategyWithActions($gameId, $playerId, $turnId);
-    }
-
-    /**
-     * Execute tile placement strategy
-     */
-    private function executeTilePlacementStrategy(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
-    {
-        // Get available places for tile placement
-        $availablePlaces = $this->messageBus->dispatch(
-            new GetAvailablePlacesForPlayer($gameId, $playerId)
-        );
-
-        if (empty($availablePlaces->placeTile)) {
-            // Only movement available
-            return false; // Return false to indicate no tile was placed
-        }
-
-        // Choose best placement position
-        $bestPosition = $this->chooseBestTilePlacement($availablePlaces->placeTile);
-        
-        // Get current position
-        $currentPosition = $this->messageBus->dispatch(
-            new GetPlayerPosition($gameId, $playerId)
-        );
-
-        // Log tile placement decision
-        $this->actionLog[] = [
-            'type' => 'ai_decision',
-            'timestamp' => date('H:i:s.v'),
-            'details' => [
-                'decision' => 'Executing tile placement sequence',
-                'target' => "{$bestPosition->positionX},{$bestPosition->positionY}"
-            ]
-        ];
-        
-        // Execute tile placement sequence using API client
-        $result = $this->apiClient->placeTileSequence(
-            $gameId,
-            $playerId,
-            $turnId,
-            $bestPosition->positionX,
-            $bestPosition->positionY,
-            TileSide::THREE, // Default to 3 open sides
-            $currentPosition->positionX,
-            $currentPosition->positionY
-        );
-
-        if (!$result['success']) {
-            $this->logger->error("Tile placement sequence failed", $result);
-            $this->actionLog[] = [
-                'type' => 'error',
-                'timestamp' => date('H:i:s.v'),
-                'details' => ['message' => 'Tile placement failed', 'error' => $result['error'] ?? 'Unknown']
-            ];
-            return false;
-        }
-        
-        // Log each step from the placement sequence
-        if (isset($result['actions'])) {
-            foreach ($result['actions'] as $action) {
-                if (isset($action['step']) && isset($action['result'])) {
-                    $this->actionLog[] = [
-                        'type' => $action['step'],
-                        'timestamp' => date('H:i:s.v'),
-                        'details' => ['result' => $action['result']]
-                    ];
-                }
-            }
-        }
-
-        $this->logger->debug("PlaceTileSequence result", [
-            'has_actions' => isset($result['actions']),
-            'action_count' => isset($result['actions']) ? count($result['actions']) : 0,
-            'result_keys' => array_keys($result)
-        ]);
-
-        // Check if battle occurred and handle it
-        $battleOccurred = false;
-        $battleWon = false;
-        $hasReward = false;
-        
-        if (isset($result['actions'])) {
-            $this->logger->debug("Checking actions from placeTileSequence", [
-                'action_count' => count($result['actions'])
-            ]);
-            
-            foreach ($result['actions'] as $action) {
-                $this->logger->debug("Processing action", [
-                    'step' => $action['step'],
-                    'has_battleInfo' => isset($action['result']['response']['battleInfo'])
-                ]);
-                
-                if ($action['step'] === 'move_player' && isset($action['result']['response']['battleInfo'])) {
-                    $battleOccurred = true;
-                    $battleInfo = $action['result']['response']['battleInfo'];
-                    
-                    // Log battle detection
-                    $this->actionLog[] = [
-                        'type' => 'battle_detected',
-                        'timestamp' => date('H:i:s.v'),
-                        'details' => ['battleResult' => $battleInfo['result'] ?? 'unknown']
-                    ];
-                    
-                    // Handle the battle
-                    $this->handleBattle($gameId, $playerId, $turnId, $battleInfo);
-                    
-                    // Check if we won and there's a reward
-                    if ($battleInfo['result'] === 'win' && isset($battleInfo['reward'])) {
-                        $battleWon = true;
-                        $hasReward = true;
-                        
-                        // Check if pickup was already handled by VirtualPlayerApiClient
-                        $pickupAlreadyDone = $battleInfo['pickupSuccess'] ?? false;
-                        
-                        if ($pickupAlreadyDone) {
-                            $this->logger->info("Battle reward already picked up by API client", [
-                                'monster' => $battleInfo['monsterType'] ?? 'unknown',
-                                'reward' => $battleInfo['reward']['name'] ?? 'unknown'
-                            ]);
-                        } else {
-                            $this->logger->info("Battle won with reward, attempting manual pickup", [
-                                'monster' => $battleInfo['monsterType'] ?? 'unknown',
-                                'reward' => $battleInfo['reward']['name'] ?? 'unknown',
-                                'position' => $battleInfo['position']
-                            ]);
-                            
-                            // Try to pick up the reward manually as fallback
-                            $position = FieldPlace::fromString($battleInfo['position']);
-                            
-                            // Add explicit action tracking
-                            $this->actionLog[] = [
-                                'type' => 'pick_item_attempt',
-                                'position' => $battleInfo['position'],
-                                'item' => $battleInfo['reward']['name'] ?? 'unknown'
-                            ];
-                            
-                            $pickResult = $this->apiClient->pickItem(
-                                $gameId,
-                                $playerId,
-                                $turnId,
-                                $position->positionX,
-                                $position->positionY
-                            );
-                            
-                            if ($pickResult['success']) {
-                                $this->logger->info("AI successfully picked up battle reward", [
-                                    'item' => $battleInfo['reward']['name'] ?? 'unknown'
-                                ]);
-                                
-                                // Handle inventory full
-                                if (isset($pickResult['response']['inventoryFull']) && $pickResult['response']['inventoryFull']) {
-                                    $this->handleInventoryFull($gameId, $playerId, $turnId, $pickResult['response']);
-                                }
-                            } else {
-                                $this->logger->error("Failed to pick up battle reward", [
-                                    'item' => $battleInfo['reward']['name'] ?? 'unknown',
-                                    'position' => $battleInfo['position'],
-                                    'error' => $pickResult['response']['message'] ?? 'Unknown error'
-                                ]);
-                            }
-                        }
-                    }
-                }
-                
-                // Also check handle_battle step for additional pickup info
-                if ($action['step'] === 'handle_battle' && isset($action['result'])) {
-                    $battleHandleResult = $action['result'];
-                    if ($battleHandleResult['battleOccurred'] ?? false) {
-                        $battleOccurred = true;
-                        
-                        if (($battleHandleResult['pickupAttempted'] ?? false) && !($battleHandleResult['pickupSuccess'] ?? false)) {
-                            $this->logger->warning("Battle reward pickup failed in API client", [
-                                'error' => $battleHandleResult['pickupError'] ?? 'Unknown'
-                            ]);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Store battle status for the caller to check
-        $this->lastBattleInfo = $battleOccurred ? ['occurred' => true] : [];
-        
-        // Return true to indicate tile was placed successfully
-        return true;
-    }
-
-    /**
-     * Handle battle logic
-     */
-    private function handleBattle(Uuid $gameId, Uuid $playerId, Uuid $turnId, array $battleInfo): bool
-    {
-        $battleId = Uuid::fromString($battleInfo['battleId']);
-        $result = $battleInfo['result'];
-
-        $this->logger->info("AI handling battle", [
-            'result' => $result,
-            'monster' => $battleInfo['monsterType'] ?? 'unknown',
-            'damage' => $battleInfo['totalDamage'] ?? 0,
-        ]);
-
-        switch ($result) {
-            case 'win':
-                return $this->handleBattleVictory($gameId, $playerId, $turnId, $battleInfo);
-            case 'draw':
-                return $this->handleBattleDraw($gameId, $playerId, $turnId, $battleId, $battleInfo);
-            case 'lose':
-                return $this->handleBattleDefeat($gameId, $playerId, $turnId, $battleId, $battleInfo);
-            default:
-                $this->logger->error("Unknown battle result", ['result' => $result]);
-                return false;
-        }
-    }
-
-    /**
-     * Handle battle victory
-     */
-    private function handleBattleVictory(Uuid $gameId, Uuid $playerId, Uuid $turnId, array $battleInfo): bool
-    {
-        $this->logger->info("Battle won!", [
-            'monster' => $battleInfo['monsterType'] ?? 'unknown',
-            'has_reward' => isset($battleInfo['reward'])
-        ]);
-        
-        // Note: Item pickup is handled separately in the next action
-        // This allows the AI to continue with more actions after battle
-        return true;
-    }
-
-    /**
-     * Handle battle draw (can use consumables)
-     */
-    private function handleBattleDraw(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $battleId, array $battleInfo): bool
-    {
-        $consumables = $battleInfo['availableConsumables'] ?? [];
-        
-        // Choose consumables to use
-        $selectedConsumables = $this->chooseConsumables($consumables, $battleInfo);
-        
-        // Finalize battle with consumables
-        $result = $this->apiClient->finalizeBattle(
-            $gameId,
-            $playerId,
-            $turnId,
-            $battleId,
-            $selectedConsumables,
-            true // Try to pick up item
-        );
-
-        return $result['success'];
-    }
-
-    /**
-     * Handle battle defeat
-     */
-    private function handleBattleDefeat(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $battleId, array $battleInfo): bool
-    {
-        $consumables = $battleInfo['availableConsumables'] ?? [];
-        
-        if (!empty($consumables)) {
-            $selectedConsumables = $this->chooseConsumables($consumables, $battleInfo);
-            
-            if (!empty($selectedConsumables)) {
-                $result = $this->apiClient->finalizeBattle(
-                    $gameId,
-                    $playerId,
-                    $turnId,
-                    $battleId,
-                    $selectedConsumables,
-                    true
-                );
-                return $result['success'];
-            }
-        }
-
-        // Accept defeat
-        $result = $this->apiClient->finalizeBattle(
-            $gameId,
-            $playerId,
-            $turnId,
-            $battleId,
-            [],
-            false
-        );
-
-        return $result['success'];
-    }
-
-    /**
-     * Handle inventory full situation
-     */
-    private function handleInventoryFull(Uuid $gameId, Uuid $playerId, Uuid $turnId, array $pickupResult): bool
-    {
-        $newItem = $pickupResult['item'];
-        $currentInventory = $pickupResult['currentInventory'];
-        
-        // Choose item to replace
-        $itemToReplace = $this->chooseItemToReplace($newItem, $currentInventory);
-        
-        if ($itemToReplace) {
-            $result = $this->apiClient->inventoryAction(
-                $gameId,
-                $playerId,
-                $turnId,
-                'replace',
-                Uuid::fromString($newItem['itemId']),
-                Uuid::fromString($itemToReplace['itemId'])
-            );
-            return $result['success'];
-        }
-
-        // Leave the item
-        return true;
     }
 
     // ==================== VirtualPlayerStrategy Interface Implementation ====================
 
     /**
-     * Choose which tile to pick from available tiles
+     * Choose which tile to pick from available tiles.
      */
     public function chooseTile(array $availableTiles, Field $field, Uuid $playerId): Tile
     {
@@ -753,7 +161,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Choose where to place the selected tile
+     * Choose where to place the selected tile.
      */
     public function chooseTilePlacement(Tile $tile, array $availablePlaces, Field $field, Uuid $playerId): FieldPlace
     {
@@ -773,9 +181,9 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Choose the optimal orientation for the tile
+     * Choose the optimal orientation for the tile.
      */
-    public function chooseTileOrientation(Tile $tile, FieldPlace $position, Field $field): \App\Game\Field\TileOrientation
+    public function chooseTileOrientation(Tile $tile, FieldPlace $position, Field $field): TileOrientation
     {
         // For now, return the default orientation
         // More sophisticated strategies could analyze neighboring tiles
@@ -783,7 +191,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Choose which position to move to
+     * Choose which position to move to.
      */
     public function chooseMovement(FieldPlace $currentPosition, array $availableMoves, Field $field, Player $player): FieldPlace
     {
@@ -802,10 +210,624 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         return $bestMove ?? $availableMoves[0];
     }
 
+    /**
+     * Set strategy configuration.
+     */
+    public function setStrategyConfig(array $config): void
+    {
+        $this->strategyConfig = array_merge($this->strategyConfig, $config);
+    }
+
+    /**
+     * Get current strategy configuration.
+     */
+    public function getStrategyConfig(): array
+    {
+        return $this->strategyConfig;
+    }
+
+    /**
+     * Execute turn strategy with support for multiple actions (up to 4).
+     */
+    private function executeTurnStrategyWithActions(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
+    {
+        $this->logger->info('Starting AI turn with up to ' . self::MAX_ACTIONS_PER_TURN . ' actions');
+
+        // Check if deck has tiles for accurate messaging
+        $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+        $deckEmpty = $deck->isEmpty();
+
+        // Log AI turn start
+        $this->actionLog[] = [
+            'type' => 'ai_start',
+            'timestamp' => date('H:i:s.v'),
+            'details' => ['message' => $deckEmpty ? 'Starting AI turn - movement only' : 'Starting AI turn - 1 tile placement'],
+        ];
+
+        // Keep executing actions until we hit the limit or decide to end
+        while ($this->currentTurnActions < self::MAX_ACTIONS_PER_TURN) {
+            $this->logger->debug('AI executing action ' . ($this->currentTurnActions + 1) . ' of ' . self::MAX_ACTIONS_PER_TURN);
+
+            // Refresh state for each action
+            $this->refreshGameState($gameId, $playerId);
+
+            // Decide next action based on current state
+            $actionResult = $this->decideAndExecuteNextAction($gameId, $playerId, $turnId);
+
+            if ($actionResult === null) {
+                // No more beneficial actions, end turn
+                $this->logger->info("No more beneficial actions, ending turn after {$this->currentTurnActions} actions");
+                break;
+            }
+
+            // Increment action count BEFORE checking for end conditions
+            // This ensures tile placement counts as an action
+            ++$this->currentTurnActions;
+            $this->turnActionHistory[] = $actionResult;
+
+            if ($actionResult['endsNow'] ?? false) {
+                // Action requires turn end (e.g., healing)
+                $this->logger->info("Action requires turn end, ending after {$this->currentTurnActions} actions");
+                break;
+            }
+
+            // Small delay between actions for game processing
+            usleep(100000); // 0.1 second
+        }
+
+        // End turn after all actions or when forced
+        return $this->endTurn($gameId, $playerId, $turnId);
+    }
+
+    /**
+     * Decide and execute the next best action.
+     */
+    private function decideAndExecuteNextAction(Uuid $gameId, Uuid $playerId, Uuid $turnId): ?array
+    {
+        // Clear battle info from previous action
+        $this->lastBattleInfo = [];
+
+        // Priority 1: If critically low HP and healing available
+        if ($this->needsHealing()) {
+            $this->logger->info('AI needs healing', [
+                'current_hp' => $this->currentPlayer->hp,
+                'max_hp' => $this->currentPlayer->maxHp,
+                'threshold' => $this->strategyConfig['healingThreshold'],
+            ]);
+
+            // Log healing fountain availability
+            $healingPositions = $this->currentField->healingFountainPositions ?? [];
+            $this->logger->info('Healing fountains available', [
+                'count' => \count($healingPositions),
+                'positions' => $healingPositions,
+            ]);
+
+            $result = $this->moveToHealingFountain($gameId, $playerId, $turnId);
+            if ($result) {
+                $this->actionLog[] = [
+                    'type' => 'ai_healing',
+                    'timestamp' => date('H:i:s.v'),
+                    'details' => ['message' => 'Moving to healing fountain due to low HP'],
+                ];
+
+                return ['action' => 'heal', 'success' => $result, 'endsNow' => true];
+            }
+            $this->logger->warning("AI needs healing but couldn't move to fountain");
+        }
+
+        // Priority 2: If this is our first action, try to place a tile (if deck is not empty)
+        if ($this->currentTurnActions === 0) {
+            // Check if deck has tiles remaining
+            $deck = $this->messageBus->dispatch(new GetDeck($gameId));
+
+            if (!$deck->isEmpty()) {
+                $result = $this->executeTilePlacementStrategy($gameId, $playerId, $turnId);
+                if ($result) {
+                    // Check if battle occurred during tile placement
+                    $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
+
+                    // Battle forces turn end
+                    return ['action' => 'place_tile', 'success' => $result, 'endsNow' => $battleOccurred];
+                }
+            } else {
+                $this->logger->info('Deck is empty, skipping tile placement');
+                $this->actionLog[] = [
+                    'type' => 'ai_decision',
+                    'timestamp' => date('H:i:s.v'),
+                    'details' => [
+                        'decision' => 'Skip tile placement',
+                        'reason' => 'Deck is empty',
+                    ],
+                ];
+            }
+        }
+
+        // Priority 2.5: Always check if there's an item at current position (from previous battle)
+        $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+
+        // Try to pick up any item at current position
+        // This handles cases where a battle occurred in the previous action
+        $pickResult = $this->apiClient->pickItem(
+            $gameId,
+            $playerId,
+            $turnId,
+            $currentPosition->positionX,
+            $currentPosition->positionY,
+        );
+
+        if ($pickResult['success']) {
+            $this->logger->info('AI picked up item at current position', [
+                'position' => $currentPosition->toString(),
+            ]);
+
+            // Check if inventory is full
+            if (isset($pickResult['response']['inventoryFull']) && $pickResult['response']['inventoryFull']) {
+                $this->handleInventoryFull($gameId, $playerId, $turnId, $pickResult['response']);
+            }
+
+            // Item pickup doesn't end turn anymore, we can continue
+            return ['action' => 'pick_item', 'success' => true, 'endsNow' => false];
+        }
+
+        // Original check for known items on the map
+        if ($this->hasItemAtPosition($currentPosition)) {
+            $result = $this->apiClient->pickItem(
+                $gameId,
+                $playerId,
+                $turnId,
+                $currentPosition->positionX,
+                $currentPosition->positionY,
+            );
+
+            if ($result['success']) {
+                $this->logger->info('AI picked up item after battle', [
+                    'position' => $currentPosition->toString(),
+                ]);
+
+                // Check if inventory is full
+                if (isset($result['response']['inventoryFull']) && $result['response']['inventoryFull']) {
+                    $this->handleInventoryFull($gameId, $playerId, $turnId, $result['response']);
+                }
+
+                // Item pickup doesn't end turn anymore, we can continue
+                return ['action' => 'pick_item', 'success' => true, 'endsNow' => false];
+            }
+        }
+
+        // Priority 3: Look for monsters guarding valuable items
+        if ($this->strategyConfig['targetMonsterItems']) {
+            $monsterTarget = $this->findMonsterWithValuableItem($playerId);
+            if ($monsterTarget) {
+                $result = $this->executeMovement($gameId, $playerId, $turnId, $monsterTarget);
+                if ($result) {
+                    // Check if battle occurred during this movement
+                    $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
+
+                    return [
+                        'action' => 'attack_monster',
+                        'type' => $monsterTarget['type'],
+                        'target_item' => $monsterTarget['targetItem'] ?? 'unknown',
+                        'success' => $result,
+                        'endsNow' => $battleOccurred,
+                    ];
+                }
+            }
+        }
+
+        // Priority 4: Look for other valuable movements (items, teleports)
+        $movement = $this->findBeneficialMovement($playerId);
+        if ($movement) {
+            $result = $this->executeMovement($gameId, $playerId, $turnId, $movement);
+            if ($result) {
+                // Check if battle occurred during this movement
+                $battleOccurred = !empty($this->lastBattleInfo) && ($this->lastBattleInfo['occurred'] ?? false);
+
+                return [
+                    'action' => 'movement',
+                    'type' => $movement['type'],
+                    'success' => $result,
+                    'endsNow' => $battleOccurred || ($movement['endsAfterMove'] ?? false),
+                ];
+            }
+        }
+
+        // Priority 5: Explore more tiles if we have actions left
+        if ($this->currentTurnActions < self::MAX_ACTIONS_PER_TURN - 1) {
+            $availablePlaces = $this->messageBus->dispatch(
+                new GetAvailablePlacesForPlayer($gameId, $playerId),
+            );
+
+            if (!empty($availablePlaces->moveTo)) {
+                // Move to explore more of the map
+                $explorationMove = $this->chooseBestExplorationMove($availablePlaces->moveTo);
+
+                if ($explorationMove) {
+                    $result = $this->apiClient->movePlayer(
+                        $gameId,
+                        $playerId,
+                        $turnId,
+                        $currentPosition->positionX,
+                        $currentPosition->positionY,
+                        $explorationMove->positionX,
+                        $explorationMove->positionY,
+                        false,
+                    );
+
+                    if ($result['success']) {
+                        // Check if battle occurred
+                        $battleOccurred = isset($result['response']['battleInfo']);
+                        if ($battleOccurred) {
+                            $battleInfo = $result['response']['battleInfo'];
+                            $this->handleBattle($gameId, $playerId, $turnId, $battleInfo);
+
+                            // If we won and there's a reward, pick it up immediately
+                            if ($battleInfo['result'] === 'win' && isset($battleInfo['reward'])) {
+                                $position = FieldPlace::fromString($battleInfo['position']);
+                                $pickResult = $this->apiClient->pickItem(
+                                    $gameId,
+                                    $playerId,
+                                    $turnId,
+                                    $position->positionX,
+                                    $position->positionY,
+                                );
+
+                                if ($pickResult['success']) {
+                                    $this->logger->info('AI picked up battle reward after exploration', [
+                                        'item' => $battleInfo['reward']['name'] ?? 'unknown',
+                                    ]);
+
+                                    if (isset($pickResult['response']['inventoryFull']) && $pickResult['response']['inventoryFull']) {
+                                        $this->handleInventoryFull($gameId, $playerId, $turnId, $pickResult['response']);
+                                    }
+                                }
+                            }
+                        }
+
+                        return [
+                            'action' => 'exploration_move',
+                            'success' => true,
+                            'endsNow' => $battleOccurred, // Battle forces turn end
+                        ];
+                    }
+                }
+            }
+        }
+
+        // No beneficial action found
+        return null;
+    }
+
+    /**
+     * Execute the main turn strategy (legacy - for single action).
+     */
+    private function executeTurnStrategy(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
+    {
+        // This is kept for backward compatibility but redirects to multi-action
+        return $this->executeTurnStrategyWithActions($gameId, $playerId, $turnId);
+    }
+
+    /**
+     * Execute tile placement strategy.
+     */
+    private function executeTilePlacementStrategy(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
+    {
+        // Get available places for tile placement
+        $availablePlaces = $this->messageBus->dispatch(
+            new GetAvailablePlacesForPlayer($gameId, $playerId),
+        );
+
+        if (empty($availablePlaces->placeTile)) {
+            // Only movement available
+            return false; // Return false to indicate no tile was placed
+        }
+
+        // Choose best placement position
+        $bestPosition = $this->chooseBestTilePlacement($availablePlaces->placeTile);
+
+        // Get current position
+        $currentPosition = $this->messageBus->dispatch(
+            new GetPlayerPosition($gameId, $playerId),
+        );
+
+        // Log tile placement decision
+        $this->actionLog[] = [
+            'type' => 'ai_decision',
+            'timestamp' => date('H:i:s.v'),
+            'details' => [
+                'decision' => 'Executing tile placement sequence',
+                'target' => "{$bestPosition->positionX},{$bestPosition->positionY}",
+            ],
+        ];
+
+        // Execute tile placement sequence using API client
+        $result = $this->apiClient->placeTileSequence(
+            $gameId,
+            $playerId,
+            $turnId,
+            $bestPosition->positionX,
+            $bestPosition->positionY,
+            TileSide::THREE, // Default to 3 open sides
+            $currentPosition->positionX,
+            $currentPosition->positionY,
+        );
+
+        if (!$result['success']) {
+            $this->logger->error('Tile placement sequence failed', $result);
+            $this->actionLog[] = [
+                'type' => 'error',
+                'timestamp' => date('H:i:s.v'),
+                'details' => ['message' => 'Tile placement failed', 'error' => $result['error'] ?? 'Unknown'],
+            ];
+
+            return false;
+        }
+
+        // Log each step from the placement sequence
+        if (isset($result['actions'])) {
+            foreach ($result['actions'] as $action) {
+                if (isset($action['step'], $action['result'])) {
+                    $this->actionLog[] = [
+                        'type' => $action['step'],
+                        'timestamp' => date('H:i:s.v'),
+                        'details' => ['result' => $action['result']],
+                    ];
+                }
+            }
+        }
+
+        $this->logger->debug('PlaceTileSequence result', [
+            'has_actions' => isset($result['actions']),
+            'action_count' => isset($result['actions']) ? \count($result['actions']) : 0,
+            'result_keys' => array_keys($result),
+        ]);
+
+        // Check if battle occurred and handle it
+        $battleOccurred = false;
+        $battleWon = false;
+        $hasReward = false;
+
+        if (isset($result['actions'])) {
+            $this->logger->debug('Checking actions from placeTileSequence', [
+                'action_count' => \count($result['actions']),
+            ]);
+
+            foreach ($result['actions'] as $action) {
+                $this->logger->debug('Processing action', [
+                    'step' => $action['step'],
+                    'has_battleInfo' => isset($action['result']['response']['battleInfo']),
+                ]);
+
+                if ($action['step'] === 'move_player' && isset($action['result']['response']['battleInfo'])) {
+                    $battleOccurred = true;
+                    $battleInfo = $action['result']['response']['battleInfo'];
+
+                    // Log battle detection
+                    $this->actionLog[] = [
+                        'type' => 'battle_detected',
+                        'timestamp' => date('H:i:s.v'),
+                        'details' => ['battleResult' => $battleInfo['result'] ?? 'unknown'],
+                    ];
+
+                    // Handle the battle
+                    $this->handleBattle($gameId, $playerId, $turnId, $battleInfo);
+
+                    // Check if we won and there's a reward
+                    if ($battleInfo['result'] === 'win' && isset($battleInfo['reward'])) {
+                        $battleWon = true;
+                        $hasReward = true;
+
+                        // Check if pickup was already handled by VirtualPlayerApiClient
+                        $pickupAlreadyDone = $battleInfo['pickupSuccess'] ?? false;
+
+                        if ($pickupAlreadyDone) {
+                            $this->logger->info('Battle reward already picked up by API client', [
+                                'monster' => $battleInfo['monsterType'] ?? 'unknown',
+                                'reward' => $battleInfo['reward']['name'] ?? 'unknown',
+                            ]);
+                        } else {
+                            $this->logger->info('Battle won with reward, attempting manual pickup', [
+                                'monster' => $battleInfo['monsterType'] ?? 'unknown',
+                                'reward' => $battleInfo['reward']['name'] ?? 'unknown',
+                                'position' => $battleInfo['position'],
+                            ]);
+
+                            // Try to pick up the reward manually as fallback
+                            $position = FieldPlace::fromString($battleInfo['position']);
+
+                            // Add explicit action tracking
+                            $this->actionLog[] = [
+                                'type' => 'pick_item_attempt',
+                                'position' => $battleInfo['position'],
+                                'item' => $battleInfo['reward']['name'] ?? 'unknown',
+                            ];
+
+                            $pickResult = $this->apiClient->pickItem(
+                                $gameId,
+                                $playerId,
+                                $turnId,
+                                $position->positionX,
+                                $position->positionY,
+                            );
+
+                            if ($pickResult['success']) {
+                                $this->logger->info('AI successfully picked up battle reward', [
+                                    'item' => $battleInfo['reward']['name'] ?? 'unknown',
+                                ]);
+
+                                // Handle inventory full
+                                if (isset($pickResult['response']['inventoryFull']) && $pickResult['response']['inventoryFull']) {
+                                    $this->handleInventoryFull($gameId, $playerId, $turnId, $pickResult['response']);
+                                }
+                            } else {
+                                $this->logger->error('Failed to pick up battle reward', [
+                                    'item' => $battleInfo['reward']['name'] ?? 'unknown',
+                                    'position' => $battleInfo['position'],
+                                    'error' => $pickResult['response']['message'] ?? 'Unknown error',
+                                ]);
+                            }
+                        }
+                    }
+                }
+
+                // Also check handle_battle step for additional pickup info
+                if ($action['step'] === 'handle_battle' && isset($action['result'])) {
+                    $battleHandleResult = $action['result'];
+                    if ($battleHandleResult['battleOccurred'] ?? false) {
+                        $battleOccurred = true;
+
+                        if (($battleHandleResult['pickupAttempted'] ?? false) && !($battleHandleResult['pickupSuccess'] ?? false)) {
+                            $this->logger->warning('Battle reward pickup failed in API client', [
+                                'error' => $battleHandleResult['pickupError'] ?? 'Unknown',
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Store battle status for the caller to check
+        $this->lastBattleInfo = $battleOccurred ? ['occurred' => true] : [];
+
+        // Return true to indicate tile was placed successfully
+        return true;
+    }
+
+    /**
+     * Handle battle logic.
+     */
+    private function handleBattle(Uuid $gameId, Uuid $playerId, Uuid $turnId, array $battleInfo): bool
+    {
+        $battleId = Uuid::fromString($battleInfo['battleId']);
+        $result = $battleInfo['result'];
+
+        $this->logger->info('AI handling battle', [
+            'result' => $result,
+            'monster' => $battleInfo['monsterType'] ?? 'unknown',
+            'damage' => $battleInfo['totalDamage'] ?? 0,
+        ]);
+
+        switch ($result) {
+            case 'win':
+                return $this->handleBattleVictory($gameId, $playerId, $turnId, $battleInfo);
+            case 'draw':
+                return $this->handleBattleDraw($gameId, $playerId, $turnId, $battleId, $battleInfo);
+            case 'lose':
+                return $this->handleBattleDefeat($gameId, $playerId, $turnId, $battleId, $battleInfo);
+
+            default:
+                $this->logger->error('Unknown battle result', ['result' => $result]);
+
+                return false;
+        }
+    }
+
+    /**
+     * Handle battle victory.
+     */
+    private function handleBattleVictory(Uuid $gameId, Uuid $playerId, Uuid $turnId, array $battleInfo): bool
+    {
+        $this->logger->info('Battle won!', [
+            'monster' => $battleInfo['monsterType'] ?? 'unknown',
+            'has_reward' => isset($battleInfo['reward']),
+        ]);
+
+        // Note: Item pickup is handled separately in the next action
+        // This allows the AI to continue with more actions after battle
+        return true;
+    }
+
+    /**
+     * Handle battle draw (can use consumables).
+     */
+    private function handleBattleDraw(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $battleId, array $battleInfo): bool
+    {
+        $consumables = $battleInfo['availableConsumables'] ?? [];
+
+        // Choose consumables to use
+        $selectedConsumables = $this->chooseConsumables($consumables, $battleInfo);
+
+        // Finalize battle with consumables
+        $result = $this->apiClient->finalizeBattle(
+            $gameId,
+            $playerId,
+            $turnId,
+            $battleId,
+            $selectedConsumables,
+            true, // Try to pick up item
+        );
+
+        return $result['success'];
+    }
+
+    /**
+     * Handle battle defeat.
+     */
+    private function handleBattleDefeat(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $battleId, array $battleInfo): bool
+    {
+        $consumables = $battleInfo['availableConsumables'] ?? [];
+
+        if (!empty($consumables)) {
+            $selectedConsumables = $this->chooseConsumables($consumables, $battleInfo);
+
+            if (!empty($selectedConsumables)) {
+                $result = $this->apiClient->finalizeBattle(
+                    $gameId,
+                    $playerId,
+                    $turnId,
+                    $battleId,
+                    $selectedConsumables,
+                    true,
+                );
+
+                return $result['success'];
+            }
+        }
+
+        // Accept defeat
+        $result = $this->apiClient->finalizeBattle(
+            $gameId,
+            $playerId,
+            $turnId,
+            $battleId,
+            [],
+            false,
+        );
+
+        return $result['success'];
+    }
+
+    /**
+     * Handle inventory full situation.
+     */
+    private function handleInventoryFull(Uuid $gameId, Uuid $playerId, Uuid $turnId, array $pickupResult): bool
+    {
+        $newItem = $pickupResult['item'];
+        $currentInventory = $pickupResult['currentInventory'];
+
+        // Choose item to replace
+        $itemToReplace = $this->chooseItemToReplace($newItem, $currentInventory);
+
+        if ($itemToReplace) {
+            $result = $this->apiClient->inventoryAction(
+                $gameId,
+                $playerId,
+                $turnId,
+                'replace',
+                Uuid::fromString($newItem['itemId']),
+                Uuid::fromString($itemToReplace['itemId']),
+            );
+
+            return $result['success'];
+        }
+
+        // Leave the item
+        return true;
+    }
+
     // ==================== Helper Methods ====================
 
     /**
-     * Refresh game state
+     * Refresh game state.
      */
     private function refreshGameState(Uuid $gameId, Uuid $playerId): void
     {
@@ -815,7 +837,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Check if it's the AI player's turn
+     * Check if it's the AI player's turn.
      */
     private function isMyTurn(Uuid $playerId): bool
     {
@@ -824,11 +846,12 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         }
 
         $currentTurn = $this->messageBus->dispatch(new GetCurrentTurn($this->currentGame->gameId));
+
         return $currentTurn && $currentTurn->playerId->equals($playerId);
     }
 
     /**
-     * Check if player is stunned
+     * Check if player is stunned.
      */
     private function isStunned(): bool
     {
@@ -836,7 +859,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Check if player needs healing
+     * Check if player needs healing.
      */
     private function needsHealing(): bool
     {
@@ -846,12 +869,12 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
 
         // Priority healing when at 1 HP (critically low)
         // This matches the healing threshold in the strategy config
-        return $this->currentPlayer->hp <= $this->strategyConfig['healingThreshold'] && 
-               $this->currentPlayer->hp < $this->currentPlayer->maxHp;
+        return $this->currentPlayer->hp <= $this->strategyConfig['healingThreshold']
+               && $this->currentPlayer->hp < $this->currentPlayer->maxHp;
     }
 
     /**
-     * Move to healing fountain if available
+     * Move to healing fountain if available.
      */
     private function moveToHealingFountain(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
     {
@@ -861,29 +884,29 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
 
         // Find healing fountain positions
         $healingPositions = $this->currentField->healingFountainPositions ?? [];
-        
+
         if (empty($healingPositions)) {
             return false;
         }
 
         // Get current position
         $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
-        
+
         // Get available moves
         $availablePlaces = $this->messageBus->dispatch(
-            new GetAvailablePlacesForPlayer($gameId, $playerId)
+            new GetAvailablePlacesForPlayer($gameId, $playerId),
         );
-        
+
         if (empty($availablePlaces->moveTo)) {
             return false;
         }
-        
+
         // First, check if any healing fountain is directly reachable
         foreach ($healingPositions as $healingPos) {
-            if (is_string($healingPos)) {
+            if (\is_string($healingPos)) {
                 $healingPos = FieldPlace::fromString($healingPos);
             }
-            
+
             foreach ($availablePlaces->moveTo as $movePos) {
                 if ($movePos->equals($healingPos)) {
                     // Direct move to healing fountain
@@ -895,30 +918,31 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                         $currentPosition->positionY,
                         $movePos->positionX,
                         $movePos->positionY,
-                        false
+                        false,
                     );
-                    
+
                     if ($result['success']) {
-                        $this->logger->info("AI moved directly to healing fountain", [
-                            'position' => $movePos->toString()
+                        $this->logger->info('AI moved directly to healing fountain', [
+                            'position' => $movePos->toString(),
                         ]);
+
                         return true;
                     }
                 }
             }
         }
-        
+
         // If no direct path, move towards the nearest healing fountain
         $nearestFountain = $this->findNearestPosition($currentPosition, $healingPositions);
-        
+
         if (!$nearestFountain) {
             return false;
         }
-        
+
         // Find the move that gets us closest to the nearest fountain
         $bestMove = null;
         $minDistance = PHP_INT_MAX;
-        
+
         foreach ($availablePlaces->moveTo as $movePos) {
             $distance = $this->calculateDistance($movePos, $nearestFountain);
             if ($distance < $minDistance) {
@@ -926,7 +950,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                 $bestMove = $movePos;
             }
         }
-        
+
         if ($bestMove && $minDistance < $this->calculateDistance($currentPosition, $nearestFountain)) {
             // This move gets us closer to the healing fountain
             $result = $this->apiClient->movePlayer(
@@ -937,15 +961,16 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                 $currentPosition->positionY,
                 $bestMove->positionX,
                 $bestMove->positionY,
-                false
+                false,
             );
-            
+
             if ($result['success']) {
-                $this->logger->info("AI moved towards healing fountain", [
+                $this->logger->info('AI moved towards healing fountain', [
                     'target' => $nearestFountain->toString(),
                     'moved_to' => $bestMove->toString(),
-                    'distance_remaining' => $minDistance
+                    'distance_remaining' => $minDistance,
                 ]);
+
                 return true;
             }
         }
@@ -954,7 +979,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Find monsters guarding valuable items that we should attack
+     * Find monsters guarding valuable items that we should attack.
      */
     private function findMonsterWithValuableItem(Uuid $playerId): ?array
     {
@@ -963,7 +988,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         }
 
         $availablePlaces = $this->messageBus->dispatch(
-            new GetAvailablePlacesForPlayer($this->currentGame->gameId, $playerId)
+            new GetAvailablePlacesForPlayer($this->currentGame->gameId, $playerId),
         );
 
         $bestTarget = null;
@@ -971,35 +996,35 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
 
         foreach ($availablePlaces->moveTo as $position) {
             $positionString = $position->toString();
-            
+
             // Check if there's an item at this position with an undefeated guard
             if (isset($this->currentField->items[$positionString])) {
                 $item = $this->currentField->items[$positionString];
-                
+
                 // Check if guard is not defeated and item is valuable
                 if (!($item['guardDefeated'] ?? true)) {
                     $itemValue = $this->getItemValue($item);
-                    
+
                     // Check if this item would be an upgrade for us
                     if ($this->isItemUpgrade($item)) {
                         // Calculate priority based on item value and whether we can win
                         $priority = $itemValue * 10;
-                        
+
                         // Higher priority for items we don't have yet
                         if (!$this->hasItemType($item['type'])) {
                             $priority += 20;
                         }
-                        
+
                         // Consider if we can likely defeat the monster
                         $estimatedMonsterStrength = $this->estimateMonsterStrength($item['type']);
                         $ourStrength = $this->calculateOurCombatStrength();
-                        
+
                         if ($ourStrength >= $estimatedMonsterStrength) {
                             $priority += 10; // We can likely win
-                        } else if ($ourStrength + $this->getTotalConsumableDamage() >= $estimatedMonsterStrength) {
+                        } elseif ($ourStrength + $this->getTotalConsumableDamage() >= $estimatedMonsterStrength) {
                             $priority += 5; // We can win with consumables
                         }
-                        
+
                         if ($priority > $bestValue) {
                             $bestValue = $priority;
                             $bestTarget = [
@@ -1018,7 +1043,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Find beneficial movement opportunities
+     * Find beneficial movement opportunities.
      */
     private function findBeneficialMovement(Uuid $playerId): ?array
     {
@@ -1027,7 +1052,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         }
 
         $availablePlaces = $this->messageBus->dispatch(
-            new GetAvailablePlacesForPlayer($this->currentGame->gameId, $playerId)
+            new GetAvailablePlacesForPlayer($this->currentGame->gameId, $playerId),
         );
 
         foreach ($availablePlaces->moveTo as $position) {
@@ -1063,7 +1088,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Execute movement
+     * Execute movement.
      */
     private function executeMovement(Uuid $gameId, Uuid $playerId, Uuid $turnId, array $movement): bool
     {
@@ -1078,7 +1103,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             $currentPosition->positionY,
             $targetPosition->positionX,
             $targetPosition->positionY,
-            false
+            false,
         );
 
         if ($result['success']) {
@@ -1086,7 +1111,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             if (isset($result['response']['battleInfo'])) {
                 $battleInfo = $result['response']['battleInfo'];
                 $this->handleBattle($gameId, $playerId, $turnId, $battleInfo);
-                
+
                 // If we won and there's a reward, pick it up immediately
                 if ($battleInfo['result'] === 'win' && isset($battleInfo['reward'])) {
                     $position = FieldPlace::fromString($battleInfo['position']);
@@ -1095,21 +1120,21 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                         $playerId,
                         $turnId,
                         $position->positionX,
-                        $position->positionY
+                        $position->positionY,
                     );
-                    
+
                     if ($pickResult['success']) {
-                        $this->logger->info("AI picked up battle reward after movement", [
+                        $this->logger->info('AI picked up battle reward after movement', [
                             'item' => $battleInfo['reward']['name'] ?? 'unknown',
-                            'position' => $battleInfo['position']
+                            'position' => $battleInfo['position'],
                         ]);
-                        
+
                         if (isset($pickResult['response']['inventoryFull']) && $pickResult['response']['inventoryFull']) {
                             $this->handleInventoryFull($gameId, $playerId, $turnId, $pickResult['response']);
                         }
                     }
                 }
-                
+
                 // Store that battle occurred for the caller
                 $this->lastBattleInfo = ['occurred' => true];
             }
@@ -1119,12 +1144,12 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Execute movement-only turn
+     * Execute movement-only turn.
      */
     private function executeMovementOnlyTurn(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
     {
         $availablePlaces = $this->messageBus->dispatch(
-            new GetAvailablePlacesForPlayer($gameId, $playerId)
+            new GetAvailablePlacesForPlayer($gameId, $playerId),
         );
 
         if (empty($availablePlaces->moveTo)) {
@@ -1145,7 +1170,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             $currentPosition->positionY,
             $bestMove->positionX,
             $bestMove->positionY,
-            false
+            false,
         );
 
         if ($result['success']) {
@@ -1156,7 +1181,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Choose best tile placement position
+     * Choose best tile placement position.
      */
     private function chooseBestTilePlacement(array $availablePlaces): FieldPlace
     {
@@ -1166,7 +1191,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Choose consumables to use
+     * Choose consumables to use.
      */
     private function chooseConsumables(array $availableConsumables, array $battleInfo): array
     {
@@ -1180,9 +1205,9 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             if ($damageNeeded <= 0) {
                 break; // We have enough damage
             }
-            
+
             $consumableDamage = $this->getConsumableDamage($consumable['type'] ?? '');
-            
+
             if ($consumableDamage > 0) {
                 $selectedIds[] = Uuid::fromString($consumable['itemId']);
                 $currentDamage += $consumableDamage;
@@ -1194,7 +1219,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Get damage value for consumable type
+     * Get damage value for consumable type.
      */
     private function getConsumableDamage(string $type): int
     {
@@ -1205,7 +1230,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Choose which item to replace
+     * Choose which item to replace.
      */
     private function chooseItemToReplace(array $newItem, array $currentInventory): ?array
     {
@@ -1215,7 +1240,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         $lowestValue = $newItemValue;
 
         // Special case: if we're picking up a weapon and already have one, keep the better one
-        if (in_array($newItemType, ['axe', 'sword', 'dagger'])) {
+        if (\in_array($newItemType, ['axe', 'sword', 'dagger'], true)) {
             // First try to replace teleport spells or lower value non-weapons
             foreach ($currentInventory as $item) {
                 $itemType = $item['type'] ?? '';
@@ -1223,17 +1248,17 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                     return $item; // Always replace teleport first
                 }
             }
-            
+
             // Then look for lower-value weapons to replace
             foreach ($currentInventory as $item) {
                 $itemType = $item['type'] ?? '';
                 $itemValue = $this->getItemValue($item);
-                
+
                 // Replace lower value weapons
-                if (in_array($itemType, ['axe', 'sword', 'dagger']) && $itemValue < $newItemValue) {
+                if (\in_array($itemType, ['axe', 'sword', 'dagger'], true) && $itemValue < $newItemValue) {
                     return $item;
                 }
-                
+
                 // Track the overall lowest value item
                 if ($itemValue < $lowestValue) {
                     $lowestValue = $itemValue;
@@ -1255,7 +1280,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Get strategic value of an item
+     * Get strategic value of an item.
      */
     private function getItemValue(array $item): int
     {
@@ -1271,7 +1296,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Evaluate position for tile placement
+     * Evaluate position for tile placement.
      */
     private function evaluatePosition(FieldPlace $position, Field $field, Uuid $playerId): float
     {
@@ -1290,7 +1315,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Evaluate move position
+     * Evaluate move position.
      */
     private function evaluateMovePosition(FieldPlace $position, Field $field, Player $player): float
     {
@@ -1315,48 +1340,48 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Calculate expansion score for position
+     * Calculate expansion score for position.
      */
     private function calculateExpansionScore(FieldPlace $position, Field $field): float
     {
         // Positions that expand the board are valuable
         $currentSize = $field->size;
-        
+
         if ($position->x < $currentSize['minX'] || $position->x > $currentSize['maxX']) {
             return 5.0;
         }
-        
+
         if ($position->y < $currentSize['minY'] || $position->y > $currentSize['maxY']) {
             return 5.0;
         }
-        
+
         return 0.0;
     }
 
     /**
-     * Calculate item proximity score
+     * Calculate item proximity score.
      */
     private function calculateItemProximityScore(FieldPlace $position, Field $field): float
     {
         $score = 0.0;
-        
+
         foreach ($field->items as $itemPosition => $item) {
             if (!$item['guardDefeated']) {
                 continue;
             }
-            
+
             $itemPos = FieldPlace::fromString($itemPosition);
             $distance = $this->calculateDistance($position, $itemPos);
-            
+
             // Closer items are more valuable
             $score += 10.0 / max(1, $distance);
         }
-        
+
         return $score;
     }
 
     /**
-     * Calculate strategic score
+     * Calculate strategic score.
      */
     private function calculateStrategicScore(FieldPlace $position, Field $field, Uuid $playerId): float
     {
@@ -1365,7 +1390,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Calculate distance between positions
+     * Calculate distance between positions.
      */
     private function calculateDistance(FieldPlace $pos1, FieldPlace $pos2): int
     {
@@ -1373,7 +1398,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Find nearest position from a list
+     * Find nearest position from a list.
      */
     private function findNearestPosition(FieldPlace $from, array $positions): ?FieldPlace
     {
@@ -1381,10 +1406,10 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         $minDistance = PHP_INT_MAX;
 
         foreach ($positions as $position) {
-            if (is_string($position)) {
+            if (\is_string($position)) {
                 $position = FieldPlace::fromString($position);
             }
-            
+
             $distance = $this->calculateDistance($from, $position);
             if ($distance < $minDistance) {
                 $minDistance = $distance;
@@ -1396,7 +1421,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Check if position has teleportation gate
+     * Check if position has teleportation gate.
      */
     private function isTeleportationGate(FieldPlace $position): bool
     {
@@ -1406,7 +1431,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
 
         foreach ($this->currentField->tiles as $tile) {
             if ($tile->position->equals($position)) {
-                return in_array('teleportation_gate', $tile->features);
+                return \in_array('teleportation_gate', $tile->features, true);
             }
         }
 
@@ -1414,7 +1439,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Check if position has healing fountain
+     * Check if position has healing fountain.
      */
     private function isHealingFountain(FieldPlace $position): bool
     {
@@ -1423,11 +1448,12 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         }
 
         $positionString = $position->toString();
-        return in_array($positionString, $this->currentField->healingFountainPositions ?? []);
+
+        return \in_array($positionString, $this->currentField->healingFountainPositions ?? [], true);
     }
 
     /**
-     * Check if position has valuable item
+     * Check if position has valuable item.
      */
     private function hasValuableItem(FieldPlace $position): bool
     {
@@ -1438,6 +1464,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         $positionString = $position->toString();
         if (isset($this->currentField->items[$positionString])) {
             $item = $this->currentField->items[$positionString];
+
             return !$item['locked'] && $item['guardDefeated'];
         }
 
@@ -1445,7 +1472,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Check if there's an item at the given position (for pickup after battle)
+     * Check if there's an item at the given position (for pickup after battle).
      */
     private function hasItemAtPosition(FieldPlace $position): bool
     {
@@ -1454,21 +1481,22 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         }
 
         $positionString = $position->toString();
-        
+
         // Check if there's an item at this position
         if (isset($this->currentField->items[$positionString])) {
             $item = $this->currentField->items[$positionString];
+
             // Item should be available (guard defeated, not locked, not already picked up)
-            return isset($item['guardDefeated']) && $item['guardDefeated'] && 
-                   (!isset($item['locked']) || !$item['locked']) &&
-                   (!isset($item['pickedUp']) || !$item['pickedUp']);
+            return isset($item['guardDefeated']) && $item['guardDefeated']
+                   && (!isset($item['locked']) || !$item['locked'])
+                   && (!isset($item['pickedUp']) || !$item['pickedUp']);
         }
 
         return false;
     }
 
     /**
-     * Check if healing is reachable from current position
+     * Check if healing is reachable from current position.
      */
     private function canReachHealing(): bool
     {
@@ -1478,14 +1506,14 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
 
         // Find healing fountain positions
         $healingPositions = $this->currentField->healingFountainPositions ?? [];
-        
+
         if (empty($healingPositions)) {
             return false;
         }
 
         // Get available movement positions
         $availablePlaces = $this->messageBus->dispatch(
-            new GetAvailablePlacesForPlayer($this->currentGame->gameId, $this->currentPlayer->playerId)
+            new GetAvailablePlacesForPlayer($this->currentGame->gameId, $this->currentPlayer->playerId),
         );
 
         if (empty($availablePlaces->moveTo)) {
@@ -1494,10 +1522,10 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
 
         // Check if any healing fountain is in the available moves
         foreach ($healingPositions as $healingPos) {
-            if (is_string($healingPos)) {
+            if (\is_string($healingPos)) {
                 $healingPos = FieldPlace::fromString($healingPos);
             }
-            
+
             foreach ($availablePlaces->moveTo as $movePos) {
                 if ($movePos->equals($healingPos)) {
                     return true;
@@ -1509,7 +1537,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Choose best exploration move based on strategy
+     * Choose best exploration move based on strategy.
      */
     private function chooseBestExplorationMove(array $availableMoves): ?FieldPlace
     {
@@ -1544,7 +1572,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             }
 
             // Add some randomness for variety
-            $score += mt_rand(0, 100) / 100;
+            $score += random_int(0, 100) / 100;
 
             if ($score > $bestScore) {
                 $bestScore = $score;
@@ -1556,7 +1584,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Check if position is in unexplored area
+     * Check if position is in unexplored area.
      */
     private function isUnexploredArea(FieldPlace $position): bool
     {
@@ -1576,9 +1604,9 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
                     break;
                 }
             }
-            
+
             if (!$hassTile) {
-                $unexploredCount++;
+                ++$unexploredCount;
             }
         }
 
@@ -1587,7 +1615,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Check if position has items nearby
+     * Check if position has items nearby.
      */
     private function hasNearbyItems(FieldPlace $position): bool
     {
@@ -1597,7 +1625,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
 
         // Check adjacent positions for items
         $siblings = $position->getAllSiblingsBySides();
-        
+
         foreach ($siblings as $sibling) {
             $siblingString = $sibling->toString();
             if (isset($this->currentField->items[$siblingString])) {
@@ -1609,7 +1637,7 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
     }
 
     /**
-     * Check if move expands the map boundaries
+     * Check if move expands the map boundaries.
      */
     private function expandsMap(FieldPlace $position): bool
     {
@@ -1618,164 +1646,165 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         }
 
         $currentSize = $this->currentField->size ?? ['minX' => 0, 'maxX' => 0, 'minY' => 0, 'maxY' => 0];
-        
-        return $position->positionX < $currentSize['minX'] || 
-               $position->positionX > $currentSize['maxX'] ||
-               $position->positionY < $currentSize['minY'] || 
-               $position->positionY > $currentSize['maxY'];
+
+        return $position->positionX < $currentSize['minX']
+               || $position->positionX > $currentSize['maxX']
+               || $position->positionY < $currentSize['minY']
+               || $position->positionY > $currentSize['maxY'];
     }
 
     /**
-     * End turn
+     * End turn.
      */
     private function endTurn(Uuid $gameId, Uuid $playerId, Uuid $turnId): bool
     {
         $result = $this->apiClient->endTurn($gameId, $playerId, $turnId);
-        
+
         // Log end turn action
         $this->actionLog[] = [
             'type' => 'end_turn',
             'timestamp' => date('H:i:s.v'),
-            'details' => ['result' => $result]
+            'details' => ['result' => $result],
         ];
-        
+
         if ($result['success']) {
-            $this->logger->info("AI turn ended successfully");
+            $this->logger->info('AI turn ended successfully');
         } else {
-            $this->logger->error("Failed to end AI turn", $result);
+            $this->logger->error('Failed to end AI turn', $result);
         }
-        
+
         return $result['success'];
     }
 
     /**
-     * Check if item would be an upgrade for us
+     * Check if item would be an upgrade for us.
      */
     private function isItemUpgrade(array $item): bool
     {
         $itemType = $item['type'] ?? '';
         $itemValue = $this->getItemValue($item);
-        
+
         // Always pick up items we don't have
         if (!$this->hasItemType($itemType)) {
             return $itemValue > 0; // As long as it's not teleport
         }
-        
+
         // For weapons, check if it's better than what we have
-        if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
+        if (\in_array($itemType, ['axe', 'sword', 'dagger'], true)) {
             $currentBestWeaponValue = $this->getBestWeaponValue();
+
             return $itemValue > $currentBestWeaponValue;
         }
-        
+
         // For consumables, always useful to have more
-        if (in_array($itemType, ['fireball', 'key'])) {
+        if (\in_array($itemType, ['fireball', 'key'], true)) {
             return true;
         }
-        
+
         // Teleport spells are lowest priority
         return $itemType !== 'teleport';
     }
-    
+
     /**
-     * Check if we have a specific item type in inventory
+     * Check if we have a specific item type in inventory.
      */
     private function hasItemType(string $type): bool
     {
         if (!$this->currentPlayer) {
             return false;
         }
-        
+
         foreach ($this->currentPlayer->inventory as $item) {
             if (($item['type'] ?? '') === $type) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
-     * Get the value of our best weapon
+     * Get the value of our best weapon.
      */
     private function getBestWeaponValue(): int
     {
         if (!$this->currentPlayer) {
             return 0;
         }
-        
+
         $bestValue = 0;
         foreach ($this->currentPlayer->inventory as $item) {
             $itemType = $item['type'] ?? '';
-            if (in_array($itemType, ['axe', 'sword', 'dagger'])) {
+            if (\in_array($itemType, ['axe', 'sword', 'dagger'], true)) {
                 $value = $this->getItemValue($item);
                 if ($value > $bestValue) {
                     $bestValue = $value;
                 }
             }
         }
-        
+
         return $bestValue;
     }
-    
+
     /**
-     * Calculate our current combat strength
+     * Calculate our current combat strength.
      */
     private function calculateOurCombatStrength(): int
     {
         if (!$this->currentPlayer) {
             return 0;
         }
-        
+
         // Calculate expected damage from dice rolls
         // Players always roll 2 d6 dice in combat
         // Average per die = 3.5, so 2 dice average = 7
         // For AI decision making, use the average expected value
         $expectedDiceRoll = 7; // 2 dice * 3.5 average
-        
+
         // Start with expected dice damage
         $strength = $expectedDiceRoll;
-        
+
         // Add weapon bonuses
         foreach ($this->currentPlayer->inventory as $item) {
             $itemType = $item['type'] ?? '';
-            $strength += match($itemType) {
+            $strength += match ($itemType) {
                 'axe' => 3,
                 'sword' => 2,
                 'dagger' => 1,
                 default => 0,
             };
         }
-        
+
         return $strength;
     }
-    
+
     /**
-     * Get total damage from all consumables in inventory
+     * Get total damage from all consumables in inventory.
      */
     private function getTotalConsumableDamage(): int
     {
         if (!$this->currentPlayer) {
             return 0;
         }
-        
+
         $fireballCount = 0;
         foreach ($this->currentPlayer->inventory as $item) {
             if (($item['type'] ?? '') === 'fireball') {
-                $fireballCount++;
+                ++$fireballCount;
             }
         }
-        
+
         // Each fireball adds 1 damage, so total is 1 * count
         return $fireballCount * 1;
     }
-    
+
     /**
-     * Estimate monster strength based on item it guards
+     * Estimate monster strength based on item it guards.
      */
     private function estimateMonsterStrength(string $itemType): int
     {
         // Stronger items are typically guarded by stronger monsters
-        return match($itemType) {
+        return match ($itemType) {
             'axe' => 10,     // Usually guarded by strong monsters like skeleton_king
             'sword' => 8,    // Usually guarded by skeleton_warrior or skeleton_turnkey
             'dagger' => 5,   // Usually guarded by giant_rat
@@ -1783,21 +1812,5 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
             'key' => 8,      // Usually guarded by skeleton_turnkey
             default => 6,
         };
-    }
-
-    /**
-     * Set strategy configuration
-     */
-    public function setStrategyConfig(array $config): void
-    {
-        $this->strategyConfig = array_merge($this->strategyConfig, $config);
-    }
-
-    /**
-     * Get current strategy configuration
-     */
-    public function getStrategyConfig(): array
-    {
-        return $this->strategyConfig;
     }
 }

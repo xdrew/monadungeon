@@ -12,9 +12,11 @@ use App\Game\Turn\EndTurn;
 use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass(VirtualPlayerSimple::class)]
 class VirtualPlayerSimpleTest extends TestCase
 {
     #[Test]

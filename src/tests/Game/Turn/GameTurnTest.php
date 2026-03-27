@@ -17,11 +17,18 @@ use App\Game\Turn\TurnActionPerformed;
 use App\Game\Turn\TurnEnded;
 use App\Game\Turn\TurnStarted;
 use App\Infrastructure\Uuid\Uuid;
+use App\Game\Field\Field;
+use App\Game\Field\GetField;
+use App\Game\GameLifecycle\CreateGame;
+use App\Game\GameLifecycle\Game;
+use App\Game\GameLifecycle\GameCreated;
+use App\Game\GameLifecycle\GetGame;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function App\Tests\Infrastructure\MessageBus\handle;
+use function App\Tests\Infrastructure\MessageBus\startMessageContext;
 
 #[CoversClass(GameTurn::class)]
 final class GameTurnTest extends TestCase
@@ -217,7 +224,10 @@ final class GameTurnTest extends TestCase
             playerId: $this->playerId,
             at: $this->fixedTime,
         );
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
         $tester->handle($gameTurn->end(...), $endTurn);
 
         // Try to perform an action after turn has ended
@@ -318,7 +328,10 @@ final class GameTurnTest extends TestCase
             at: $this->fixedTime,
         );
 
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
         [, $messages] = $tester->handle($gameTurn->end(...), $endTurn);
 
         self::assertTrue($gameTurn->isEnded());
@@ -353,7 +366,10 @@ final class GameTurnTest extends TestCase
             at: $this->fixedTime,
         );
 
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
 
         $this->expectException(NotYourTurnException::class);
         $tester->handle($gameTurn->end(...), $endTurn);
@@ -378,8 +394,11 @@ final class GameTurnTest extends TestCase
             at: $this->fixedTime,
         );
 
-        $tester = MessageBusTester::create();
-        
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
+
         // End turn first time
         $tester->handle($gameTurn->end(...), $endTurn);
         self::assertTrue($gameTurn->isEnded());
@@ -463,7 +482,10 @@ final class GameTurnTest extends TestCase
             playerId: $this->playerId,
             at: $this->fixedTime,
         );
-        $tester = MessageBusTester::create();
+        $tester = MessageBusTester::create(
+            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+        );
         $tester->handle($gameTurn->end(...), $endTurn);
 
         // Try to update action counter after turn ended

@@ -76,10 +76,11 @@ final readonly class Action
 
             // Get recent turns for action log (last 2 turns)
             $recentTurns = [];
+
             try {
                 $allTurns = $this->gameTurnRepository->getForApi($gameUuid);
                 // Get the last 2 turns
-                $recentTurns = array_slice($allTurns, -2);
+                $recentTurns = \array_slice($allTurns, -2);
             } catch (\Throwable $e) {
                 // Log the error for debugging
                 error_log('Failed to get turns data: ' . $e->getMessage());

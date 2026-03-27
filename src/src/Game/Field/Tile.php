@@ -82,7 +82,7 @@ class Tile extends AggregateRoot
 
         $field = $messageContext->dispatch(new GetField($command->gameId));
         $placedTiles = $field->getPlacedTilesAmount();
-        
+
         $deck = $messageContext->dispatch(new GetDeck($command->gameId));
         $deckTotalTiles = $deck->getTilesTotalCount();
         $deckRemainingTiles = $deck->getTilesRemainingCount();
@@ -99,7 +99,7 @@ class Tile extends AggregateRoot
                     room: $unplacedTile['room'],
                     features: array_map(static fn($f) => TileFeature::from($f), $unplacedTile['features'] ?? []),
                 );
-                
+
                 // Skip getting a new tile from deck and orientation adjustment
                 $messageContext->dispatch(new TilePicked(
                     gameId: $command->gameId,
@@ -120,11 +120,10 @@ class Tile extends AggregateRoot
                 ));
 
                 return $tile;
-            } else {
-                // Different tile requested - clear the old unplaced tile and allow picking new one
-                // This handles the case where user wants to pick a different tile
-                $messageContext->dispatch(new ClearUnplacedTile($command->gameId));
             }
+            // Different tile requested - clear the old unplaced tile and allow picking new one
+            // This handles the case where user wants to pick a different tile
+            $messageContext->dispatch(new ClearUnplacedTile($command->gameId));
         } else {
             // No unplaced tile, check normally
             if ($placedTiles !== $deckTotalTiles - $deckRemainingTiles) {
@@ -233,7 +232,7 @@ class Tile extends AggregateRoot
             tileId: $this->tileId,
             orientation: $this->orientation,
         ));
-        
+
         // Record this action for the turn
         $messageContext->dispatch(new PerformTurnAction(
             turnId: $command->turnId,
