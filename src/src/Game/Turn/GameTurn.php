@@ -45,6 +45,9 @@ class GameTurn extends AggregateRoot
     #[Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $endTime = null;
 
+    #[Column(type: Types::BOOLEAN, nullable: false, options: ['default' => false])]
+    private bool $pendingItemPickup = false;
+
     private int $actionsRemaining = 0;
 
     private int $maxActions = 0;
@@ -166,6 +169,20 @@ class GameTurn extends AggregateRoot
             throw new TurnAlreadyEndedException();
         }
 
+        // If turn end was deferred for item pickup, only allow PICK_ITEM or END_TURN
+        if ($this->pendingItemPickup && $command->action !== TurnAction::PICK_ITEM && $command->action !== TurnAction::END_TURN) {
+            // Player tried to do something else — auto-end the turn
+            $this->endTurn($command->at);
+            $messageContext->dispatch(new TurnEnded(
+                turnId: $this->turnId,
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                endTime: $command->at,
+            ));
+
+            return;
+        }
+
         // Check if the action is allowed based on turn action rules
         $lastAction = $this->getLastAction();
         if (!$command->action->isAllowedAfter($lastAction)) {
@@ -191,6 +208,11 @@ class GameTurn extends AggregateRoot
 
         // Check if a battle occurred in this turn - if so, don't auto-end turn based on action count
         $hasBattleInTurn = $this->hasBattleInTurn();
+
+        // If turn end was deferred for item pickup, mark it
+        if ($command->deferTurnEnd && $this->performedActionsCount >= self::MAX_ACTIONS_PER_TURN) {
+            $this->pendingItemPickup = true;
+        }
 
         // Only use action count to end turn if no battle occurred and turn end is not deferred (e.g. pickable item at destination)
         if ((!$hasBattleInTurn && !$command->deferTurnEnd && $this->performedActionsCount >= self::MAX_ACTIONS_PER_TURN) || $command->action->isEndOfTurn()) {

@@ -775,7 +775,7 @@ const restorePickedTileState = () => {
     
     // State was already restored early, just log it
     if (state.pickedTileId && state.pickedTile) {
-      console.log('Picked tile state was restored early from localStorage:', state);
+
       return true;
     }
   } catch (e) {
@@ -856,11 +856,7 @@ const lastProcessedBattleId = ref(null);
 const ghostTileOrientationSymbol = computed(() => {
   if (!ghostTileOrientation.value || !pickedTile.value) return '';
   const symbol = getTileOrientationSymbol(ghostTileOrientation.value, pickedTile.value.room);
-  console.log('Computing ghost tile symbol:', {
-    orientation: ghostTileOrientation.value,
-    isRoom: pickedTile.value.room,
-    symbol
-  });
+
   return symbol;
 });
 
@@ -952,11 +948,7 @@ const isPlayerTurn = computed(() => {
     const currentPlayerId = localStorage.getItem('currentPlayerId');
     const isCurrentPlayerTurn = currentPlayerId && serverCurrentPlayerId === currentPlayerId;
     
-    console.log('👥 PvP game - isPlayerTurn check:', {
-      serverCurrentPlayerId,
-      currentPlayerId,
-      isCurrentPlayerTurn
-    });
+
     
     return isCurrentPlayerTurn;
   }
@@ -967,17 +959,17 @@ const isPlayerTurn = computed(() => {
   
   // Debug logging
   if (serverCurrentPlayerId) {
-    console.log('🎮 isPlayerTurn computed check (AI game):');
-    console.log('- Server current player:', serverCurrentPlayerId);
-    console.log('- Human player ID (stable):', humanPlayerId);
-    console.log('- Virtual player ID:', virtualPlayerId);
-    console.log('- Is AI turn?', virtualPlayerId && serverCurrentPlayerId === virtualPlayerId);
-    console.log('- Is human turn?', humanPlayerId && serverCurrentPlayerId === humanPlayerId);
+
+
+
+
+
+
   }
   
   // If it's the AI's turn, return false (not player's turn)
   if (virtualPlayerId && serverCurrentPlayerId === virtualPlayerId) {
-    console.log('🤖 isPlayerTurn: FALSE (AI turn detected)');
+
     return false;
   }
   
@@ -988,7 +980,7 @@ const isPlayerTurn = computed(() => {
   // IMPORTANT: Only clear isProcessingAI if we're CERTAIN it's the human's turn
   // and the virtual player check above didn't match
   if (isHumanTurn && isProcessingAI.value && (!virtualPlayerId || serverCurrentPlayerId !== virtualPlayerId)) {
-    console.log('⚠️ isProcessingAI was stuck on during confirmed human turn - clearing it');
+
     isProcessingAI.value = false;
     aiTurnInProgress = false;
     aiExecutionPromise = null;
@@ -996,7 +988,7 @@ const isPlayerTurn = computed(() => {
   
   // Block interactions if AI is processing
   if (isProcessingAI.value) {
-    console.log('🚫 Interactions blocked - isProcessingAI is true');
+
     return false;
   }
   
@@ -1042,7 +1034,7 @@ const teleportableHealingFountains = computed(() => {
   
   if (!currentPosStr) {
     // If we still don't know current position, show all fountains
-    console.log('Warning: Could not determine current player position');
+
     return allFountains;
   }
   
@@ -1158,7 +1150,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     if (!hasAIPlayer) {
       // No AI players in this game - it's a PvP game
       if (isProcessingAI.value) {
-        console.log('👥 PvP game detected - clearing AI flags');
+
         isProcessingAI.value = false;
         aiExecutionInProgressForTurn = null;
         aiExecutionPromise = null;
@@ -1171,18 +1163,12 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     const storedVirtualPlayerId = localStorage.getItem('virtualPlayerId');
     const isAITurn = storedVirtualPlayerId && currentPlayer === storedVirtualPlayerId;
     
-    console.log('🎯 checkAndHandleVirtualPlayerTurn called:', {
-      turn: currentTurnNumber,
-      currentPlayer,
-      isAITurn,
-      lastExecutedAITurn,
-      aiExecutionInProgressForTurn
-    });
+
     
     if (!isAITurn) {
       // Human turn - clear all AI flags
       if (isProcessingAI.value) {
-        console.log('👤 Human turn - clearing AI flags');
+
         isProcessingAI.value = false;
         aiExecutionInProgressForTurn = null;
         aiExecutionPromise = null;
@@ -1192,20 +1178,20 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     
     // Don't execute AI turn if game is finished
     if (gameData.value.state.status === 'finished') {
-      console.log('Game is finished, skipping AI turn check');
+
       isProcessingAI.value = false;
       return;
     }
     
     // Check if we already executed this turn
     if (lastExecutedAITurn === currentTurnNumber) {
-      console.log('✅ AI already executed turn', currentTurnNumber);
+
       return;
     }
     
     // Check if execution is in progress for this turn
     if (aiExecutionInProgressForTurn === currentTurnNumber) {
-      console.log('⏳ AI execution already in progress for turn', currentTurnNumber);
+
       if (aiExecutionPromise) {
         await aiExecutionPromise;
       }
@@ -1213,7 +1199,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     }
     
     // This is a new AI turn that needs execution
-    console.log('🤖 Starting AI execution for turn', currentTurnNumber);
+
     
     // Block user interactions
     isProcessingAI.value = true;
@@ -1229,13 +1215,13 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     
     aiStuckTimer = setTimeout(() => {
       if (aiExecutionInProgressForTurn === currentTurnNumber) {
-        console.log('⚠️ AI appears to be stuck on turn', currentTurnNumber);
+
         aiStuckDetected.value = true;
         
         // Auto-recover after 5 more seconds
         setTimeout(() => {
           if (aiStuckDetected.value && aiExecutionInProgressForTurn === currentTurnNumber) {
-            console.log('🔄 Auto-recovering stuck AI...');
+
             forceAITurn();
           }
         }, 5000);
@@ -1248,15 +1234,15 @@ const checkAndHandleVirtualPlayerTurn = async () => {
         // Add a small delay
         await new Promise(timeout => setTimeout(timeout, 1000));
         
-        console.log('📡 Calling API for virtual player turn:', currentPlayer);
+
         const response = await gameApi.executeVirtualPlayerTurn(id.value, currentPlayer);
         
         if (response.success) {
-          console.log('✅ Virtual player actions:', response.actions);
+
           
           // Mark this turn as successfully executed
           lastExecutedAITurn = currentTurnNumber;
-          console.log('✅ Marked turn', currentTurnNumber, 'as executed');
+
           
           // Refresh game state
           await loadGameData(false);
@@ -1270,14 +1256,14 @@ const checkAndHandleVirtualPlayerTurn = async () => {
             const isStillAI = storedVirtualPlayerId && newCurrentPlayer === storedVirtualPlayerId;
             
             if (isStillAI && newTurn !== currentTurnNumber && newTurn !== lastExecutedAITurn) {
-              console.log('🔄 Another AI turn detected (turn', newTurn, '), will execute next');
+
               // Don't clear isProcessingAI - keep it blocked
               // The next call to checkAndHandleVirtualPlayerTurn will handle it
               setTimeout(() => checkAndHandleVirtualPlayerTurn(), 100);
             } else {
               // Clear isProcessingAI if it's now human's turn
               if (!isStillAI) {
-                console.log('👤 Turn switched to human after AI execution');
+
                 isProcessingAI.value = false;
               }
             }
@@ -1303,7 +1289,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
         }
         aiStuckDetected.value = false;
         
-        console.log('🔄 AI execution completed for turn', currentTurnNumber);
+
         resolve();
       }
     });
@@ -1330,7 +1316,7 @@ const loadGameData = async (showLoading = true) => {
     return;
   }
 
-  console.log('Loading game with ID:', id.value);
+
 
   try {
     // Attempt to load the game data
@@ -1338,7 +1324,7 @@ const loadGameData = async (showLoading = true) => {
       loading.value = true;
     }
     const fetchedGameData = await gameApi.getGame(id.value);
-    console.log('Game data loaded:', fetchedGameData);
+
 
     // Initialize gameData if it doesn't exist yet
     if (!gameData.value) {
@@ -1356,7 +1342,7 @@ const loadGameData = async (showLoading = true) => {
       const unplacedTileData = fetchedGameData.state.unplacedTile;
       if (unplacedTileData.tileId) {
         // Backend has an unplaced tile, sync it with frontend
-        console.log('Syncing unplaced tile from backend:', unplacedTileData);
+
         
         // Check if we have tile data
         if (unplacedTileData.tile) {
@@ -1380,7 +1366,7 @@ const loadGameData = async (showLoading = true) => {
         } else {
           // Only tileId available, tile was picked but we don't have full data
           // Clear the picked tile state to avoid inconsistency
-          console.log('Unplaced tile exists but no tile data, clearing to allow re-pick');
+
           clearPickedTileState();
           pickedTileId.value = null;
           pickedTile.value = null;
@@ -1392,7 +1378,7 @@ const loadGameData = async (showLoading = true) => {
     } else {
       // No unplaced tile on backend, clear frontend state if it exists
       if (pickedTileId.value) {
-        console.log('Backend has no unplaced tile, clearing frontend state');
+
         clearPickedTileState();
         pickedTileId.value = null;
         pickedTile.value = null;
@@ -1411,7 +1397,7 @@ const loadGameData = async (showLoading = true) => {
     if (!virtualPlayerId && fetchedGameData.players) {
       const aiPlayer = fetchedGameData.players.find(p => p.isAi === true);
       if (aiPlayer) {
-        console.log('🤖 Detected AI player from game data:', aiPlayer.id);
+
         localStorage.setItem('virtualPlayerId', aiPlayer.id);
         virtualPlayerId = aiPlayer.id;
       }
@@ -1422,12 +1408,12 @@ const loadGameData = async (showLoading = true) => {
     // If it's an AI turn, always ensure isProcessingAI is true to prevent user interaction
     if (isCurrentlyAITurn) {
       if (!isProcessingAI.value) {
-        console.log('🔒 Setting isProcessingAI = true because it\'s AI turn');
-        console.log('Current player from API:', currentPlayer);
-        console.log('Virtual player ID:', virtualPlayerId);
+
+
+
         isProcessingAI.value = true;
       } else {
-        console.log('✅ isProcessingAI already true for AI turn');
+
       }
       
       // Simply call checkAndHandleVirtualPlayerTurn - it will handle all the logic
@@ -1435,22 +1421,22 @@ const loadGameData = async (showLoading = true) => {
     } else {
       // It's a human turn, clear all AI flags
       if (isProcessingAI.value || aiExecutionInProgressForTurn) {
-        console.log('✅ It\'s human turn, clearing all AI flags');
-        console.log('Current player:', currentPlayer, 'Virtual player:', virtualPlayerId);
-        console.log('Human player:', humanPlayerId);
+
+
+
         isProcessingAI.value = false;
         aiExecutionInProgressForTurn = null;
         aiExecutionPromise = null;
       } else {
-        console.log('👤 Human turn - flags already clear');
+
       }
     }
     
-    console.log('📊 Final state after loadGameData:');
-    console.log('- isProcessingAI:', isProcessingAI.value);
-    console.log('- aiExecutionInProgressForTurn:', aiExecutionInProgressForTurn);
-    console.log('- lastExecutedAITurn:', lastExecutedAITurn);
-    console.log('- Current turn belongs to:', isCurrentlyAITurn ? 'AI' : 'Human');
+
+
+
+
+
 
     // Check for pending battle info and show battle modal if needed
     if (fetchedGameData.field && fetchedGameData.field.lastBattleInfo) {
@@ -1465,15 +1451,15 @@ const loadGameData = async (showLoading = true) => {
       // 3. We haven't explicitly skipped re-showing it
       // 4. This battle hasn't been processed yet
       if (battleData.player === currentPlayerId.value && !showBattleReportModal.value && !skipBattleModalReshow.value && !isAlreadyProcessed) {
-        console.log('Found new pending battle info for current player:', battleData);
+
         battleInfo.value = battleData;
         showBattleReportModal.value = true;
       } else if (skipBattleModalReshow.value || isAlreadyProcessed) {
-        console.log('Skipping battle modal reshow:', skipBattleModalReshow.value ? 'due to flag' : `battle ${battleData.battleId} already processed`);
+
         skipBattleModalReshow.value = false; // Reset the flag for future battles
       }
     } else {
-      console.log('DEBUG: No lastBattleInfo found in field data');
+
     }
 
     // Check if we need to update our current player
@@ -1526,11 +1512,13 @@ watch(() => route.params.id, (newId, oldId) => {
 });
 
 onMounted(async () => {
-  console.log('Game view mounted with game ID:', id.value);
+
   
   // Expose handleFinalizeBattleAndPickUp globally for debugging
   window.gameViewHandleFinalizeBattleAndPickUp = handleFinalizeBattleAndPickUp;
-  console.log('Exposed handleFinalizeBattleAndPickUp to window for debugging');
+  // Expose resetRequestLock for E2E tests
+  window.__resetRequestLock = resetRequestLock;
+
 
   // Initialize music service with placeholder URL
   // Replace this with your actual music track URL
@@ -1545,7 +1533,7 @@ onMounted(async () => {
       
       try {
         await musicService.play();
-        console.log('Music started after user interaction');
+
         document.removeEventListener('click', startMusicOnInteraction);
         document.removeEventListener('keydown', startMusicOnInteraction);
       } catch (err) {
@@ -1565,12 +1553,12 @@ onMounted(async () => {
     
     // After loading game data, restore picked tile state if any
     if (restorePickedTileState()) {
-      console.log('Restored picked tile state after refresh');
+
       
       // Validate that the deck hasn't changed since we picked the tile
       // If the deck is now empty or tiles have been placed, clear the state
       if (gameData.value?.state?.deck?.isEmpty) {
-        console.log('Deck is now empty, clearing picked tile state');
+
         clearPickedTileState();
         pickedTileId.value = null;
         pickedTile.value = null;
@@ -1587,7 +1575,7 @@ onMounted(async () => {
         );
         
         if (tileAlreadyPlaced) {
-          console.log('Picked tile has already been placed on field, clearing picked tile state');
+
           clearPickedTileState();
           pickedTileId.value = null;
           pickedTile.value = null;
@@ -1712,7 +1700,7 @@ const addSecondPlayer = async () => {
     secondPlayerId.value = generateUUID();
     localStorage.setItem('secondPlayerId', secondPlayerId.value);
 
-    console.log('Adding second player to game with ID:', id.value, 'as player:', secondPlayerId.value);
+
 
     // Join the game with the second player (as Player 2)
     await gameApi.joinGame(id.value, secondPlayerId.value, null, 'Player 2');
@@ -1726,7 +1714,7 @@ const addSecondPlayer = async () => {
     const updatedGameData = await gameApi.getGame(id.value);
     updateGameDataSelectively(updatedGameData);
 
-    console.log('Successfully added and set ready second player:', secondPlayerId.value);
+
   } catch (err) {
     console.error('Failed to add second player:', err);
     error.value = `Failed to add second player: ${err.message}`;
@@ -1800,12 +1788,7 @@ const centerViewOnMiddle = () => {
   let idealScrollTop = centerY - (viewHeight / 2);
 
   // For debugging
-  console.log('Centering on middle:', {
-    fieldDimensions: { width: fieldWidth, height: fieldHeight, minX, maxX, minY, maxY },
-    viewDimensions: { width: viewWidth, height: viewHeight },
-    centerPoint: { x: centerX, y: centerY },
-    idealScroll: { left: idealScrollLeft, top: idealScrollTop }
-  });
+
 
   // Take into account the field's padding (100px on all sides)
   const padding = 100;
@@ -1827,7 +1810,7 @@ const centerViewOnMiddle = () => {
   });
 
   // Debug info
-  console.log('Applied middle scroll:', { left: boundedScrollLeft, top: boundedScrollTop });
+
 };
 
 // Tile highlighting functions
@@ -1858,7 +1841,7 @@ const startGame = async () => {
 
     // The utility function handles all the logic and error handling
     if (result && result.success) {
-      console.log('Game started successfully via utility function');
+
     }
   } catch (err) {
     console.error('Failed to start game:', err);
@@ -1893,20 +1876,11 @@ watch(ghostTileOrientation, (newVal, oldVal) => {
   if (newVal !== oldVal && newVal) {
     const newSymbol = getTileOrientationSymbol(newVal, pickedTile.value?.room);
     const newClass = getTileOrientationClass(newVal, pickedTile.value?.room);
-    console.log('Ghost tile orientation changed:', {
-      from: oldVal,
-      to: newVal,
-      symbol: newSymbol,
-      class: newClass,
-      isRoom: pickedTile.value?.room
-    });
+
     
     // Force update of the ghost tile by triggering a re-render
     nextTick(() => {
-      console.log('After nextTick - checking computed values:', {
-        orientation: ghostTileOrientation.value,
-        computedSymbol: getTileOrientationSymbol(ghostTileOrientation.value, pickedTile.value?.room)
-      });
+
     });
   }
 });
@@ -2192,7 +2166,7 @@ const changeReplaySpeed = (newSpeed) => {
 
 // Add a function to clean the field before replay
 const cleanFieldForReplay = () => {
-  console.log('Cleaning field for replay');
+
 
   if (gameData.value && gameData.value.field) {
     // Keep only the starting tile (at 0,0) and remove all other tiles
@@ -2231,7 +2205,7 @@ const cleanFieldForReplay = () => {
       gameData.value.field.size.maxY = 1;
     }
 
-    console.log('Field cleaned for replay', gameData.value.field);
+
   }
 };
 
@@ -2535,7 +2509,7 @@ watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
     });
   } else if (newStatus === 'finished') {
     // Game is finished, show the leaderboard
-    console.log('Game finished, showing leaderboard');
+
 
     // Extract scores from players' treasures
     const entries = gameData.value.players.map(player => {
@@ -2559,11 +2533,11 @@ watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
     
     // Also store the winner's externalId for authenticated user comparison
     const winnerExternalId = entries.length > 0 ? entries[0].externalId : null;
-    console.log('Winner determined:', { winnerId: winnerId.value, winnerExternalId });
+
 
     // Close battle modal if it's still open before showing leaderboard
     if (showBattleReportModal.value) {
-      console.log('Closing battle modal before showing leaderboard');
+
       showBattleReportModal.value = false;
       
       // Add a small delay to ensure DOM updates
@@ -2585,16 +2559,16 @@ const centerViewOnAvailablePlaces = () => {
 // Function to handle clicking on an available place
 const handlePlaceClick = async (position) => {
   // Debug logging
-  console.log('🖱️ handlePlaceClick called for position:', position);
-  console.log('- isPlayerTurn.value:', isPlayerTurn.value);
-  console.log('- isProcessingAI.value:', isProcessingAI.value);
-  console.log('- gameData currentPlayerId:', gameData.value?.state?.currentPlayerId);
-  console.log('- UI currentPlayerId:', currentPlayerId.value);
-  console.log('- virtualPlayerId:', localStorage.getItem('virtualPlayerId'));
+
+
+
+
+
+
   
   // Double-check it's actually the player's turn (in case of stale UI state)
   if (!isPlayerTurn.value) {
-    console.log('Not player turn - ignoring click. Current player:', gameData.value?.state?.currentPlayerId, 'UI player:', currentPlayerId.value);
+
     // Force refresh game state if there's a mismatch
     await loadGameData();
     return;
@@ -2602,13 +2576,13 @@ const handlePlaceClick = async (position) => {
   
   // Also check isProcessingAI directly
   if (isProcessingAI.value) {
-    console.log('🚫 AI is processing - ignoring click');
+
     return;
   }
   
   // Prevent actions if player is stunned
   if (isCurrentPlayerStunned.value) {
-    console.log('Player is stunned and cannot move');
+
     return;
   }
   
@@ -2644,13 +2618,13 @@ const handlePlaceClick = async (position) => {
   
   // Check if the move response contains a battle with a reward (win)
   if (response?.battleInfo && response.battleInfo.result === 'win' && response.battleInfo.reward) {
-    console.log('Battle won! Reward will be handled through battle modal');
+
     // Battle rewards are handled through the battle modal, not the item pickup dialog
     // The battle modal will show automatically when loadGameData() is called
   }
   // Check if the move response contains itemInfo (non-battle item)
   else if (response?.itemInfo) {
-    console.log('Item found at destination:', response.itemInfo);
+
     
     // Store the current turn ID and item info
     itemPickupTurnId.value = gameData.value?.state?.currentTurnId;
@@ -2658,7 +2632,7 @@ const handlePlaceClick = async (position) => {
     
     // Check if the item requires a key and player doesn't have one
     if (response.itemInfo.requiresKey && !response.itemInfo.hasKey) {
-      console.log('Player needs a key to pick up this chest');
+
       missingKeyChestType.value = response.itemInfo.item.type;
       showMissingKeyDialog.value = true;
       
@@ -2681,13 +2655,13 @@ const handlePlaceClick = async (position) => {
       if (isPlayerTurn.value) {
         showItemPickupDialog.value = true;
       } else {
-        console.log('Not showing item pickup dialog - turn has already changed');
+
       }
     }
   } else if (!response?.battleInfo && !response?.tilePicked && !response?.tilePlaced) {
     // No battle, no item, no tile picked/placed - just a regular move
     // Players can move up to 4 times per turn, so don't end turn automatically
-    console.log('Regular move completed, turn continues');
+
     // Just reload game data to update the UI with new positions
     await loadGameData();
   }
@@ -2721,8 +2695,8 @@ const rotateGhostTileLocal = async () => {
   // Ensure we're using the correct player ID from the game state
   if (gameData.value?.state?.currentPlayerId !== currentPlayerId.value) {
     console.error('Player ID mismatch in rotateGhostTile: UI player does not match game state player');
-    console.log('UI player:', currentPlayerId.value);
-    console.log('Game state player:', gameData.value?.state?.currentPlayerId);
+
+
 
     // Force a player switch to ensure we're using the correct player
     autoSwitchPlayer();
@@ -2755,13 +2729,7 @@ const rotateGhostTileLocal = async () => {
       pickedTile.value = tile;
       const newOrientation = parseOrientationString(tile.orientation);
       const newSymbol = getTileOrientationSymbol(newOrientation, tile.room);
-      console.log('Rotation successful - updating orientation:', {
-        oldOrientation: ghostTileOrientation.value,
-        newOrientation,
-        tileOrientation: tile.orientation,
-        isRoom: tile.room,
-        newSymbol
-      });
+
       ghostTileOrientation.value = newOrientation;
     },
     onError: (err) => {
@@ -2777,8 +2745,8 @@ const handleInitialTileOrientationLocal = async (position) => {
   // Ensure we're using the correct player ID from the game state
   if (gameData.value?.state?.currentPlayerId !== currentPlayerId.value) {
     console.error('Player ID mismatch in handleInitialTileOrientation: UI player does not match game state player');
-    console.log('UI player:', currentPlayerId.value);
-    console.log('Game state player:', gameData.value?.state?.currentPlayerId);
+
+
 
     // Force a player switch to ensure we're using the correct player
     autoSwitchPlayer();
@@ -2812,11 +2780,7 @@ const handleInitialTileOrientationLocal = async (position) => {
     onSuccess: (tile) => {
       pickedTile.value = tile;
       const newOrientation = parseOrientationString(tile.orientation);
-      console.log('Initial orientation found - updating:', {
-        oldOrientation: ghostTileOrientation.value,
-        newOrientation,
-        tileOrientation: tile.orientation
-      });
+
       ghostTileOrientation.value = newOrientation;
     },
     onError: (err) => {
@@ -2985,11 +2949,11 @@ const autoSwitchPlayer = () => {
 // Watch for changes in game data to ensure player IDs are always in sync
 watch(() => gameData.value?.state?.currentPlayerId, (newCurrentPlayerId) => {
   if (newCurrentPlayerId && newCurrentPlayerId !== currentPlayerId.value) {
-    console.log('Game state current player changed, syncing...');
+
     
     // Dismiss any open dialogs when player changes
     if (showItemPickupDialog.value) {
-      console.log('Dismissing item pickup dialog due to player change');
+
       dismissItemPickupDialog();
     }
     
@@ -3002,14 +2966,14 @@ watch(() => gameData.value?.state?.currentTurnId, (newTurnId, oldTurnId) => {
   if (newTurnId !== oldTurnId && oldTurnId !== undefined) {
     // Turn has changed, dismiss any open dialogs
     if (showItemPickupDialog.value) {
-      console.log('Dismissing item pickup dialog due to turn change');
+
       dismissItemPickupDialog();
     }
     
     // Reset AI turn flag when turn changes - this ensures AI can play again
     // even if multiple AI turns happen in quick succession
     if (aiTurnInProgress) {
-      console.log('Turn changed, resetting AI turn flag');
+
       aiTurnInProgress = false;
     }
   }
@@ -3025,7 +2989,7 @@ watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
     });
   } else if (newStatus === 'finished') {
     // Game is finished, show the leaderboard
-    console.log('Game finished, showing leaderboard');
+
 
     // Extract scores from players' treasures
     const entries = gameData.value.players.map(player => {
@@ -3049,11 +3013,11 @@ watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
     
     // Also store the winner's externalId for authenticated user comparison
     const winnerExternalId = entries.length > 0 ? entries[0].externalId : null;
-    console.log('Winner determined:', { winnerId: winnerId.value, winnerExternalId });
+
 
     // Close battle modal if it's still open before showing leaderboard
     if (showBattleReportModal.value) {
-      console.log('Closing battle modal before showing leaderboard');
+
       showBattleReportModal.value = false;
       
       // Add a small delay to ensure DOM updates
@@ -3269,7 +3233,7 @@ const closeBattleReportAndEndTurn = async () => {
       if (getCurrentPlayerData.value && getCurrentPlayerData.value.hp > 0) {
         getCurrentPlayerData.value.hp -= 1;
       }
-      console.log('Battle lost - HP reduced to:', getCurrentPlayerData.value?.hp);
+
     }
 
     // Close the battle report modal first
@@ -3287,7 +3251,7 @@ const closeBattleReportAndEndTurn = async () => {
     loading.value = true;
     loadingStatus.value = 'Updating game state...';
     
-    console.log('Battle completed - refreshing game state (turn was automatically ended by backend)');
+
     
     // Refresh game data to get the updated turn state
     const updatedGameState = await gameApi.getGame(id.value);
@@ -3295,7 +3259,7 @@ const closeBattleReportAndEndTurn = async () => {
     
     // If the turn advanced to a different player, update player IDs
     if (updatedGameState.state.currentPlayerId !== currentPlayerId.value) {
-      console.log('Turn has advanced to next player:', updatedGameState.state.currentPlayerId);
+
       // If it's our second player, switch to them
       if (secondPlayerId.value === updatedGameState.state.currentPlayerId) {
         switchPlayer({
@@ -3360,13 +3324,13 @@ const handleItemClick = async (itemData) => {
     // Check if player is on the same position as the item
     const playerPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
     if (playerPosition !== itemData.position) {
-      console.log('Player is not on the same position as the item');
+
       return;
     }
 
     // Check if the item has an undefeated guard
     if (itemData.item && !itemData.item.guardDefeated && itemData.item.guardHP > 0) {
-      console.log('Item has an undefeated guard, defeat the guard first');
+
       return;
     }
 
@@ -3378,7 +3342,7 @@ const handleItemClick = async (itemData) => {
       itemPickupTurnId.value = gameData.value?.state?.currentTurnId;
       showItemPickupDialog.value = true;
     } else {
-      console.log('Not showing item pickup dialog - not player turn');
+
     }
     return;
 
@@ -3424,7 +3388,7 @@ const handlePickItemAndEndTurn = async () => {
     // If this is a battle reward, use the battle position
     if (battleInfo.value && battleInfo.value.result === 'win' && battleInfo.value.position) {
       itemPosition = battleInfo.value.position;
-      console.log('Using battle position for item pickup:', itemPosition);
+
     } else {
       // Otherwise, use the player's current position
       itemPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
@@ -3451,7 +3415,7 @@ const handlePickItemAndEndTurn = async () => {
     if (response.inventoryFull && battleReportModalRef.value) {
       // Special case for keys: all keys are the same, so auto-replace without asking
       if (response.itemCategory === 'key' || response.itemCategory === 'keys') {
-        console.log('Auto-replacing key since all keys are functionally the same');
+
 
         // Get the first key from current inventory to replace
         const currentKeys = response.currentInventory || [];
@@ -3468,7 +3432,7 @@ const handlePickItemAndEndTurn = async () => {
           });
 
           // Item replaced successfully, now end the turn
-          console.log('Key replaced successfully, ending turn...');
+
           
           // End the turn
           await gameApi.endTurn({
@@ -3510,7 +3474,7 @@ const handlePickItemAndEndTurn = async () => {
       }
     } else {
       // Item picked up successfully, now end the turn
-      console.log('Item picked up successfully, ending turn...');
+
 
       // End the turn
       await gameApi.endTurn({
@@ -3564,7 +3528,7 @@ const handlePickItemWithReplacement = async (itemIdToReplace) => {
     });
 
     // Item replaced successfully, now end the turn
-    console.log('Item replaced successfully, ending turn...');
+
     
     // End the turn
     await gameApi.endTurn({
@@ -3594,8 +3558,8 @@ const handlePickItemWithReplacement = async (itemIdToReplace) => {
 
 // Function to handle finalize battle and pick up
 const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
-  console.log('🔵 handleFinalizeBattleAndPickUp called with:', finalizeBattleData);
-  console.log('Current request in progress:', isRequestInProgress.value);
+
+
   
   // Reset any stale request locks since we're in a battle finalization flow
   resetRequestLock();
@@ -3611,11 +3575,11 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     const currentTurnId = gameData.value?.state?.currentTurnId;
     const playerPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
     
-    console.log('🔍 Checking prerequisites:');
-    console.log('  - currentTurnId:', currentTurnId);
-    console.log('  - playerPosition:', playerPosition);
-    console.log('  - currentPlayerId:', currentPlayerId.value);
-    console.log('  - gameData.value:', gameData.value ? 'exists' : 'null');
+
+
+
+
+
 
     if (!currentTurnId || !playerPosition) {
       console.error('❌ Early return: Missing turn ID or player position');
@@ -3625,7 +3589,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
       return;
     }
 
-    console.log('✅ Prerequisites passed');
+
     
     // Calculate if inventory will have space after consuming the selected items
     let willHaveSpace = hasInventorySpaceForReward.value;
@@ -3646,23 +3610,17 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
         
         willHaveSpace = spellsAfterConsumption < spellLimit;
         
-        console.log('📊 Spell inventory check:', {
-          currentSpells: currentSpells.length,
-          consumedSpells: consumedSpellCount,
-          afterConsumption: spellsAfterConsumption,
-          limit: spellLimit,
-          willHaveSpace
-        });
+
       }
     }
     
     // Check if we need to select a replacement item first
     if (!finalizeBattleData.replaceItemId && !willHaveSpace) {
-      console.log('⚠️ No inventory space even after consuming items, need to select replacement first');
+
       
       // Special case for keys: auto-replace
       if (battleInfo.value?.reward?.type === 'key') {
-        console.log('🔑 Auto-replacing key since all keys are the same');
+
         const currentKeys = getCurrentPlayerData.value?.inventory?.keys || [];
         if (currentKeys.length > 0) {
           finalizeBattleData.replaceItemId = currentKeys[0].itemId;
@@ -3670,7 +3628,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
           skipBattleModalReshow.value = true;
         }
       } else {
-        console.log('📦 Need inventory selection for non-key item');
+
         loading.value = false;
         
         // Get inventory category
@@ -3692,10 +3650,10 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
           inventoryForCategory = inventoryForCategory.filter(item => 
             !finalizeBattleData.selectedConsumableIds.includes(item.itemId)
           );
-          console.log('Filtered out used consumables:', finalizeBattleData.selectedConsumableIds);
+
         }
         
-        console.log('Showing inventory selection for category:', inventoryCategory);
+
         
         if (battleReportModalRef.value) {
           battleReportModalRef.value.showFinalizeBattleInventoryFullSelection(inventoryForCategory);
@@ -3705,7 +3663,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     }
     
     // Now finalize battle with pickup and replacement if needed
-    console.log('🚀 Finalizing battle with pickup');
+
     loading.value = true;
     loadingStatus.value = 'Finalizing battle and picking up item...';
 
@@ -3719,7 +3677,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
       replaceItemId: finalizeBattleData.replaceItemId  // Include replacement if selected
     });
 
-    console.log('✅ Battle finalized with pickup:', response);
+
     
     // Mark this battle as processed to prevent re-showing
     if (finalizeBattleData.battleId) {
@@ -3795,7 +3753,7 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
       if (getCurrentPlayerData.value && getCurrentPlayerData.value.hp > 0) {
         getCurrentPlayerData.value.hp -= 1;
       }
-      console.log('Battle likely lost - HP preemptively reduced to:', getCurrentPlayerData.value?.hp);
+
     }
 
     // Call the finalize battle API
@@ -3811,14 +3769,14 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
     // The backend only automatically ends the turn for LOSE/DRAW results
     // For WIN results where the player doesn't pick up the item, we need to manually end the turn
     if (predictedResult === 'win') {
-      console.log('Player won but chose not to pick up item - ending turn manually');
+
       await gameApi.endTurn({
         gameId: id.value,
         playerId: currentPlayerId.value,
         turnId: currentTurnId
       });
     } else {
-      console.log('Battle finalized - turn was automatically ended by backend (LOSE/DRAW)');
+
     }
 
     // Close the modal immediately since finalize-battle already ends the turn on the backend
@@ -3878,7 +3836,7 @@ const handleAutoItemPickup = async () => {
     // If this is a battle reward, use the battle position
     if (battleInfo.value && battleInfo.value.result === 'win' && battleInfo.value.position) {
       itemPosition = battleInfo.value.position;
-      console.log('Using battle position for item pickup:', itemPosition);
+
     } else {
       // Otherwise, use the player's current position
       itemPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
@@ -3893,12 +3851,12 @@ const handleAutoItemPickup = async () => {
       throw new Error('No turn ID found - dialog was shown without proper turn context');
     }
     
-    console.log('Attempting to pick up item:');
-    console.log('- Stored turnId:', turnId);
-    console.log('- Current turnId in gameData:', gameData.value?.state?.currentTurnId);
-    console.log('- Player ID:', currentPlayerId.value);
-    console.log('- Position:', itemPosition);
-    console.log('- Item:', tileItem.value);
+
+
+
+
+
+
 
     // Call API to pick up the item
     const response = await gameApi.pickItem({
@@ -3910,7 +3868,7 @@ const handleAutoItemPickup = async () => {
 
     // Check if player is missing a key for a chest
     if (response.missingKey) {
-      console.log('Player missing key for chest:', response.chestType);
+
       dismissItemPickupDialog();
       missingKeyChestType.value = response.chestType;
       showMissingKeyDialog.value = true;
@@ -3919,7 +3877,7 @@ const handleAutoItemPickup = async () => {
 
     // Check if inventory is full
     if (response.inventoryFull) {
-      console.log('Inventory is full, showing replacement dialog');
+
       dismissItemPickupDialog();
 
       // Set up the inventory full dialog
@@ -3947,10 +3905,10 @@ const handleAutoItemPickup = async () => {
     // Check if the turn has already changed (delayed pickup)
     const currentTurnNow = gameData.value?.state?.currentTurnId;
     if (currentTurnNow !== turnId) {
-      console.log('Turn has already advanced - this was a delayed pickup, not ending turn');
+
     } else {
       // End turn after successfully picking up the item
-      console.log('Ending turn after item pickup');
+
       try {
         await gameApi.endTurn({
           gameId: id.value,
@@ -3984,46 +3942,46 @@ const dismissItemPickupDialog = () => {
   itemPickupTurnId.value = null;
 };
 
-// Function to dismiss item pickup dialog and end turn when player skips item
+// Function to dismiss item pickup dialog when player skips item.
+// If the player has used all their moves (pendingItemPickup), auto-ends the turn.
+// Otherwise, the player can continue moving.
 const skipItemAndEndTurn = async () => {
-  console.log('Player skipped item pickup, ending turn');
-  
-  // First dismiss the dialog
+
+
+  // Save turn ID before dismissing (dismiss clears it)
+  const turnId = itemPickupTurnId.value;
+
+  // Dismiss the dialog
   dismissItemPickupDialog();
-  
-  // Then end the turn
+
+  // Refresh game data so move markers update for the player's new position
   try {
-    // Use the turn ID that was stored when the dialog was shown
-    const turnId = itemPickupTurnId.value;
-    if (!turnId) {
-      console.error('No turn ID found - dialog was shown without proper turn context');
-      return;
-    }
-    
-    loading.value = true;
-    loadingStatus.value = 'Ending turn...';
-    
-    await gameApi.endTurn({
-      gameId: id.value,
-      playerId: currentPlayerId.value,
-      turnId: turnId
-    });
-    
-    // Clear loading state before refreshing
-    loading.value = false;
-    loadingStatus.value = '';
-    
-    // Refresh game data to get the updated turn state (without showing loading)
+
     await loadGameData(false);
-    
-    // Check if the next player is an AI player and trigger their turn
-    await checkAndHandleVirtualPlayerTurn();
   } catch (err) {
-    console.error('Failed to end turn after skipping item:', err);
-    error.value = `Failed to end turn: ${err.message}`;
-  } finally {
-    loading.value = false;
-    loadingStatus.value = '';
+    console.error('Failed to refresh game data after skipping item:', err);
+  }
+
+  // Check if the current turn has pendingItemPickup (4th move exhausted all actions)
+  // If so, auto-end the turn since no more moves are available
+  const currentTurn = gameData.value?.turns?.find(
+    t => t.turnId === (turnId || gameData.value?.state?.currentTurnId)
+  );
+  if (currentTurn?.pendingItemPickup) {
+
+    try {
+      await gameApi.endTurn({
+        gameId: id.value,
+        playerId: currentPlayerId.value,
+        turnId: turnId || gameData.value?.state?.currentTurnId
+      });
+      await loadGameData(false);
+      await checkAndHandleVirtualPlayerTurn();
+    } catch (err) {
+      console.error('Failed to auto-end turn:', err);
+    }
+  } else {
+
   }
 };
 
@@ -4082,7 +4040,7 @@ const handleTeleportClick = async (position) => {
     // Reload game data to see the updated position
     await loadGameData();
     
-    console.log('Teleport successful');
+
   } catch (err) {
     console.error('Failed to use teleport spell:', err);
     error.value = `Failed to teleport: ${err.message}`;
@@ -4098,7 +4056,7 @@ const handleTeleportClick = async (position) => {
 const cancelTeleportMode = () => {
   isTeleportMode.value = false;
   selectedTeleportSpell.value = null;
-  console.log('Teleport mode cancelled');
+
 };
 
 // Helper to check if a position is the current player's position
@@ -4154,31 +4112,19 @@ const isCurrentUserWinner = () => {
     // Check if this winner is the current user
     const currentPrivyId = getCurrentUserPrivyId();
     
-    console.log('isCurrentUserWinner check:', {
-      currentPrivyId,
-      winner,
-      humanPlayerId: humanPlayerId.value
-    });
+
     
     // If we have a Privy ID and the winner has an externalId, compare them
     if (currentPrivyId && winner.externalId) {
       const isWinner = winner.externalId === currentPrivyId;
-      console.log('Privy ID comparison:', {
-        winnerExternalId: winner.externalId,
-        currentPrivyId,
-        isWinner
-      });
+
       return isWinner;
     }
     
     // Fallback: compare playerId with humanPlayerId for non-authenticated users
     if (humanPlayerId.value && !isVirtualPlayer(humanPlayerId.value)) {
       const isWinner = winner.playerId === humanPlayerId.value;
-      console.log('PlayerId fallback comparison:', {
-        winnerPlayerId: winner.playerId,
-        humanPlayerId: humanPlayerId.value,
-        isWinner
-      });
+
       return isWinner;
     }
   }
@@ -4224,7 +4170,7 @@ const handleManualEndTurn = async () => {
   try {
     // Check if there's a picked tile that hasn't been placed
     if (pickedTileId.value) {
-      console.log('Cannot end turn with a picked but unplaced tile');
+
       error.value = 'You must place the picked tile before ending your turn';
       setTimeout(() => { error.value = null; }, 5000);
       return;
@@ -4267,7 +4213,7 @@ const handleManualEndTurn = async () => {
     // Refresh game data to get the updated turn state (without showing loading)
     await loadGameData(false);
     
-    console.log('Turn ended manually by player');
+
     
     // Check if the next player is an AI player and trigger their turn
     await checkAndHandleVirtualPlayerTurn();
@@ -4290,7 +4236,7 @@ const forceAITurn = async () => {
       return;
     }
     
-    console.log('🔧 Forcing stuck AI turn for player:', aiPlayerId, 'turn:', currentTurnNumber);
+
     
     // Clear stuck detection
     aiStuckDetected.value = false;
@@ -4307,13 +4253,13 @@ const forceAITurn = async () => {
     // Reset last executed turn to force re-execution of current turn
     if (lastExecutedAITurn === currentTurnNumber) {
       lastExecutedAITurn = null;
-      console.log('🔄 Reset lastExecutedAITurn to allow re-execution');
+
     }
     
     // Call checkAndHandleVirtualPlayerTurn which will handle the execution
     await checkAndHandleVirtualPlayerTurn();
     
-    console.log('✅ AI turn recovery attempted');
+
   } catch (err) {
     console.error('Failed to force AI turn:', err);
     error.value = `Failed to recover AI turn: ${err.message}`;
@@ -4333,21 +4279,15 @@ onMounted(() => {
   // Add watcher for debugging deck and place tile issues
   watch(() => gameData.value?.state?.availablePlaces?.placeTile, (newValue) => {
     if (newValue) {
-      console.log('Available placeTile locations:', newValue);
-      console.log('Deck state:', gameData.value?.state?.deck);
+
+
     }
   });
 
   // Enhanced watch function for debugging
   watch(() => gameData.value?.state?.availablePlaces, (newValue) => {
     if (newValue) {
-      console.log('Available places update:', {
-        moveTo: newValue.moveTo?.length || 0,
-        placeTile: newValue.placeTile?.length || 0,
-        moveToPaths: newValue.moveTo,
-        placeTilePaths: newValue.placeTile,
-        deckState: gameData.value?.state?.deck
-      });
+
 
       // Check if there are moveTo places but no placeTile places despite having remaining tiles
       if (newValue.moveTo?.length > 0 && 
@@ -4382,7 +4322,7 @@ function handleGameEnded(event) {
   
   // Close battle modal if it's still open before showing leaderboard
   if (showBattleReportModal.value) {
-    console.log('Closing battle modal before showing leaderboard');
+
     showBattleReportModal.value = false;
     
     // Add a small delay to ensure DOM updates
@@ -4396,9 +4336,9 @@ function handleGameEnded(event) {
 
 // Also watch for gameEnded flag
 watch(() => gameData.value?.state?.gameEnded, (isEnded) => {
-  console.log('Game ended flag changed to:', isEnded);
+
   if (isEnded) {
-    console.log('Game has ended! Preparing leaderboard...');
+
     
     // Extract scores from players' treasures
     const entries = gameData.value.players.map(player => {
@@ -4422,11 +4362,11 @@ watch(() => gameData.value?.state?.gameEnded, (isEnded) => {
     
     // Also store the winner's externalId for authenticated user comparison
     const winnerExternalId = entries.length > 0 ? entries[0].externalId : null;
-    console.log('Winner determined:', { winnerId: winnerId.value, winnerExternalId });
+
 
     // Close battle modal if it's still open before showing leaderboard
     if (showBattleReportModal.value) {
-      console.log('Closing battle modal before showing leaderboard');
+
       showBattleReportModal.value = false;
       
       // Add a small delay to ensure DOM updates
@@ -4442,10 +4382,10 @@ watch(() => gameData.value?.state?.gameEnded, (isEnded) => {
 
 // Watch for game status changes to detect when game is finished
 watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
-  console.log('Game status changed from', oldStatus, 'to', newStatus);
+
   if (newStatus === 'finished') {
-    console.log('Game finished, preparing leaderboard...');
-    console.log('Current game data:', gameData.value);
+
+
 
     // Extract scores from players' treasures
     const entries = gameData.value.players.map(player => {
@@ -4469,11 +4409,11 @@ watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
     
     // Also store the winner's externalId for authenticated user comparison
     const winnerExternalId = entries.length > 0 ? entries[0].externalId : null;
-    console.log('Winner determined:', { winnerId: winnerId.value, winnerExternalId });
+
 
     // Close battle modal if it's still open before showing leaderboard
     if (showBattleReportModal.value) {
-      console.log('Closing battle modal before showing leaderboard');
+
       showBattleReportModal.value = false;
       
       // Add a small delay to ensure DOM updates
@@ -4513,7 +4453,7 @@ const isCurrentPlayerStunned = computed(() => {
   // Show stunned dialog if it's player's turn AND they're stunned
   const isStunned = playerData.hp === 0 || playerData.defeated === true;
   
-  console.log(`Stun check for ${currentPlayerId.value}: isCurrentTurn=${isCurrentPlayersTurn}, isStunned=${isStunned}`);
+
   
   return isStunned;
 });
@@ -4576,7 +4516,7 @@ const checkStunnedPlayersAndSwitch = () => {
   // If we have a virtual player in the game, don't switch players based on whose turn it is
   // The human should always control their own player
   if (virtualPlayerId && humanPlayerId) {
-    console.log('Game has AI player, maintaining human player control');
+
     // Ensure the human player remains the controlled player for UI purposes
     // BUT DO NOT change gameData.state.currentPlayerId - that's the server's truth
     if (currentPlayerId.value !== humanPlayerId) {
@@ -4584,13 +4524,13 @@ const checkStunnedPlayersAndSwitch = () => {
       localStorage.setItem('currentPlayerId', humanPlayerId);
     }
     
-    console.log('Player check complete. UI player: ', currentPlayerId.value);
-    console.log('Server current player (whose turn): ', serverCurrentPlayerId);
+
+
     
     // Check if human player is stunned
     const currentPlayerData = gameData.value.players.find(p => p.id === humanPlayerId);
     const isCurrentPlayerStunned = currentPlayerData && (currentPlayerData.hp === 0 || currentPlayerData.defeated === true);
-    console.log('Is current player stunned: ', isCurrentPlayerStunned);
+
     return;
   }
   
@@ -4603,11 +4543,11 @@ const checkStunnedPlayersAndSwitch = () => {
   if (currentPlayerId.value && secondPlayerId.value && !virtualPlayerId) {
     // If our UI player doesn't match the server player, switch to match server
     if (serverCurrentPlayerId !== currentPlayerId.value) {
-      console.log('Server player doesn\'t match UI player, switching...');
+
       
       // Check if the server's current player matches our second player
       if (serverCurrentPlayerId === secondPlayerId.value) {
-        console.log('Switching to second player');
+
         switchPlayer({
           currentPlayerId,
           secondPlayerId,
@@ -4615,7 +4555,7 @@ const checkStunnedPlayersAndSwitch = () => {
         });
       } else {
         // Just update to match server
-        console.log('Updating current player to match server');
+
         currentPlayerId.value = serverCurrentPlayerId;
         localStorage.setItem('currentPlayerId', currentPlayerId.value);
       }
@@ -4627,15 +4567,15 @@ const checkStunnedPlayersAndSwitch = () => {
     localStorage.setItem('currentPlayerId', currentPlayerId.value);
   }
   
-  console.log('Player check complete. Current player: ', currentPlayerId.value);
-  console.log('Server player: ', serverCurrentPlayerId);
-  console.log('Is current player stunned: ', isCurrentPlayerStunned);
+
+
+
 };
 
 // Call this function when game data changes
 watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) => {
   if (newPlayerId !== oldPlayerId) {
-    console.log('Server player changed from', oldPlayerId, 'to', newPlayerId);
+
     checkStunnedPlayersAndSwitch();
   }
 }, { immediate: true });

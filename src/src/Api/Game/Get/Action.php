@@ -13,6 +13,7 @@ use App\Game\Item\Item;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\QueryPlayerInventory;
+use App\Game\Field\Repository\TileRepository;
 use App\Game\Turn\Repository\GameTurnRepository;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,6 +24,7 @@ final readonly class Action
     public function __construct(
         private MessageBus $messageBus,
         private GameTurnRepository $gameTurnRepository,
+        private TileRepository $tileRepository,
     ) {}
 
     #[Route('/game/{gameId}', methods: ['GET'])]
@@ -78,9 +80,7 @@ final readonly class Action
             $recentTurns = [];
 
             try {
-                $allTurns = $this->gameTurnRepository->getForApi($gameUuid);
-                // Get the last 2 turns
-                $recentTurns = \array_slice($allTurns, -2);
+                $recentTurns = $this->gameTurnRepository->getForApi($gameUuid);
             } catch (\Throwable $e) {
                 // Log the error for debugging
                 error_log('Failed to get turns data: ' . $e->getMessage());
@@ -88,7 +88,7 @@ final readonly class Action
             }
 
             // If game is not found, field will be null, that's fine
-            return Response::fromGameLifecycleGame($game, $field, $playerData, $this->messageBus, $recentTurns);
+            return Response::fromGameLifecycleGame($game, $field, $playerData, $this->messageBus, $recentTurns, $this->tileRepository);
         } catch (GameNotFoundException $e) {
             return new Error(Uuid::v7(), 'Game not found: ' . $e->getMessage());
         } catch (\Throwable $e) {

@@ -71,7 +71,9 @@ test.describe('Two Player Game', () => {
    * Turn 16: Player 2 places corner tile with healing fountain, then room tile, loses battle, steps back to healing fountain
    * Turn 17: Player 1 loses to dragon again
    * Turn 18: Player 2 teleports between the two teleportation gates instead of battling
-   * Turn 19: Player 1 defeats dragon and ends game
+   * Turn 19: Player 1 ends turn
+   * Turn 20: Player 2 ends turn
+   * Turn 21: Player 1 defeats dragon and ends game
    */
   test('complete game flow with battles and healing fountain', async ({ page, request }, testInfo) => {
     test.setTimeout(900000); // Increase timeout to 15 minutes for extended test with healing fountain
@@ -837,8 +839,102 @@ test.describe('Two Player Game', () => {
     // Wait for turn change from 18 to 19
     await waitForTurnChange(18, 19);
 
-    // === PLAYER 1 TURN 19: Dragon Battle - Game End ===
-    console.log('=== Player 1 Turn 19: Dragon Battle - Game End ===');
+    // === PLAYER 1 TURN 19: 4th-Step Item Pickup Test ===
+    // Player bounces between (0,-4) and (0,-5), both have dropped daggers.
+    // On the 4th move landing on an item tile, the deferTurnEnd fix ensures the dialog appears.
+    console.log('=== Player 1 Turn 19: 4th-Step Item Pickup ===');
+    printElapsedTime();
+    await GameHelpers.setupPlayerSession(page, player1Id);
+    await GameHelpers.waitForGameLoad(page);
+    await page.waitForTimeout(2000);
+
+    // Click a move marker and handle any item dialog
+    const clickMoveAndHandleDialog = async (targetPos: string, moveNum: number) => {
+      // Reset fieldUtils request lock in case previous move left it stuck
+      await page.evaluate(() => {
+        if ((window as any).__resetRequestLock) (window as any).__resetRequestLock();
+      });
+
+      // Wait for the marker to exist in DOM (it may not be 'visible' per Playwright due to absolute positioning)
+      const marker = page.locator(`.move-marker.clickable[title*="${targetPos}"]`).first();
+      await marker.waitFor({ state: 'attached', timeout: TIMEOUTS.ELEMENT_WAIT });
+      await marker.click({ force: true });
+      console.log(`Move ${moveNum}: clicked marker for ${targetPos}`);
+      await page.waitForTimeout(3000);
+
+      // Handle item pickup dialog if it appeared
+      const dialog = await page.locator('.item-pickup-dialog').isVisible().catch(() => false);
+      if (dialog) {
+        console.log(`Move ${moveNum}: item dialog appeared — clicking Leave It`);
+        await page.getByRole('button', { name: /leave it/i }).click();
+        // Wait for skipItemAndEndTurn to process (loadGameData + possible auto-end)
+        await page.waitForTimeout(3000);
+        // Clear any stale picked tile state that loadGameData may have synced
+        await page.evaluate(() => localStorage.removeItem('pickedTileState'));
+      }
+    };
+
+    // Debug: check what's hiding markers
+    const fs = require('fs');
+    const markerState = await page.evaluate(() => {
+      const markers = document.querySelectorAll('.move-marker');
+      const availPlace = document.querySelectorAll('.available-place');
+      const gameField = document.querySelector('.game-field');
+      return {
+        moveMarkers: markers.length,
+        availPlaces: availPlace.length,
+        hasGameField: !!gameField,
+        fieldChildrenCount: gameField?.children.length || 0,
+        availPlaceHTML: Array.from(availPlace).slice(0, 3).map(el => el.outerHTML.slice(0, 200)),
+      };
+    });
+    fs.writeFileSync('/app/test-results/turn19-pre-move1.json', JSON.stringify(markerState, null, 2));
+
+    await clickMoveAndHandleDialog('0,-4', 1);
+    await clickMoveAndHandleDialog('0,-5', 2);
+
+    // Debug: check what backend returns + DOM state after Leave It on move 2
+    const afterLeave2 = await page.evaluate(async (url) => {
+      const resp = await fetch(`${url}`);
+      const apiData = await resp.json();
+      const markers = document.querySelectorAll('.move-marker');
+      const attached = document.querySelectorAll('.move-marker.clickable');
+      return {
+        api: {
+          moveTo: apiData.state?.availablePlaces?.moveTo,
+          unplacedTile: apiData.state?.unplacedTile,
+          pendingItemPickup: apiData.turns?.find((t: any) => t.endTime === null)?.pendingItemPickup,
+        },
+        dom: {
+          allMarkers: markers.length,
+          clickableMarkers: attached.length,
+          titles: Array.from(markers).map(m => m.getAttribute('title')),
+        }
+      };
+    }, `${apiUrl}/api/game/${gameId}`);
+    const fs2 = require('fs');
+    fs2.writeFileSync('/app/test-results/after-leave2-debug.json', JSON.stringify(afterLeave2, null, 2));
+
+    await clickMoveAndHandleDialog('0,-4', 3);
+    await clickMoveAndHandleDialog('0,-5', 4);
+    console.log('All 4 moves completed — turn should auto-end after last Leave It');
+
+    // Wait for turn change from 19 to 20
+    await waitForTurnChange(19, 20);
+
+    // === PLAYER 2 TURN 20: End Turn ===
+    console.log('=== Player 2 Turn 20: End Turn ===');
+    await GameHelpers.setupPlayerSession(page, player2Id);
+    await GameHelpers.waitForGameLoad(page);
+
+    await page.locator('.end-turn-btn').click();
+    console.log('Player 2 ended turn');
+
+    // Wait for turn change from 20 to 21
+    await waitForTurnChange(20, 21);
+
+    // === PLAYER 1 TURN 21: Dragon Battle - Game End ===
+    console.log('=== Player 1 Turn 21: Dragon Battle - Game End ===');
     await GameHelpers.setupPlayerSession(page, player1Id);
     await GameHelpers.waitForGameLoad(page);
 
@@ -860,7 +956,9 @@ test.describe('Two Player Game', () => {
     }) || { x: 0, y: 0 };
     console.log(`Dragon position: ${dragonPosFinal.x},${dragonPosFinal.y}`);
 
-    console.log(`Moving to dragon for final battle at position: ${dragonPosFinal.x},${dragonPosFinal.y}`);
+    // Reset request lock before dragon move (may be stuck from Turn 19 bouncing)
+    await page.evaluate(() => { if (window.__resetRequestLock) window.__resetRequestLock(); });
+    await page.waitForTimeout(500);
 
     // Move to dragon tile for final battle
     await GameHelpers.movePlayer(page, dragonPosFinal.x, dragonPosFinal.y);

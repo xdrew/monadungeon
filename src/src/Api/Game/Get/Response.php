@@ -8,6 +8,7 @@ use App\Game\Deck\Deck;
 use App\Game\Deck\GetDeck;
 use App\Game\Field\Field;
 use App\Game\Field\GetAvailablePlacesForPlayer;
+use App\Game\Field\Repository\TileRepository;
 use App\Game\Field\GetTile;
 use App\Game\GameLifecycle\Game as GameLifecycleGame;
 use App\Game\Movement\GetAllPlayerPositions;
@@ -48,6 +49,7 @@ final readonly class Response
         array $playerData = [],
         ?MessageBus $messageBus = null,
         array $recentTurns = [],
+        ?TileRepository $tileRepository = null,
     ): self {
         $currentPlayerId = $game->getCurrentPlayerId() ?: null;
 
@@ -89,6 +91,16 @@ final readonly class Response
             }
             // placeTile should already be empty if deck is empty, but you can force it:
             $availablePlaces['placeTile'] = [];
+        }
+
+        // Check if current turn has pendingItemPickup — if so, player has no more moves
+        if ($availablePlaces !== null) {
+            $currentTurnRow = array_filter($recentTurns, static fn(array $t) => $t['end_time'] === null);
+            $currentTurnRow = reset($currentTurnRow);
+            if ($currentTurnRow && ($currentTurnRow['pending_item_pickup'] ?? false)) {
+                $availablePlaces['moveTo'] = [];
+                $availablePlaces['placeTile'] = [];
+            }
         }
 
         // Format turns data
@@ -155,7 +167,7 @@ final readonly class Response
             ],
             players: self::formatGameLifecyclePlayers($game->getPlayers(), $playerData, $messageBus),
             settings: [], // Add any settings if available in GameLifecycleGame
-            field: $field ? self::formatFieldData($field, $messageBus) : null,
+            field: $field ? self::formatFieldData($field, $messageBus, $tileRepository) : null,
             turns: $formattedTurns,
         );
     }
@@ -250,14 +262,35 @@ final readonly class Response
      *
      * @return array<string, mixed>
      */
-    private static function formatFieldData(Field $field, ?MessageBus $messageBus = null): array
+    private static function formatFieldData(Field $field, ?MessageBus $messageBus = null, ?TileRepository $tileRepository = null): array
     {
         // Get basic field data
         $tiles = [];
         $placedTiles = $field->getPlacedTiles();
 
-        // Get tile features map if messageBus is available
-        $tileFeatures = $messageBus ? $field->getTileFeatures($messageBus) : [];
+        // Get tile features — prefer batch repository query over N+1 message bus dispatches
+        if ($tileRepository !== null) {
+            $tileIds = array_map('strval', array_values($placedTiles));
+            $featuresByTileId = $tileRepository->getFeaturesByTileIds($tileIds);
+
+            // Map tile features from tileId-keyed to position-keyed
+            $tileFeatures = [];
+            // Starting tile always has healing fountain
+            if (isset($placedTiles['0,0'])) {
+                $tileFeatures['0,0'] = [\App\Game\Field\TileFeature::HEALING_FOUNTAIN];
+            }
+            foreach ($placedTiles as $position => $tileId) {
+                if ($position === '0,0') {
+                    continue;
+                }
+                $tileIdStr = (string) $tileId;
+                if (isset($featuresByTileId[$tileIdStr])) {
+                    $tileFeatures[$position] = $featuresByTileId[$tileIdStr];
+                }
+            }
+        } else {
+            $tileFeatures = $messageBus ? $field->getTileFeatures($messageBus) : [];
+        }
 
         // Min/max coordinates for calculating field size
         $minX = $minY = PHP_INT_MAX;
@@ -371,6 +404,7 @@ final readonly class Response
                 'actions' => $actions,
                 'startTime' => $turn['start_time'] ?? null,
                 'endTime' => $turn['end_time'] ?? null,
+                'pendingItemPickup' => (bool) ($turn['pending_item_pickup'] ?? false),
             ];
         }
 
