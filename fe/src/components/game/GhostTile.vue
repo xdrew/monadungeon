@@ -339,7 +339,7 @@ const placeTile = () => {
   animation: ghostPulse 2s infinite;
   pointer-events: auto;
   cursor: pointer;
-  border: 2px solid rgba(123, 63, 242, 0.6);
+  border: 1px solid rgba(123, 63, 242, 0.2);
   box-shadow: 0 0 15px rgba(123, 63, 242, 0.4), inset 0 0 10px rgba(123, 63, 242, 0.1);
   background-size: cover !important;
   background-position: center !important;
@@ -353,7 +353,8 @@ const placeTile = () => {
 .ghost-tile:hover {
   opacity: 1;
   transform: scale(1.02);
-  box-shadow: 0 0 20px rgba(123, 63, 242, 0.6), inset 0 0 10px rgba(123, 63, 242, 0.15);
+  border-color: rgba(123, 63, 242, 0.35);
+  box-shadow: 0 0 20px rgba(123, 63, 242, 0.5), inset 0 0 10px rgba(123, 63, 242, 0.15);
 }
 
 @keyframes ghostPulse {
