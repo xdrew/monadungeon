@@ -352,7 +352,6 @@ const placeTile = () => {
 
 .ghost-tile:hover {
   opacity: 1;
-  transform: scale(1.02);
   border-color: rgba(123, 63, 242, 0.35);
   box-shadow: 0 0 20px rgba(123, 63, 242, 0.5), inset 0 0 10px rgba(123, 63, 242, 0.15);
 }
