@@ -461,9 +461,11 @@
 
 /* Ghost Tile */
 .ghost-tile {
-  opacity: 0.7;
-  /*border: 2px dashed var(--color-primary);*/
+  opacity: 0.85;
+  border: 2px solid rgba(123, 63, 242, 0.6);
+  box-shadow: 0 0 15px rgba(123, 63, 242, 0.4), inset 0 0 10px rgba(123, 63, 242, 0.1);
   animation: ghostPulse 2s infinite;
+  z-index: 10 !important;
 }
 
 .ghost-tile.room {
