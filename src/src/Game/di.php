@@ -38,6 +38,7 @@ use App\Game\Movement\DoctrineDBAL\PlayerPositionMapType;
 use App\Game\Movement\Movement;
 use App\Game\Player\Player;
 use App\Game\Turn\GameTurn;
+use App\Game\Field\Repository\TileRepository;
 use App\Game\Turn\Repository\GameTurnRepository;
 use App\Infrastructure\Transaction\SafeDoctrineOrmTransactionProvider;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -104,6 +105,7 @@ return static function (ContainerConfigurator $di): void {
         ->set(FieldPlaceNormalizer::class)
         ->set(GameRunConsoleCommand::class)
         ->set(GameTurnRepository::class)
+        ->set(TileRepository::class)
         ->set(GameRunTurnBasedConsoleCommand::class)
         ->set(GamePlayerMovementDemoCommand::class)
         ->set(TestGameLoggingCommand::class)

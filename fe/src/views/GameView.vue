@@ -1125,6 +1125,7 @@ const updateGameTurns = (gameDataResponse) => {
       actions: turn.actions || [],
       startTime: turn.startTime || turn.start_time,
       endTime: turn.endTime || turn.end_time,
+      pendingItemPickup: turn.pendingItemPickup || turn.pending_item_pickup || false,
     }));
   }
 };
@@ -3898,14 +3899,17 @@ const handleAutoItemPickup = async () => {
 
     // Dismiss the dialog immediately after successful pickup
     dismissItemPickupDialog();
-    
+
     // Refresh game data
     await loadGameData();
-    
-    // Check if the turn has already changed (delayed pickup)
+
+    // Ensure dialog is dismissed after data refresh (prevents stale dialog on turn change)
+    dismissItemPickupDialog();
+
+    // Check if the turn has already changed (backend auto-ended, e.g. 4th move pickup)
     const currentTurnNow = gameData.value?.state?.currentTurnId;
     if (currentTurnNow !== turnId) {
-
+      // Turn already advanced — nothing more to do
     } else {
       // End turn after successfully picking up the item
 
@@ -3964,7 +3968,7 @@ const skipItemAndEndTurn = async () => {
 
   // Check if the current turn has pendingItemPickup (4th move exhausted all actions)
   // If so, auto-end the turn since no more moves are available
-  const currentTurn = gameData.value?.turns?.find(
+  const currentTurn = gameTurns.value?.find(
     t => t.turnId === (turnId || gameData.value?.state?.currentTurnId)
   );
   if (currentTurn?.pendingItemPickup) {
