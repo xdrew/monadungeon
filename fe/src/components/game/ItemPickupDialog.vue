@@ -1,47 +1,48 @@
 <template>
   <div
     v-if="show"
-    class="item-pickup-dialog"
+    class="item-pickup-overlay"
   >
-    <div class="dialog-content">
-      <div class="item-preview">
-        <div class="item-icon">
+    <div :class="['dialog-card', itemCategoryClass]">
+      <div class="card-header">
+        <span class="header-label">Item Found</span>
+      </div>
+
+      <div class="item-showcase">
+        <div class="item-icon-wrapper">
+          <div class="item-glow" />
           <img
             v-if="itemImage"
             :src="itemImage"
             :alt="itemName"
             class="item-image"
           />
-          <span v-else>{{ itemEmoji }}</span>
-        </div>
-        <div class="item-details">
-          <h3>{{ itemName }}</h3>
-          <p
-            v-if="itemDamage > 0"
-            class="item-stat"
-          >
-            Damage: +{{ itemDamage }}
-          </p>
+          <span v-else class="item-emoji">{{ itemEmoji }}</span>
         </div>
       </div>
-      <div class="dialog-message">
-        <p
-          v-if="itemValue > 0"
-          class="item-value"
-        >
-          Value: {{ itemValue }}
-        </p>
-        <p>You found an item! Would you like to pick it up?</p>
+
+      <h3 class="item-name">{{ itemName }}</h3>
+
+      <div v-if="itemDamage > 0 || itemValue > 0" class="stat-badges">
+        <span v-if="itemDamage > 0" class="badge badge-damage">
+          ⚔️ +{{ itemDamage }}
+        </span>
+        <span v-if="itemValue > 0" class="badge badge-value">
+          💎 {{ itemValue }} VP
+        </span>
       </div>
+
+      <p class="pickup-prompt">Pick up this item?</p>
+
       <div class="dialog-actions">
         <button
-          class="pickup-button"
+          class="btn-pickup"
           @click="pickupItem"
         >
-          Pick Up
+          🎒 Pick Up
         </button>
         <button
-          class="skip-button"
+          class="btn-leave"
           @click="skipItem"
         >
           Leave It
@@ -143,6 +144,15 @@ const itemDamage = computed(() => {
 });
 const itemValue = computed(() => props.item?.treasureValue || 0);
 
+const itemCategoryClass = computed(() => {
+  const type = props.item?.type;
+  if (['dagger', 'sword', 'axe'].includes(type)) return 'category-weapon';
+  if (type === 'key') return 'category-key';
+  if (['fireball', 'teleport'].includes(type)) return 'category-spell';
+  if (['chest', 'ruby_chest'].includes(type)) return 'category-treasure';
+  return '';
+});
+
 // Actions
 const pickupItem = () => {
   emit('pickup', props.item);
@@ -154,115 +164,227 @@ const skipItem = () => {
 </script>
 
 <style scoped>
-.item-pickup-dialog {
+/* Overlay */
+.item-pickup-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  inset: 0;
+  background: var(--bg-overlay, rgba(9, 8, 15, 0.85));
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: overlayIn 0.25s ease-out;
 }
 
-.dialog-content {
-  background-color: #1a202c;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
-  width: 350px;
+/* Card */
+.dialog-card {
+  background: var(--monad-bg-card, #1A1830);
+  border: 1px solid rgba(123, 63, 242, 0.35);
+  border-radius: 14px;
+  width: 320px;
   max-width: 90vw;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
-  border: 1px solid #2d3748;
+  padding: 0 24px 24px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(123, 63, 242, 0.15);
+  animation: cardIn 0.3s ease-out;
+  text-align: center;
 }
 
-.item-preview {
+/* Category-specific accent borders */
+.dialog-card.category-weapon { border-color: rgba(255, 87, 34, 0.5); }
+.dialog-card.category-key    { border-color: rgba(255, 193, 7, 0.5); }
+.dialog-card.category-spell  { border-color: rgba(156, 39, 176, 0.5); }
+.dialog-card.category-treasure { border-color: rgba(255, 193, 7, 0.5); }
+
+/* Header */
+.card-header {
+  margin: 0 -24px;
+  padding: 10px 24px;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(135deg, rgba(123, 63, 242, 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
+  border-bottom: 1px solid rgba(123, 63, 242, 0.2);
+  margin-bottom: 20px;
+}
+
+.header-label {
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--monad-text-secondary, #C4B5FD);
+}
+
+/* Item showcase */
+.item-showcase {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid #2d3748;
+  justify-content: center;
+  margin-bottom: 14px;
 }
 
-.item-icon {
-  font-size: 2.5em;
-  width: 60px;
-  height: 60px;
+.item-icon-wrapper {
+  position: relative;
+  width: 88px;
+  height: 88px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #2a303c;
-  border-radius: var(--radius-md);
 }
+
+.item-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(123, 63, 242, 0.25) 0%, transparent 70%);
+  animation: glowPulse 2.5s ease-in-out infinite;
+}
+
+.category-weapon .item-glow { background: radial-gradient(circle, rgba(255, 87, 34, 0.25) 0%, transparent 70%); }
+.category-key .item-glow    { background: radial-gradient(circle, rgba(255, 193, 7, 0.25) 0%, transparent 70%); }
+.category-spell .item-glow  { background: radial-gradient(circle, rgba(156, 39, 176, 0.3) 0%, transparent 70%); }
+.category-treasure .item-glow { background: radial-gradient(circle, rgba(255, 193, 7, 0.3) 0%, transparent 70%); }
 
 .item-image {
-  width: 48px;
-  height: 48px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
+  position: relative;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
 }
 
-.item-details h3 {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 1.2em;
+.item-emoji {
+  font-size: 3em;
+  position: relative;
 }
 
-.item-stat {
-  font-weight: bold;
-  margin: var(--spacing-md) 0 var(--spacing-xs) 0;
+/* Item name */
+.item-name {
+  margin: 0 0 10px;
+  font-size: 1.35em;
+  font-weight: 700;
+  color: var(--monad-text-primary, #F5F3FF);
 }
 
-.item-stat:last-of-type {
-  margin-bottom: 0;
+/* Stat badges */
+.stat-badges {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
-.item-value {
-  font-weight: bold;
-  color: var(--color-primary);
-  margin: 0 0 var(--spacing-sm) 0;
-  font-size: 1.1em;
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: 600;
 }
 
-.dialog-message {
-  text-align: center;
-  margin-bottom: var(--spacing-md);
-  color: var(--text-primary);
+.badge-damage {
+  background: rgba(255, 87, 34, 0.15);
+  color: #FF8A65;
+  border: 1px solid rgba(255, 87, 34, 0.3);
 }
 
+.badge-value {
+  background: rgba(255, 193, 7, 0.15);
+  color: #FFD54F;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+/* Prompt text */
+.pickup-prompt {
+  color: var(--monad-text-muted, #9CA3AF);
+  font-size: 0.9em;
+  margin: 0 0 18px;
+}
+
+/* Actions */
 .dialog-actions {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 10px;
 }
 
-.pickup-button, .skip-button {
+.btn-pickup,
+.btn-leave {
   flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: none;
-  border-radius: var(--radius-md);
-  font-weight: bold;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95em;
   cursor: pointer;
   transition: all 0.2s ease;
+  border: none;
 }
 
-.pickup-button {
-  background-color: var(--color-primary);
-  color: white;
+.btn-pickup {
+  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(123, 63, 242, 0.35);
 }
 
-.pickup-button:hover {
-  background-color: var(--color-primary-hover);
+.btn-pickup:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.5);
+}
+
+.btn-leave {
+  background: transparent;
+  color: var(--monad-text-secondary, #C4B5FD);
+  border: 1px solid rgba(123, 63, 242, 0.25);
+}
+
+.btn-leave:hover {
+  background: rgba(123, 63, 242, 0.1);
   transform: translateY(-2px);
 }
 
-.skip-button {
-  background-color: #2d3748;
-  color: var(--text-primary);
+/* Animations */
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-.skip-button:hover {
-  background-color: #3a4556;
-  transform: translateY(-2px);
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .dialog-card {
+    width: 280px;
+    padding: 0 18px 18px;
+  }
+
+  .card-header {
+    margin: 0 -18px;
+    padding: 8px 18px;
+  }
+
+  .item-image {
+    width: 60px;
+    height: 60px;
+  }
+
+  .item-icon-wrapper {
+    width: 76px;
+    height: 76px;
+  }
 }
 </style> 
