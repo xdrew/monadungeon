@@ -477,34 +477,38 @@
   position: absolute;
   z-index: 100;
   display: flex;
-  gap: var(--spacing-sm);
   pointer-events: auto;
-  width: 100%;
-  bottom: -40px;
-  left: 0;
+  bottom: -44px;
+  left: 50%;
+  transform: translateX(-50%);
   justify-content: center;
 }
 
 .ghost-rotate-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-round);
-  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(123, 63, 242, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 17px;
   cursor: pointer;
-  transition: transform var(--transition-fast), background-color var(--transition-fast);
-  background-color: var(--color-primary);
+  transition: all 0.2s ease;
+  background: var(--monad-bg-card, #1A1830);
   color: white;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 0 12px rgba(123, 63, 242, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
 }
 
 .ghost-rotate-btn:hover {
-  transform: scale(1.1);
-  filter: brightness(1.2);
+  transform: scale(1.15) rotate(90deg);
+  border-color: rgba(159, 110, 255, 0.8);
+  box-shadow: 0 0 20px rgba(123, 63, 242, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.ghost-rotate-btn:active {
+  transform: scale(1.05) rotate(180deg);
 }
 
 /* Tile Animations - Fog Reveal */
