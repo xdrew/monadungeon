@@ -223,11 +223,24 @@
                     :key="`fog-${fog.x}-${fog.y}`"
                     :class="['fog-cell', { 'fog-dissolve': fog.dissolving }]"
                     :style="{
-                      left: `${(fog.x - (gameData.field.size.minX || 0)) * tileSize - 1}px`,
-                      top: `${(fog.y - (gameData.field.size.minY || 0)) * tileSize - 1}px`,
-                      width: `${tileSize + 2}px`,
-                      height: `${tileSize + 2}px`,
+                      left: `${(fog.x - (gameData.field.size.minX || 0)) * tileSize - 4}px`,
+                      top: `${(fog.y - (gameData.field.size.minY || 0)) * tileSize - 4}px`,
+                      width: `${tileSize + 8}px`,
+                      height: `${tileSize + 8}px`,
                       '--shimmer-delay': `${((fog.x * 7 + fog.y * 13) % 50) / 10}s`,
+                    }"
+                  />
+
+                  <!-- Fog fringe: creeps over tile edges that border unexplored areas -->
+                  <div
+                    v-for="fringe in fogFringes"
+                    :key="`fringe-${fringe.x}-${fringe.y}-${fringe.side}`"
+                    :class="['fog-fringe', `fog-fringe-${fringe.side}`]"
+                    :style="{
+                      left: `${(fringe.x - (gameData.field.size.minX || 0)) * tileSize}px`,
+                      top: `${(fringe.y - (gameData.field.size.minY || 0)) * tileSize}px`,
+                      width: `${tileSize}px`,
+                      height: `${tileSize}px`,
                     }"
                   />
                 </div>
@@ -1032,6 +1045,26 @@ const fogCells = computed(() => {
     }
   }
   return cells;
+});
+
+// Fog fringes: gradient overlays on tile edges that border unexplored fog
+const fogFringes = computed(() => {
+  if (!gameData.value?.field?.size) return [];
+
+  const tilePositions = new Set(
+    (gameData.value.field.tiles || []).map(t => `${t.x ?? parseInt(t.position?.split(',')[0])},${t.y ?? parseInt(t.position?.split(',')[1])}`)
+  );
+
+  const fringes = [];
+  for (const pos of tilePositions) {
+    const [x, y] = pos.split(',').map(Number);
+    // Check each neighbor — if missing, add a fringe on that side
+    if (!tilePositions.has(`${x},${y - 1}`)) fringes.push({ x, y, side: 'top' });
+    if (!tilePositions.has(`${x + 1},${y}`)) fringes.push({ x, y, side: 'right' });
+    if (!tilePositions.has(`${x},${y + 1}`)) fringes.push({ x, y, side: 'bottom' });
+    if (!tilePositions.has(`${x - 1},${y}`)) fringes.push({ x, y, side: 'left' });
+  }
+  return fringes;
 });
 
 // Check if the player can place a tile
