@@ -216,6 +216,20 @@
                     @center-view="centerViewOnTile"
                     @item-click="handleItemClick"
                   />
+
+                  <!-- Fog of war overlay for unexplored positions -->
+                  <div
+                    v-for="fog in fogCells"
+                    :key="`fog-${fog.x}-${fog.y}`"
+                    :class="['fog-cell', { 'fog-dissolve': fog.dissolving }]"
+                    :style="{
+                      left: `${(fog.x - (gameData.field.size.minX || 0)) * tileSize - 1}px`,
+                      top: `${(fog.y - (gameData.field.size.minY || 0)) * tileSize - 1}px`,
+                      width: `${tileSize + 2}px`,
+                      height: `${tileSize + 2}px`,
+                      '--shimmer-delay': `${((fog.x * 7 + fog.y * 13) % 50) / 10}s`,
+                    }"
+                  />
                 </div>
               </div>
               <p v-else>
@@ -993,6 +1007,31 @@ const isPlayerTurn = computed(() => {
   }
   
   return isHumanTurn;
+});
+
+// Fog of war: cells for all positions in the field bounds that don't have a tile
+const dissolvingFogPositions = ref(new Set());
+
+const fogCells = computed(() => {
+  if (!gameData.value?.field?.size) return [];
+
+  const { minX, maxX, minY, maxY } = gameData.value.field.size;
+  const tilePositions = new Set(
+    (gameData.value.field.tiles || []).map(t => `${t.x ?? parseInt(t.position?.split(',')[0])},${t.y ?? parseInt(t.position?.split(',')[1])}`)
+  );
+
+  // Only render fog cells within the tile container bounds (+ 1 tile border)
+  // The game-field background itself acts as the main fog
+  const cells = [];
+  for (let x = minX - 1; x <= maxX + 1; x++) {
+    for (let y = minY - 1; y <= maxY + 1; y++) {
+      const key = `${x},${y}`;
+      if (!tilePositions.has(key)) {
+        cells.push({ x, y, dissolving: dissolvingFogPositions.value.has(key) });
+      }
+    }
+  }
+  return cells;
 });
 
 // Check if the player can place a tile
@@ -1887,6 +1926,25 @@ watch(ghostTileOrientation, (newVal, oldVal) => {
 });
 
 // Watch for changes in field dimensions
+// Track tile positions to trigger fog dissolve when new tiles appear
+const knownTilePositions = ref(new Set());
+
+watch(() => gameData.value?.field?.tiles, (tiles) => {
+  if (!tiles) return;
+  const currentPositions = new Set(tiles.map(t => t.position));
+  // Find newly appeared tile positions
+  for (const pos of currentPositions) {
+    if (!knownTilePositions.value.has(pos)) {
+      dissolvingFogPositions.value.add(pos);
+      // Remove from dissolving set after animation completes
+      setTimeout(() => {
+        dissolvingFogPositions.value.delete(pos);
+      }, 800);
+    }
+  }
+  knownTilePositions.value = currentPositions;
+}, { deep: true, immediate: true });
+
 watch(() => gameData.value?.field?.size, (newSize) => {
   if (newSize) {
     document.documentElement.style.setProperty('--field-min-x', newSize.minX || 0);
