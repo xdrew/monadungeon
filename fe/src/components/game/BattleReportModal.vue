@@ -289,7 +289,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            End Turn (All keys are the same)
+            End Turn (All keys are the same) <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Special case for chest rewards from defeated guards: treasure is automatically collected -->
@@ -299,7 +299,7 @@
             :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
-            End Turn (Treasure collected automatically)
+            End Turn (Treasure collected automatically) <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Normal victory with reward (non-key, non-guard-chest, or has inventory space) -->
@@ -309,7 +309,7 @@
             :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
-            🎒 Pick up and end turn
+            🎒 Pick up and end turn <span class="kbd-hint">(Enter)</span>
           </button>
           <!-- Only show leave item button when inventory is full (and not a key or guard chest) -->
           <button
@@ -318,7 +318,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            ⏭️ Leave item and end turn
+            ⏭️ Leave item and end turn <span class="kbd-hint">(Esc)</span>
           </button>
         </div>
         <div v-else-if="showConsumableSelection" class="button-group">
@@ -356,7 +356,7 @@
             :disabled="isProcessing"
             @click="finalizeBattleWithoutConsumables"
           >
-            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }}
+            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Add retreat button for battles without consumable selection (lost or draw battles) -->
@@ -366,7 +366,7 @@
             :disabled="isProcessing"
             @click="handleRetreat"
           >
-            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }}
+            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <div v-else-if="showInventorySelection" class="button-group">
@@ -391,7 +391,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            End Turn
+            End Turn <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
       </div>
@@ -400,7 +400,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed, ref, watch, nextTick, onMounted } from 'vue';
+import { defineProps, defineEmits, computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { getMonsterImage } from '@/utils/monsterUtils';
 
 const props = defineProps({
@@ -1107,6 +1107,48 @@ const showFinalizeBattleInventoryFullSelection = (inventory) => {
   console.log('Available consumables still present:', availableConsumables.value);
   try { console.log('[BattleReportModal] Finalize battle inventory selection opened. isProcessing:', isProcessing.value); } catch (e) {}
 };
+
+// Keyboard handler - Enter triggers the primary visible action, Escape triggers leave/dismiss
+const onKeyDown = (e) => {
+  if (isRolling.value || isProcessing.value) return;
+
+  if (e.key === 'Enter') {
+    const bi = props.battleInfo;
+    // Mirror the v-if/v-else-if chain from the footer template
+    if (bi.result === 'win' && bi.reward && isKeyReward.value && !props.hasInventorySpace && !showInventorySelection.value && !showConsumableSelection.value && !battleFinalized.value) {
+      leaveItemAndEndTurn();
+    } else if (bi.result === 'win' && bi.reward && isGuardChestReward.value && !showInventorySelection.value && !showConsumableSelection.value) {
+      pickUpAndEndTurn();
+    } else if (bi.result === 'win' && bi.reward && !showInventorySelection.value && !showConsumableSelection.value) {
+      pickUpAndEndTurn();
+    } else if (showConsumableSelection.value) {
+      if (selectedConsumables.value.length > 0 && totalCalculatedDamage.value > bi.monster) {
+        finalizeBattleAndPickUp();
+      } else if (selectedConsumables.value.length > 0 && totalCalculatedDamage.value === bi.monster) {
+        finalizeBattleWithConsumables();
+      } else {
+        finalizeBattleWithoutConsumables();
+      }
+    } else if ((bi.result === 'lose' || bi.result === 'draw') && !showInventorySelection.value) {
+      handleRetreat();
+    } else if (showInventorySelection.value) {
+      if (selectedItemForReplacement.value) {
+        confirmReplacement();
+      }
+    } else {
+      leaveItemAndEndTurn();
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  } else if (e.key === 'Escape') {
+    leaveItemAndEndTurn();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+onMounted(() => window.addEventListener('keydown', onKeyDown, true));
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 // Expose methods to parent component
 defineExpose({
@@ -2606,4 +2648,14 @@ const potentialRewardTip = computed(() => {
     border-color: #ffd700;
   }
 }
-</style> 
+
+.kbd-hint {
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+@media (hover: none) {
+  .kbd-hint { display: none; }
+}
+</style>

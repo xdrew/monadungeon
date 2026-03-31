@@ -1281,6 +1281,20 @@ const applyAiTilePlacement = (action) => {
       if (y > (size.maxY ?? y)) size.maxY = y;
     }
 
+    // Update tileOrientations so processTiles renders the correct tile image
+    if (gameData.value.field?.tileOrientations && tileData.orientation) {
+      const orientationTBLR = parseOrientationString(tileData.orientation);
+      const isRoom = !!tileData.room;
+      gameData.value.field.tileOrientations[position] = getTileOrientationSymbol(orientationTBLR, isRoom);
+
+      // Update roomFieldPlaces if it's a room tile
+      if (isRoom && gameData.value.field.roomFieldPlaces) {
+        if (!gameData.value.field.roomFieldPlaces.includes(position)) {
+          gameData.value.field.roomFieldPlaces.push(position);
+        }
+      }
+    }
+
     // Clear animation flag after animation completes
     setTimeout(() => {
       const tile = gameData.value?.field?.tiles?.find(t => t.position === position);
