@@ -14,7 +14,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
   playerId: {
@@ -32,6 +32,18 @@ const emit = defineEmits(['dismiss']);
 const dismiss = () => {
   emit('dismiss');
 };
+
+// Keyboard handler
+const onKeyDown = (e) => {
+  if (e.key === 'Enter' || e.key === 'Escape') {
+    dismiss();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+onMounted(() => window.addEventListener('keydown', onKeyDown, true));
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 </script>
 
 <style scoped>

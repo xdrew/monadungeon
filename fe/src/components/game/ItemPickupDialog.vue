@@ -39,13 +39,13 @@
           class="btn-pickup"
           @click="pickupItem"
         >
-          🎒 Pick Up
+          🎒 Pick Up <span class="kbd-hint">(Enter)</span>
         </button>
         <button
           class="btn-leave"
           @click="skipItem"
         >
-          Leave It
+          Leave It <span class="kbd-hint">(Esc)</span>
         </button>
       </div>
     </div>
@@ -53,7 +53,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, formatItemName } from '@/utils/itemUtils';
 
 const props = defineProps({
@@ -161,6 +161,23 @@ const pickupItem = () => {
 const skipItem = () => {
   emit('skip');
 };
+
+// Keyboard handler
+const onKeyDown = (e) => {
+  if (!props.show) return;
+  if (e.key === 'Enter') {
+    pickupItem();
+    e.preventDefault();
+    e.stopPropagation();
+  } else if (e.key === 'Escape') {
+    skipItem();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+onMounted(() => window.addEventListener('keydown', onKeyDown, true));
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 </script>
 
 <style scoped>
@@ -363,6 +380,16 @@ const skipItem = () => {
 @keyframes glowPulse {
   0%, 100% { opacity: 0.6; transform: scale(1); }
   50%      { opacity: 1;   transform: scale(1.1); }
+}
+
+.kbd-hint {
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+@media (hover: none) {
+  .kbd-hint { display: none; }
 }
 
 /* Responsive */

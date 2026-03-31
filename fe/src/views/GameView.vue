@@ -642,17 +642,17 @@
           </tbody>
         </table>
         <div class="leaderboard-actions">
-          <button 
+          <button
             class="new-game-button"
             @click="navigateToLobby"
           >
-            🏠 Return to Lobby
+            🏠 Return to Lobby <span class="kbd-hint">(Enter)</span>
           </button>
-          <button 
+          <button
             class="replay-button"
             @click="reloadPage"
           >
-            🔄 View Game Board
+            🔄 View Game Board <span class="kbd-hint">(Esc)</span>
           </button>
         </div>
       </div>
@@ -674,7 +674,7 @@
           class="skip-turn-button"
           @click="skipStunnedPlayerTurn"
         >
-          Skip Turn
+          Skip Turn <span class="kbd-hint">(Enter)</span>
         </button>
       </div>
     </div>
@@ -1423,7 +1423,11 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     
     // This is a new AI turn that needs execution
 
-    
+    // Clear any loading overlay from the previous turn (e.g. "Finalizing battle...")
+    // so the AI playback is visible on the field
+    loading.value = false;
+    loadingStatus.value = '';
+
     // Block user interactions
     isProcessingAI.value = true;
     
@@ -3567,6 +3571,46 @@ const handleKeyboardEvents = (e) => {
   });
 };
 
+// Keyboard handler for leaderboard modal
+const handleLeaderboardKeyDown = (e) => {
+  if (e.key === 'Enter') {
+    navigateToLobby();
+    e.preventDefault();
+    e.stopPropagation();
+  } else if (e.key === 'Escape') {
+    reloadPage();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+// Keyboard handler for stunned overlay
+const handleStunnedKeyDown = (e) => {
+  if (e.key === 'Enter' || e.key === 'Escape') {
+    skipStunnedPlayerTurn();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+// Watch leaderboard modal visibility to add/remove keyboard listener
+watch(showLeaderboardModal, (visible) => {
+  if (visible) {
+    window.addEventListener('keydown', handleLeaderboardKeyDown, true);
+  } else {
+    window.removeEventListener('keydown', handleLeaderboardKeyDown, true);
+  }
+});
+
+// Watch stunned state to add/remove keyboard listener
+watch(isCurrentPlayerStunned, (stunned) => {
+  if (stunned) {
+    window.addEventListener('keydown', handleStunnedKeyDown, true);
+  } else {
+    window.removeEventListener('keydown', handleStunnedKeyDown, true);
+  }
+});
+
 // Helper function to scroll to a specific position
 const scrollToPosition = (x, y) => {
   scrollToPositionUtil(x, y, gameData.value, tileSize.value);
@@ -5554,5 +5598,15 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   0% { transform: scale(0.3) translateY(10px); opacity: 0; }
   60% { transform: scale(1.2) translateY(-2px); }
   100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.kbd-hint {
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+@media (hover: none) {
+  .kbd-hint { display: none; }
 }
 </style>

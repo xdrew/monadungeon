@@ -31,7 +31,7 @@
           class="close-button"
           @click="close"
         >
-          Close
+          Close <span class="kbd-hint">(Enter)</span>
         </button>
       </div>
     </div>
@@ -39,7 +39,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed } from 'vue';
+import { defineProps, defineEmits, computed, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
   chestType: {
@@ -62,6 +62,18 @@ const formatChestType = computed(() => {
 const close = () => {
   emit('close');
 };
+
+// Keyboard handler
+const onKeyDown = (e) => {
+  if (e.key === 'Enter' || e.key === 'Escape') {
+    close();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+onMounted(() => window.addEventListener('keydown', onKeyDown, true));
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 </script>
 
 <style scoped>
@@ -160,6 +172,16 @@ const close = () => {
 .key-missing {
   display: inline-block;
   position: relative;
+}
+
+.kbd-hint {
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+@media (hover: none) {
+  .kbd-hint { display: none; }
 }
 
 p {

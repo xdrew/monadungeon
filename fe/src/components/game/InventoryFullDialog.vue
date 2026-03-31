@@ -98,18 +98,18 @@
       </div>
       
       <div class="dialog-actions">
-        <button 
-          class="action-btn replace-btn" 
-          :disabled="!selectedItemToReplace" 
+        <button
+          class="action-btn replace-btn"
+          :disabled="!selectedItemToReplace"
           @click="replaceItem"
         >
-          Replace Selected Item
+          Replace Selected Item <span class="kbd-hint">(Enter)</span>
         </button>
-        <button 
-          class="action-btn skip-btn" 
+        <button
+          class="action-btn skip-btn"
           @click="skipItem"
         >
-          Leave Item
+          Leave Item <span class="kbd-hint">(Esc)</span>
         </button>
       </div>
     </div>
@@ -117,7 +117,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref } from 'vue';
+import { defineProps, defineEmits, ref, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, formatItemName, getItemDamage } from '@/utils/itemUtils';
 
 const props = defineProps({
@@ -228,6 +228,24 @@ const replaceItem = () => {
 const skipItem = () => {
   emit('skip-item');
 };
+
+// Keyboard handler
+const onKeyDown = (e) => {
+  if (e.key === 'Enter') {
+    if (selectedItemToReplace.value) {
+      replaceItem();
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  } else if (e.key === 'Escape') {
+    skipItem();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+onMounted(() => window.addEventListener('keydown', onKeyDown, true));
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 </script>
 
 <style scoped>
@@ -448,6 +466,16 @@ h4 {
   background-color: #7f8c8d;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+}
+
+.kbd-hint {
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+@media (hover: none) {
+  .kbd-hint { display: none; }
 }
 
 /* Responsive design */
