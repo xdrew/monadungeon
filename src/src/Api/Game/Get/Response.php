@@ -8,8 +8,9 @@ use App\Game\Deck\Deck;
 use App\Game\Deck\GetDeck;
 use App\Game\Field\Field;
 use App\Game\Field\GetAvailablePlacesForPlayer;
-use App\Game\Field\Repository\TileRepository;
 use App\Game\Field\GetTile;
+use App\Game\Field\Repository\TileRepository;
+use App\Game\Field\TileFeature;
 use App\Game\GameLifecycle\Game as GameLifecycleGame;
 use App\Game\Movement\GetAllPlayerPositions;
 use App\Game\Player\GetPlayer;
@@ -277,7 +278,7 @@ final readonly class Response
             $tileFeatures = [];
             // Starting tile always has healing fountain
             if (isset($placedTiles['0,0'])) {
-                $tileFeatures['0,0'] = [\App\Game\Field\TileFeature::HEALING_FOUNTAIN];
+                $tileFeatures['0,0'] = [TileFeature::HEALING_FOUNTAIN];
             }
             foreach ($placedTiles as $position => $tileId) {
                 if ($position === '0,0') {

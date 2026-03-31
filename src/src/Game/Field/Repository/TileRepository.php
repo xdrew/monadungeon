@@ -32,7 +32,7 @@ final readonly class TileRepository
 
         $result = [];
         foreach ($rows as $row) {
-            $features = json_decode($row['features'], true);
+            $features = json_decode((string) $row['features'], true);
             if (\is_array($features) && $features !== []) {
                 $result[$row['tile_id']] = array_map(
                     static fn(string $f) => TileFeature::from($f),

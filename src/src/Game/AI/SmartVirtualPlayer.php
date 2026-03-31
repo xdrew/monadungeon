@@ -1121,7 +1121,8 @@ final class SmartVirtualPlayer
                         error_log("DEBUG AI: Should NOT pick up {$itemType} - already have better or equal weapons");
 
                         return false;
-                    } elseif ($itemType === 'key') {
+                    }
+                    if ($itemType === 'key') {
                         // Only pick up keys if we don't already have one
                         if ($this->playerHasKey($player)) {
                             error_log('DEBUG AI: Already have a key, not picking up another one');
@@ -1131,7 +1132,8 @@ final class SmartVirtualPlayer
                         error_log("DEBUG AI: Should pick up key - we don't have one yet");
 
                         return true;
-                    } elseif (\in_array($itemType, ['fireball', 'teleport'], true)) {
+                    }
+                    if (\in_array($itemType, ['fireball', 'teleport'], true)) {
                         // Check spell inventory capacity
                         $inventory = $player->getInventory();
                         $spells = $inventory['spell'] ?? [];
@@ -2614,7 +2616,10 @@ final class SmartVirtualPlayer
             $battleResult = $battleInfo['result'] ?? 'unknown';
 
             error_log('DEBUG AI battle detected: ' . $battleResult);
-            $actions[] = $this->createAction('battle_detected', ['battleResult' => $battleResult]);
+            $actions[] = $this->createAction('battle_detected', [
+                'battleResult' => $battleResult,
+                'battleInfo' => $battleInfo,
+            ]);
 
             if ($battleResult === 'win') {
                 $monster = $battleInfo['monsterType'] ?? 'unknown';
@@ -5183,7 +5188,10 @@ final class SmartVirtualPlayer
         // Handle battle result if it occurred
         if ($moveResult['success'] && isset($moveResult['response']['battleInfo'])) {
             $battleInfo = $moveResult['response']['battleInfo'];
-            $actions[] = $this->createAction('battle_detected', ['battleResult' => $battleInfo['result'] ?? 'unknown']);
+            $actions[] = $this->createAction('battle_detected', [
+                'battleResult' => $battleInfo['result'] ?? 'unknown',
+                'battleInfo' => $battleInfo,
+            ]);
 
             if ($battleInfo['result'] === 'win') {
                 $this->handleBattleWin($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);

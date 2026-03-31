@@ -217,6 +217,37 @@
                     @item-click="handleItemClick"
                   />
 
+                  <!-- AI Battle Overlay - floating damage numbers on the field -->
+                  <div
+                    v-if="aiBattleOverlay"
+                    class="ai-battle-overlay"
+                    :style="{
+                      left: `${(aiBattleOverlay.x - (gameData.field.size.minX || 0)) * tileSize}px`,
+                      top: `${(aiBattleOverlay.y - (gameData.field.size.minY || 0)) * tileSize}px`,
+                      width: `${tileSize}px`,
+                      height: `${tileSize}px`,
+                    }"
+                  >
+                    <div
+                      class="battle-damage-number player-damage"
+                      :class="aiBattleOverlay.result === 'win' ? 'damage-win' : aiBattleOverlay.result === 'lose' ? 'damage-lose' : 'damage-draw'"
+                    >
+                      {{ aiBattleOverlay.playerDamage }}
+                    </div>
+                    <div class="battle-vs">
+                      VS
+                    </div>
+                    <div class="battle-damage-number monster-damage">
+                      {{ aiBattleOverlay.monsterHP }}
+                    </div>
+                    <div
+                      class="battle-result-label"
+                      :class="aiBattleOverlay.result"
+                    >
+                      {{ aiBattleOverlay.result === 'win' ? 'WIN' : aiBattleOverlay.result === 'lose' ? 'LOSE' : 'DRAW' }}
+                    </div>
+                  </div>
+
                   <!-- Fog of war overlay for unexplored positions -->
                   <div
                     v-for="fog in fogCells"
@@ -490,6 +521,17 @@
               />
             </div>
 
+            <!-- AI Turn Playback Controls -->
+            <AiTurnPlaybackControls
+              v-if="isAiPlayingBack"
+              :current-step="aiPlayback.currentStepIndex.value + 1"
+              :total-steps="aiPlayback.totalSteps.value"
+              :playback-speed="aiPlayback.playbackSpeed.value"
+              :current-action="aiPlayback.currentAction.value"
+              @speed-change="aiPlayback.setSpeed"
+              @skip="aiPlayback.skip"
+            />
+
             <!-- Replay controls -->
             <ReplayControls
               v-if="isReplaying"
@@ -656,6 +698,8 @@ import BattleReportModal from '@/components/game/BattleReportModal.vue';
 import ZoomControls from '@/components/game/ZoomControls.vue';
 import GhostTile from '@/components/game/GhostTile.vue';
 import ReplayControls from '@/components/game/ReplayControls.vue';
+import AiTurnPlaybackControls from '@/components/game/AiTurnPlaybackControls.vue';
+import { useAiTurnPlayback } from '@/composables/useAiTurnPlayback';
 import GameTile from '@/components/game/GameTile.vue';
 import AvailableMoveMarker from '@/components/game/AvailableMoveMarker.vue';
 import ItemPickupDialog from '@/components/game/ItemPickupDialog.vue';
@@ -731,6 +775,9 @@ let aiStuckTimer = null;
 const playerIsReady = ref(false);
 const gameStarted = ref(false);
 const isProcessingAI = ref(false); // Flag to block interactions during AI turn
+const aiPlayback = useAiTurnPlayback();
+const isAiPlayingBack = computed(() => aiPlayback.isPlayingBack.value);
+const aiBattleOverlay = ref(null); // { position, x, y, playerDamage, monsterHP, result, monsterType }
 const zoomLevel = ref(1);
 const highlightedTile = ref(null);
 const selectedTile = ref(null);
@@ -1202,6 +1249,109 @@ const updateGameTurns = (gameDataResponse) => {
   }
 };
 
+// AI turn playback callbacks - apply visual changes to the board step by step
+const applyAiTilePlacement = (action) => {
+  const result = action.details?.result;
+  if (!result?.position) return;
+
+  const position = result.position;
+  const [x, y] = position.split(',').map(Number);
+  const responseData = result.response || {};
+
+  // Add tile to field data so the watcher triggers fog dissolve and tile rendering
+  if (gameData.value?.field?.tiles) {
+    const tileData = responseData.tile || {};
+    const newTile = {
+      position,
+      x,
+      y,
+      tileId: result.tileId || tileData.tileId || '',
+      room: tileData.room || tileData.tileType || '',
+      isPlacingAnimation: true,
+      ...tileData,
+    };
+    gameData.value.field.tiles.push(newTile);
+
+    // Update field size bounds if needed
+    if (gameData.value.field.size) {
+      const size = gameData.value.field.size;
+      if (x < (size.minX ?? x)) size.minX = x;
+      if (x > (size.maxX ?? x)) size.maxX = x;
+      if (y < (size.minY ?? y)) size.minY = y;
+      if (y > (size.maxY ?? y)) size.maxY = y;
+    }
+
+    // Clear animation flag after animation completes
+    setTimeout(() => {
+      const tile = gameData.value?.field?.tiles?.find(t => t.position === position);
+      if (tile) tile.isPlacingAnimation = false;
+    }, 1000);
+  }
+
+  centerViewOnTile(position);
+};
+
+const showAiBattleOverlay = (action) => {
+  const battleResult = action.battleResult || 'unknown';
+  const totalDamage = action.totalDamage || 0;
+  const monsterHP = action.monsterHP || 0;
+  const diceResults = action.diceResults || [];
+  const monsterType = action.monsterType || '';
+
+  // Position comes from the enriched battleInfo, or fall back to AI player's current position
+  let battlePosition = action.position;
+  if (!battlePosition) {
+    const aiPlayerId = localStorage.getItem('virtualPlayerId');
+    if (aiPlayerId && gameData.value?.field?.playerPositions) {
+      battlePosition = gameData.value.field.playerPositions[aiPlayerId];
+    }
+  }
+
+  if (!battlePosition) return;
+
+  const [x, y] = battlePosition.split(',').map(Number);
+
+  aiBattleOverlay.value = {
+    position: battlePosition,
+    x,
+    y,
+    playerDamage: totalDamage,
+    monsterHP,
+    diceResults,
+    result: battleResult,
+    monsterType,
+  };
+
+  centerViewOnTile(battlePosition);
+};
+
+const clearAiBattleOverlay = () => {
+  aiBattleOverlay.value = null;
+};
+
+const applyAiPlayerMovement = (action, playerId) => {
+  const result = action.details?.result;
+  if (!result) return;
+
+  const to = result.to;
+  if (!to) return;
+
+  // Update player position in game data
+  if (gameData.value?.field?.playerPositions) {
+    gameData.value.field.playerPositions[playerId] = to;
+  }
+
+  // Also update in players array if present
+  if (gameData.value?.players) {
+    const player = gameData.value.players.find(p => p.id === playerId || p.playerId === playerId);
+    if (player) {
+      player.position = to;
+    }
+  }
+
+  centerViewOnTile(to);
+};
+
 // Track which turn number we last executed AI for - this is our single source of truth
 let lastExecutedAITurn = null;
 // Track if we have an AI execution in progress for a specific turn
@@ -1312,12 +1462,24 @@ const checkAndHandleVirtualPlayerTurn = async () => {
         
         if (response.success) {
 
-          
+
           // Mark this turn as successfully executed
           lastExecutedAITurn = currentTurnNumber;
 
-          
-          // Refresh game state
+          // Play back AI actions step by step before loading final state
+          const filteredActions = aiPlayback.filterActions(response.actions || []);
+          if (filteredActions.length > 0) {
+            await aiPlayback.playActions(filteredActions, {
+              onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
+              onMovePlayer: (action) => { clearAiBattleOverlay(); applyAiPlayerMovement(action, currentPlayer); },
+              onBattle: (action) => showAiBattleOverlay(action),
+              onPickup: () => clearAiBattleOverlay(),
+              onEndTurn: () => clearAiBattleOverlay(),
+            });
+            clearAiBattleOverlay();
+          }
+
+          // Sync to authoritative final state
           await loadGameData(false);
           
           // After loading, check if there's another AI turn to execute
@@ -5312,5 +5474,85 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   50% {
     box-shadow: 0 0 25px rgba(138, 43, 226, 1);
   }
+}
+
+/* AI Battle Overlay */
+.ai-battle-overlay {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+  animation: battleOverlayAppear 0.3s ease-out;
+}
+
+.battle-damage-number {
+  font-size: 20px;
+  font-weight: 900;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
+  line-height: 1;
+}
+
+.player-damage {
+  color: #4fc3f7;
+  animation: damageNumberPop 0.4s ease-out;
+}
+
+.player-damage.damage-win {
+  color: #69f0ae;
+}
+
+.player-damage.damage-lose {
+  color: #ef5350;
+}
+
+.player-damage.damage-draw {
+  color: #ffcc00;
+}
+
+.monster-damage {
+  color: #ef5350;
+}
+
+.battle-vs {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  line-height: 1;
+}
+
+.battle-result-label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+  line-height: 1;
+}
+
+.battle-result-label.win {
+  color: #69f0ae;
+}
+
+.battle-result-label.lose {
+  color: #ef5350;
+}
+
+.battle-result-label.draw {
+  color: #ffcc00;
+}
+
+@keyframes battleOverlayAppear {
+  0% { opacity: 0; transform: scale(0.5); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes damageNumberPop {
+  0% { transform: scale(0.3) translateY(10px); opacity: 0; }
+  60% { transform: scale(1.2) translateY(-2px); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 </style>

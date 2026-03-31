@@ -245,7 +245,7 @@ final class CheckContractPermissionsCommand extends Command
                         $io->warning('✗ Server wallet is NOT authorized');
                     }
                 }
-            } catch (\Throwable $e) {
+            } catch (\Throwable) {
                 $io->note('No isAuthorized() function found');
             }
 
