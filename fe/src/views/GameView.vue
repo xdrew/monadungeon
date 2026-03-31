@@ -2182,6 +2182,10 @@ onUnmounted(() => {
   // Remove keyboard listener for combined keyboard events
   window.removeEventListener('keydown', handleKeyboardEvents);
 
+  // Remove keyboard listeners for modal overlays
+  window.removeEventListener('keydown', handleLeaderboardKeyDown, true);
+  window.removeEventListener('keydown', handleStunnedKeyDown, true);
+
   // Clear the polling interval
   if (gamePollingInterval.value) {
     clearInterval(gamePollingInterval.value);
@@ -3162,12 +3166,16 @@ onUnmounted(() => {
   // Remove keyboard listener for combined keyboard events
   window.removeEventListener('keydown', handleKeyboardEvents);
 
+  // Remove keyboard listeners for modal overlays
+  window.removeEventListener('keydown', handleLeaderboardKeyDown, true);
+  window.removeEventListener('keydown', handleStunnedKeyDown, true);
+
   // Clear the polling interval
   if (gamePollingInterval.value) {
     clearInterval(gamePollingInterval.value);
     gamePollingInterval.value = null;
   }
-  
+
   // Reset AI tracking variables
   lastExecutedAITurn = null;
   aiTurnInProgress = false;
@@ -3571,45 +3579,6 @@ const handleKeyboardEvents = (e) => {
   });
 };
 
-// Keyboard handler for leaderboard modal
-const handleLeaderboardKeyDown = (e) => {
-  if (e.key === 'Enter') {
-    navigateToLobby();
-    e.preventDefault();
-    e.stopPropagation();
-  } else if (e.key === 'Escape') {
-    reloadPage();
-    e.preventDefault();
-    e.stopPropagation();
-  }
-};
-
-// Keyboard handler for stunned overlay
-const handleStunnedKeyDown = (e) => {
-  if (e.key === 'Enter' || e.key === 'Escape') {
-    skipStunnedPlayerTurn();
-    e.preventDefault();
-    e.stopPropagation();
-  }
-};
-
-// Watch leaderboard modal visibility to add/remove keyboard listener
-watch(showLeaderboardModal, (visible) => {
-  if (visible) {
-    window.addEventListener('keydown', handleLeaderboardKeyDown, true);
-  } else {
-    window.removeEventListener('keydown', handleLeaderboardKeyDown, true);
-  }
-});
-
-// Watch stunned state to add/remove keyboard listener
-watch(isCurrentPlayerStunned, (stunned) => {
-  if (stunned) {
-    window.addEventListener('keydown', handleStunnedKeyDown, true);
-  } else {
-    window.removeEventListener('keydown', handleStunnedKeyDown, true);
-  }
-});
 
 // Helper function to scroll to a specific position
 const scrollToPosition = (x, y) => {
@@ -4802,6 +4771,46 @@ const skipStunnedPlayerTurn = async () => {
     loadingStatus.value = '';
   }
 };
+
+// Keyboard handler for leaderboard modal
+const handleLeaderboardKeyDown = (e) => {
+  if (e.key === 'Enter') {
+    navigateToLobby();
+    e.preventDefault();
+    e.stopPropagation();
+  } else if (e.key === 'Escape') {
+    reloadPage();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+// Keyboard handler for stunned overlay
+const handleStunnedKeyDown = (e) => {
+  if (e.key === 'Enter' || e.key === 'Escape') {
+    skipStunnedPlayerTurn();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+};
+
+// Watch leaderboard modal visibility to add/remove keyboard listener
+watch(showLeaderboardModal, (visible) => {
+  if (visible) {
+    window.addEventListener('keydown', handleLeaderboardKeyDown, true);
+  } else {
+    window.removeEventListener('keydown', handleLeaderboardKeyDown, true);
+  }
+});
+
+// Watch stunned state to add/remove keyboard listener
+watch(isCurrentPlayerStunned, (stunned) => {
+  if (stunned) {
+    window.addEventListener('keydown', handleStunnedKeyDown, true);
+  } else {
+    window.removeEventListener('keydown', handleStunnedKeyDown, true);
+  }
+});
 
 // Add function to check for stunned players and handle player switching
 const checkStunnedPlayersAndSwitch = () => {
