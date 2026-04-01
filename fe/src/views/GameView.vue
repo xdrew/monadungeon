@@ -3740,19 +3740,22 @@ const handlePickItemAndEndTurn = async () => {
 
           // Item replaced successfully, now end the turn
 
-          
           // End the turn
           await gameApi.endTurn({
             gameId: id.value,
             playerId: currentPlayerId.value,
             turnId: currentTurnId
           });
-          
-          // Refresh game data
-          await loadGameData();
+
+          // Close modal before refreshing (loadGameData auto-triggers AI turn)
           showBattleReportModal.value = false;
           battleInfo.value = null;
+          loading.value = false;
+          loadingStatus.value = '';
           resetRequestLock();
+
+          // Refresh game data (will auto-trigger AI turn if needed)
+          await loadGameData();
         } else {
           // Fallback: show normal inventory full dialog if no keys found
           isInventoryFullAfterBattle.value = true;
@@ -3782,7 +3785,6 @@ const handlePickItemAndEndTurn = async () => {
     } else {
       // Item picked up successfully, now end the turn
 
-
       // End the turn
       await gameApi.endTurn({
         gameId: id.value,
@@ -3790,17 +3792,16 @@ const handlePickItemAndEndTurn = async () => {
         turnId: currentTurnId
       });
 
-      // Refresh game data
-      await loadGameData();
-
+      // Close modal and clear loading BEFORE refreshing data
+      // (loadGameData auto-triggers AI turn, so modal must be gone first)
       showBattleReportModal.value = false;
       battleInfo.value = null;
       loading.value = false;
       loadingStatus.value = '';
       resetRequestLock();
 
-      // Check if the next player is an AI player and trigger their turn
-      await checkAndHandleVirtualPlayerTurn();
+      // Refresh game data (will auto-trigger AI turn if needed)
+      await loadGameData();
     }
   } catch (err) {
     console.error('Failed to pick up item:', err);
@@ -4001,11 +4002,14 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
       skipBattleModalReshow.value = true;
     }
     
-    // Close the modal and clear battle info BEFORE refreshing data
+    // Close modal and clear loading before refreshing (loadGameData auto-triggers AI turn)
     showBattleReportModal.value = false;
     battleInfo.value = null;
-    
-    // Refresh game data
+    loading.value = false;
+    loadingStatus.value = '';
+    resetRequestLock();
+
+    // Refresh game data (will auto-trigger AI turn if needed)
     await loadGameData();
 
     // If game hasn't ended yet but we picked up a game-ending item, retry loadGameData
@@ -4013,14 +4017,6 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
       await new Promise(r => setTimeout(r, 500));
       await loadGameData();
     }
-
-    // Clear loading before AI turn so the field is visible
-    loading.value = false;
-    loadingStatus.value = '';
-    resetRequestLock();
-
-    // Check if the next player is an AI player
-    await checkAndHandleVirtualPlayerTurn();
   } catch (err) {
     console.error('Failed to finalize battle and pick up:', err);
     error.value = err.message || 'Failed to finalize battle and pick up item';
@@ -4092,19 +4088,15 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
 
     }
 
-    // Close the modal and clear loading before AI turn starts
+    // Close modal and clear loading before refreshing (loadGameData auto-triggers AI turn)
     showBattleReportModal.value = false;
     battleInfo.value = null;
-
-    // Refresh game data after closing the modal to get the updated game state
-    await loadGameData();
-
     loading.value = false;
     loadingStatus.value = '';
     resetRequestLock();
 
-    // Check if the next player is an AI player and trigger their turn
-    await checkAndHandleVirtualPlayerTurn();
+    // Refresh game data (will auto-trigger AI turn if needed)
+    await loadGameData();
   } catch (err) {
     console.error('Failed to finalize battle:', err);
     error.value = err.message || 'Failed to finalize battle';
