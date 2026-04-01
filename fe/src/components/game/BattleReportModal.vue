@@ -39,6 +39,22 @@
 
       <!-- Battle Body -->
       <div class="battle-body">
+        <!-- Damage bar (centered above arena) -->
+        <div class="damage-bar-center" :class="{ 'hp-bar-reveal': showResults }">
+          <div class="hp-bar-track">
+            <div
+              class="hp-bar-fill"
+              :class="'bar-' + dynamicResult"
+              :style="{ width: (isRolling ? 0 : damageBarPercent) + '%' }"
+            />
+          </div>
+          <div class="hp-bar-text">
+            <span v-if="!isRolling" class="hp-dealt" :class="'dealt-' + dynamicResult">⚔ {{ totalCalculatedDamage }}</span>
+            <span v-if="!isRolling" class="hp-separator">vs</span>
+            <span class="hp-total">♥ {{ battleInfo.monster }}</span>
+          </div>
+        </div>
+
         <!-- Arena: Hero vs Monster confrontation -->
         <div class="battle-arena">
           <div class="combatant hero-side">
@@ -57,6 +73,33 @@
                 }"
               />
             </div>
+            <!-- Weapon bonuses under hero -->
+            <div
+              v-if="(equippedWeapons.length > 0 || usedConsumableDamageTotal > 0) && !isRolling"
+              class="hero-bonuses"
+              :class="{ 'bonuses-reveal': showResults }"
+            >
+              <span
+                v-for="(weapon, index) in equippedWeapons"
+                :key="`weapon-${index}`"
+                class="bonus-chip"
+              >
+                <img
+                  v-if="getWeaponImage(weapon)"
+                  :src="getWeaponImage(weapon)"
+                  :alt="weapon.type"
+                  class="bonus-chip-img"
+                />
+                <span v-else>{{ getUsedItemEmoji(weapon) }}</span>
+                <span class="bonus-value">+{{ getItemTypeDamage(weapon.type) }}</span>
+              </span>
+              <span
+                v-if="usedConsumableDamageTotal > 0"
+                class="bonus-chip spell-chip"
+              >
+                🔮 <span class="bonus-value">+{{ usedConsumableDamageTotal }}</span>
+              </span>
+            </div>
           </div>
 
           <div class="vs-separator">
@@ -71,22 +114,6 @@
           </div>
 
           <div class="combatant monster-side">
-            <!-- Damage bar above monster -->
-            <div class="hp-bar-wrap" :class="{ 'hp-bar-reveal': showResults }">
-              <div class="hp-bar-track">
-                <div
-                  class="hp-bar-fill"
-                  :class="'bar-' + dynamicResult"
-                  :style="{ width: (isRolling ? 0 : damageBarPercent) + '%' }"
-                />
-              </div>
-              <div class="hp-bar-text">
-                <span v-if="!isRolling" class="hp-dealt" :class="'dealt-' + dynamicResult">⚔ {{ totalCalculatedDamage }}</span>
-                <span v-if="!isRolling" class="hp-separator">vs</span>
-                <span class="hp-total">♥ {{ battleInfo.monster }}</span>
-              </div>
-            </div>
-
             <div class="combatant-sprite-wrap">
               <div class="combatant-glow monster-glow" />
               <img
@@ -128,34 +155,6 @@
                 :class="`pip-${value}-${pip}`"
               />
             </div>
-          </div>
-          <div
-            v-if="(equippedWeapons.length > 0 || usedConsumableDamageTotal > 0) && !isRolling"
-            class="weapon-bonuses"
-            :class="{ 'bonuses-reveal': showResults }"
-          >
-            <span
-              v-for="(weapon, index) in equippedWeapons"
-              :key="`weapon-${index}`"
-              class="bonus-chip"
-              :style="{ animationDelay: `${index * 0.1}s` }"
-            >
-              <img
-                v-if="getWeaponImage(weapon)"
-                :src="getWeaponImage(weapon)"
-                :alt="weapon.type"
-                class="bonus-chip-img"
-              />
-              <span v-else>{{ getUsedItemEmoji(weapon) }}</span>
-              <span class="bonus-value">+{{ getItemTypeDamage(weapon.type) }}</span>
-            </span>
-            <span
-              v-if="usedConsumableDamageTotal > 0"
-              class="bonus-chip spell-chip"
-            >
-              <span>🔮</span>
-              <span class="bonus-value">+{{ usedConsumableDamageTotal }}</span>
-            </span>
           </div>
         </div>
 
@@ -237,42 +236,33 @@
           <div class="reward-card" :class="rewardCategoryClass">
             <div
               v-if="battleInfo.reward"
-              class="reward-item-showcase"
+              class="reward-item-inline"
             >
-              <div class="reward-icon-wrap">
-                <div class="reward-glow" />
-                <img
-                  v-if="displayItemImage"
-                  :src="displayItemImage"
-                  :alt="formattedItemName"
-                  class="reward-item-img"
-                />
-                <span v-else class="reward-item-emoji">{{ displayItemEmoji }}</span>
-              </div>
-              <div class="reward-details">
+              <img
+                v-if="displayItemImage"
+                :src="displayItemImage"
+                :alt="formattedItemName"
+                class="reward-inline-img"
+              />
+              <span v-else class="reward-inline-emoji">{{ displayItemEmoji }}</span>
+              <div class="reward-inline-info">
                 <span class="reward-item-name">{{ formattedItemName }}</span>
                 <div class="reward-badges">
                   <span
                     v-if="getItemTypeDamage(battleInfo.reward.type) > 0"
-                    class="stat-badge badge-damage"
+                    class="stat-badge badge-damage badge-sm"
                   >⚔️ +{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
                   <span
                     v-if="battleInfo.reward.treasureValue && battleInfo.reward.treasureValue > 0"
-                    class="stat-badge badge-value"
+                    class="stat-badge badge-value badge-sm"
                   >💰 {{ battleInfo.reward.treasureValue }}</span>
                 </div>
-                <div
-                  v-if="isGuardChestReward"
-                  class="reward-note success"
-                >
+                <div v-if="isGuardChestReward" class="reward-note success">
                   Chest auto-opened!
                 </div>
               </div>
             </div>
-            <div
-              v-else
-              class="no-reward"
-            >
+            <div v-else class="no-reward">
               Monster defeated! No treasure found.
             </div>
           </div>
@@ -1622,12 +1612,12 @@ const potentialRewardTip = computed(() => {
   100% { transform: scale(0.85); opacity: 0.5; filter: brightness(0.5) grayscale(0.5); }
 }
 
-/* Damage Bar */
-.hp-bar-wrap {
+/* Damage Bar (centered above arena) */
+.damage-bar-center {
   width: 100%;
-  max-width: 140px;
+  max-width: 200px;
+  margin: 0 auto 4px;
   position: relative;
-  margin-bottom: 4px;
 }
 
 .hp-bar-reveal {
@@ -1696,6 +1686,15 @@ const potentialRewardTip = computed(() => {
 
 .hp-total {
   opacity: 0.7;
+}
+
+/* Hero weapon bonuses */
+.hero-bonuses {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .monster-name-label {
@@ -1868,15 +1867,6 @@ const potentialRewardTip = computed(() => {
 .dice-face[data-value="6"] .pip-6-5 { bottom: 25%; left: 25%; transform: translate(-50%, 50%); }
 .dice-face[data-value="6"] .pip-6-6 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
 
-/* Weapon bonuses */
-.weapon-bonuses {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .bonuses-reveal {
   animation: bonusesSlideIn 0.3s ease-out;
 }
@@ -2032,57 +2022,35 @@ const potentialRewardTip = computed(() => {
 .reward-card.category-spell { border-color: rgba(156, 39, 176, 0.5); }
 .reward-card.category-treasure { border-color: rgba(255, 193, 7, 0.5); }
 
-.reward-item-showcase {
+/* Inline reward layout (compact) */
+.reward-item-inline {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
+  gap: 10px;
 }
 
-.reward-icon-wrap {
-  position: relative;
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.reward-inline-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.reward-inline-emoji {
+  font-size: 1.8rem;
   flex-shrink: 0;
 }
 
-.reward-glow {
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(76, 175, 80, 0.3) 0%, transparent 70%);
-  animation: rewardGlowPulse 2s ease-in-out infinite;
-}
-
-.category-weapon .reward-glow { background: radial-gradient(circle, rgba(255, 87, 34, 0.3) 0%, transparent 70%); }
-.category-key .reward-glow { background: radial-gradient(circle, rgba(255, 193, 7, 0.3) 0%, transparent 70%); }
-.category-spell .reward-glow { background: radial-gradient(circle, rgba(156, 39, 176, 0.3) 0%, transparent 70%); }
-.category-treasure .reward-glow { background: radial-gradient(circle, rgba(255, 193, 7, 0.3) 0%, transparent 70%); }
-
-@keyframes rewardGlowPulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.15); }
-}
-
-.reward-item-img {
-  width: 52px;
-  height: 52px;
-  object-fit: contain;
-  position: relative;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
-}
-
-.reward-item-emoji {
-  font-size: 2.5rem;
-  position: relative;
+.reward-inline-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .reward-monster-img {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   flex-shrink: 0;
 }
@@ -2107,12 +2075,12 @@ const potentialRewardTip = computed(() => {
 .reward-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .reward-item-name {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   color: var(--monad-text-primary, #F5F3FF);
 }
 
@@ -2339,7 +2307,7 @@ const potentialRewardTip = computed(() => {
    FOOTER & BUTTONS
    ============================================ */
 .battle-footer {
-  padding: 12px 16px;
+  padding: 10px 16px;
   border-top: 1px solid rgba(123, 63, 242, 0.2);
   background: linear-gradient(180deg, rgba(26, 24, 48, 0.8) 0%, rgba(15, 14, 28, 0.9) 100%);
   flex-shrink: 0;
@@ -2530,16 +2498,8 @@ const potentialRewardTip = computed(() => {
     height: 48px;
   }
 
-  .hp-bar-wrap {
-    max-width: 100px;
-  }
-
-  .hp-bar-track {
-    height: 14px;
-  }
-
-  .hp-bar-text {
-    font-size: 0.6rem;
+  .damage-bar-center {
+    max-width: 160px;
   }
 
   .vs-badge {
@@ -2556,14 +2516,9 @@ const potentialRewardTip = computed(() => {
     height: 6px;
   }
 
-  .reward-icon-wrap {
-    width: 52px;
-    height: 52px;
-  }
-
-  .reward-item-img {
-    width: 40px;
-    height: 40px;
+  .reward-inline-img {
+    width: 32px;
+    height: 32px;
   }
 
   .battle-header {

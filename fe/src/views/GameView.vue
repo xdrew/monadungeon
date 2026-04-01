@@ -108,11 +108,13 @@
                     :position="position"
                     :x="parseInt(position.split(',')[0])"
                     :y="parseInt(position.split(',')[1])"
-                    :can-place-tile="!isProcessingAI && (gameData.state.availablePlaces.placeTile.includes(position) || 
-                      (gameData.state.availablePlaces.placeTile.length === 0 && 
-                        gameData.state.deck?.remainingTiles > 0 && 
-                        !gameData.state.deck?.isEmpty && 
-                        !isFieldPlaceAlreadyTaken(position, gameData))) && 
+                    :player-x="currentPlayerFieldPosition?.x ?? null"
+                    :player-y="currentPlayerFieldPosition?.y ?? null"
+                    :can-place-tile="!isProcessingAI && (gameData.state.availablePlaces.placeTile.includes(position) ||
+                      (gameData.state.availablePlaces.placeTile.length === 0 &&
+                        gameData.state.deck?.remainingTiles > 0 &&
+                        !gameData.state.deck?.isEmpty &&
+                        !isFieldPlaceAlreadyTaken(position, gameData))) &&
                       !gameData.state.deck?.isEmpty"
                     :is-player-turn="isPlayerTurn"
                     :can-click="isPlayerTurn && !isRequestInProgress"
