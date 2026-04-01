@@ -88,7 +88,9 @@ const arrowDirection = computed(() => {
   if (props.playerX === null || props.playerY === null) return 'arrow-down';
   const dx = props.x - props.playerX;
   const dy = props.y - props.playerY;
-  if (Math.abs(dx) > Math.abs(dy)) {
+  // Arrow points FROM player TO this tile
+  if (dx === 0 && dy === 0) return 'arrow-down';
+  if (Math.abs(dx) >= Math.abs(dy)) {
     return dx > 0 ? 'arrow-right' : 'arrow-left';
   }
   return dy > 0 ? 'arrow-down' : 'arrow-up';

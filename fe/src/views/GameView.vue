@@ -3371,16 +3371,14 @@ const getSecondPlayerData = computed(() => {
 // Get current player's field position
 const currentPlayerFieldPosition = computed(() => {
   if (!gameData.value || !gameData.value.field || !currentPlayerId.value) return null;
-  
-  // Find the current player's position from the field data
+
   const playerPositions = gameData.value.field.playerPositions || {};
-  for (const [position, playerIds] of Object.entries(playerPositions)) {
-    if (playerIds.includes(currentPlayerId.value)) {
-      const [x, y] = position.split(',').map(n => parseInt(n));
-      return { x, y };
-    }
+  const posStr = playerPositions[currentPlayerId.value];
+  if (posStr && typeof posStr === 'string') {
+    const [x, y] = posStr.split(',').map(n => parseInt(n));
+    return { x, y };
   }
-  
+
   return null;
 });
 
