@@ -1450,7 +1450,7 @@ const potentialRewardTip = computed(() => {
   padding: 6px;
   background: rgba(0, 0, 0, 0.15);
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   min-height: 0;
 }
 
@@ -1500,7 +1500,7 @@ const potentialRewardTip = computed(() => {
 }
 
 .monster-glow {
-  background: radial-gradient(circle, rgba(244, 67, 54, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(200, 180, 160, 0.25) 0%, rgba(100, 80, 60, 0.15) 50%, transparent 70%);
   animation: glowPulse 2.5s ease-in-out infinite 0.5s;
 }
 
@@ -1514,7 +1514,11 @@ const potentialRewardTip = computed(() => {
   height: 52px;
   object-fit: contain;
   position: relative;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.monster-side .combatant-sprite {
+  filter: brightness(1.3) drop-shadow(0 2px 8px rgba(200, 180, 160, 0.4));
 }
 
 .monster-emoji-large {
@@ -2178,6 +2182,8 @@ const potentialRewardTip = computed(() => {
   border-radius: 8px;
   background: rgba(123, 63, 242, 0.06);
   border: 1px solid rgba(123, 63, 242, 0.2);
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 .section-reveal {
