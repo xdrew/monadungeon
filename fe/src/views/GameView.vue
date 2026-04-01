@@ -1888,8 +1888,8 @@ const updateGameDataSelectively = (updatedData) => {
         if (playerPosition) {
           const tile = processedTiles.value?.find(t => t.position === playerPosition);
           if (tile?.hasHealingFountain) {
-            // Show healing notification
-            showHealingNotificationForPlayer(updatedPlayer.id, healAmount);
+            // Show healing notification with the position from updated data
+            showHealingNotificationForPlayer(updatedPlayer.id, healAmount, playerPosition);
           }
         }
       }
@@ -3341,13 +3341,13 @@ const showPlayerSwitchNotification = () => {
 };
 
 // Function to show healing notification
-const showHealingNotificationForPlayer = (playerId, healAmount) => {
+const showHealingNotificationForPlayer = (playerId, healAmount, positionStr = null) => {
   // Try to get player's username from game data
   const player = gameData.value?.players?.find(p => p.id === playerId);
   const playerName = player?.username || formatPlayerId(playerId);
-  
-  // Capture the player's position at notification time
-  const pos = gameData.value?.field?.playerPositions?.[playerId];
+
+  // Use provided position or fall back to current game data
+  const pos = positionStr || gameData.value?.field?.playerPositions?.[playerId];
   let hx = 0, hy = 0;
   if (pos && typeof pos === 'string') {
     const [px, py] = pos.split(',').map(Number);
