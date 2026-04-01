@@ -284,8 +284,8 @@
                   class="floating-heal-text"
                   :key="'heal-' + healingNotification.playerId + '-' + Date.now()"
                   :style="{
-                    left: `${healingWorldX}px`,
-                    top: `${healingWorldY}px`
+                    left: `${healingNotification.worldX}px`,
+                    top: `${healingNotification.worldY}px`
                   }"
                 >
                   +{{ healingNotification.healAmount }} HP
@@ -3077,6 +3077,9 @@ const handleInitialTileOrientationLocal = async (position) => {
 
 // Function to handle keyboard controls for ghost tile
 const handleKeyboardControls = (e) => {
+  // Don't handle movement when any modal/dialog is open
+  if (showBattleReportModal.value || showInventoryFullDialog.value || showItemPickupDialog.value || showLeaderboardModal.value || showMissingKeyDialog.value) return;
+
   // Only handle keyboard if it's player's turn
   if (!isPlayerTurn.value) return;
 
@@ -3343,10 +3346,23 @@ const showHealingNotificationForPlayer = (playerId, healAmount) => {
   const player = gameData.value?.players?.find(p => p.id === playerId);
   const playerName = player?.username || formatPlayerId(playerId);
   
+  // Capture the player's position at notification time
+  const pos = gameData.value?.field?.playerPositions?.[playerId];
+  let hx = 0, hy = 0;
+  if (pos && typeof pos === 'string') {
+    const [px, py] = pos.split(',').map(Number);
+    const minX = gameData.value?.field?.size?.minX || 0;
+    const minY = gameData.value?.field?.size?.minY || 0;
+    hx = (px - minX) * tileSize.value + tileSize.value / 2;
+    hy = (py - minY) * tileSize.value - 10;
+  }
+
   healingNotification.value = {
     playerId: playerId,
     playerName: playerName,
-    healAmount: healAmount
+    healAmount: healAmount,
+    worldX: hx,
+    worldY: hy
   };
   showHealingNotification.value = true;
   
@@ -3357,24 +3373,6 @@ const showHealingNotificationForPlayer = (playerId, healAmount) => {
 };
 
 // Function to dismiss healing notification
-const healingWorldX = computed(() => {
-  if (!healingNotification.value?.playerId || !gameData.value?.field) return 0;
-  const pos = gameData.value.field.playerPositions?.[healingNotification.value.playerId];
-  if (!pos || typeof pos !== 'string') return 0;
-  const [x] = pos.split(',').map(Number);
-  const minX = gameData.value.field.size?.minX || 0;
-  return (x - minX) * tileSize.value + tileSize.value / 2;
-});
-
-const healingWorldY = computed(() => {
-  if (!healingNotification.value?.playerId || !gameData.value?.field) return 0;
-  const pos = gameData.value.field.playerPositions?.[healingNotification.value.playerId];
-  if (!pos || typeof pos !== 'string') return 0;
-  const [, y] = pos.split(',').map(Number);
-  const minY = gameData.value.field.size?.minY || 0;
-  return (y - minY) * tileSize.value - 10;
-});
-
 const dismissHealingNotification = () => {
   showHealingNotification.value = false;
   healingNotification.value = null;
@@ -3580,13 +3578,15 @@ const closeBattleReportAndEndTurn = async () => {
       }
     }
     
-    // Clear battle info
+    // Clear battle info and loading before AI turn starts
     battleInfo.value = null;
-    
+    loading.value = false;
+    loadingStatus.value = '';
+
     // Check if the next player is an AI player and trigger their turn
     // This is important for stunned players whose turn auto-ends
     await checkAndHandleVirtualPlayerTurn();
-    
+
   } catch (err) {
     console.error('Failed to close battle report:', err);
     error.value = err.message || 'Failed to close battle report';
@@ -3793,12 +3793,14 @@ const handlePickItemAndEndTurn = async () => {
       // Refresh game data
       await loadGameData();
 
-      // Check if the next player is an AI player and trigger their turn
-      await checkAndHandleVirtualPlayerTurn();
-
       showBattleReportModal.value = false;
       battleInfo.value = null;
+      loading.value = false;
+      loadingStatus.value = '';
       resetRequestLock();
+
+      // Check if the next player is an AI player and trigger their turn
+      await checkAndHandleVirtualPlayerTurn();
     }
   } catch (err) {
     console.error('Failed to pick up item:', err);
@@ -3846,13 +3848,15 @@ const handlePickItemWithReplacement = async (itemIdToReplace) => {
     
     // Refresh game data
     await loadGameData();
-    
-    // Check if the next player is an AI player and trigger their turn
-    await checkAndHandleVirtualPlayerTurn();
-    
+
     showBattleReportModal.value = false;
     battleInfo.value = null;
+    loading.value = false;
+    loadingStatus.value = '';
     resetRequestLock();
+
+    // Check if the next player is an AI player and trigger their turn
+    await checkAndHandleVirtualPlayerTurn();
   } catch (err) {
     console.error('Failed to replace item:', err);
     error.value = err.message || 'Failed to replace item';
@@ -4010,11 +4014,13 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
       await loadGameData();
     }
 
+    // Clear loading before AI turn so the field is visible
+    loading.value = false;
+    loadingStatus.value = '';
+    resetRequestLock();
+
     // Check if the next player is an AI player
     await checkAndHandleVirtualPlayerTurn();
-
-    // The game status watcher should automatically show the leaderboard if the game ended
-    resetRequestLock();
   } catch (err) {
     console.error('Failed to finalize battle and pick up:', err);
     error.value = err.message || 'Failed to finalize battle and pick up item';
@@ -4086,17 +4092,19 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
 
     }
 
-    // Close the modal immediately since finalize-battle already ends the turn on the backend
+    // Close the modal and clear loading before AI turn starts
     showBattleReportModal.value = false;
     battleInfo.value = null;
 
     // Refresh game data after closing the modal to get the updated game state
     await loadGameData();
-    
+
+    loading.value = false;
+    loadingStatus.value = '';
+    resetRequestLock();
+
     // Check if the next player is an AI player and trigger their turn
     await checkAndHandleVirtualPlayerTurn();
-
-    resetRequestLock();
   } catch (err) {
     console.error('Failed to finalize battle:', err);
     error.value = err.message || 'Failed to finalize battle';
