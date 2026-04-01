@@ -2,31 +2,32 @@
 
 /* Main Inventory Section */
 .inventory-section {
-  background-color: var(--bg-tertiary) !important;
-  border-radius: var(--radius-md);
+  background-color: var(--monad-bg-card, #1A1830) !important;
+  border-radius: 10px;
   padding: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
-  border: 1px solid #444;
+  border: 1px solid rgba(123, 63, 242, 0.2);
   position: relative;
 }
 
 .inventory-section.active-game {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 10px rgba(76, 175, 80, 0.2);
+  border-color: rgba(123, 63, 242, 0.35);
 }
 
 /* Inventory Header */
 .inventory-header {
   margin-bottom: var(--spacing-sm);
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid rgba(123, 63, 242, 0.15);
   padding-bottom: var(--spacing-xs);
 }
 
 .inventory-header h3 {
   margin: 0 0 var(--spacing-xs) 0;
-  color: var(--color-primary);
-  font-size: 1.1em;
-  font-weight: bold;
+  color: var(--monad-text-secondary, #C4B5FD);
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);

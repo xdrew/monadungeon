@@ -4928,29 +4928,29 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 /* Both players inventory styles */
 .player-inventory-section {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: #3a404c;
+  margin-bottom: 8px;
+  padding: 10px;
+  background: rgba(123, 63, 242, 0.06);
   border-radius: 8px;
-  border: none;
+  border: 1px solid rgba(123, 63, 242, 0.15);
   transition: all 0.3s ease;
 }
 
 .player-inventory-section.current-turn {
-  background: #3a404c;
-  box-shadow: 0 0 15px rgba(255, 204, 0, 0.4), inset 0 0 0 2px #ffcc00;
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.15);
 }
 
 .player-inventory-section.is-current-user {
-  background: #3a404c;
-  box-shadow: inset 0 0 0 2px #4a90e2;
+  border-color: rgba(123, 63, 242, 0.4);
+  box-shadow: 0 0 10px rgba(123, 63, 242, 0.1);
 }
 
 .player-inventory-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 8px;
+  margin-bottom: 8px;
   font-weight: 600;
 }
 
@@ -4959,52 +4959,78 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .player-avatar-image {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 0 4px rgba(0, 255, 0, 0.6));
+  filter: drop-shadow(0 0 3px rgba(123, 63, 242, 0.6));
 }
 
 .ai-avatar-image {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 0 4px rgba(0, 150, 255, 0.6));
+  filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.6));
 }
 
 .player-name {
   flex: 1;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--monad-text-primary, #F5F3FF);
 }
 
 .turn-badge {
-  animation: pulse 2s infinite;
+  animation: turnPulse 2s infinite;
+}
+
+@keyframes turnPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .unified-inventory-grid.compact {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
   gap: 4px;
 }
 
 .inventory-item.compact {
-  width: 50px;
-  height: 50px;
-  padding: 4px;
+  width: 46px;
+  height: 46px;
+  padding: 3px;
   position: relative;
-  border: none !important;
-  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(123, 63, 242, 0.12) !important;
+  background: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 
-.inventory-item.weapon-item {
-  border: none !important;
-  background: rgba(0, 0, 0, 0.2);
+.inventory-item.compact:hover {
+  border-color: rgba(123, 63, 242, 0.3) !important;
+  background: rgba(123, 63, 242, 0.08);
+}
+
+.inventory-item.key-item.compact {
+  border-color: rgba(255, 193, 7, 0.2) !important;
+}
+
+.inventory-item.weapon-item.compact {
+  border-color: rgba(255, 87, 34, 0.15) !important;
+  background: rgba(255, 87, 34, 0.04);
+}
+
+.inventory-item.spell-item.compact {
+  border-color: rgba(156, 39, 176, 0.15) !important;
+  background: rgba(156, 39, 176, 0.04);
+}
+
+.inventory-item.treasure-item.compact {
+  border-color: rgba(255, 193, 7, 0.15) !important;
+  background: rgba(255, 193, 7, 0.04);
 }
 
 .inventory-item.compact .item-icon {
@@ -5017,49 +5043,52 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .item-image-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
 .weapon-item .item-image-icon {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
 }
 
 .item-damage-small {
   position: absolute;
-  bottom: 0px;
-  right: 0px;
-  background: rgba(0, 0, 0, 0.9);
-  color: #ffcc00;
-  font-size: 0.65rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-weight: bold;
+  bottom: -1px;
+  right: -1px;
+  background: rgba(255, 87, 34, 0.85);
+  color: #fff;
+  font-size: 0.6rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 700;
   z-index: 2;
 }
 
 .item-value-small {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  background: rgba(255, 204, 0, 0.9);
+  bottom: -1px;
+  right: -1px;
+  background: rgba(255, 193, 7, 0.9);
   color: #000;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   padding: 1px 3px;
-  border-radius: 3px;
-  font-weight: bold;
+  border-radius: 4px;
+  font-weight: 700;
 }
 
 .player-treasure-total {
   grid-column: 1 / -1;
   text-align: center;
-  font-weight: bold;
-  color: #ffcc00;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #FFD54F;
   padding: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
+  background: rgba(255, 215, 0, 0.06);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 6px;
   margin-top: 4px;
 }
 
@@ -5306,12 +5335,14 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .hp-indicator {
-  margin-left: 10px;
-  font-size: 0.85em;
-  padding: 2px 6px;
-  background: rgba(204, 51, 51, 0.2);
+  margin-left: auto;
+  font-size: 0.75em;
+  padding: 2px 8px;
+  background: rgba(244, 67, 54, 0.12);
+  border: 1px solid rgba(244, 67, 54, 0.2);
   border-radius: 10px;
-  color: #fff;
+  color: #ff8a80;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
@@ -5319,14 +5350,14 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .hp-indicator.hp-reduced {
-  background: rgba(255, 0, 0, 0.5);
-  transform: scale(1.1);
+  background: rgba(244, 67, 54, 0.3);
+  border-color: rgba(244, 67, 54, 0.5);
   animation: hp-flash 0.5s ease-in-out;
 }
 
 @keyframes hp-flash {
-  0%, 100% { background: rgba(204, 51, 51, 0.2); }
-  50% { background: rgba(255, 0, 0, 0.5); }
+  0%, 100% { background: rgba(244, 67, 54, 0.12); }
+  50% { background: rgba(244, 67, 54, 0.4); }
 }
 
 /* Game finished styles */
