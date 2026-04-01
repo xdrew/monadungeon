@@ -1,180 +1,271 @@
 <template>
-  <div class="battle-report-modal">
-    <div class="battle-report-content">
-      <div class="battle-report-header">
+  <div class="battle-overlay">
+    <!-- Screen flash effect -->
+    <div
+      v-if="showFlash"
+      class="screen-flash"
+      :class="{
+        'flash-victory': dynamicResult === 'win',
+        'flash-defeat': dynamicResult === 'lose',
+        'flash-draw': dynamicResult === 'draw'
+      }"
+    />
+
+    <div class="battle-card">
+      <!-- Header -->
+      <div class="battle-header">
+        <div class="header-left">
+          <span class="header-label">Battle</span>
+        </div>
         <h3
           :class="{
-            'victory-title': dynamicResult === 'win',
-            'defeat-title': dynamicResult === 'lose',
-            'draw-title': dynamicResult === 'draw',
-            'rolling-title': isRolling
+            'result-title': true,
+            'victory-title': !isRolling && dynamicResult === 'win',
+            'defeat-title': !isRolling && dynamicResult === 'lose',
+            'draw-title': !isRolling && dynamicResult === 'draw',
+            'rolling-title': isRolling,
+            'result-slam': showResultSlam
           }"
         >
           {{ dynamicResultText }}
         </h3>
         <button
-          class="close-battle-btn"
+          class="close-btn"
           @click="leaveItemAndEndTurn"
         >
-          ×
+          &times;
         </button>
       </div>
-      
-      <div class="battle-report-body">
-        <div class="damage-comparison" :class="{ 'fade-in': showResults, 'rolling-state': isRolling }">
-          <div class="player-damage">
-            <div v-show="!isRolling" class="big-number">
-              {{ totalCalculatedDamage }}
+
+      <!-- Battle Body -->
+      <div class="battle-body">
+        <!-- Arena: Hero vs Monster confrontation -->
+        <div class="battle-arena">
+          <div class="combatant hero-side">
+            <div class="combatant-sprite-wrap">
+              <div class="combatant-glow hero-glow" />
+              <img
+                src="/images/player.webp"
+                alt="Hero"
+                class="combatant-sprite"
+                :class="{
+                  'hero-entrance': isAnimating,
+                  'hero-idle': !isAnimating && isRolling,
+                  'hero-victory': !isRolling && dynamicResult === 'win',
+                  'hero-defeat': !isRolling && dynamicResult === 'lose',
+                  'hero-draw': !isRolling && dynamicResult === 'draw'
+                }"
+              />
             </div>
-            <div class="damage-details">
-              <div class="dice-results">
-                <div class="dice-container">
-                  <div
-                    v-for="(value, index) in (isRolling ? rollingValues : battleInfo.diceResults)"
-                    :key="index"
-                    class="dice-face"
-                    :class="{ 'rolling-dice': isRolling }"
-                    :data-value="value"
-                    :style="isRolling ? { animationDelay: `${index * 0.1}s` } : {}"
-                  >
-                    <span 
-                      v-for="pip in value"
-                      :key="`pip-${index}-${pip}`"
-                      class="pip"
-                      :class="`pip-${value}-${pip}`"
-                    ></span>
-                  </div>
-                </div>
+          </div>
+
+          <div class="vs-separator">
+            <div class="vs-energy-line" />
+            <div
+              class="vs-badge"
+              :class="{ 'vs-pulse': isRolling }"
+            >
+              <span class="vs-text">VS</span>
+            </div>
+            <div class="vs-energy-line" />
+          </div>
+
+          <div class="combatant monster-side">
+            <!-- Damage bar above monster -->
+            <div class="hp-bar-wrap" :class="{ 'hp-bar-reveal': showResults }">
+              <div class="hp-bar-track">
                 <div
-                  v-if="equippedWeapons.length > 0 || usedConsumableDamageTotal > 0"
-                  class="damage-breakdown"
-                >
-                  <span
-                    v-for="(weapon, index) in equippedWeapons"
-                    :key="`breakdown-weapon-${index}`"
-                    class="weapon-text"
-                  >
-                    <img
-                      v-if="getWeaponImage(weapon)"
-                      :src="getWeaponImage(weapon)"
-                      :alt="weapon.type"
-                      class="weapon-breakdown-image"
-                    />
-                    <span v-else>{{ getUsedItemEmoji(weapon) }}</span>
-                    <span class="weapon-damage-value">+{{ getItemTypeDamage(weapon.type) }}</span>
-                  </span>
-                  <span
-                    v-if="usedConsumableDamageTotal > 0"
-                    class="consumable-text"
-                  >
-                    🔮 +{{ usedConsumableDamageTotal }}
-                  </span>
-                </div>
+                  class="hp-bar-fill"
+                  :class="'bar-' + dynamicResult"
+                  :style="{ width: (isRolling ? 0 : damageBarPercent) + '%' }"
+                />
+              </div>
+              <div class="hp-bar-text">
+                <span v-if="!isRolling" class="hp-dealt" :class="'dealt-' + dynamicResult">⚔ {{ totalCalculatedDamage }}</span>
+                <span v-if="!isRolling" class="hp-separator">vs</span>
+                <span class="hp-total">♥ {{ battleInfo.monster }}</span>
               </div>
             </div>
-          </div>
-          
-          <div
-            class="comparison-symbol"
-            :class="{
-              'greater-than': !isRolling && totalCalculatedDamage > battleInfo.monster,
-              'less-than': !isRolling && totalCalculatedDamage < battleInfo.monster,
-              'equal-to': !isRolling && totalCalculatedDamage === battleInfo.monster,
-              'versus': isRolling
-            }"
-          >
-            <span v-if="isRolling" class="versus-text">VS</span>
-            <span v-else>{{ totalCalculatedDamage > battleInfo.monster ? '>' : 
-              (totalCalculatedDamage < battleInfo.monster ? '<' : '=') }}</span>
-          </div>
-          
-          <div class="monster-stats">
-            <div class="big-number" :class="{ 'fade-in-delay': !isRolling }">
-              {{ battleInfo.monster }}
-            </div>
-            <div class="monster-details">
-              <img 
+
+            <div class="combatant-sprite-wrap">
+              <div class="combatant-glow monster-glow" />
+              <img
                 v-if="displayMonsterImage"
                 :src="displayMonsterImage"
-                :alt="'Monster'"
-                class="monster-battle-image"
+                alt="Monster"
+                class="combatant-sprite"
+                :class="{
+                  'monster-entrance': isAnimating,
+                  'monster-idle': !isAnimating && isRolling,
+                  'monster-victory': !isRolling && dynamicResult === 'lose',
+                  'monster-defeat': !isRolling && dynamicResult === 'win',
+                  'monster-draw': !isRolling && dynamicResult === 'draw'
+                }"
               />
-              <div v-else class="monster-emoji">
+              <div v-else class="monster-emoji-large" :class="{ 'monster-entrance': isAnimating }">
                 {{ displayMonsterEmoji }}
               </div>
             </div>
+            <div class="monster-name-label">{{ formattedMonsterName }}</div>
           </div>
         </div>
-        
-        <!-- Modify the reward section to also display when consumables would result in victory -->
-        <div
-          v-if="!isRolling && (shouldShowReward || (showConsumableSelection && potentialVictoryWithConsumables))"
-          class="reward-section"
-          :class="{ 'fade-in': showResults }"
-        >
-          <div class="reward-content">
+
+        <!-- Dice Stage -->
+        <div class="dice-stage" :class="{ 'dice-visible': showDice }">
+          <div class="dice-container">
             <div
-              v-if="battleInfo.reward"
-              class="reward-item"
+              v-for="(value, index) in (isRolling ? rollingValues : battleInfo.diceResults)"
+              :key="index"
+              class="dice-face"
+              :class="{ 'rolling-dice': isRolling, 'dice-landed': !isRolling && showResults }"
+              :data-value="value"
+              :style="isRolling ? { animationDelay: `${index * 0.1}s` } : {}"
             >
-              <div class="reward-icon">
+              <span
+                v-for="pip in value"
+                :key="`pip-${index}-${pip}`"
+                class="pip"
+                :class="`pip-${value}-${pip}`"
+              />
+            </div>
+          </div>
+          <div
+            v-if="(equippedWeapons.length > 0 || usedConsumableDamageTotal > 0) && !isRolling"
+            class="weapon-bonuses"
+            :class="{ 'bonuses-reveal': showResults }"
+          >
+            <span
+              v-for="(weapon, index) in equippedWeapons"
+              :key="`weapon-${index}`"
+              class="bonus-chip"
+              :style="{ animationDelay: `${index * 0.1}s` }"
+            >
+              <img
+                v-if="getWeaponImage(weapon)"
+                :src="getWeaponImage(weapon)"
+                :alt="weapon.type"
+                class="bonus-chip-img"
+              />
+              <span v-else>{{ getUsedItemEmoji(weapon) }}</span>
+              <span class="bonus-value">+{{ getItemTypeDamage(weapon.type) }}</span>
+            </span>
+            <span
+              v-if="usedConsumableDamageTotal > 0"
+              class="bonus-chip spell-chip"
+            >
+              <span>🔮</span>
+              <span class="bonus-value">+{{ usedConsumableDamageTotal }}</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Combined reward + consumable selection (side by side when both present) -->
+        <div
+          v-if="!isRolling && showConsumableSelection && (shouldShowReward || potentialVictoryWithConsumables)"
+          class="reward-consumable-row"
+          :class="{ 'section-reveal': showResults }"
+        >
+          <!-- Reward (compact) -->
+          <div class="reward-compact" :class="rewardCategoryClass">
+            <div v-if="battleInfo.reward" class="reward-compact-inner">
+              <div class="reward-icon-compact">
                 <img
                   v-if="displayItemImage"
                   :src="displayItemImage"
                   :alt="formattedItemName"
-                  class="item-image"
+                  class="reward-img-sm"
                 />
-                <span v-else class="item-emoji">{{ displayItemEmoji }}</span>
+                <span v-else class="reward-emoji-sm">{{ displayItemEmoji }}</span>
                 <span
                   v-if="isPotentialReward && selectedConsumables.length === 0"
                   class="potential-badge"
                 >?</span>
               </div>
-              <div class="item-details">
-                <div class="item-header">
-                  <span class="item-name">{{ formattedItemName }}</span>
+              <div class="reward-compact-info">
+                <span class="reward-compact-name">{{ formattedItemName }}</span>
+                <span
+                  v-if="getItemTypeDamage(battleInfo.reward.type) > 0"
+                  class="stat-badge badge-damage badge-sm"
+                >⚔️ +{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
+                <span
+                  v-if="battleInfo.reward.treasureValue && battleInfo.reward.treasureValue > 0"
+                  class="stat-badge badge-value badge-sm"
+                >💰 {{ battleInfo.reward.treasureValue }}</span>
+              </div>
+            </div>
+            <div v-else class="reward-compact-inner">
+              <img v-if="displayMonsterImage" :src="displayMonsterImage" alt="Monster" class="reward-img-sm" />
+              <span class="reward-compact-name">Treasure</span>
+            </div>
+          </div>
+
+          <!-- Consumable selection (compact) -->
+          <div class="consumable-compact">
+            <div class="consumable-compact-label">Use:</div>
+            <div class="consumable-compact-list">
+              <div
+                v-for="(item, index) in availableDamageConsumables"
+                :key="`consumable-${index}`"
+                class="item-chip selectable"
+                :class="{ 'selected': selectedConsumables.includes(item.itemId) }"
+                @click="toggleConsumable(item)"
+              >
+                <img
+                  v-if="getInventoryItemImage(item)"
+                  :src="getInventoryItemImage(item)"
+                  :alt="getSpellDisplayName(item)"
+                  class="chip-img"
+                />
+                <span v-else class="chip-emoji">{{ getInventoryItemEmoji(item) }}</span>
+                <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Victory Reward Section (standalone, when no consumable selection) -->
+        <div
+          v-if="!isRolling && !showConsumableSelection && shouldShowReward"
+          class="reward-section"
+          :class="{ 'reward-rise': showResults }"
+        >
+          <!-- Victory sparkles -->
+          <div v-if="dynamicResult === 'win'" class="victory-sparkles">
+            <span v-for="i in 8" :key="`sparkle-${i}`" class="sparkle" :style="sparkleStyle(i)" />
+          </div>
+
+          <div class="reward-card" :class="rewardCategoryClass">
+            <div
+              v-if="battleInfo.reward"
+              class="reward-item-showcase"
+            >
+              <div class="reward-icon-wrap">
+                <div class="reward-glow" />
+                <img
+                  v-if="displayItemImage"
+                  :src="displayItemImage"
+                  :alt="formattedItemName"
+                  class="reward-item-img"
+                />
+                <span v-else class="reward-item-emoji">{{ displayItemEmoji }}</span>
+              </div>
+              <div class="reward-details">
+                <span class="reward-item-name">{{ formattedItemName }}</span>
+                <div class="reward-badges">
                   <span
                     v-if="getItemTypeDamage(battleInfo.reward.type) > 0"
-                    class="item-damage-badge"
-                  >+{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
+                    class="stat-badge badge-damage"
+                  >⚔️ +{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
                   <span
                     v-if="battleInfo.reward.treasureValue && battleInfo.reward.treasureValue > 0"
-                    class="item-value-badge"
+                    class="stat-badge badge-value"
                   >💰 {{ battleInfo.reward.treasureValue }}</span>
                 </div>
                 <div
                   v-if="isGuardChestReward"
-                  class="auto-collect-info"
+                  class="reward-note success"
                 >
                   Chest auto-opened!
-                </div>
-                <div
-                  v-if="isPotentialReward && selectedConsumables.length === 0"
-                  class="potential-info"
-                >
-                  Will be yours if you use consumables
-                </div>
-              </div>
-            </div>
-            <div
-              v-else-if="showConsumableSelection && potentialVictoryWithConsumables"
-              class="reward-item generic-reward"
-            >
-              <img 
-                v-if="displayMonsterImage"
-                :src="displayMonsterImage"
-                :alt="'Monster'"
-                class="monster-reward-image"
-              />
-              <div v-else class="item-emoji">
-                {{ displayMonsterEmoji }}
-              </div>
-              <div class="item-details">
-                <div class="item-name">
-                  Monster Treasure
-                </div>
-                <div class="potential-reward-notice">
-                  Using your consumables will defeat the monster and reveal its treasure!
                 </div>
               </div>
             </div>
@@ -186,37 +277,19 @@
             </div>
           </div>
         </div>
-        
-        <!-- Merged items section - shows used damage-dealing consumables and selectable consumables -->
+
+        <!-- Consumable selection only (no reward to show) -->
         <div
-          v-if="!isRolling && ((usedDamageConsumables && usedDamageConsumables.length > 0) || showConsumableSelection || showInventorySelection)"
-          class="used-items-section"
-          :class="{ 'fade-in': showResults }"
+          v-if="!isRolling && showConsumableSelection && !shouldShowReward && !potentialVictoryWithConsumables"
+          class="items-section"
+          :class="{ 'section-reveal': showResults }"
         >
-          <div class="used-items-title">
-            {{ showConsumableSelection ? 'Select consumables to use:' : 
-              showInventorySelection ? 'Choose an item to replace:' : 
-              usedDamageConsumables && usedDamageConsumables.length > 0 ? 'Used consumables:' : '' }}
-          </div>
-          <div class="used-items-list">
-            <!-- Show only used damage-dealing consumables (non-selectable) only when not doing inventory replacement -->
+          <div class="items-section-title">Select consumables to use:</div>
+          <div class="items-list">
             <div
-              v-for="(item, index) in usedDamageConsumables"
-              v-if="!showInventorySelection && !showConsumableSelection"
-              :key="`used-${index}`"
-              class="used-item consumable-chip"
-            >
-              <span class="item-emoji">{{ getUsedItemEmoji(item) }}</span>
-              <span class="item-name">{{ getCorrectItemName(item) }}</span>
-              <span class="item-damage">+{{ getItemTypeDamage(item.type) }}</span>
-            </div>
-            
-            <!-- Show selectable consumable items (only damage-dealing ones) -->
-            <div 
               v-for="(item, index) in availableDamageConsumables"
-              v-if="showConsumableSelection" 
               :key="`consumable-${index}`"
-              class="used-item selectable-item"
+              class="item-chip selectable"
               :class="{ 'selected': selectedConsumables.includes(item.itemId) }"
               @click="toggleConsumable(item)"
             >
@@ -224,18 +297,47 @@
                 v-if="getInventoryItemImage(item)"
                 :src="getInventoryItemImage(item)"
                 :alt="getSpellDisplayName(item)"
-                class="item-image-small"
+                class="chip-img"
               />
-              <span v-else class="item-emoji">{{ getInventoryItemEmoji(item) }}</span>
-              <span class="item-name">{{ getSpellDisplayName(item) }}</span>
-              <span class="item-damage">+{{ getItemTypeDamage(item.type) }}</span>
+              <span v-else class="chip-emoji">{{ getInventoryItemEmoji(item) }}</span>
+              <span class="chip-name">{{ getSpellDisplayName(item) }}</span>
+              <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
             </div>
-            <!-- Show selectable inventory items for replacement -->
-            <div 
+          </div>
+        </div>
+
+        <!-- Used consumables display (after battle finalized) -->
+        <div
+          v-if="!isRolling && !showConsumableSelection && !showInventorySelection && usedDamageConsumables && usedDamageConsumables.length > 0"
+          class="items-section"
+          :class="{ 'section-reveal': showResults }"
+        >
+          <div class="items-section-title">Used consumables:</div>
+          <div class="items-list">
+            <div
+              v-for="(item, index) in usedDamageConsumables"
+              :key="`used-${index}`"
+              class="item-chip consumable-used"
+            >
+              <span class="chip-emoji">{{ getUsedItemEmoji(item) }}</span>
+              <span class="chip-name">{{ getCorrectItemName(item) }}</span>
+              <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory replacement section -->
+        <div
+          v-if="!isRolling && showInventorySelection"
+          class="items-section"
+          :class="{ 'section-reveal': showResults }"
+        >
+          <div class="items-section-title">Choose an item to replace:</div>
+          <div class="items-list">
+            <div
               v-for="(item, index) in inventoryForSelection"
-              v-if="showInventorySelection" 
               :key="`inventory-${index}`"
-              class="used-item selectable-item inventory-item-replace"
+              class="item-chip selectable inventory-replace"
               :class="{ 'selected': selectedItemForReplacement?.itemId === item.itemId }"
               @click="setSelectedItemForReplacement(item)"
             >
@@ -243,90 +345,68 @@
                 v-if="getInventoryItemImage(item)"
                 :src="getInventoryItemImage(item)"
                 :alt="formatItemName(item.type || item.name)"
-                class="item-image-small"
+                class="chip-img"
               />
-              <span v-else class="item-emoji">{{ getInventoryItemEmoji(item) }}</span>
-              <span class="item-name">{{ formatItemName(item.type || item.name) }}</span>
+              <span v-else class="chip-emoji">{{ getInventoryItemEmoji(item) }}</span>
+              <span class="chip-name">{{ formatItemName(item.type || item.name) }}</span>
               <span
                 v-if="getItemTypeDamage(item.type || item.name) > 0"
-                class="item-damage"
+                class="chip-damage"
               >+{{ getItemTypeDamage(item.type || item.name) }}</span>
               <span
                 v-else-if="item.treasureValue > 0"
-                class="item-value"
+                class="chip-value"
               >💰{{ item.treasureValue }}</span>
             </div>
           </div>
         </div>
-
-        <!-- OLD INVENTORY SELECTION SECTION - REMOVED -->
-        <!--
-        <div v-if="showInventorySelection" class="inventory-selection">
-          <div class="selection-title">Inventory is full! Choose an item to replace:</div>
-          <div class="inventory-items">
-            <div 
-              v-for="(item, index) in inventoryForSelection" 
-              :key="index"
-              class="inventory-item"
-              :class="{ 'selected': selectedItemForReplacement?.itemId === item.itemId }"
-              @click="selectedItemForReplacement = item"
-            >
-              <div class="item-emoji">{{ getInventoryItemEmoji(item) }}</div>
-              <div class="item-name">{{ formatItemName(item.name || item.type) }}</div>
-              <div v-if="item.treasureValue > 0" class="item-value">💰 {{ item.treasureValue }}</div>
-            </div>
-          </div>
-        </div>
-        -->
       </div>
-      
-      <div v-show="!isRolling" class="battle-report-footer" :class="{ 'fade-in': showResults }">
-        <!-- Show different buttons based on victory state and inventory status -->
-        <!-- Special case for keys: if player already has a key, only show end turn button -->
+
+      <!-- Footer -->
+      <div v-show="!isRolling" class="battle-footer" :class="{ 'footer-reveal': showResults }">
+        <!-- Keys: player already has one -->
         <div v-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection && !battleFinalized">
           <button
-            class="end-turn-btn"
+            class="btn-primary"
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
             End Turn (All keys are the same) <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
-        <!-- Special case for chest rewards from defeated guards: treasure is automatically collected -->
+        <!-- Guard chest: auto-collected -->
         <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && isGuardChestReward && !showInventorySelection && !showConsumableSelection">
           <button
-            class="pick-up-btn"
+            class="btn-primary"
             :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
             End Turn (Treasure collected automatically) <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
-        <!-- Normal victory with reward (non-key, non-guard-chest, or has inventory space) -->
+        <!-- Normal victory with reward -->
         <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && !showInventorySelection && !showConsumableSelection" class="button-group">
           <button
-            class="pick-up-btn"
+            class="btn-primary"
             :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
             🎒 Pick up and end turn <span class="kbd-hint">(Enter)</span>
           </button>
-          <!-- Only show leave item button when inventory is full (and not a key or guard chest) -->
           <button
             v-if="!hasInventorySpace && !isKeyReward && !isGuardChestReward"
-            class="leave-item-btn"
+            class="btn-secondary"
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            ⏭️ Leave item and end turn <span class="kbd-hint">(Esc)</span>
+            Leave item and end turn <span class="kbd-hint">(Esc)</span>
           </button>
         </div>
+        <!-- Consumable selection buttons -->
         <div v-else-if="showConsumableSelection" class="button-group">
-          <!-- Dynamic buttons based on currently selected consumables -->
-          <!-- When consumables would achieve victory - show both pickup and leave options -->
           <button
             v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
-            class="pick-up-btn"
+            class="btn-primary"
             :disabled="isProcessing"
             @click="finalizeBattleAndPickUp"
           >
@@ -334,60 +414,60 @@
           </button>
           <button
             v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
-            class="leave-item-btn"
+            class="btn-secondary"
             :disabled="isProcessing"
             @click="finalizeBattleAndLeaveItem"
           >
-            ⏭️ Fight, win, and leave reward
+            Leave reward after victory
           </button>
-          <!-- When consumables would achieve draw -->
           <button
             v-else-if="selectedConsumables.length > 0 && totalCalculatedDamage === battleInfo.monster"
-            class="finalize-battle-btn"
+            class="btn-draw"
             :disabled="isProcessing"
             @click="finalizeBattleWithConsumables"
           >
             ⚔️ Fight for a draw
           </button>
-          <!-- No consumables selected or consumables don't help - show default outcome -->
           <button
             v-else
-            class="accept-defeat-btn"
+            class="btn-defeat"
             :disabled="isProcessing"
             @click="finalizeBattleWithoutConsumables"
           >
             {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
-        <!-- Add retreat button for battles without consumable selection (lost or draw battles) -->
+        <!-- Lost or draw without consumable selection -->
         <div v-else-if="(battleInfo.result === 'lose' || battleInfo.result === 'draw') && !showInventorySelection" class="button-group">
           <button
-            class="accept-defeat-btn"
+            class="btn-defeat"
             :disabled="isProcessing"
             @click="handleRetreat"
           >
             {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
+        <!-- Inventory replacement -->
         <div v-else-if="showInventorySelection" class="button-group">
-          <button 
+          <button
             :disabled="!selectedItemForReplacement || isProcessing"
-            :class="potentialVictoryWithConsumables ? 'pick-item-btn' : 'confirm-replacement-btn'"
+            :class="potentialVictoryWithConsumables ? 'btn-primary' : 'btn-primary'"
             @click="confirmReplacement"
           >
             {{ potentialVictoryWithConsumables ? '✅ Replace & Pick Up Reward' : '✅ Replace and end turn' }}
           </button>
           <button
-            class="cancel-replacement-btn"
+            class="btn-danger"
             :disabled="isProcessing"
             @click="cancelReplacement"
           >
             ❌ Cancel
           </button>
         </div>
+        <!-- Fallback end turn -->
         <div v-else>
           <button
-            class="end-turn-btn"
+            class="btn-primary"
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
@@ -418,39 +498,77 @@ const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-
 
 // Animation state
 const isRolling = ref(true);
+const isAnimating = ref(true); // entrance animation phase
 const showResults = ref(false);
+const showDice = ref(false);
+const showFlash = ref(false);
+const showResultSlam = ref(false);
 const rollingValues = ref([1, 1]);
+
+// Sparkle position helper for victory particles
+const sparkleStyle = (i) => {
+  const angle = (i / 8) * 360;
+  const rad = (angle * Math.PI) / 180;
+  const distance = 40 + (i % 3) * 15;
+  return {
+    '--sparkle-x': `${Math.cos(rad) * distance}px`,
+    '--sparkle-y': `${Math.sin(rad) * distance}px`,
+    animationDelay: `${i * 0.08}s`
+  };
+};
 
 // Start dice rolling animation
 const startRollingAnimation = () => {
   // Reset states
   isRolling.value = true;
+  isAnimating.value = true;
   showResults.value = false;
-  
+  showDice.value = false;
+  showFlash.value = false;
+  showResultSlam.value = false;
+
   // Initialize with same number of dice as actual roll
   if (props.battleInfo.diceResults) {
     rollingValues.value = props.battleInfo.diceResults.map(() => 1);
   }
-  
+
+  // Phase 1: Entrance animations (0-800ms)
+  // Characters slide in via CSS (0.7s duration), let them finish
+
+  // Phase 2: Show dice and start rolling (after entrances settle)
+  setTimeout(() => {
+    isAnimating.value = false;
+    showDice.value = true;
+  }, 800);
+
   const rollInterval = setInterval(() => {
     rollingValues.value = rollingValues.value.map(() => Math.floor(Math.random() * 6) + 1);
-  }, 60); // Faster updates for shorter duration
-  
-  // Stop rolling and show actual values after delay
+  }, 80);
+
+  // Dice roll for 1.2s, then land (800 + 1200 = 2000ms)
   setTimeout(() => {
     clearInterval(rollInterval);
-    // Set final values to actual dice results
     rollingValues.value = [...props.battleInfo.diceResults];
-    
-    // Small delay then stop animation
+
+    // Pause to let dice values register visually (500ms)
     setTimeout(() => {
       isRolling.value = false;
-      // Delay before showing numbers for dramatic effect
+
+      // Screen flash after a beat (300ms later)
+      setTimeout(() => {
+        showFlash.value = true;
+        showResultSlam.value = true;
+        setTimeout(() => {
+          showFlash.value = false;
+        }, 500);
+      }, 300);
+
+      // Show damage numbers, reward, buttons (600ms after result)
       setTimeout(() => {
         showResults.value = true;
-      }, 200);
-    }, 100);
-  }, 800); // 0.8 second roll
+      }, 600);
+    }, 500);
+  }, 2000);
 };
 
 // Start animation when component mounts or battle info changes
@@ -462,7 +580,6 @@ onMounted(() => {
 watch(() => props.battleInfo?.battleId, (newId, oldId) => {
   if (newId && newId !== oldId) {
     startRollingAnimation();
-    // Reset processing flag for new battle
     isProcessing.value = false;
     battleFinalized.value = false;
   }
@@ -472,7 +589,6 @@ watch(() => props.battleInfo?.battleId, (newId, oldId) => {
 const showInventorySelection = ref(false);
 const inventoryForSelection = ref([]);
 const selectedItemForReplacement = ref(null);
-// Helper to select an inventory item to be replaced
 const setSelectedItemForReplacement = (item) => {
   selectedItemForReplacement.value = item;
   try {
@@ -486,33 +602,24 @@ const showConsumableSelection = ref(false);
 const availableConsumables = ref([]);
 const selectedConsumables = ref([]);
 
-// Centralized setter to mutate showConsumableSelection with optional reason for easier tracing
 const setShowConsumableSelection = (value, reason = '') => {
   if (showConsumableSelection.value === value) return;
-  // Log to help debug all state changes in browser
   try {
     const ts = new Date().toISOString();
     console.log(`[BattleReportModal] ${ts} showConsumableSelection ->`, value, reason ? `reason: ${reason}` : '');
-    // Optional stack to see where it came from (uncomment if needed):
-    // console.log(new Error().stack);
-  } catch (e) { /* no-op */ }
+  } catch (e) {}
   showConsumableSelection.value = value;
 };
 
 // Computed to filter available consumables for only damage-dealing ones
 const availableDamageConsumables = computed(() => {
   if (!availableConsumables.value) return [];
-  // Only show consumables that provide damage (fireball)
   return availableConsumables.value.filter(item => getItemTypeDamage(item.type) > 0);
 });
 
-// Add flag to track if battle has been finalized
 const battleFinalized = ref(false);
-
-// Add flag to track if any action is in progress (prevents multiple clicks)
 const isProcessing = ref(false);
 
-// Helper function to get damage value for an item type
 const getItemTypeDamage = (itemType) => {
   const damageMap = {
     'dagger': 1,
@@ -527,17 +634,9 @@ const getItemTypeDamage = (itemType) => {
   return damageMap[itemType] || 0;
 };
 
-// Computed to check if using all consumables would result in victory
 const potentialVictoryWithConsumables = computed(() => {
-  if (!availableConsumables.value) {
-    // console.log('Log damage:', {
-    //   showConsumableSelection: showConsumableSelection.value,
-    //   availableConsumables: availableConsumables.value,
-    // });
+  if (!availableConsumables.value) return false;
 
-    return false;
-  }
-  
   const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
   const maxConsumableDamage = availableConsumables.value
     .filter(item => getItemTypeDamage(item.type) > 0)
@@ -549,128 +648,98 @@ const potentialVictoryWithConsumables = computed(() => {
     monsterHp: props.battleInfo.monster,
     potentialVictory: (currentDamage + maxConsumableDamage) > props.battleInfo.monster,
   });
-  
-  // Only return true for actual victory (not draw)
+
   return (currentDamage + maxConsumableDamage) > props.battleInfo.monster;
 });
 
-// Computed to check if consumables could improve outcome (draw or win)
 const potentialImprovementWithConsumables = computed(() => {
   if (!showConsumableSelection.value || !availableConsumables.value) return false;
-  
+
   const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
   const maxConsumableDamage = availableConsumables.value
     .filter(item => getItemTypeDamage(item.type) > 0)
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
-  
+
   const totalPossibleDamage = currentDamage + maxConsumableDamage;
-  
-  // Return true if consumables would improve the outcome
+
   if (props.battleInfo.result === 'lose') {
-    return totalPossibleDamage >= props.battleInfo.monster; // Can achieve draw or win
+    return totalPossibleDamage >= props.battleInfo.monster;
   }
   if (props.battleInfo.result === 'draw') {
-    return totalPossibleDamage > props.battleInfo.monster; // Can achieve win
+    return totalPossibleDamage > props.battleInfo.monster;
   }
   return false;
 });
 
-// Computed property for dynamic battle result based on consumable selection
 const dynamicResult = computed(() => {
-  // If consumables are selected (even during inventory selection), calculate potential outcome
   if (selectedConsumables.value.length > 0 && (showConsumableSelection.value || showInventorySelection.value)) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
-    
+
     if (totalDamage > monsterHP) return 'win';
     if (totalDamage === monsterHP) return 'draw';
     return 'lose';
   }
-  
-  // Otherwise use the actual battle result
+
   return props.battleInfo.result;
 });
 
-// Computed property for dynamic header text
 const dynamicResultText = computed(() => {
-  // Show "Rolling..." during dice animation
   if (isRolling.value) {
     return 'Rolling...';
   }
-  
-  // If consumables would change the outcome, show updated text
-  // Check even during inventory selection if we have selected consumables
+
   if (selectedConsumables.value.length > 0 && (showConsumableSelection.value || showInventorySelection.value)) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
-    
-    if (totalDamage > monsterHP) {
-      return 'Victory!';
-    }
-    if (totalDamage === monsterHP) {
-      return 'Draw';
-    }
+
+    if (totalDamage > monsterHP) return 'Victory!';
+    if (totalDamage === monsterHP) return 'Draw';
     return 'Defeat';
   }
-  
-  // Default text based on original result
+
   if (props.battleInfo.result === 'win') return 'Victory!';
   if (props.battleInfo.result === 'draw') return 'Draw';
   return 'Defeat';
 });
 
-// Computed to filter used consumables that actually provide damage
 const usedDamageConsumables = computed(() => {
   if (!props.battleInfo.usedItems) return [];
-  // Filter for consumables that provide damage boost (only fireball)
-  return props.battleInfo.usedItems.filter(item => 
+  return props.battleInfo.usedItems.filter(item =>
     item.type && item.type === 'fireball'
   );
 });
 
-// Computed to filter all used consumables (including non-damage ones)
 const usedConsumables = computed(() => {
   if (!props.battleInfo.usedItems) return [];
-  // Filter for consumables only (fireball, teleport)
-  return props.battleInfo.usedItems.filter(item => 
+  return props.battleInfo.usedItems.filter(item =>
     item.type && ['fireball', 'teleport'].includes(item.type)
   );
 });
 
-// Computed to filter equipped weapons
 const equippedWeapons = computed(() => {
   if (!props.battleInfo.usedItems) return [];
-  // Filter for weapons only (dagger, sword, axe)
-  return props.battleInfo.usedItems.filter(item => 
+  return props.battleInfo.usedItems.filter(item =>
     item.type && ['dagger', 'sword', 'axe'].includes(item.type)
   );
 });
 
-// Computed properties for damage calculations
 const weaponDamageTotal = computed(() => {
   if (!props.battleInfo.usedItems) return 0;
-  
-  // Calculate damage from weapons only (non-consumables)
   return props.battleInfo.usedItems
     .filter(item => item.type && ['dagger', 'sword', 'axe'].includes(item.type))
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
 });
 
-// Computed for damage total from USED consumables (already consumed in battle)
 const usedConsumableDamageTotal = computed(() => {
   if (!props.battleInfo.usedItems) return 0;
-  
-  // Calculate damage from already-used damage-dealing consumables
   return props.battleInfo.usedItems
-    .filter(item => item.type === 'fireball') // Only fireball provides damage
+    .filter(item => item.type === 'fireball')
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
 });
 
-// Computed for damage total from SELECTED consumables (for potential use)
 const consumableDamageTotal = computed(() => {
   if (!availableConsumables.value || selectedConsumables.value.length === 0) return 0;
-  
-  // Calculate damage from selected consumables
   return availableConsumables.value
     .filter(item => selectedConsumables.value.includes(item.itemId))
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
@@ -680,16 +749,16 @@ const totalCalculatedDamage = computed(() => {
   return (props.battleInfo.diceRollDamage || 0) + (props.battleInfo.itemDamage || 0) + consumableDamageTotal.value;
 });
 
-// Computed property to check if the reward is a key
+const damageBarPercent = computed(() => {
+  const monsterHP = props.battleInfo.monster || 1;
+  return Math.min(100, (totalCalculatedDamage.value / monsterHP) * 100);
+});
+
 const isKeyReward = computed(() => {
   if (!props.battleInfo.reward) return false;
-  
-  // Check both type and name fields to be thorough
   const reward = props.battleInfo.reward;
   const isKeyType = reward.type === 'key';
   const isKeyName = reward.name === 'key' || (typeof reward.name === 'string' && reward.name.toLowerCase().includes('key'));
-  
-  // Log debug info
   console.log('Key reward check:', {
     rewardType: reward.type,
     rewardName: reward.name,
@@ -697,114 +766,89 @@ const isKeyReward = computed(() => {
     isKeyName,
     hasInventorySpace: props.hasInventorySpace
   });
-  
   return isKeyType || isKeyName;
 });
 
-// Computed property to check if the reward is a chest from a defeated guard
 const isGuardChestReward = computed(() => {
   if (!props.battleInfo.reward) return false;
-  
   const reward = props.battleInfo.reward;
-  
-  // Check if the backend has explicitly marked this as auto-collected
   if (reward.hasOwnProperty('autoCollected')) {
     return reward.autoCollected === true;
   }
-  
-  // Fallback logic for backward compatibility
   const isChestType = reward.type === 'chest' || reward.type === 'ruby_chest';
   const hasDirectTreasureValue = reward.treasureValue && reward.treasureValue > 0;
-  
-  // If it's a chest with treasure value, it's from a defeated guard
-  // These are automatically opened and the treasure value is collected
   return isChestType && hasDirectTreasureValue;
 });
 
-// Computed property to check if there's inventory space for the reward when using consumables
 const hasInventorySpaceForEstimatedReward = computed(() => {
-  // For consumable selection, we assume the reward would be the same as shown in battleInfo
-  // This is a reasonable assumption since the reward is determined by the monster/item, not the battle outcome
   return props.hasInventorySpace;
 });
 
-// Initialize consumable selection if needed
+// Reward category class for accent colors
+const rewardCategoryClass = computed(() => {
+  if (!props.battleInfo.reward) return '';
+  const type = props.battleInfo.reward.type;
+  if (['dagger', 'sword', 'axe'].includes(type)) return 'category-weapon';
+  if (type === 'key') return 'category-key';
+  if (['fireball', 'teleport'].includes(type)) return 'category-spell';
+  if (['chest', 'ruby_chest'].includes(type)) return 'category-treasure';
+  return '';
+});
+
 const initializeConsumableSelection = () => {
   console.log('initializeConsumableSelection called with battleInfo:', props.battleInfo);
   console.log('needsConsumableConfirmation:', props.battleInfo.needsConsumableConfirmation);
   console.log('availableConsumables:', props.battleInfo.availableConsumables);
-  
-  // Don't show consumable selection if battle has already been finalized
+
   if (battleFinalized.value) {
     console.log('Battle already finalized, skipping consumable selection');
     setShowConsumableSelection(false, 'battle already finalized');
     return;
   }
-  
-  // Make sure the reward object is properly initialized if needed
+
   if (!props.battleInfo.reward && props.battleInfo.monster && props.battleInfo.monsterType) {
     console.log('No reward in battleInfo, but monster exists. This might be a bug.');
-    // The reward field should be populated by the backend, but if missing for some reason
-    // we won't try to construct it here since we don't know the reward structure
   }
-  
+
   if (props.battleInfo.needsConsumableConfirmation && props.battleInfo.availableConsumables) {
-    // Check if player did not win (includes both draw and lose)
     const didNotWin = props.battleInfo.result !== 'win';
-    
     console.log('Player did not win:', didNotWin, 'result:', props.battleInfo.result);
-    
+
     if (didNotWin) {
-      // Calculate if consumables would be enough to change the outcome
       const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
       const consumablesWithDamage = props.battleInfo.availableConsumables.filter(item => getItemTypeDamage(item.type) > 0);
-      
       console.log('Current damage:', currentDamage, 'consumables with damage:', consumablesWithDamage);
-      
-      // If no consumables with damage available, skip interface
+
       if (consumablesWithDamage.length === 0) {
         console.log('No damage-dealing consumables available, skipping consumables interface');
-        console.log('Setting showConsumableSelection to false');
         setShowConsumableSelection(false, 'no damage-dealing consumables available');
-        
-        // IMPORTANT: Don't emit any events here - let the template handle the UI
-        console.log('Template should now show End Turn button in final else clause');
         return;
       }
-      
-      // Calculate maximum possible damage with all consumables
+
       const maxConsumableDamage = consumablesWithDamage.reduce((total, item) => total + getItemTypeDamage(item.type), 0);
       const maxPossibleDamage = currentDamage + maxConsumableDamage;
-      
-      // Always show interface if player can potentially win with consumables
-      // Even for draws, player might want to win to avoid having to retreat
+
       if (maxPossibleDamage > props.battleInfo.monster) {
         console.log(`Consumables could change outcome: ${maxPossibleDamage} damage vs ${props.battleInfo.monster} HP`);
         setShowConsumableSelection(true, 'maxPossibleDamage > monster');
-        // Only store damage-dealing consumables
         availableConsumables.value = consumablesWithDamage;
-        // Start with no consumables selected - let player choose
         selectedConsumables.value = [];
         return;
       }
-      
-      // Show interface if consumables can achieve a draw (avoiding HP loss)
+
       if (maxPossibleDamage >= props.battleInfo.monster) {
         console.log(`Consumables could achieve draw: ${maxPossibleDamage} damage vs ${props.battleInfo.monster} HP`);
         setShowConsumableSelection(true, 'maxPossibleDamage >= monster (draw)');
-        // Only store damage-dealing consumables
         availableConsumables.value = consumablesWithDamage;
         selectedConsumables.value = [];
         return;
       }
-      
-      // If consumables can't change the outcome at all, don't show interface
+
       console.log(`Consumables can't change outcome: ${maxPossibleDamage} damage vs ${props.battleInfo.monster} HP, skipping interface`);
       setShowConsumableSelection(false, "consumables can't change outcome");
       return;
     }
-    
-    // If player won initially, no need for consumable selection
+
     console.log('Player won initially, no consumable selection needed');
     setShowConsumableSelection(false, 'player already won');
   } else {
@@ -813,169 +857,117 @@ const initializeConsumableSelection = () => {
   }
 };
 
-// Watch for changes in battleInfo to initialize consumable selection
 watch(() => props.battleInfo, (newBattleInfo, oldBattleInfo) => {
-  // Reset battleFinalized flag if this is a new battle
   if (!oldBattleInfo || newBattleInfo?.battleId !== oldBattleInfo?.battleId) {
     battleFinalized.value = false;
   }
-  
   initializeConsumableSelection();
 }, { immediate: true });
 
 const toggleConsumable = (item) => {
   const index = selectedConsumables.value.indexOf(item.itemId);
   if (index === -1) {
-    // Add the consumable
     selectedConsumables.value.push(item.itemId);
-    
-    // Check if this selection changes the battle outcome
     const newTotalDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value + consumableDamageTotal.value;
-    
-    // Log for debugging
     console.log(`Toggled consumable ${item.name || item.type}. New total damage: ${newTotalDamage} vs monster HP: ${props.battleInfo.monster}`);
-    
-    // Check if we just crossed the victory threshold
-    if (newTotalDamage > props.battleInfo.monster && 
+
+    if (newTotalDamage > props.battleInfo.monster &&
         newTotalDamage - getItemTypeDamage(item.type) <= props.battleInfo.monster) {
       console.log('This selection would lead to victory!');
-      
-      // Force re-evaluation of computed properties
       nextTick(() => {
         console.log('Re-evaluating computed properties after crossing victory threshold');
-        console.log('Current total damage:', totalCalculatedDamage);
-        console.log('Monster HP:', props.battleInfo.monster);
-        console.log('Would show reward:', shouldShowReward.value);
       });
     }
   } else {
-    // Remove the consumable
     selectedConsumables.value.splice(index, 1);
-    
-    // Check if this deselection changes the battle outcome
     const newTotalDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value + consumableDamageTotal.value;
-    
-    // Log for debugging
     console.log(`Removed consumable ${item.name || item.type}. New total damage: ${newTotalDamage} vs monster HP: ${props.battleInfo.monster}`);
-    
-    // Check if we just dropped below the victory threshold
-    if (newTotalDamage <= props.battleInfo.monster && 
+
+    if (newTotalDamage <= props.battleInfo.monster &&
         newTotalDamage + getItemTypeDamage(item.type) > props.battleInfo.monster) {
       console.log('This deselection would prevent victory!');
-      
-      // Force re-evaluation of computed properties
-      nextTick(() => {
-        console.log('Re-evaluating computed properties after dropping below victory threshold');
-        console.log('Current total damage:', totalCalculatedDamage);
-        console.log('Monster HP:', props.battleInfo.monster);
-        console.log('Would show reward:', shouldShowReward.value);
-      });
     }
   }
 };
 
 const finalizeBattleWithConsumables = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
+  if (isProcessing.value) return;
   if (!props.battleInfo.battleId) {
     console.error('No battleId available, cannot finalize battle');
     return;
   }
-  
   isProcessing.value = true;
   battleFinalized.value = true;
   emit('finalize-battle', {
     battleId: props.battleInfo.battleId,
     selectedConsumableIds: selectedConsumables.value
   });
-  
-  // Reset state
   setShowConsumableSelection(false, 'finalizeBattleWithConsumables reset');
   selectedConsumables.value = [];
   availableConsumables.value = [];
 };
 
 const finalizeBattleWithoutConsumables = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
+  if (isProcessing.value) return;
   isProcessing.value = true;
   battleFinalized.value = true;
   emit('finalize-battle', {
     battleId: props.battleInfo.battleId,
     selectedConsumableIds: []
   });
-  
-  // Reset state
   setShowConsumableSelection(false, 'finalizeBattleWithoutConsumables reset');
   selectedConsumables.value = [];
   availableConsumables.value = [];
 };
 
 const finalizeBattleAndPickUp = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
+  if (isProcessing.value) return;
   console.log('🟢 Green button clicked - finalizeBattleAndPickUp called');
   console.log('Battle ID:', props.battleInfo.battleId);
   console.log('Selected consumables:', selectedConsumables.value);
   console.log('Replace item ID:', selectedItemForReplacement.value?.itemId);
-  
+
   isProcessing.value = true;
   battleFinalized.value = true;
-  
-  // Hide modal since we'll handle inventory selection separately after battle finalization
+
   const eventData = {
     battleId: props.battleInfo.battleId,
     selectedConsumableIds: selectedConsumables.value,
     replaceItemId: selectedItemForReplacement.value?.itemId
   };
-  
+
   console.log('Emitting finalize-battle-and-pick-up with data:', eventData);
   emit('finalize-battle-and-pick-up', eventData);
-  
-  // Don't reset state here - we might need it for inventory selection
-  // State will be reset after the full flow completes
 };
 
 const finalizeBattleAndLeaveItem = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
+  if (isProcessing.value) return;
   isProcessing.value = true;
   battleFinalized.value = true;
-  
-  // Hide the modal immediately to prevent showing intermediate state
   emit('finalize-battle', {
     battleId: props.battleInfo.battleId,
     selectedConsumableIds: selectedConsumables.value,
     hideModalImmediately: true
   });
-  
-  // Reset state
   setShowConsumableSelection(false, 'finalizeBattleAndLeaveItem reset');
   selectedConsumables.value = [];
   availableConsumables.value = [];
 };
 
 const pickUpAndEndTurn = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
+  if (isProcessing.value) return;
   isProcessing.value = true;
-  // Emit to parent component to handle the pickup
   emit('pick-item-and-end-turn');
 };
 
 const confirmReplacement = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
-  if (!selectedItemForReplacement.value) {
-    return;
-  }
-  
+  if (isProcessing.value) return;
+  if (!selectedItemForReplacement.value) return;
+
   isProcessing.value = true;
 
-  // Check if we have selected consumables - if so, we're in the finalize-battle flow
   if (selectedConsumables.value && selectedConsumables.value.length > 0) {
     console.log('Confirming replacement with consumables:', selectedConsumables.value);
-    // We're finalizing a battle with consumables AND replacing an item
     const eventData = {
       battleId: props.battleInfo.battleId,
       selectedConsumableIds: selectedConsumables.value,
@@ -983,52 +975,38 @@ const confirmReplacement = () => {
       hideModalImmediately: true
     };
     emit('finalize-battle-and-pick-up', eventData);
-    
-    // Reset consumable state too
     selectedConsumables.value = [];
     availableConsumables.value = [];
   } else {
-    // Normal replacement without consumables
     emit('pick-item-with-replacement', selectedItemForReplacement.value.itemId);
   }
-  
-  // Reset all state after confirming replacement
+
   showInventorySelection.value = false;
   inventoryForSelection.value = [];
   selectedItemForReplacement.value = null;
   pendingPickupItem.value = null;
   setShowConsumableSelection(false, 'confirmReplacement reset after replacement');
-  availableConsumables.value = [];  // Now safe to clear after full flow completes
+  availableConsumables.value = [];
 };
 
 const cancelReplacement = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
-  isProcessing.value = false; // Reset since we're canceling
+  if (isProcessing.value) return;
+  isProcessing.value = false;
   showInventorySelection.value = false;
   inventoryForSelection.value = [];
   selectedItemForReplacement.value = null;
   pendingPickupItem.value = null;
-  
-  // If we had consumables selected, show them again
   if (selectedConsumables.value.length > 0) {
     setShowConsumableSelection(true, 'cancelReplacement showing consumable selection again');
   }
 };
 
 const leaveItemAndEndTurn = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
-  // Debug logging to see what we have
+  if (isProcessing.value) return;
   console.log('leaveItemAndEndTurn called with battleInfo:', props.battleInfo);
-  console.log('Battle result:', props.battleInfo.result);
-  console.log('Battle ID:', props.battleInfo.battleId);
-  
   isProcessing.value = true;
-  
-  // If this battle has a battleId and needs finalization (defeats/draws/wins where item is left), call finalize-battle
-  // This ensures the backend processes the battle result properly
-  if (props.battleInfo.battleId && 
+
+  if (props.battleInfo.battleId &&
       (props.battleInfo.result === 'lose' || props.battleInfo.result === 'draw' || props.battleInfo.result === 'win')) {
     console.log('Finalizing battle for result:', props.battleInfo.result);
     battleFinalized.value = true;
@@ -1037,84 +1015,54 @@ const leaveItemAndEndTurn = () => {
       selectedConsumableIds: []
     });
   } else {
-    // For other cases, just end turn
     console.log('Ending turn without finalization');
     emit('end-turn');
   }
 };
 
-// Function to handle retreat (accept defeat without using consumables)
 const handleRetreat = () => {
-  if (isProcessing.value) return; // Prevent multiple clicks
-  
-  console.log('handleRetreat called with battleInfo:', props.battleInfo);
-  console.log('Battle result:', props.battleInfo.result);
-  console.log('Battle ID:', props.battleInfo.battleId);
-  
+  if (isProcessing.value) return;
+  console.log('handleRetreat called');
   isProcessing.value = true;
-  
-  // Finalize the battle without consumables (accept the defeat or draw)
+
   if (props.battleInfo.battleId) {
-    console.log('Finalizing battle for retreat, result:', props.battleInfo.result);
     battleFinalized.value = true;
     emit('finalize-battle', {
       battleId: props.battleInfo.battleId,
-      selectedConsumableIds: []  // No consumables used
+      selectedConsumableIds: []
     });
   } else {
-    // Fallback: just end turn if no battle ID
-    console.log('No battle ID, ending turn');
     emit('end-turn');
   }
 };
 
-// Method to show inventory replacement UI when inventory is full
-// This can be called from parent component
 const showInventoryFullSelection = (inventory, item) => {
-  // Entering inventory selection is a user decision point; ensure buttons are interactable
   isProcessing.value = false;
   showInventorySelection.value = true;
   inventoryForSelection.value = inventory || [];
   pendingPickupItem.value = item;
   selectedItemForReplacement.value = null;
-  
-  // When showing inventory selection, hide consumable selection
   setShowConsumableSelection(false, 'showInventoryFullSelection hides consumable selection');
-  
-  // Debug aid
-  try { console.log('[BattleReportModal] Inventory full selection opened. isProcessing:', isProcessing.value); } catch (e) {}
+  try { console.log('[BattleReportModal] Inventory full selection opened.'); } catch (e) {}
 };
 
-// Method to handle finalize-battle-and-pick-up with inventory full
 const showFinalizeBattleInventoryFullSelection = (inventory) => {
   console.log('showFinalizeBattleInventoryFullSelection called with inventory:', inventory);
-  // We are awaiting user choice; allow interactions
   isProcessing.value = false;
   showInventorySelection.value = true;
   inventoryForSelection.value = inventory || [];
   selectedItemForReplacement.value = null;
-  
-  // Keep consumable selection values - we'll use them when finalizing
-  // But hide the consumable selection UI
   setShowConsumableSelection(false, 'showFinalizeBattleInventoryFullSelection hides consumable selection');
-  
-  // IMPORTANT: Keep availableConsumables so totalCalculatedDamage works
-  // Don't clear availableConsumables.value here!
-  
-  // Keep the selected consumables so we can use them when confirming replacement
-  // They are already stored in selectedConsumables.value
   console.log('Keeping selected consumables for later:', selectedConsumables.value);
-  console.log('Available consumables still present:', availableConsumables.value);
-  try { console.log('[BattleReportModal] Finalize battle inventory selection opened. isProcessing:', isProcessing.value); } catch (e) {}
+  try { console.log('[BattleReportModal] Finalize battle inventory selection opened.'); } catch (e) {}
 };
 
-// Keyboard handler - Enter triggers the primary visible action, Escape triggers leave/dismiss
+// Keyboard handler
 const onKeyDown = (e) => {
   if (isRolling.value || isProcessing.value) return;
 
   if (e.key === 'Enter') {
     const bi = props.battleInfo;
-    // Mirror the v-if/v-else-if chain from the footer template
     if (bi.result === 'win' && bi.reward && isKeyReward.value && !props.hasInventorySpace && !showInventorySelection.value && !showConsumableSelection.value && !battleFinalized.value) {
       leaveItemAndEndTurn();
     } else if (bi.result === 'win' && bi.reward && isGuardChestReward.value && !showInventorySelection.value && !showConsumableSelection.value) {
@@ -1150,38 +1098,28 @@ const onKeyDown = (e) => {
 onMounted(() => window.addEventListener('keydown', onKeyDown, true));
 onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
-// Expose methods to parent component
 defineExpose({
   showInventoryFullSelection,
   showFinalizeBattleInventoryFullSelection
 });
 
-// Safety: whenever inventory selection UI is shown, ensure processing state allows interaction
 watch(() => showInventorySelection.value, (now) => {
   if (now) {
     isProcessing.value = false;
-    try { console.log('[BattleReportModal] showInventorySelection became true. isProcessing reset to', isProcessing.value); } catch (e) {}
   }
 });
 
-// Helper function to format item names for display
+// Helper functions
 const formatItemName = (name) => {
   if (!name) return 'Unknown';
-  
-  // Convert snake_case to Title Case
   return name.split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
 
-// Get correct item name based on item type (for used items)
 const getCorrectItemName = (item) => {
   if (!item) return 'Unknown';
-  
-  // Use item type to get the correct item name, fallback to name if type not available
   const itemName = item.type || item.name || 'Unknown';
-  
-  // Convert snake_case to Title Case
   return itemName.split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
@@ -1197,192 +1135,113 @@ const formattedItemType = computed(() => {
   return formatItemName(props.battleInfo.reward.type);
 });
 
-// Get item emoji based on item data
 const displayItemEmoji = computed(() => {
   if (!props.battleInfo.reward) return '❓';
-  
-  // Show reward based on item type
   const item = props.battleInfo.reward;
   switch (item.type) {
-    case 'key':
-      return '🔑';
-    case 'chest':
-      return '📦';
-    case 'ruby_chest':
-      return '💎';
-    case 'dagger':
-      return '🗡️';
-    case 'sword':
-      return '⚔️';
-    case 'axe':
-      return '🪓';
-    case 'fireball':
-      return '🔥';
-    case 'teleport':
-      return '✨';
-    default:
-      return '💰'; // Default treasure
+    case 'key': return '🔑';
+    case 'chest': return '📦';
+    case 'ruby_chest': return '💎';
+    case 'dagger': return '🗡️';
+    case 'sword': return '⚔️';
+    case 'axe': return '🪓';
+    case 'fireball': return '🔥';
+    case 'teleport': return '✨';
+    default: return '💰';
   }
 });
 
-// Get item image for chests and consumables
 const displayItemImage = computed(() => {
   if (!props.battleInfo.reward) return null;
-  
   const item = props.battleInfo.reward;
-  if (item.type === 'key') {
-    return '/images/key.webp';
-  } else if (item.type === 'chest') {
-    // Battle rewards show opened chests
-    return '/images/chest-opened.webp';
-  } else if (item.type === 'ruby_chest') {
-    return '/images/ruby-chest.webp';
-  } else if (item.type === 'fireball') {
-    return '/images/fireball.webp';
-  } else if (item.type === 'teleport') {
-    return '/images/hf-teleport.webp';
-  } else if (item.type === 'dagger') {
-    return '/images/dagger.webp';
-  } else if (item.type === 'sword') {
-    return '/images/sword.webp';
-  } else if (item.type === 'axe') {
-    return '/images/axe.webp';
-  }
-  
+  if (item.type === 'key') return '/images/key.webp';
+  if (item.type === 'chest') return '/images/chest-opened.webp';
+  if (item.type === 'ruby_chest') return '/images/ruby-chest.webp';
+  if (item.type === 'fireball') return '/images/fireball.webp';
+  if (item.type === 'teleport') return '/images/hf-teleport.webp';
+  if (item.type === 'dagger') return '/images/dagger.webp';
+  if (item.type === 'sword') return '/images/sword.webp';
+  if (item.type === 'axe') return '/images/axe.webp';
   return null;
 });
 
-// Get inventory item image
 const getInventoryItemImage = (item) => {
   if (!item) return null;
-  
   const itemType = item.type || item.name;
   switch (itemType) {
-    case 'key':
-      return '/images/key.webp';
-    case 'chest':
-      return '/images/chest-opened.webp';
-    case 'ruby_chest':
-      return '/images/ruby-chest.webp';
-    case 'fireball':
-      return '/images/fireball.webp';
-    case 'teleport':
-      return '/images/hf-teleport.webp';
-    case 'dagger':
-      return '/images/dagger.webp';
-    case 'sword':
-      return '/images/sword.webp';
-    case 'axe':
-      return '/images/axe.webp';
-    default:
-      return null;
+    case 'key': return '/images/key.webp';
+    case 'chest': return '/images/chest-opened.webp';
+    case 'ruby_chest': return '/images/ruby-chest.webp';
+    case 'fireball': return '/images/fireball.webp';
+    case 'teleport': return '/images/hf-teleport.webp';
+    case 'dagger': return '/images/dagger.webp';
+    case 'sword': return '/images/sword.webp';
+    case 'axe': return '/images/axe.webp';
+    default: return null;
   }
 };
 
-// Get inventory item emoji
 const getInventoryItemEmoji = (item) => {
   if (!item) return '❓';
-  
   const itemType = item.type || item.name;
   switch (itemType) {
-    case 'key':
-      return '🔑';
-    case 'chest':
-      return '📦';
-    case 'ruby_chest':
-      return '💎';
-    case 'dagger':
-      return '🗡️';
-    case 'sword':
-      return '⚔️';
-    case 'axe':
-      return '🪓';
-    case 'fireball':
-      return '🔥';
-    case 'teleport':
-      return '✨';
-    default:
-      return '💰'; // Default treasure
+    case 'key': return '🔑';
+    case 'chest': return '📦';
+    case 'ruby_chest': return '💎';
+    case 'dagger': return '🗡️';
+    case 'sword': return '⚔️';
+    case 'axe': return '🪓';
+    case 'fireball': return '🔥';
+    case 'teleport': return '✨';
+    default: return '💰';
   }
 };
 
-// Get monster emoji based on battleInfo
 const displayMonsterEmoji = computed(() => {
   if (!props.battleInfo) return '👹';
-  
-  // Try to determine monster type from battleInfo
   const monsterType = props.battleInfo.monsterType || '';
-  
   switch (monsterType) {
-    case 'dragon':
-      return '🐉';
-    case 'skeleton_king':
-      return '👑';
-    case 'skeleton_warrior':
-      return '🛡️';
-    case 'skeleton_turnkey':
-      return '🦴';
-    case 'fallen':
-      return '👻';
-    case 'giant_rat':
-      return '🐀';
-    case 'giant_spider':
-      return '🕷️';
-    case 'mummy':
-      return '🧟';
-    default:
-      return '👹'; // Default monster
+    case 'dragon': return '🐉';
+    case 'skeleton_king': return '👑';
+    case 'skeleton_warrior': return '🛡️';
+    case 'skeleton_turnkey': return '🦴';
+    case 'fallen': return '👻';
+    case 'giant_rat': return '🐀';
+    case 'giant_spider': return '🕷️';
+    case 'mummy': return '🧟';
+    default: return '👹';
   }
 });
 
-// Get monster image based on battleInfo
 const displayMonsterImage = computed(() => {
   if (!props.battleInfo) return null;
-  
-  // Create battle object for getMonsterImage function
   const battleData = {
     monster_name: props.battleInfo.monsterType || '',
     monster: props.battleInfo.monster || 0
   };
-  
   return getMonsterImage(battleData);
 });
 
-// Get emoji for used items
 const getUsedItemEmoji = (item) => {
   if (!item) return '❓';
-  
   switch (item.type) {
-    case 'key':
-      return '🔑';
-    case 'dagger':
-      return '🗡️';
-    case 'sword':
-      return '⚔️';
-    case 'axe':
-      return '🪓';
-    case 'fireball':
-      return '🔥';
-    case 'teleport':
-      return '✨';
-    default:
-      return '🧪'; // Default item
+    case 'key': return '🔑';
+    case 'dagger': return '🗡️';
+    case 'sword': return '⚔️';
+    case 'axe': return '🪓';
+    case 'fireball': return '🔥';
+    case 'teleport': return '✨';
+    default: return '🧪';
   }
 };
 
-// Get weapon image for damage breakdown
 const getWeaponImage = (item) => {
   if (!item || !item.type) return null;
-  
   switch (item.type) {
-    case 'dagger':
-      return '/images/dagger.webp';
-    case 'sword':
-      return '/images/sword.webp';
-    case 'axe':
-      return '/images/axe.webp';
-    default:
-      return null;
+    case 'dagger': return '/images/dagger.webp';
+    case 'sword': return '/images/sword.webp';
+    case 'axe': return '/images/axe.webp';
+    default: return null;
   }
 };
 
@@ -1391,11 +1250,8 @@ const formattedMonsterName = computed(() => {
   return formatItemName(props.battleInfo.monsterType);
 });
 
-// Helper function to get the correct display name for spells (use type, not monster name)
 const getSpellDisplayName = (item) => {
   if (!item) return 'Unknown';
-  
-  // Monster name to spell type mapping
   const monsterToSpellType = {
     'mummy': 'fireball',
     'giant_spider': 'teleport',
@@ -1406,1256 +1262,1320 @@ const getSpellDisplayName = (item) => {
     'skeleton_warrior': 'fireball',
     'skeleton_turnkey': 'teleport'
   };
-  
-  // Check if this is a spell by looking at the type
+
   if (item.type === 'fireball' || item.type === 'teleport') {
     return formatItemName(item.type);
   }
-  
-  // If the item has a name that matches a monster name in our mapping, use the corresponding spell type
   if (item.name && monsterToSpellType[item.name]) {
     return formatItemName(monsterToSpellType[item.name]);
   }
-  
-  // For weapon items, always use the type
   if (item.type && ['dagger', 'sword', 'axe'].includes(item.type)) {
     return formatItemName(item.type);
   }
-  
-  // For other items, use the normal formatting logic
   return formatItemName(item.type || item.name || 'Unknown');
 };
 
-// Computed property to check if we should show reward
 const shouldShowReward = computed(() => {
-  // Debug logging to see why reward section isn't showing
-  console.log('shouldShowReward check:', {
-    hasReward: !!props.battleInfo.reward,
-    result: props.battleInfo.result,
-    showConsumableSelection: showConsumableSelection.value,
-    totalDamage: totalCalculatedDamage,
-    monsterHP: props.battleInfo.monster,
-    wouldWin: totalCalculatedDamage.value > props.battleInfo.monster
-  });
-  
-  // Always show if we have a reward item
   if (!props.battleInfo.reward) return false;
-  
-  // Show if player already won
   if (props.battleInfo.result === 'win') return true;
-  
-  // Show if consumables would result in victory
   if (showConsumableSelection.value && totalCalculatedDamage.value > props.battleInfo.monster) return true;
-  
-  // Show if isPotentialReward flag is set directly in the reward
   if (props.battleInfo.reward.isPotentialReward) return true;
-  
   return false;
 });
 
-// Computed property to check if the reward is a potential reward (vs. already won)
 const isPotentialReward = computed(() => {
-  return props.battleInfo.result !== 'win' && 
-         showConsumableSelection.value && 
+  return props.battleInfo.result !== 'win' &&
+         showConsumableSelection.value &&
          potentialVictoryWithConsumables.value;
 });
 
-// Computed property for potential victory text
 const victoryText = computed(() => {
-  if (isPotentialReward.value) {
-    return '🎉 Potential Victory Reward!';
-  }
+  if (isPotentialReward.value) return '🎉 Potential Victory Reward!';
   return '🎉 Victory Reward!';
 });
 
-// Computed property for potential reward tip text
 const potentialRewardTip = computed(() => {
   if (!isPotentialReward.value) return '';
-  
   const missingDamage = props.battleInfo.monster - (props.battleInfo.diceRollDamage + weaponDamageTotal.value);
   const selectedDamage = consumableDamageTotal.value;
-  
   return `You need ${missingDamage} more damage to win. Your selected consumables provide +${selectedDamage} damage.`;
 });
 </script>
 
 <style scoped>
-.battle-report-modal {
+/* ============================================
+   OVERLAY & CARD (Monad Theme)
+   ============================================ */
+.battle-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
+  inset: 0;
+  background: var(--bg-overlay, rgba(9, 8, 15, 0.88));
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: overlayIn 0.25s ease-out;
 }
 
-.battle-report-content {
-  background-color: #222;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 550px;
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.battle-card {
+  background: var(--monad-bg-card, #1A1830);
+  border: 1px solid rgba(123, 63, 242, 0.35);
+  border-radius: 14px;
+  width: 420px;
+  max-width: 95vw;
   max-height: 90vh;
   overflow: hidden;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(123, 63, 242, 0.15);
   display: flex;
   flex-direction: column;
-  color: #eee;
-  border: 1px solid #444;
+  color: var(--monad-text-primary, #F5F3FF);
+  animation: cardIn 0.35s ease-out;
 }
 
-.battle-report-header {
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Screen flash */
+.screen-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1001;
+  animation: screenFlash 0.4s ease-out forwards;
+}
+
+.flash-victory { background: rgba(76, 175, 80, 0.4); }
+.flash-defeat { background: rgba(244, 67, 54, 0.35); }
+.flash-draw { background: rgba(255, 152, 0, 0.3); }
+
+@keyframes screenFlash {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.battle-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.6rem 1rem;
-  border-bottom: 1px solid #444;
-  background: linear-gradient(180deg, #252525 0%, #1a1a1a 100%);
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(123, 63, 242, 0.2);
+  background: linear-gradient(135deg, rgba(123, 63, 242, 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
 }
 
-.battle-report-header h3 {
-  margin: 0;
-  font-size: 1.3rem;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-label {
+  font-size: 0.7em;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.12em;
+  color: var(--monad-text-secondary, #C4B5FD);
+}
+
+.result-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
 }
 
 .victory-title {
   color: #4caf50;
+  text-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
 }
 
 .defeat-title {
   color: #f44336;
+  text-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
 }
 
 .draw-title {
   color: #ff9800;
+  text-shadow: 0 0 20px rgba(255, 152, 0, 0.5);
 }
 
 .rolling-title {
-  color: #fff;
+  color: var(--monad-text-primary, #F5F3FF);
   animation: titlePulse 0.8s infinite ease-in-out;
 }
 
 @keyframes titlePulse {
-  0%, 100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
-.close-battle-btn {
+.result-slam {
+  animation: resultSlam 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes resultSlam {
+  0% { transform: scale(2.5); opacity: 0; filter: blur(8px); }
+  40% { transform: scale(0.88); opacity: 1; filter: blur(0); }
+  65% { transform: scale(1.12); }
+  85% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+.close-btn {
   background: none;
   border: none;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   cursor: pointer;
-  color: #ccc;
+  color: var(--monad-text-muted, #9CA3AF);
   line-height: 1;
+  transition: color 0.2s;
 }
 
-.close-battle-btn:hover {
-  color: #fff;
+.close-btn:hover {
+  color: var(--monad-text-primary, #F5F3FF);
 }
 
-.battle-report-body {
-  padding: 0.75rem;
-  background-color: #1e1e1e;
+/* ============================================
+   BATTLE BODY
+   ============================================ */
+.battle-body {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.15);
   flex: 1;
   overflow-y: auto;
   min-height: 0;
 }
 
-.damage-comparison {
+/* ============================================
+   BATTLE ARENA (Hero vs Monster)
+   ============================================ */
+.battle-arena {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
-  padding: 0.5rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  padding: 10px 8px;
+  margin-bottom: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  border: 1px solid rgba(123, 63, 242, 0.15);
+  position: relative;
+  overflow: hidden;
 }
 
-.player-damage, .monster-stats {
+.combatant {
   display: flex;
   flex-direction: column;
   align-items: center;
   flex: 1;
+  gap: 6px;
 }
 
-.player-damage {
-  padding-top: 32px;
-}
-
-.monster-stats {
-  padding-top: 10px;
-}
-
-.big-number {
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  line-height: 1;
-  height: 50px;
+.combatant-sprite-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0;
+}
+
+.combatant-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+
+.hero-glow {
+  background: radial-gradient(circle, rgba(123, 63, 242, 0.3) 0%, transparent 70%);
+  animation: glowPulse 2.5s ease-in-out infinite;
+}
+
+.monster-glow {
+  background: radial-gradient(circle, rgba(244, 67, 54, 0.25) 0%, transparent 70%);
+  animation: glowPulse 2.5s ease-in-out infinite 0.5s;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+.combatant-sprite {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  position: relative;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+.monster-emoji-large {
+  font-size: 3rem;
+  position: relative;
+}
+
+/* Character entrance animations */
+.hero-entrance {
+  animation: heroSlideIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.monster-entrance {
+  animation: monsterSlideIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards;
+  opacity: 0;
+}
+
+@keyframes heroSlideIn {
+  0% { transform: translateX(-60px) scale(0.7); opacity: 0; }
+  60% { transform: translateX(8px) scale(1.05); opacity: 1; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+@keyframes monsterSlideIn {
+  0% { transform: translateX(60px) scale(0.7); opacity: 0; }
+  60% { transform: translateX(-8px) scale(1.05); opacity: 1; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+/* Idle breathing */
+.hero-idle, .monster-idle {
+  animation: characterIdle 2s ease-in-out infinite;
+}
+
+.monster-idle {
+  animation-delay: 0.5s;
+}
+
+@keyframes characterIdle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.02); }
+}
+
+/* Victory/Defeat/Draw reactions */
+.hero-victory {
+  animation: victoryCelebration 0.8s ease-out forwards;
+}
+
+@keyframes victoryCelebration {
+  0% { transform: scale(1); filter: brightness(1); }
+  30% { transform: scale(1.18) translateY(-10px); filter: brightness(1.4); }
+  60% { transform: scale(1.08) translateY(-5px); filter: brightness(1.2); }
+  100% { transform: scale(1.1) translateY(-3px); filter: brightness(1.15); }
+}
+
+.hero-defeat {
+  animation: defeatRecoil 0.7s ease-out;
+}
+
+@keyframes defeatRecoil {
+  0%, 100% { transform: translateX(0); filter: brightness(1); }
+  15% { transform: translateX(-10px) rotate(-5deg); filter: brightness(0.7); }
+  35% { transform: translateX(6px) rotate(3deg); filter: brightness(0.85); }
+  55% { transform: translateX(-3px); filter: brightness(0.9); }
+}
+
+.hero-draw, .monster-draw {
+  animation: drawPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes drawPulse {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  50% { filter: brightness(1.15) saturate(1.2); }
+}
+
+.monster-victory {
+  animation: monsterTriumph 0.8s ease-out forwards;
+}
+
+@keyframes monsterTriumph {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.15); filter: brightness(1.3); }
+  100% { transform: scale(1.1); filter: brightness(1.15); }
+}
+
+.monster-defeat {
+  animation: monsterDefeat 0.7s ease-out forwards;
+}
+
+@keyframes monsterDefeat {
+  0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+  40% { transform: scale(0.9) rotate(5deg); opacity: 0.7; filter: brightness(0.6); }
+  100% { transform: scale(0.85); opacity: 0.5; filter: brightness(0.5) grayscale(0.5); }
+}
+
+/* Damage Bar */
+.hp-bar-wrap {
+  width: 100%;
+  max-width: 140px;
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.hp-bar-reveal {
+  animation: hpBarReveal 0.4s ease-out;
+}
+
+@keyframes hpBarReveal {
+  from { opacity: 0.5; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hp-bar-track {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  position: relative;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.8s ease-out 0.1s;
+  min-width: 0;
+}
+
+/* Bar color = damage result */
+.hp-bar-fill.bar-win {
+  background: linear-gradient(90deg, #43a047 0%, #66bb6a 100%);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+}
+
+.hp-bar-fill.bar-lose {
+  background: linear-gradient(90deg, #c62828 0%, #ef5350 100%);
+}
+
+.hp-bar-fill.bar-draw {
+  background: linear-gradient(90deg, #e65100 0%, #ffa726 100%);
+  box-shadow: 0 0 6px rgba(255, 152, 0, 0.4);
+}
+
+.hp-bar-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+}
+
+.hp-dealt {
+  font-weight: 800;
+}
+
+.hp-dealt.dealt-win { color: #81c784; }
+.hp-dealt.dealt-lose { color: #ef9a9a; }
+.hp-dealt.dealt-draw { color: #ffcc80; }
+
+.hp-separator {
+  opacity: 0.5;
+  font-size: 0.6rem;
+}
+
+.hp-total {
+  opacity: 0.7;
+}
+
+.monster-name-label {
+  font-size: 0.7rem;
+  color: var(--monad-text-muted, #9CA3AF);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================
+   VS SEPARATOR
+   ============================================ */
+.vs-separator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.vs-energy-line {
+  width: 2px;
+  height: 20px;
+  background: linear-gradient(180deg, transparent, rgba(123, 63, 242, 0.5), transparent);
+}
+
+.vs-badge {
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 4px;
+}
+
+.vs-pulse {
+  animation: vsPulse 0.8s infinite ease-in-out;
+}
+
+.vs-text {
+  background: linear-gradient(135deg, #C4B5FD, #7B3FF2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  font-size: 1.2rem;
+  letter-spacing: 3px;
+}
+
+@keyframes vsPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+
+/* ============================================
+   DICE STAGE
+   ============================================ */
+.dice-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.dice-stage.dice-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .dice-container {
   display: flex;
-  gap: 0.5rem;
+  gap: 12px;
   justify-content: center;
-  margin-bottom: 0.4rem;
   perspective: 1000px;
-  min-height: 44px; /* Prevent layout shift */
+  min-height: 48px;
 }
 
 .dice-face {
-  width: 44px;
-  height: 44px;
-  background: 
+  width: 48px;
+  height: 48px;
+  background:
     radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, transparent 50%),
     linear-gradient(145deg, #fafafa 0%, #d8d8d8 50%, #c0c0c0 100%);
   border: 2px solid #888;
   border-radius: 10px;
   display: grid;
   padding: 4px;
-  box-shadow: 
+  box-shadow:
     0 4px 8px rgba(0,0,0,0.4),
-    0 2px 4px rgba(0,0,0,0.3),
     inset 0 2px 4px rgba(255,255,255,0.8),
     inset 0 -2px 4px rgba(0,0,0,0.2);
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.dice-face:hover {
-  transform: rotateY(10deg) rotateX(-10deg) scale(1.1);
-  box-shadow: 
-    0 6px 12px rgba(0,0,0,0.5),
-    0 3px 6px rgba(0,0,0,0.4),
-    inset 0 2px 4px rgba(255,255,255,0.8),
-    inset 0 -2px 4px rgba(0,0,0,0.2);
+.dice-face.rolling-dice {
+  animation:
+    rollDice3D 0.3s infinite linear,
+    floatDice 0.8s infinite ease-in-out;
+  box-shadow:
+    0 4px 12px rgba(123, 63, 242, 0.4),
+    0 0 20px rgba(123, 63, 242, 0.2),
+    inset 0 2px 4px rgba(255,255,255,0.8);
 }
 
-/* Enhanced pip styles */
+.dice-face.dice-landed {
+  animation: diceLand 0.3s ease-out;
+}
+
+@keyframes diceLand {
+  0% { transform: scale(1.15); box-shadow: 0 0 20px rgba(255, 255, 255, 0.5); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rollDice3D {
+  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  25% { transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg); }
+  50% { transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg); }
+  75% { transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg); }
+  100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg); }
+}
+
+@keyframes floatDice {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-6px) scale(1.05); }
+  50% { transform: translateY(0) scale(1); }
+  75% { transform: translateY(-3px) scale(1.02); }
+}
+
+/* Pips */
 .pip {
   width: 7px;
   height: 7px;
   background: radial-gradient(circle at 30% 30%, #444 0%, #111 100%);
   border-radius: 50%;
   position: absolute;
-  box-shadow: 
-    inset 0 1px 2px rgba(0,0,0,0.8),
-    0 1px 1px rgba(255,255,255,0.1);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.1);
 }
 
-/* Rolling animation styles */
+/* Pip positions for each dice value */
+.dice-face[data-value="1"] .pip { top: 50%; left: 50%; transform: translate(-50%, -50%); }
 
-.dice-face.rolling-dice {
-  animation: 
-    rollDice3D 0.3s infinite linear,
-    floatDice 0.8s infinite ease-in-out;
-  transform-origin: center;
-  transform-style: preserve-3d;
-}
+.dice-face[data-value="2"] .pip-2-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
+.dice-face[data-value="2"] .pip-2-2 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
 
-@keyframes rollDice3D {
-  0% {
-    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
-  }
-  25% {
-    transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg);
-  }
-  50% {
-    transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg);
-  }
-  75% {
-    transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg);
-  }
-  100% {
-    transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg);
-  }
-}
+.dice-face[data-value="3"] .pip-3-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
+.dice-face[data-value="3"] .pip-3-2 { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.dice-face[data-value="3"] .pip-3-3 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
 
-@keyframes floatDice {
-  0%, 100% {
-    transform: translateY(0) scale(1);
-  }
-  25% {
-    transform: translateY(-6px) scale(1.05);
-  }
-  50% {
-    transform: translateY(0) scale(1);
-  }
-  75% {
-    transform: translateY(-3px) scale(1.02);
-  }
-}
+.dice-face[data-value="4"] .pip-4-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
+.dice-face[data-value="4"] .pip-4-2 { top: 25%; right: 25%; transform: translate(50%, -50%); }
+.dice-face[data-value="4"] .pip-4-3 { bottom: 25%; left: 25%; transform: translate(-50%, 50%); }
+.dice-face[data-value="4"] .pip-4-4 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
 
-/* Smooth extended number reveal animation */
-.number-reveal {
-  animation: numberReveal 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+.dice-face[data-value="5"] .pip-5-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
+.dice-face[data-value="5"] .pip-5-2 { top: 25%; right: 25%; transform: translate(50%, -50%); }
+.dice-face[data-value="5"] .pip-5-3 { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.dice-face[data-value="5"] .pip-5-4 { bottom: 25%; left: 25%; transform: translate(-50%, 50%); }
+.dice-face[data-value="5"] .pip-5-5 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
 
-.number-reveal-delayed {
-  animation: numberReveal 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
-}
+.dice-face[data-value="6"] .pip-6-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
+.dice-face[data-value="6"] .pip-6-2 { top: 25%; right: 25%; transform: translate(50%, -50%); }
+.dice-face[data-value="6"] .pip-6-3 { top: 50%; left: 25%; transform: translate(-50%, -50%); }
+.dice-face[data-value="6"] .pip-6-4 { top: 50%; right: 25%; transform: translate(50%, -50%); }
+.dice-face[data-value="6"] .pip-6-5 { bottom: 25%; left: 25%; transform: translate(-50%, 50%); }
+.dice-face[data-value="6"] .pip-6-6 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
 
-@keyframes numberReveal {
-  0% {
-    opacity: 0;
-    transform: scale(0.3) translateY(30px);
-    filter: blur(12px);
-  }
-  25% {
-    opacity: 0.5;
-    transform: scale(0.7) translateY(15px);
-    filter: blur(6px);
-  }
-  50% {
-    opacity: 0.9;
-    transform: scale(0.95) translateY(5px);
-    filter: blur(2px);
-  }
-  75% {
-    opacity: 1;
-    transform: scale(1.08) translateY(-3px);
-    filter: blur(0);
-  }
-  85% {
-    transform: scale(1.02) translateY(-1px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0);
-  }
-}
-
-/* Always show comparison */
-.damage-comparison {
-  opacity: 1;
-}
-
-
-/* One pip - center */
-.dice-face[data-value="1"] .pip {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* Two pips - diagonal */
-.dice-face[data-value="2"] .pip-2-1 {
-  top: 25%;
-  left: 25%;
-  transform: translate(-50%, -50%);
-}
-.dice-face[data-value="2"] .pip-2-2 {
-  bottom: 25%;
-  right: 25%;
-  transform: translate(50%, 50%);
-}
-
-/* Three pips - diagonal */
-.dice-face[data-value="3"] .pip-3-1 {
-  top: 25%;
-  left: 25%;
-  transform: translate(-50%, -50%);
-}
-.dice-face[data-value="3"] .pip-3-2 {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-.dice-face[data-value="3"] .pip-3-3 {
-  bottom: 25%;
-  right: 25%;
-  transform: translate(50%, 50%);
-}
-
-/* Four pips - corners */
-.dice-face[data-value="4"] .pip-4-1 {
-  top: 25%;
-  left: 25%;
-  transform: translate(-50%, -50%);
-}
-.dice-face[data-value="4"] .pip-4-2 {
-  top: 25%;
-  right: 25%;
-  transform: translate(50%, -50%);
-}
-.dice-face[data-value="4"] .pip-4-3 {
-  bottom: 25%;
-  left: 25%;
-  transform: translate(-50%, 50%);
-}
-.dice-face[data-value="4"] .pip-4-4 {
-  bottom: 25%;
-  right: 25%;
-  transform: translate(50%, 50%);
-}
-
-/* Five pips - corners + center */
-.dice-face[data-value="5"] .pip-5-1 {
-  top: 25%;
-  left: 25%;
-  transform: translate(-50%, -50%);
-}
-.dice-face[data-value="5"] .pip-5-2 {
-  top: 25%;
-  right: 25%;
-  transform: translate(50%, -50%);
-}
-.dice-face[data-value="5"] .pip-5-3 {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-.dice-face[data-value="5"] .pip-5-4 {
-  bottom: 25%;
-  left: 25%;
-  transform: translate(-50%, 50%);
-}
-.dice-face[data-value="5"] .pip-5-5 {
-  bottom: 25%;
-  right: 25%;
-  transform: translate(50%, 50%);
-}
-
-/* Six pips - two columns */
-.dice-face[data-value="6"] .pip-6-1 {
-  top: 25%;
-  left: 25%;
-  transform: translate(-50%, -50%);
-}
-.dice-face[data-value="6"] .pip-6-2 {
-  top: 25%;
-  right: 25%;
-  transform: translate(50%, -50%);
-}
-.dice-face[data-value="6"] .pip-6-3 {
-  top: 50%;
-  left: 25%;
-  transform: translate(-50%, -50%);
-}
-.dice-face[data-value="6"] .pip-6-4 {
-  top: 50%;
-  right: 25%;
-  transform: translate(50%, -50%);
-}
-.dice-face[data-value="6"] .pip-6-5 {
-  bottom: 25%;
-  left: 25%;
-  transform: translate(-50%, 50%);
-}
-.dice-face[data-value="6"] .pip-6-6 {
-  bottom: 25%;
-  right: 25%;
-  transform: translate(50%, 50%);
-}
-
-.damage-breakdown {
+/* Weapon bonuses */
+.weapon-bonuses {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.3rem;
-  font-size: 0.8rem;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.weapon-text,
-.consumable-text {
+.bonuses-reveal {
+  animation: bonusesSlideIn 0.3s ease-out;
+}
+
+@keyframes bonusesSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bonus-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  font-weight: 600;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 12px;
   font-size: 0.75rem;
-}
-
-.weapon-text {
+  font-weight: 600;
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid rgba(76, 175, 80, 0.3);
   color: #81c784;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
 }
 
-.weapon-breakdown-image {
-  width: 24px;
-  height: 24px;
+.bonus-chip.spell-chip {
+  background: rgba(156, 39, 176, 0.15);
+  border-color: rgba(156, 39, 176, 0.3);
+  color: #ce93d8;
+}
+
+.bonus-chip-img {
+  width: 18px;
+  height: 18px;
   object-fit: contain;
-  vertical-align: middle;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  padding: 2px;
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
-  display: inline-block;
 }
 
-.dice-results {
-  margin-top: 10px;
+.bonus-value {
+  font-weight: 700;
+}
+
+/* ============================================
+   REWARD SECTION
+   ============================================ */
+/* Combined reward + consumable row */
+.reward-consumable-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+  align-items: stretch;
+}
+
+.reward-compact {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(76, 175, 80, 0.08);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  display: flex;
+  align-items: center;
+}
+
+.reward-compact.category-weapon { border-color: rgba(255, 87, 34, 0.4); background: rgba(255, 87, 34, 0.06); }
+.reward-compact.category-key { border-color: rgba(255, 193, 7, 0.4); background: rgba(255, 193, 7, 0.06); }
+.reward-compact.category-spell { border-color: rgba(156, 39, 176, 0.4); background: rgba(156, 39, 176, 0.06); }
+.reward-compact.category-treasure { border-color: rgba(255, 193, 7, 0.4); background: rgba(255, 193, 7, 0.06); }
+
+.reward-compact-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reward-icon-compact {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.reward-img-sm {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
+}
+
+.reward-emoji-sm {
+  font-size: 1.6rem;
+}
+
+.reward-compact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reward-compact-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--monad-text-primary, #F5F3FF);
+}
+
+.badge-sm {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+}
+
+.consumable-compact {
+  flex: 0 0 auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(123, 63, 242, 0.06);
+  border: 1px solid rgba(123, 63, 242, 0.2);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  gap: 4px;
 }
 
-.monster-details {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.weapon-damage-value {
+.consumable-compact-label {
+  font-size: 0.65rem;
   font-weight: 600;
-  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--monad-text-muted, #9CA3AF);
 }
 
-.consumable-text {
-  color: #ba68c8;
-}
-
-.comparison-symbol {
-  position: relative;
-  font-size: 2rem;
-  font-weight: bold;
-  padding: 0 1rem;
-  color: #fff;
-}
-
-.comparison-symbol.versus {
-  animation: versuspulse 0.8s infinite ease-in-out;
-}
-
-.versus-text {
-  font-size: 1.5rem;
-  font-weight: 900;
-  letter-spacing: 2px;
-  text-shadow: 
-    0 0 10px rgba(255, 255, 255, 0.8),
-    0 0 20px rgba(255, 255, 255, 0.5);
-}
-
-@keyframes versuspulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-}
-
-.greater-than {
-  color: #4caf50;
-}
-
-.less-than {
-  color: #f44336;
-}
-
-.equal-to {
-  color: #ff9800;
-}
-
-.monster-emoji {
-  font-size: 1.8rem;
-  margin-bottom: 0.3rem;
-}
-
-.monster-name {
-  font-weight: 500;
-  color: #ddd;
+.consumable-compact-list {
+  display: flex;
+  gap: 6px;
 }
 
 .reward-section {
-  margin-bottom: 0.5rem;
-  padding: 0.4rem;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #2a4d3a 0%, #1e3a28 100%);
-  border: 1px solid #4caf50;
-}
-
-.reward-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.reward-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  width: auto;
-}
-
-.reward-icon {
   position: relative;
+  margin-bottom: 6px;
+}
+
+.reward-rise {
+  animation: rewardRise 0.6s ease-out;
+}
+
+@keyframes rewardRise {
+  0% { transform: translateY(25px); opacity: 0; }
+  60% { transform: translateY(-3px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.reward-card {
+  padding: 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.reward-card.category-weapon { border-color: rgba(255, 87, 34, 0.5); }
+.reward-card.category-key { border-color: rgba(255, 193, 7, 0.5); }
+.reward-card.category-spell { border-color: rgba(156, 39, 176, 0.5); }
+.reward-card.category-treasure { border-color: rgba(255, 193, 7, 0.5); }
+
+.reward-item-showcase {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 14px;
 }
 
-.reward-icon .item-emoji {
-  font-size: 2rem;
+.reward-icon-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.reward-icon .item-image {
-  width: 40px;
-  height: 40px;
+.reward-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(76, 175, 80, 0.3) 0%, transparent 70%);
+  animation: rewardGlowPulse 2s ease-in-out infinite;
+}
+
+.category-weapon .reward-glow { background: radial-gradient(circle, rgba(255, 87, 34, 0.3) 0%, transparent 70%); }
+.category-key .reward-glow { background: radial-gradient(circle, rgba(255, 193, 7, 0.3) 0%, transparent 70%); }
+.category-spell .reward-glow { background: radial-gradient(circle, rgba(156, 39, 176, 0.3) 0%, transparent 70%); }
+.category-treasure .reward-glow { background: radial-gradient(circle, rgba(255, 193, 7, 0.3) 0%, transparent 70%); }
+
+@keyframes rewardGlowPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.reward-item-img {
+  width: 52px;
+  height: 52px;
   object-fit: contain;
+  position: relative;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.reward-item-emoji {
+  font-size: 2.5rem;
+  position: relative;
+}
+
+.reward-monster-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .potential-badge {
   position: absolute;
   top: -4px;
-  right: -8px;
+  right: -6px;
   background: #ff9800;
   color: white;
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.7rem;
   font-weight: bold;
-  border: 1px solid white;
+  border: 2px solid var(--monad-bg-card, #1A1830);
 }
 
-.monster-battle-image {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-  animation: monsterPulse 2s infinite;
-}
-
-.monster-reward-image {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-}
-
-@keyframes monsterPulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.02);
-  }
-}
-
-.item-details {
+.reward-details {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
+  gap: 4px;
 }
 
-.item-header {
+.reward-item-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--monad-text-primary, #F5F3FF);
+}
+
+.reward-badges {
   display: flex;
+  gap: 6px;
+}
+
+.stat-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.item-name {
-  font-weight: bold;
-  color: #fff;
-  font-size: 1rem;
-}
-
-.item-damage-badge,
-.item-value-badge {
-  padding: 2px 6px;
-  border-radius: 12px;
-  font-size: 0.75rem;
+  gap: 3px;
+  padding: 2px 10px;
+  border-radius: 16px;
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
-.item-damage-badge {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4caf50;
-  border: 1px solid rgba(76, 175, 80, 0.4);
+.badge-damage {
+  background: rgba(255, 87, 34, 0.15);
+  color: #FF8A65;
+  border: 1px solid rgba(255, 87, 34, 0.3);
 }
 
-.item-value-badge {
-  background: rgba(255, 215, 0, 0.2);
-  color: #ffd700;
-  border: 1px solid rgba(255, 215, 0, 0.4);
+.badge-value {
+  background: rgba(255, 193, 7, 0.15);
+  color: #FFD54F;
+  border: 1px solid rgba(255, 193, 7, 0.3);
 }
 
-.auto-collected {
-  color: #4CAF50;
-  font-size: 0.9rem;
-  font-weight: 500;
-  margin-left: 0.5rem;
-}
-
-.auto-collect-info,
-.potential-info {
-  font-size: 0.75rem;
-  color: #aaa;
+.reward-note {
+  font-size: 0.72rem;
   font-style: italic;
 }
 
-.auto-collect-info {
-  color: #4caf50;
-}
-
-.potential-info {
-  color: #ff9800;
-}
+.reward-note.success { color: #4caf50; }
+.reward-note.potential { color: #ff9800; }
 
 .no-reward {
-  color: #ddd;
+  color: var(--monad-text-muted, #9CA3AF);
   font-style: italic;
   font-size: 0.9rem;
+  text-align: center;
 }
 
-.used-items-section {
-  margin-bottom: 0.5rem;
-  padding: 0.4rem;
+.generic-reward {
+  border-left: 3px dashed #ffd700;
+  background: rgba(255, 215, 0, 0.06);
+  padding: 8px 12px;
   border-radius: 6px;
-  background-color: rgba(58, 58, 58, 0.5);
-  border: 1px solid #444;
+  animation: pulseBorder 2s infinite;
 }
 
-.used-items-title {
+@keyframes pulseBorder {
+  0%, 100% { border-color: #ffd700; }
+  50% { border-color: #ff9800; }
+}
+
+/* Victory sparkles */
+.victory-sparkles {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #ffd700;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #ffd700, 0 0 12px rgba(255, 215, 0, 0.5);
+  animation: sparkleFloat 1.2s ease-out forwards;
+}
+
+@keyframes sparkleFloat {
+  0% { transform: translate(0, 0) scale(0); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(var(--sparkle-x), var(--sparkle-y)) scale(1.2); opacity: 0; }
+}
+
+/* ============================================
+   ITEMS SECTION (Consumables / Inventory)
+   ============================================ */
+.items-section {
+  margin-bottom: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(123, 63, 242, 0.06);
+  border: 1px solid rgba(123, 63, 242, 0.2);
+}
+
+.section-reveal {
+  animation: sectionFadeIn 0.3s ease-out;
+}
+
+@keyframes sectionFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.items-section-title {
   font-weight: 600;
-  margin-bottom: 0.4rem;
-  color: #ccc;
-  font-size: 0.85rem;
+  margin-bottom: 8px;
+  color: var(--monad-text-secondary, #C4B5FD);
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.used-items-list {
+.items-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
-.used-item {
-  background-color: #555;
-  padding: 0.4rem 0.6rem;
-  border-radius: 16px;
-  font-size: 0.85rem;
-  color: #ddd;
+.item-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 16px;
+  font-size: 0.82rem;
+  color: var(--monad-text-primary, #F5F3FF);
+  background: rgba(123, 63, 242, 0.12);
+  border: 1px solid rgba(123, 63, 242, 0.25);
 }
 
-.used-item.consumable-chip {
-  background: linear-gradient(135deg, #673ab7 0%, #512da8 100%);
-  border: 1px solid rgba(103, 58, 183, 0.5);
+.item-chip.consumable-used {
+  background: linear-gradient(135deg, rgba(123, 63, 242, 0.2) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border-color: rgba(123, 63, 242, 0.4);
 }
 
-.used-item .item-emoji {
+.chip-emoji {
   font-size: 1rem;
 }
 
-.used-item .item-image-small {
+.chip-img {
   width: 20px;
   height: 20px;
   object-fit: contain;
-  vertical-align: middle;
 }
 
-.used-item .item-name {
-  color: #fff;
+.chip-name {
   font-weight: 500;
   font-size: 0.8rem;
 }
 
-.used-item .item-damage {
+.chip-damage {
   color: #81c784;
   font-weight: 600;
   font-size: 0.75rem;
 }
 
-/* Add styles for selectable items */
-.used-item.selectable-item {
+.chip-value {
+  color: #ffd700;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+/* Selectable items */
+.item-chip.selectable {
   cursor: pointer;
   transition: all 0.2s;
-  border: 1px solid transparent;
 }
 
-.used-item.selectable-item:hover {
-  background-color: #666;
-  border-color: #888;
+.item-chip.selectable:hover {
+  background: rgba(123, 63, 242, 0.2);
+  border-color: rgba(123, 63, 242, 0.5);
+  transform: translateY(-1px);
 }
 
-.used-item.selectable-item.selected {
-  background-color: #2a4d3a;
-  border-color: #4caf50;
+.item-chip.selectable.selected {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgba(76, 175, 80, 0.5);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
 }
 
-/* Inventory selection message */
-.inventory-selection-message {
-  width: 100%;
-  text-align: center;
-  color: #ff6b6b;
-  margin-bottom: 10px;
-  padding: 8px;
-  background-color: rgba(244, 67, 54, 0.1);
-  border-radius: 4px;
-  border: 1px solid rgba(244, 67, 54, 0.3);
+/* Inventory replacement items */
+.item-chip.inventory-replace {
+  border: 2px solid rgba(244, 67, 54, 0.4);
+  background: rgba(244, 67, 54, 0.08);
+  transition: all 0.2s ease;
 }
 
-/* Style for inventory replacement items */
-.used-item.inventory-item-replace {
-  border: 2px solid #f44336;
-  background-color: #3a2a2a;
-  position: relative;
-  transform: scale(1);
-  transition: all 0.3s ease;
-  cursor: pointer;
+.item-chip.inventory-replace:hover {
+  background: rgba(244, 67, 54, 0.15);
+  border-color: rgba(244, 67, 54, 0.6);
+  transform: scale(1.03);
 }
 
-.used-item.inventory-item-replace:hover {
-  background-color: #4a3a3a;
+.item-chip.inventory-replace.selected {
+  background: rgba(244, 67, 54, 0.25);
   border-color: #ff6b6b;
-  transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+  transform: scale(1.05);
 }
 
-.used-item.inventory-item-replace.selected {
-  background-color: #ff4444;
-  border-color: #ff6b6b;
-  color: #fff;
-  transform: scale(1.08);
-  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.5);
-}
-
-.used-item.inventory-item-replace.selected::after {
+.item-chip.inventory-replace.selected::after {
   content: '✓';
   position: absolute;
-  top: -8px;
-  right: -8px;
-  background-color: #4caf50;
+  top: -6px;
+  right: -6px;
+  background: #4caf50;
   color: white;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
-  border: 2px solid white;
+  border: 2px solid var(--monad-bg-card, #1A1830);
 }
 
-.used-item.inventory-item-replace.selected .item-name,
-.used-item.inventory-item-replace.selected .item-damage,
-.used-item.inventory-item-replace.selected .item-value {
-  color: #fff !important;
-  font-weight: bold;
+.item-chip.inventory-replace {
+  position: relative;
 }
 
-.used-item .item-value {
-  color: #ffd700;
-  font-weight: bold;
-  font-size: 0.8rem;
-}
-
-.consumable-selection {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  background-color: #3a2a2a;
-  border: 1px solid #f44336;
-}
-
-.selection-title {
-  font-weight: bold;
-  margin-bottom: 0.75rem;
-  color: #f44336;
-  text-align: center;
-}
-
-.selection-subtitle {
-  font-size: 0.9rem;
-  color: #ddd;
-  text-align: center;
-  margin-bottom: 0.75rem;
-}
-
-.consumable-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.consumable-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0.5rem;
-  border-radius: 4px;
-  background-color: #444;
-  border: 1px solid #666;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: 80px;
-}
-
-.consumable-item:hover {
-  background-color: #555;
-  border-color: #888;
-}
-
-.consumable-item.selected {
-  background-color: #2a4d3a;
-  border-color: #4caf50;
-}
-
-.consumable-item .item-checkbox {
-  margin-bottom: 0.25rem;
-}
-
-.consumable-item .item-emoji {
-  font-size: 1.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.consumable-item .item-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.consumable-item .item-name {
-  font-size: 0.8rem;
-  text-align: center;
-  color: #ddd;
-}
-
-.consumable-item .item-damage {
-  font-size: 0.7rem;
-  color: #ffd700;
-}
-
-.damage-preview {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  background-color: #2a4d3a;
-  border: 1px solid #4caf50;
-}
-
-.preview-calculation {
-  font-size: 0.9rem;
-  color: #ddd;
-  margin-bottom: 0.5rem;
-}
-
-.preview-result {
-  font-size: 1.2rem;
-  font-weight: bold;
-  padding: 0.5rem;
-  border-radius: 4px;
-  color: #fff;
-}
-
-.victory-preview {
-  background-color: #4caf50;
-}
-
-.draw-preview {
-  background-color: #ff9800;
-}
-
-.defeat-preview {
-  background-color: #f44336;
-}
-
-.inventory-selection {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  background-color: #3a2a2a;
-  border: 1px solid #f44336;
-}
-
-.inventory-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.inventory-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0.5rem;
-  border-radius: 4px;
-  background-color: #444;
-  border: 1px solid #666;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: 80px;
-}
-
-.inventory-item:hover {
-  background-color: #555;
-  border-color: #888;
-}
-
-.inventory-item.selected {
-  background-color: #2a4d3a;
-  border-color: #4caf50;
-}
-
-.inventory-item .item-emoji {
-  font-size: 1.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.inventory-item .item-name {
-  font-size: 0.8rem;
-  text-align: center;
-  color: #ddd;
-}
-
-.inventory-item .item-value {
-  font-size: 0.7rem;
-  color: #ffd700;
-}
-
-.battle-report-footer {
-  padding: 0.75rem 1rem;
-  border-top: 1px solid #444;
-  background: linear-gradient(180deg, #1a1a1a 0%, #151515 100%);
+/* ============================================
+   FOOTER & BUTTONS
+   ============================================ */
+.battle-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(123, 63, 242, 0.2);
+  background: linear-gradient(180deg, rgba(26, 24, 48, 0.8) 0%, rgba(15, 14, 28, 0.9) 100%);
   flex-shrink: 0;
 }
 
-.pick-up-btn {
-  background: linear-gradient(145deg, #4caf50, #45a049);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: bold;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+.footer-reveal {
+  animation: footerSlideIn 0.4s ease-out 0.2s both;
 }
 
-.pick-up-btn:hover:not(:disabled) {
-  background: linear-gradient(145deg, #45a049, #388e3c);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-}
-
-.pick-up-btn:disabled {
-  background: #666;
-  cursor: not-allowed;
-  opacity: 0.6;
-  transform: none;
-}
-
-.leave-item-btn {
-  background: linear-gradient(145deg, #666, #555);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: bold;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.leave-item-btn:hover:not(:disabled) {
-  background: linear-gradient(145deg, #555, #444);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-}
-
-.leave-item-btn:disabled {
-  background: #666;
-  cursor: not-allowed;
-  opacity: 0.6;
-  transform: none;
-}
-
-.confirm-replacement-btn {
-  background: linear-gradient(145deg, #4caf50, #45a049);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s;
-}
-
-.confirm-replacement-btn:disabled {
-  background: #666;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.confirm-replacement-btn:hover:not(:disabled) {
-  background: linear-gradient(145deg, #45a049, #3d8b40);
-  transform: translateY(-1px);
-}
-
-.cancel-replacement-btn {
-  background: linear-gradient(145deg, #f44336, #d32f2f);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s;
-}
-
-.cancel-replacement-btn:hover:not(:disabled) {
-  background: linear-gradient(145deg, #d32f2f, #b71c1c);
-  transform: translateY(-1px);
-}
-
-.cancel-replacement-btn:disabled {
-  background: #666;
-  cursor: not-allowed;
-  opacity: 0.6;
-  transform: none;
-}
-
-.end-turn-btn {
-  background: linear-gradient(145deg, #2196f3, #1976d2);
-  color: white;
-  border: none;
-  padding: 0.75rem 2rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s;
-}
-
-.end-turn-btn:hover:not(:disabled) {
-  background: linear-gradient(145deg, #1976d2, #1565c0);
-  transform: translateY(-1px);
-}
-
-.end-turn-btn:disabled {
-  background: #666;
-  cursor: not-allowed;
-  opacity: 0.6;
-  transform: none;
+@keyframes footerSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .button-group {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 8px;
   align-items: center;
   width: 100%;
 }
 
 .button-group button {
   width: 90%;
-  max-width: 400px;
+  max-width: 360px;
 }
 
-.finalize-battle-btn {
-  background: linear-gradient(145deg, #2196f3, #1976d2);
-  color: white;
+/* Primary button (Monad purple gradient) */
+.btn-primary {
+  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  color: #fff;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
+  padding: 11px 20px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: bold;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(123, 63, 242, 0.35);
 }
 
-.finalize-battle-btn:hover:not(:disabled) {
-  background: linear-gradient(145deg, #1976d2, #1565c0);
-  transform: translateY(-1px);
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.5);
 }
 
-.finalize-battle-btn:disabled {
-  background: #666;
+.btn-primary:disabled {
+  background: rgba(123, 63, 242, 0.3);
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.5;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Secondary button */
+.btn-secondary {
+  background: transparent;
+  color: var(--monad-text-secondary, #C4B5FD);
+  border: 1px solid rgba(123, 63, 242, 0.25);
+  padding: 11px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(123, 63, 242, 0.1);
+  transform: translateY(-2px);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
   transform: none;
 }
 
-.accept-defeat-btn {
-  background: linear-gradient(145deg, #757575, #616161);
-  color: white;
+/* Draw button */
+.btn-draw {
+  background: linear-gradient(135deg, #e65100, #ff9800);
+  color: #fff;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
+  padding: 11px 20px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: bold;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(255, 152, 0, 0.3);
 }
 
-.accept-defeat-btn:hover:not(:disabled) {
-  background: linear-gradient(145deg, #616161, #424242);
-  transform: translateY(-1px);
+.btn-draw:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
 }
 
-.accept-defeat-btn:disabled {
-  background: #666;
+.btn-draw:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-  opacity: 0.6;
   transform: none;
 }
 
-.reward-item.generic-reward {
-  border-left: 3px dashed #ffd700;
-  background-color: rgba(255, 215, 0, 0.1);
-  padding: 8px 12px;
-  border-radius: 4px;
-  animation: pulse-border 2s infinite;
+/* Defeat/Retreat button */
+.btn-defeat {
+  background: transparent;
+  color: var(--monad-text-muted, #9CA3AF);
+  border: 1px solid rgba(156, 163, 175, 0.25);
+  padding: 11px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
-@keyframes pulse-border {
-  0% {
-    border-color: #ffd700;
-  }
-  50% {
-    border-color: #ff9800;
-  }
-  100% {
-    border-color: #ffd700;
-  }
+.btn-defeat:hover:not(:disabled) {
+  background: rgba(244, 67, 54, 0.08);
+  border-color: rgba(244, 67, 54, 0.3);
+  transform: translateY(-2px);
 }
 
+.btn-defeat:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Danger button (cancel) */
+.btn-danger {
+  background: linear-gradient(135deg, #d32f2f, #f44336);
+  color: #fff;
+  border: none;
+  padding: 11px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(244, 67, 54, 0.3);
+}
+
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================
+   KBD HINTS
+   ============================================ */
 .kbd-hint {
   font-size: 0.75em;
-  opacity: 0.6;
+  opacity: 0.5;
   margin-left: 4px;
 }
 
 @media (hover: none) {
   .kbd-hint { display: none; }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 480px) {
+  .battle-card {
+    width: 100%;
+    max-width: 100vw;
+    border-radius: 10px;
+  }
+
+  .battle-arena {
+    padding: 10px 4px;
+  }
+
+  .combatant-sprite-wrap {
+    width: 56px;
+    height: 56px;
+  }
+
+  .combatant-sprite {
+    width: 48px;
+    height: 48px;
+  }
+
+  .hp-bar-wrap {
+    max-width: 100px;
+  }
+
+  .hp-bar-track {
+    height: 14px;
+  }
+
+  .hp-bar-text {
+    font-size: 0.6rem;
+  }
+
+  .vs-badge {
+    font-size: 1.2rem;
+  }
+
+  .dice-face {
+    width: 40px;
+    height: 40px;
+  }
+
+  .pip {
+    width: 6px;
+    height: 6px;
+  }
+
+  .reward-icon-wrap {
+    width: 52px;
+    height: 52px;
+  }
+
+  .reward-item-img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .battle-header {
+    padding: 8px 12px;
+  }
+
+  .battle-body {
+    padding: 8px;
+  }
+
+  .battle-footer {
+    padding: 10px 12px;
+  }
 }
 </style>
