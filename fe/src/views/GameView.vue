@@ -581,85 +581,76 @@
     <!-- Leaderboard Modal -->
     <div
       v-if="showLeaderboardModal"
-      class="leaderboard-modal-overlay"
+      class="leaderboard-overlay"
     >
-      <div class="leaderboard-modal">
-        <h2>🏆 Game Over: Leaderboard</h2>
-        <div 
+      <div class="leaderboard-card">
+        <div class="leaderboard-header">
+          <span class="leaderboard-header-label">Game Over</span>
+        </div>
+
+        <!-- Result message -->
+        <div
           v-if="getCurrentUserPrivyId() || (humanPlayerId && !isVirtualPlayer(humanPlayerId))"
-          class="player-result-message"
-          :class="{ 
-            'winner-message': isCurrentUserWinner(),
-            'loser-message': !isCurrentUserWinner()
+          class="result-banner"
+          :class="{
+            'result-win': isCurrentUserWinner(),
+            'result-loss': !isCurrentUserWinner()
           }"
         >
-          <span v-if="isCurrentUserWinner()">
-            🎉 Congratulations! You Won! 🎉
-          </span>
-          <span v-else>
-            Better luck next time! The winner is {{ getPlayerEmoji(winnerId) }}
-          </span>
+          <div v-if="isCurrentUserWinner()" class="result-text">
+            <span class="result-icon">🏆</span>
+            <span>Victory!</span>
+          </div>
+          <div v-else class="result-text">
+            <span class="result-icon">{{ getPlayerEmoji(winnerId) }}</span>
+            <span>Opponent Wins</span>
+          </div>
         </div>
-        <table class="leaderboard-table">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Icon</th>
-              <th>Treasure</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(entry, idx) in leaderboard"
-              :key="entry.playerId"
-              :class="{ 
-                winner: entry.playerId === winnerId,
-                'current-player': isCurrentUserEntry(entry)
-              }"
-            >
-              <td>
-                {{ idx + 1 }}
-                <span 
-                  v-if="idx === 0"
-                  class="rank-medal"
-                >🥇</span>
-                <span 
-                  v-else-if="idx === 1"
-                  class="rank-medal"
-                >🥈</span>
-                <span 
-                  v-else-if="idx === 2"
-                  class="rank-medal"
-                >🥉</span>
-              </td>
-              <td>
-                <div class="player-info-row">
-                  <span class="player-icon">{{ getPlayerEmoji(entry.playerId) }}</span>
-                  <span
-                    v-if="entry.playerId === winnerId"
-                    class="winner-crown"
-                  >👑</span>
-                  <span
-                    v-if="isCurrentUserEntry(entry)"
-                    class="you-badge"
-                  >YOU</span>
-                </div>
-              </td>
-              <td>
-                💎 {{ entry.treasure }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+
+        <!-- Player cards -->
+        <div class="leaderboard-entries">
+          <div
+            v-for="(entry, idx) in leaderboard"
+            :key="entry.playerId"
+            class="lb-entry"
+            :class="{
+              'lb-winner': entry.playerId === winnerId,
+              'lb-you': isCurrentUserEntry(entry),
+              'lb-first': idx === 0
+            }"
+          >
+            <div class="lb-rank">
+              <span v-if="idx === 0" class="rank-medal">🥇</span>
+              <span v-else-if="idx === 1" class="rank-medal">🥈</span>
+              <span v-else class="rank-num">#{{ idx + 1 }}</span>
+            </div>
+            <div class="lb-player">
+              <span class="lb-player-icon">{{ getPlayerEmoji(entry.playerId) }}</span>
+              <span
+                v-if="entry.playerId === winnerId"
+                class="lb-crown"
+              >👑</span>
+              <span
+                v-if="isCurrentUserEntry(entry)"
+                class="lb-you-badge"
+              >YOU</span>
+            </div>
+            <div class="lb-treasure">
+              💎 {{ entry.treasure }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
         <div class="leaderboard-actions">
           <button
-            class="new-game-button"
+            class="lb-btn-primary"
             @click="navigateToLobby"
           >
             🏠 Return to Lobby <span class="kbd-hint">(Enter)</span>
           </button>
           <button
-            class="replay-button"
+            class="lb-btn-secondary"
             @click="reloadPage"
           >
             🔄 View Game Board <span class="kbd-hint">(Esc)</span>
@@ -5072,169 +5063,246 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   margin-top: 4px;
 }
 
-.leaderboard-modal-overlay {
+/* ============================================
+   LEADERBOARD (Monad Theme)
+   ============================================ */
+.leaderboard-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.8);
+  inset: 0;
+  background: var(--bg-overlay, rgba(9, 8, 15, 0.9));
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-}
-.leaderboard-modal {
-  background: #1a1a2e;
-  border-radius: 12px;
-  padding: 2rem;
-  min-width: 350px;
-  box-shadow: 0 4px 32px rgba(0,0,0,0.4);
-  text-align: center;
-  color: #e6e6e6;
-  border: 1px solid #333;
-}
-.leaderboard-modal h2 {
-  color: #ffcc00;
-  margin-bottom: 1.5rem;
-}
-.leaderboard-table {
-  width: 100%;
-  margin: 1rem 0;
-  border-collapse: collapse;
-}
-.leaderboard-table th {
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid #444;
-  color: #ccc;
-}
-.leaderboard-table td {
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid #333;
-}
-.leaderboard-table .winner {
-  font-weight: bold;
-  background: rgba(255, 204, 0, 0.2);
-  color: #ffcc00;
+  animation: lbOverlayIn 0.3s ease-out;
 }
 
-.leaderboard-table .current-player {
-  background-color: rgba(100, 150, 255, 0.2);
-  border: 2px solid rgba(100, 150, 255, 0.5);
-  animation: pulse 2s infinite;
+@keyframes lbOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@keyframes pulse {
-  0%, 100% { 
-    box-shadow: 0 0 0 0 rgba(100, 150, 255, 0.4);
-  }
-  50% { 
-    box-shadow: 0 0 10px 5px rgba(100, 150, 255, 0.4);
-  }
+.leaderboard-card {
+  background: var(--monad-bg-card, #1A1830);
+  border: 1px solid rgba(123, 63, 242, 0.3);
+  border-radius: 14px;
+  width: 380px;
+  max-width: 95vw;
+  padding: 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(123, 63, 242, 0.1);
+  color: var(--monad-text-primary, #F5F3FF);
+  animation: lbCardIn 0.4s ease-out;
+  overflow: hidden;
 }
 
-.leaderboard-table .current-player.winner {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(100, 150, 255, 0.3));
-  border: 2px solid gold;
-  animation: winner-pulse 1.5s infinite;
+@keyframes lbCardIn {
+  from { opacity: 0; transform: scale(0.9) translateY(15px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-@keyframes winner-pulse {
-  0%, 100% { 
-    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.6);
-    transform: scale(1);
-  }
-  50% { 
-    box-shadow: 0 0 20px 10px rgba(255, 215, 0, 0.6);
-    transform: scale(1.02);
-  }
+.leaderboard-header {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, rgba(123, 63, 242, 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
+  border-bottom: 1px solid rgba(123, 63, 242, 0.2);
 }
 
-.player-result-message {
-  padding: 1rem;
-  margin: 1rem 0;
-  border-radius: 8px;
-  text-align: center;
-  font-size: 1.2rem;
+.leaderboard-header-label {
+  font-size: 0.75rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--monad-text-secondary, #C4B5FD);
 }
 
-.player-result-message.winner-message {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 255, 255, 0.1));
-  color: gold;
-  border: 2px solid gold;
-  animation: celebration 1s ease-in-out;
+/* Result banner */
+.result-banner {
+  margin: 16px 20px 12px;
+  padding: 14px;
+  border-radius: 10px;
+  text-align: center;
+  animation: lbResultIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.player-result-message.loser-message {
-  background: rgba(100, 100, 100, 0.2);
-  color: #ccc;
-  border: 1px solid rgba(100, 100, 100, 0.3);
-}
-
-@keyframes celebration {
+@keyframes lbResultIn {
   0% { transform: scale(0.8); opacity: 0; }
-  50% { transform: scale(1.1); }
+  60% { transform: scale(1.05); }
   100% { transform: scale(1); opacity: 1; }
 }
 
-.you-badge {
-  background: linear-gradient(135deg, #4a90e2, #357abd);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  margin-left: 8px;
-  animation: badge-appear 0.5s ease-out;
+.result-banner.result-win {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(123, 63, 242, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.4);
 }
 
-@keyframes badge-appear {
-  from { 
-    transform: scale(0);
-    opacity: 0;
-  }
-  to { 
-    transform: scale(1);
-    opacity: 1;
-  }
+.result-banner.result-loss {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.rank-medal {
-  margin-left: 4px;
-  font-size: 1.2rem;
-}
-
-.your-score-indicator {
-  margin-left: 10px;
-  color: #4a90e2;
-  font-size: 0.85rem;
-  font-weight: 600;
-  animation: slide-in 0.5s ease-out;
-}
-
-@keyframes slide-in {
-  from { 
-    transform: translateX(-20px);
-    opacity: 0;
-  }
-  to { 
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-.player-info-row {
+.result-text {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.result-win .result-text {
+  color: #FFD54F;
+  text-shadow: 0 0 16px rgba(255, 215, 0, 0.4);
+}
+
+.result-loss .result-text {
+  color: var(--monad-text-muted, #9CA3AF);
+}
+
+.result-icon {
+  font-size: 1.8rem;
+}
+
+/* Leaderboard entries */
+.leaderboard-entries {
+  padding: 0 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lb-entry {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(123, 63, 242, 0.06);
+  border: 1px solid rgba(123, 63, 242, 0.15);
+  transition: all 0.2s ease;
+}
+
+.lb-entry.lb-first {
+  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.25);
+}
+
+.lb-entry.lb-you {
+  border-color: rgba(123, 63, 242, 0.5);
+  box-shadow: 0 0 10px rgba(123, 63, 242, 0.15);
+}
+
+.lb-entry.lb-winner.lb-you {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(123, 63, 242, 0.1));
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.15);
+  animation: lbWinnerPulse 2s infinite ease-in-out;
+}
+
+@keyframes lbWinnerPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.1); }
+  50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.25); }
+}
+
+.lb-rank {
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.rank-medal {
+  font-size: 1.3rem;
+}
+
+.rank-num {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--monad-text-muted, #9CA3AF);
+}
+
+.lb-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
-.player-icon {
+
+.lb-player-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(123, 63, 242, 0.15);
   border-radius: 50%;
-  font-size: 18px;
+  font-size: 16px;
+}
+
+.lb-crown {
+  font-size: 16px;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.5));
+}
+
+.lb-you-badge {
+  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.lb-treasure {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #FFD54F;
+  flex-shrink: 0;
+}
+
+/* Leaderboard actions */
+.leaderboard-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+
+.lb-btn-primary {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(123, 63, 242, 0.35);
+}
+
+.lb-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.5);
+}
+
+.lb-btn-secondary {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: var(--monad-text-secondary, #C4B5FD);
+  border: 1px solid rgba(123, 63, 242, 0.25);
+}
+
+.lb-btn-secondary:hover {
+  background: rgba(123, 63, 242, 0.1);
+  transform: translateY(-2px);
 }
 
 .hp-indicator {
@@ -5259,61 +5327,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 @keyframes hp-flash {
   0%, 100% { background: rgba(204, 51, 51, 0.2); }
   50% { background: rgba(255, 0, 0, 0.5); }
-}
-.winner-crown {
-  margin-left: 2px;
-  font-size: 18px;
-  filter: drop-shadow(0 0 3px rgba(255, 204, 0, 0.5));
-}
-.leaderboard-modal button {
-  margin-top: 1rem;
-  padding: 0.5rem 1.5rem;
-  background-color: #2a2a4a;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.3s;
-}
-.leaderboard-modal button:hover {
-  background-color: #3a3a6a;
-}
-
-/* Leaderboard action buttons */
-.leaderboard-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1.5rem;
-}
-
-.leaderboard-actions button {
-  padding: 0.75rem 1.5rem;
-  background-color: #2a2a4a;
-  color: #fff;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-.new-game-button:hover {
-  background-color: #3a3a5a;
-  border-color: #4a4a6a;
-  transform: translateY(-2px);
-}
-
-.replay-button {
-  background-color: #1a3a1a;
-}
-
-.replay-button:hover {
-  background-color: #2a4a2a;
-  border-color: #3a5a3a;
-  transform: translateY(-2px);
 }
 
 /* Game finished styles */
