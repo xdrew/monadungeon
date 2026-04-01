@@ -277,6 +277,19 @@
                     }"
                   />
                 </div>
+
+                <!-- Floating heal text -->
+                <div
+                  v-if="showHealingNotification && healingNotification"
+                  class="floating-heal-text"
+                  :key="'heal-' + healingNotification.playerId + '-' + Date.now()"
+                  :style="{
+                    left: `${healingWorldX}px`,
+                    top: `${healingWorldY}px`
+                  }"
+                >
+                  +{{ healingNotification.healAmount }} HP
+                </div>
               </div>
               <p v-else>
                 No field data available for game {{ id }}
@@ -549,13 +562,7 @@
     </div>
 
     <!-- Healing notification component -->
-    <HealingNotification
-      v-if="showHealingNotification"
-      :player-id="healingNotification?.playerId"
-      :player-name="healingNotification?.playerName"
-      :heal-amount="healingNotification?.healAmount"
-      @dismiss="dismissHealingNotification"
-    />
+    <!-- Healing notification removed - replaced by floating text in tiles-container -->
 
     <!-- Battle report modal component -->
     <BattleReportModal
@@ -563,6 +570,7 @@
       ref="battleReportModalRef"
       :battle-info="battleInfo"
       :has-inventory-space="hasInventorySpaceForReward"
+      :player-hp="getCurrentPlayerData?.hp ?? 5"
       @end-turn="closeBattleReportAndEndTurn"
       @pick-item-and-end-turn="handlePickItemAndEndTurn"
       @pick-item-with-replacement="handlePickItemWithReplacement"
@@ -693,7 +701,7 @@ import LoadingScreen from '@/components/game/LoadingScreen.vue';
 import LoadingOverlay from '@/components/game/LoadingOverlay.vue';
 import ErrorDisplay from '@/components/game/ErrorDisplay.vue';
 import PlayerSwitchNotification from '@/components/game/PlayerSwitchNotification.vue';
-import HealingNotification from '@/components/game/HealingNotification.vue';
+// HealingNotification replaced by floating text in tiles-container
 import InventoryFullDialog from '@/components/game/InventoryFullDialog.vue';
 import MissingKeyDialog from '@/components/game/MissingKeyDialog.vue';
 import BattleReportModal from '@/components/game/BattleReportModal.vue';
@@ -3342,13 +3350,31 @@ const showHealingNotificationForPlayer = (playerId, healAmount) => {
   };
   showHealingNotification.value = true;
   
-  // Auto-dismiss after 3 seconds
+  // Auto-dismiss after animation completes
   setTimeout(() => {
     dismissHealingNotification();
-  }, 3000);
+  }, 2000);
 };
 
 // Function to dismiss healing notification
+const healingWorldX = computed(() => {
+  if (!healingNotification.value?.playerId || !gameData.value?.field) return 0;
+  const pos = gameData.value.field.playerPositions?.[healingNotification.value.playerId];
+  if (!pos || typeof pos !== 'string') return 0;
+  const [x] = pos.split(',').map(Number);
+  const minX = gameData.value.field.size?.minX || 0;
+  return (x - minX) * tileSize.value + tileSize.value / 2;
+});
+
+const healingWorldY = computed(() => {
+  if (!healingNotification.value?.playerId || !gameData.value?.field) return 0;
+  const pos = gameData.value.field.playerPositions?.[healingNotification.value.playerId];
+  if (!pos || typeof pos !== 'string') return 0;
+  const [, y] = pos.split(',').map(Number);
+  const minY = gameData.value.field.size?.minY || 0;
+  return (y - minY) * tileSize.value - 10;
+});
+
 const dismissHealingNotification = () => {
   showHealingNotification.value = false;
   healingNotification.value = null;
@@ -5461,6 +5487,26 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .cancel-teleport-btn:hover {
   background-color: var(--color-secondary-dark);
+}
+
+/* Floating heal text */
+.floating-heal-text {
+  position: absolute;
+  z-index: 100;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #66ff66;
+  text-shadow: 0 0 8px rgba(50, 205, 50, 0.8), 0 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: healFloat 2s ease-out forwards;
+}
+
+@keyframes healFloat {
+  0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.2); }
+  20% { opacity: 1; transform: translateX(-50%) translateY(-10px) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-40px); }
 }
 
 /* Healing fountain markers */

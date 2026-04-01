@@ -100,6 +100,10 @@
                 🔮 <span class="bonus-value">+{{ usedConsumableDamageTotal }}</span>
               </span>
             </div>
+            <!-- Player HP -->
+            <div v-if="!isRolling" class="hero-hp" :class="{ 'hp-loss': dynamicResult === 'lose' }">
+              ❤️ {{ dynamicResult === 'lose' ? playerHpAfterBattle : playerHp }}/5
+            </div>
           </div>
 
           <div class="vs-separator">
@@ -481,6 +485,10 @@ const props = defineProps({
   hasInventorySpace: {
     type: Boolean,
     default: true
+  },
+  playerHp: {
+    type: Number,
+    default: 5
   }
 });
 
@@ -737,6 +745,13 @@ const consumableDamageTotal = computed(() => {
 
 const totalCalculatedDamage = computed(() => {
   return (props.battleInfo.diceRollDamage || 0) + (props.battleInfo.itemDamage || 0) + consumableDamageTotal.value;
+});
+
+const playerHpAfterBattle = computed(() => {
+  if (dynamicResult.value === 'lose') {
+    return Math.max(0, props.playerHp - 1);
+  }
+  return props.playerHp;
 });
 
 const damageBarPercent = computed(() => {
@@ -1695,6 +1710,27 @@ const potentialRewardTip = computed(() => {
 
 .hp-total {
   opacity: 0.7;
+}
+
+/* Player HP */
+.hero-hp {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--monad-text-secondary, #C4B5FD);
+  text-align: center;
+}
+
+.hero-hp.hp-loss {
+  color: #ef5350;
+  animation: hpShake 0.4s ease-out;
+}
+
+@keyframes hpShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
 }
 
 /* Hero weapon bonuses */
