@@ -47,11 +47,11 @@
               :class="'bar-' + dynamicResult"
               :style="{ width: (isRolling ? 0 : damageBarPercent) + '%' }"
             />
-          </div>
-          <div class="hp-bar-text">
-            <span v-if="!isRolling" class="hp-dealt" :class="'dealt-' + dynamicResult">⚔ {{ totalCalculatedDamage }}</span>
-            <span v-if="!isRolling" class="hp-separator">vs</span>
-            <span class="hp-total">♥ {{ battleInfo.monster }}</span>
+            <div class="hp-bar-text">
+              <span class="hp-dealt" :class="!isRolling ? 'dealt-' + dynamicResult : 'dealt-hidden'">⚔ {{ totalCalculatedDamage }}</span>
+              <span class="hp-separator" :class="{ 'dealt-hidden': isRolling }">vs</span>
+              <span class="hp-total">♥ {{ battleInfo.monster }}</span>
+            </div>
           </div>
         </div>
 
@@ -471,7 +471,7 @@
 
 <script setup>
 import { defineProps, defineEmits, computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
-import { getMonsterImage } from '@/utils/monsterUtils';
+import { getMonsterImage, getMonsterDisplayName } from '@/utils/monsterUtils';
 
 const props = defineProps({
   battleInfo: {
@@ -1237,7 +1237,7 @@ const getWeaponImage = (item) => {
 
 const formattedMonsterName = computed(() => {
   if (!props.battleInfo.monsterType) return 'Monster';
-  return formatItemName(props.battleInfo.monsterType);
+  return getMonsterDisplayName(props.battleInfo.monsterType);
 });
 
 const getSpellDisplayName = (item) => {
@@ -1315,15 +1315,13 @@ const potentialRewardTip = computed(() => {
 
 .battle-card {
   background: var(--monad-bg-card, #1A1830);
-  border: 1px solid rgba(123, 63, 242, 0.35);
-  border-radius: 14px;
-  width: 420px;
+  border: 1px solid rgba(123, 63, 242, 0.25);
+  border-radius: 10px;
+  width: 400px;
   max-width: 95vw;
   max-height: 90vh;
   overflow: hidden;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(123, 63, 242, 0.15);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   color: var(--monad-text-primary, #F5F3FF);
@@ -1367,7 +1365,7 @@ const potentialRewardTip = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 6px 12px;
   border-bottom: 1px solid rgba(123, 63, 242, 0.2);
   background: linear-gradient(135deg, rgba(123, 63, 242, 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
 }
@@ -1449,7 +1447,7 @@ const potentialRewardTip = computed(() => {
    BATTLE BODY
    ============================================ */
 .battle-body {
-  padding: 8px;
+  padding: 6px;
   background: rgba(0, 0, 0, 0.15);
   flex: 1;
   overflow-y: auto;
@@ -1463,8 +1461,8 @@ const potentialRewardTip = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 8px;
-  margin-bottom: 6px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
   background: rgba(0, 0, 0, 0.25);
   border-radius: 10px;
   border: 1px solid rgba(123, 63, 242, 0.15);
@@ -1482,8 +1480,8 @@ const potentialRewardTip = computed(() => {
 
 .combatant-sprite-wrap {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1512,8 +1510,8 @@ const potentialRewardTip = computed(() => {
 }
 
 .combatant-sprite {
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   object-fit: contain;
   position: relative;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
@@ -1616,7 +1614,7 @@ const potentialRewardTip = computed(() => {
 .damage-bar-center {
   width: 100%;
   max-width: 200px;
-  margin: 0 auto 4px;
+  margin: 0 auto 2px;
   position: relative;
 }
 
@@ -1630,8 +1628,8 @@ const potentialRewardTip = computed(() => {
 }
 
 .hp-bar-track {
-  height: 10px;
-  border-radius: 5px;
+  height: 16px;
+  border-radius: 8px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
@@ -1640,7 +1638,7 @@ const potentialRewardTip = computed(() => {
 
 .hp-bar-fill {
   height: 100%;
-  border-radius: 5px;
+  border-radius: 8px;
   transition: width 0.8s ease-out 0.1s;
   min-width: 0;
 }
@@ -1661,14 +1659,21 @@ const potentialRewardTip = computed(() => {
 }
 
 .hp-bar-text {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: 2px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+.dealt-hidden {
+  opacity: 0;
 }
 
 .hp-dealt {
@@ -1717,7 +1722,7 @@ const potentialRewardTip = computed(() => {
 
 .vs-energy-line {
   width: 2px;
-  height: 20px;
+  height: 10px;
   background: linear-gradient(180deg, transparent, rgba(123, 63, 242, 0.5), transparent);
 }
 
@@ -1755,8 +1760,8 @@ const potentialRewardTip = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 4px;
+  margin-bottom: 4px;
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.4s ease, transform 0.4s ease;
@@ -1769,15 +1774,15 @@ const potentialRewardTip = computed(() => {
 
 .dice-container {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: center;
   perspective: 1000px;
-  min-height: 48px;
+  min-height: 40px;
 }
 
 .dice-face {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   background:
     radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, transparent 50%),
     linear-gradient(145deg, #fafafa 0%, #d8d8d8 50%, #c0c0c0 100%);
@@ -1831,8 +1836,8 @@ const potentialRewardTip = computed(() => {
 
 /* Pips */
 .pip {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   background: radial-gradient(circle at 30% 30%, #444 0%, #111 100%);
   border-radius: 50%;
   position: absolute;
@@ -1997,7 +2002,7 @@ const potentialRewardTip = computed(() => {
 
 .reward-section {
   position: relative;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .reward-rise {
@@ -2011,8 +2016,8 @@ const potentialRewardTip = computed(() => {
 }
 
 .reward-card {
-  padding: 10px;
-  border-radius: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
   background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
   border: 1px solid rgba(76, 175, 80, 0.4);
 }
@@ -2307,7 +2312,7 @@ const potentialRewardTip = computed(() => {
    FOOTER & BUTTONS
    ============================================ */
 .battle-footer {
-  padding: 10px 16px;
+  padding: 8px 12px;
   border-top: 1px solid rgba(123, 63, 242, 0.2);
   background: linear-gradient(180deg, rgba(26, 24, 48, 0.8) 0%, rgba(15, 14, 28, 0.9) 100%);
   flex-shrink: 0;
@@ -2325,7 +2330,7 @@ const potentialRewardTip = computed(() => {
 .button-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   width: 100%;
 }
@@ -2340,7 +2345,7 @@ const potentialRewardTip = computed(() => {
   background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
   color: #fff;
   border: none;
-  padding: 11px 20px;
+  padding: 9px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -2367,7 +2372,7 @@ const potentialRewardTip = computed(() => {
   background: transparent;
   color: var(--monad-text-secondary, #C4B5FD);
   border: 1px solid rgba(123, 63, 242, 0.25);
-  padding: 11px 20px;
+  padding: 9px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -2391,7 +2396,7 @@ const potentialRewardTip = computed(() => {
   background: linear-gradient(135deg, #e65100, #ff9800);
   color: #fff;
   border: none;
-  padding: 11px 20px;
+  padding: 9px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -2416,7 +2421,7 @@ const potentialRewardTip = computed(() => {
   background: transparent;
   color: var(--monad-text-muted, #9CA3AF);
   border: 1px solid rgba(156, 163, 175, 0.25);
-  padding: 11px 20px;
+  padding: 9px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -2441,7 +2446,7 @@ const potentialRewardTip = computed(() => {
   background: linear-gradient(135deg, #d32f2f, #f44336);
   color: #fff;
   border: none;
-  padding: 11px 20px;
+  padding: 9px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;

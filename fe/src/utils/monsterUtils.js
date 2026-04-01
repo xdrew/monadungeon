@@ -49,6 +49,34 @@ export const getMonsterEmoji = (battle) => {
 };
 
 /**
+ * Gets the Monad display name for a monster type
+ * @param {string} monsterType - The monster type key (e.g. 'giant_spider')
+ * @returns {string} The Monad character name
+ */
+export const getMonsterDisplayName = (monsterType) => {
+  const nameMap = {
+    'skeleton_king': 'Molandak',
+    'skeleton_warrior': 'Taekwonnad',
+    'skeleton_turnkey': 'Bearded Nad',
+    'dragon': 'Bullish',
+    'fallen': 'Bee',
+    'giant_rat': 'Ikan',
+    'giant_spider': 'Moyaki',
+    'mummy': 'Ubur'
+  };
+
+  for (const [key, name] of Object.entries(nameMap)) {
+    if (monsterType && monsterType.includes(key)) {
+      return name;
+    }
+  }
+
+  return monsterType
+    ? monsterType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    : 'Monster';
+};
+
+/**
  * Gets monster image path based on battle info
  * @param {Object} battle - The battle information
  * @returns {string|null} The path to the monster image, or null if no image available
