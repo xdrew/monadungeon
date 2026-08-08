@@ -68,7 +68,7 @@ services:
       args:
         VITE_PRIVY_APP_ID: "${VITE_PRIVY_APP_ID}"
         VITE_MONAD_GAMES_APP_ID: "${VITE_MONAD_GAMES_APP_ID}"
-        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-https://monadungeon.xyz}"
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-https://monadungeon.avelent.work}"
     volumes:
       - frontend_dist:/target
       - frontend_backup:/backup

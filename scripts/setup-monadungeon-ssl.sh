@@ -1,146 +1,174 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# SSL Setup Script for monadungeon.xyz
+# SSL setup for the main site vhost (monadungeon.avelent.work).
+#
+# The nginx config references /etc/letsencrypt/live/$DOMAIN/*.pem, so nginx
+# cannot start before the certificate exists. This script breaks that
+# chicken-and-egg with a short-lived self-signed placeholder: nginx boots on the
+# dummy, serves the ACME challenge over :80, certbot swaps in the real
+# certificate, nginx restarts. The showcase.* and watermelon.* vhosts keep
+# running throughout — they have their own certificate lineages and are not
+# touched here.
 
-# Configuration
-PROJECT_DIR="/opt/monadungeon"
-DOMAIN="monadungeon.xyz"
+PROJECT_DIR="${PROJECT_DIR:-/opt/monadungeon}"
+DOMAIN="${DOMAIN:-monadungeon.avelent.work}"
+EMAIL="${EMAIL:-ripxdrew@gmail.com}"
 COMPOSE_FILE="compose.prod.yml"
+ENV_FILE=".env.prod"
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Functions
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
+log_info()    { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Check if running as root
 if [[ $EUID -ne 0 ]]; then
-   log_error "This script must be run as root or with sudo"
-   exit 1
-fi
-
-# Navigate to project directory
-cd $PROJECT_DIR
-
-# Get email for Let's Encrypt
-if [ -z "$1" ]; then
-    read -p "Enter your email for Let's Encrypt notifications: " EMAIL
-else
-    EMAIL=$1
-fi
-
-log_info "Setting up SSL for monadungeon.xyz..."
-
-# First, create a temporary HTTP-only config for Let's Encrypt verification
-log_info "Creating temporary HTTP-only configuration..."
-cat > docker/nginx/temp-http.conf << 'EOF'
-server {
-    listen 80;
-    listen [::]:80;
-    server_name monadungeon.xyz www.monadungeon.xyz;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        root /usr/share/nginx/html;
-        try_files $uri $uri/ /index.html;
-    }
-
-    location /api {
-        proxy_pass http://php:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-EOF
-
-# Use temporary config
-log_info "Switching to temporary HTTP configuration..."
-docker compose -f $COMPOSE_FILE exec nginx sh -c "cp /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.bak" || true
-docker cp docker/nginx/temp-http.conf nginx_monadungeon_prod:/etc/nginx/conf.d/default.conf
-docker compose -f $COMPOSE_FILE exec nginx nginx -s reload
-
-# Wait for nginx to reload
-sleep 3
-
-# Test HTTP is working
-log_info "Testing HTTP access..."
-if curl -f -s -o /dev/null "http://$DOMAIN"; then
-    log_info "HTTP access confirmed"
-else
-    log_warning "HTTP access test failed, but continuing..."
-fi
-
-# Request SSL certificate
-log_info "Requesting SSL certificate from Let's Encrypt..."
-docker compose -f $COMPOSE_FILE run --rm certbot certonly \
-    --webroot \
-    --webroot-path=/var/www/certbot \
-    --email ripxdrew@gmail.com \
-    --agree-tos \
-    --no-eff-email \
-    --force-renewal \
-    -d monadungeon.xyz \
-    -d showcase.monadungeon.xyz \
-    -d watermelon.monadungeon.xyz \
-    -d www.monadungeon.xyz
-
-# Check if certificate was created successfully
-if docker compose -f $COMPOSE_FILE exec nginx test -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem; then
-    log_info "SSL certificate created successfully!"
-    
-    # Switch back to full SSL config
-    log_info "Enabling SSL configuration..."
-    docker compose -f $COMPOSE_FILE restart nginx
-    
-    # Wait for nginx to start
-    sleep 5
-    
-    # Test HTTPS
-    log_info "Testing HTTPS access..."
-    if curl -f -s -o /dev/null "https://$DOMAIN"; then
-        log_info "HTTPS is working!"
-    else
-        log_warning "HTTPS test failed. Check nginx logs: docker logs nginx_monadungeon_prod"
-    fi
-    
-    # Clean up temp file
-    rm -f docker/nginx/temp-http.conf
-    
-    log_info "SSL setup completed successfully!"
-    log_info "Your application is now available at:"
-    log_info "  - https://monadungeon.xyz"
-    log_info "  - https://www.monadungeon.xyz (redirects to non-www)"
-    log_info ""
-    log_info "Certificate will auto-renew via the certbot container"
-    
-else
-    log_error "Failed to create SSL certificate"
-    log_info "Reverting to HTTP-only configuration..."
-    docker compose -f $COMPOSE_FILE restart nginx
-    
-    log_info "Please check:"
-    log_info "1. DNS records for monadungeon.xyz point to this server"
-    log_info "2. Ports 80 and 443 are open in firewall"
-    log_info "3. No other service is using ports 80/443"
+    log_error "This script must be run as root or with sudo"
     exit 1
 fi
+
+cd "$PROJECT_DIR"
+
+if [ ! -f "$ENV_FILE" ]; then
+    log_error "Production environment file ($ENV_FILE) not found in $PROJECT_DIR"
+    exit 1
+fi
+
+dc() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
+
+# Run a shell command inside the certbot image, which has the letsencrypt
+# volume mounted read-write.
+certbot_sh() { dc run --rm --entrypoint sh certbot -c "$1"; }
+
+LIVE_DIR="/etc/letsencrypt/live/$DOMAIN"
+
+make_dummy_cert() {
+    certbot_sh "mkdir -p $LIVE_DIR && \
+        openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+            -keyout $LIVE_DIR/privkey.pem \
+            -out $LIVE_DIR/fullchain.pem \
+            -subj '/CN=$DOMAIN' 2>/dev/null && \
+        cp $LIVE_DIR/fullchain.pem $LIVE_DIR/chain.pem"
+}
+
+# ---------------------------------------------------------------------------
+# 1. DNS sanity check
+# ---------------------------------------------------------------------------
+log_info "Checking DNS for $DOMAIN..."
+RESOLVED=$(getent hosts "$DOMAIN" | awk '{print $1}' | head -1 || true)
+SERVER_IP=$(curl -s --max-time 10 https://ifconfig.me || true)
+
+if [ -z "$RESOLVED" ]; then
+    log_error "$DOMAIN does not resolve. Create the DNS A record first."
+    exit 1
+fi
+log_info "  $DOMAIN resolves to $RESOLVED"
+if [ -n "$SERVER_IP" ] && [ "$RESOLVED" != "$SERVER_IP" ]; then
+    log_warning "  This server's public IP is $SERVER_IP — they do not match."
+    log_warning "  Let's Encrypt validation will fail unless traffic still reaches this host."
+fi
+
+# ---------------------------------------------------------------------------
+# 2. Placeholder certificate so nginx can load the new config
+# ---------------------------------------------------------------------------
+if certbot_sh "test -f $LIVE_DIR/fullchain.pem" >/dev/null 2>&1; then
+    log_info "Certificate material for $DOMAIN already present, reusing it to boot nginx"
+else
+    log_info "Creating temporary self-signed certificate for $DOMAIN..."
+    make_dummy_cert
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Bring nginx up on the new config
+# ---------------------------------------------------------------------------
+log_info "Starting nginx with the new configuration..."
+dc up -d nginx
+dc restart nginx
+sleep 3
+
+if ! dc exec -T nginx nginx -t; then
+    log_error "nginx configuration test failed — see output above"
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Verify the ACME webroot is reachable through nginx
+# ---------------------------------------------------------------------------
+log_info "Verifying ACME challenge path is reachable over HTTP..."
+TOKEN="preflight-$$"
+certbot_sh "mkdir -p /var/www/certbot/.well-known/acme-challenge && \
+    echo $TOKEN > /var/www/certbot/.well-known/acme-challenge/$TOKEN"
+
+CHALLENGE_URL="http://$DOMAIN/.well-known/acme-challenge/$TOKEN"
+if [ "$(curl -s --max-time 15 "$CHALLENGE_URL" || true)" = "$TOKEN" ]; then
+    log_info "  ACME challenge path OK"
+else
+    log_error "  Could not fetch $CHALLENGE_URL"
+    log_error "  Check that port 80 is open and DNS points here, then re-run."
+    certbot_sh "rm -f /var/www/certbot/.well-known/acme-challenge/$TOKEN"
+    exit 1
+fi
+certbot_sh "rm -f /var/www/certbot/.well-known/acme-challenge/$TOKEN"
+
+# ---------------------------------------------------------------------------
+# 5. Request the real certificate
+# ---------------------------------------------------------------------------
+# certbot refuses to write over a live directory it does not manage, so the
+# placeholder is removed first. nginx keeps serving from its open file handles
+# until it is restarted, so there is no downtime in between.
+log_info "Removing placeholder certificate..."
+certbot_sh "rm -rf $LIVE_DIR /etc/letsencrypt/archive/$DOMAIN /etc/letsencrypt/renewal/$DOMAIN.conf"
+
+restore_dummy_on_failure() {
+    log_error "Certificate issuance failed."
+    log_warning "Restoring the placeholder certificate so nginx can still start."
+    make_dummy_cert || true
+    dc restart nginx || true
+    log_info "Things to check:"
+    log_info "  1. DNS A record for $DOMAIN points to this server"
+    log_info "  2. Ports 80 and 443 are open in the firewall"
+    log_info "  3. Let's Encrypt rate limits (5 failures/hour per account+host)"
+    exit 1
+}
+trap restore_dummy_on_failure ERR
+
+# --entrypoint certbot is required: the compose service's entrypoint is an
+# infinite `certbot renew` loop, so without the override the certonly arguments
+# below are silently ignored and the container just renews everything else.
+log_info "Requesting SSL certificate from Let's Encrypt for $DOMAIN..."
+dc run --rm --entrypoint certbot certbot certonly \
+    --webroot \
+    --webroot-path=/var/www/certbot \
+    --email "$EMAIL" \
+    --agree-tos \
+    --no-eff-email \
+    --cert-name "$DOMAIN" \
+    -d "$DOMAIN"
+
+trap - ERR
+
+# ---------------------------------------------------------------------------
+# 6. Reload nginx onto the real certificate
+# ---------------------------------------------------------------------------
+log_info "Restarting nginx with the issued certificate..."
+dc restart nginx
+sleep 5
+
+log_info "Testing HTTPS..."
+if curl -f -s -o /dev/null "https://$DOMAIN"; then
+    log_info "HTTPS is working!"
+else
+    log_warning "HTTPS test failed. Check logs: docker logs nginx_monadungeon_prod"
+fi
+
+log_info ""
+log_info "SSL setup completed."
+log_info "  https://$DOMAIN"
+log_info ""
+log_info "Renewal is handled by the certbot container (checks every 12h)."
+log_info "The showcase.monadungeon.xyz and watermelon.monadungeon.xyz certificates"
+log_info "are separate lineages and were not modified by this script."

@@ -46,13 +46,13 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_PRIVY_APP_ID': JSON.stringify(process.env.VITE_PRIVY_APP_ID || 'cmeb207py01ikky0csyj8akos'),
     'import.meta.env.VITE_MONAD_GAMES_APP_ID': JSON.stringify(process.env.VITE_MONAD_GAMES_APP_ID || 'cmd8euall0037le0my79qpz42'),
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://monadungeon.xyz'),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://monadungeon.avelent.work'),
   },
   server: {
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    allowedHosts: ['monadungeon.xyz', 'sf.sf', 'localhost', '127.0.0.1'],
+    allowedHosts: ['monadungeon.avelent.work', 'sf.sf', 'localhost', '127.0.0.1'],
     proxy: {
       // Proxy API requests to backend during development
       '/api': {
