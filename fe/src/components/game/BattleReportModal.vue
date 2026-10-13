@@ -160,6 +160,14 @@
               />
             </div>
           </div>
+          <!-- Warrior "Double Attack": the discarded first roll -->
+          <div
+            v-if="!isRolling && battleInfo.rerolled && battleInfo.firstDiceResults"
+            class="first-roll-note"
+            data-testid="first-roll"
+          >
+            ⚔️ Double Attack! First roll <s>{{ battleInfo.firstDiceResults.join(' + ') }}</s> discarded — the second roll stands
+          </div>
         </div>
 
         <!-- Combined reward + consumable selection (side by side when both present) -->
@@ -399,6 +407,15 @@
         <!-- Consumable selection buttons -->
         <div v-else-if="showConsumableSelection" class="button-group">
           <button
+            v-if="battleInfo.canReroll && !battleFinalized"
+            class="btn-reroll"
+            :disabled="isProcessing"
+            data-testid="reroll-battle"
+            @click="rerollDice"
+          >
+            🎲 Double Attack — reroll <span class="kbd-hint">(R)</span>
+          </button>
+          <button
             v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
             class="btn-primary"
             :disabled="isProcessing"
@@ -433,6 +450,15 @@
         </div>
         <!-- Lost or draw without consumable selection -->
         <div v-else-if="(battleInfo.result === 'lose' || battleInfo.result === 'draw') && !showInventorySelection" class="button-group">
+          <button
+            v-if="battleInfo.canReroll && !battleFinalized"
+            class="btn-reroll"
+            :disabled="isProcessing"
+            data-testid="reroll-battle"
+            @click="rerollDice"
+          >
+            🎲 Double Attack — reroll <span class="kbd-hint">(R)</span>
+          </button>
           <button
             class="btn-defeat"
             :disabled="isProcessing"
@@ -492,7 +518,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up']);
+const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up', 'reroll-battle']);
 
 // Animation state
 const isRolling = ref(true);
@@ -582,6 +608,22 @@ watch(() => props.battleInfo?.battleId, (newId, oldId) => {
     battleFinalized.value = false;
   }
 });
+
+// Warrior "Double Attack": the same battle gets new dice — roll them again
+watch(() => props.battleInfo?.rerolled, (rerolled, wasRerolled) => {
+  if (rerolled && !wasRerolled) {
+    selectedConsumables.value = [];
+    isProcessing.value = false;
+    startRollingAnimation();
+  }
+});
+
+const rerollDice = () => {
+  if (isProcessing.value || isRolling.value || !props.battleInfo?.canReroll || battleFinalized.value) return;
+  isProcessing.value = true;
+  console.log('Double Attack: rerolling dice for battle', props.battleInfo.battleId);
+  emit('reroll-battle', { battleId: props.battleInfo.battleId });
+};
 
 // Reactive data for inventory selection
 const showInventorySelection = ref(false);
@@ -1095,6 +1137,10 @@ const onKeyDown = (e) => {
     e.stopPropagation();
   } else if (e.key === 'Escape') {
     leaveItemAndEndTurn();
+    e.preventDefault();
+    e.stopPropagation();
+  } else if ((e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') && props.battleInfo?.canReroll && !battleFinalized.value) {
+    rerollDice();
     e.preventDefault();
     e.stopPropagation();
   }
@@ -2434,6 +2480,43 @@ const potentialRewardTip = computed(() => {
 }
 
 /* Draw button */
+/* Warrior "Double Attack" reroll */
+.btn-reroll {
+  background: linear-gradient(135deg, #4a2590, #836eff);
+  color: #fff;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(131, 110, 255, 0.35);
+}
+
+.btn-reroll:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(131, 110, 255, 0.5);
+}
+
+.btn-reroll:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.first-roll-note {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #c9c2e6;
+}
+
+.first-roll-note s {
+  color: #ff8a80;
+  margin: 0 4px;
+}
+
 .btn-draw {
   background: linear-gradient(135deg, #e65100, #ff9800);
   color: #fff;

@@ -212,6 +212,7 @@ const getActionIcon = (actionType) => {
     'rotate_tile': '🔄',
     'move': '👟',
     'fight_monster': '⚔️',
+    'use_hero_ability': '💀',
     'pick_item': '',
     'drop_item': '',
     'end_turn': '✅',
@@ -386,6 +387,11 @@ const formatActionText = (action) => {
         damageBreakdown += ` = ${totalDamage}`;
       }
       
+      // Warrior "Double Attack": mention the discarded first roll
+      if (details?.rerolled && Array.isArray(details?.firstDiceResults) && details.firstDiceResults.length > 0) {
+        damageBreakdown = `Double Attack! (first roll 🎲 [${details.firstDiceResults.join(', ')}] discarded) ${damageBreakdown}`;
+      }
+
       if (result === 'WIN') {
         return { html: `WON vs ${monsterImg} (HP:${monsterHP}) ${damageBreakdown} damage!` };
       } else if (result === 'LOSE') {
@@ -556,6 +562,12 @@ const formatActionText = (action) => {
         return `Teleported from ${fromPos} to ${toPos}`;
       }
       return `Used teleport spell`;
+
+    case 'use_hero_ability':
+      if (details?.ability === 'reincarnation') {
+        return `Reincarnated at the healing fountain ${details?.position || ''} with full HP`.trim();
+      }
+      return `Used hero ability${details?.ability ? ` (${details.ability})` : ''}`;
     
     case 'turn_ended':
     case 'end_turn':

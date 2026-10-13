@@ -41,6 +41,38 @@
           <span>OR</span>
         </div>
 
+        <!-- Hero selection (hero skills from the Karak board game) -->
+        <div class="hero-picker" data-testid="hero-picker">
+          <p class="hero-picker-title">Choose your hero</p>
+          <div class="hero-options">
+            <button
+              type="button"
+              class="hero-card"
+              :class="{ selected: selectedHero === null }"
+              data-testid="hero-none"
+              @click="selectHero(null)"
+            >
+              <span class="hero-icon">🧑</span>
+              <span class="hero-name">Adventurer</span>
+              <span class="hero-skills">No special skills</span>
+            </button>
+            <button
+              type="button"
+              class="hero-card"
+              :class="{ selected: selectedHero === 'warrior' }"
+              data-testid="hero-warrior"
+              @click="selectHero('warrior')"
+            >
+              <span class="hero-icon">⚔️</span>
+              <span class="hero-name">Horan, the Warrior</span>
+              <span class="hero-skills">
+                <strong>Double Attack</strong> — reroll the dice once per fight, the second roll stands<br>
+                <strong>Reincarnation</strong> — losing the last HP teleports him to a healing fountain with full HP
+              </span>
+            </button>
+          </div>
+        </div>
+
         <button
             class="primary-button"
             @click="createNewGame"
@@ -118,6 +150,29 @@ const showPrivyModal = ref(false);
 
 // Build version for debugging deployment issues
 const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
+
+// Hero selection ('warrior' or null = no hero skills), remembered per browser
+const readStoredHero = () => {
+  try {
+    const stored = localStorage.getItem('selectedHero');
+    return stored === 'warrior' ? stored : null;
+  } catch (e) {
+    return null;
+  }
+};
+const selectedHero = ref(readStoredHero());
+const selectHero = (hero) => {
+  selectedHero.value = hero;
+  try {
+    if (hero) {
+      localStorage.setItem('selectedHero', hero);
+    } else {
+      localStorage.removeItem('selectedHero');
+    }
+  } catch (e) {
+    // localStorage unavailable (private mode) - selection still works for this page
+  }
+};
 
 // Custom UUID v4 implementation
 const generateRandomId = () => {
@@ -916,8 +971,8 @@ const createNewGame = async () => {
     // Join the newly created game as player with Privy ID, username, and wallet if available
     const playerUsername = localStorage.getItem('monadUsername') || null;
     const walletAddress = localStorage.getItem('walletAddress') || null;
-    await gameApi.joinGame(response.gameId, playerId, privyUserId, playerUsername, walletAddress);
-    console.log('Joined game as player ID:', playerId, 'with Privy ID:', privyUserId, 'Username:', playerUsername, 'Wallet:', walletAddress);
+    await gameApi.joinGame(response.gameId, playerId, privyUserId, playerUsername, walletAddress, false, selectedHero.value);
+    console.log('Joined game as player ID:', playerId, 'with Privy ID:', privyUserId, 'Username:', playerUsername, 'Wallet:', walletAddress, 'Hero:', selectedHero.value);
 
     // Add a virtual player as player 2 (use valid UUID)
     const virtualPlayerId = generateRandomId();
@@ -1149,6 +1204,79 @@ const createNewGame = async () => {
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.hero-picker {
+  margin: 4px 0 14px;
+  text-align: left;
+}
+
+.hero-picker-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8f86a8;
+}
+
+.hero-options {
+  display: flex;
+  gap: 10px;
+}
+
+.hero-card {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #1f1538 0%, #170f2b 100%);
+  color: #b8b8b8;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.hero-card:hover {
+  border-color: rgba(131, 110, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.hero-card.selected {
+  border-color: #836eff;
+  background: linear-gradient(135deg, #3d1f79 0%, #2a1a4d 100%);
+  color: #ece8ff;
+  box-shadow: 0 0 0 1px #836eff, 0 4px 14px rgba(131, 110, 255, 0.35);
+}
+
+.hero-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.hero-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.hero-skills {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #9d95b8;
+}
+
+.hero-card.selected .hero-skills {
+  color: #c9c2e6;
+}
+
+@media (max-width: 520px) {
+  .hero-options {
+    flex-direction: column;
+  }
 }
 
 .primary-button {

@@ -91,7 +91,8 @@
                   'ctrl-pressed': isCtrlPressed, 
                   'dragging': isDragging,
                   'is-replaying': isReplaying,
-                  'teleport-mode': isTeleportMode 
+                  'teleport-mode': isTeleportMode || isReincarnationMode,
+                  'reincarnation-mode': isReincarnationMode
                 }"
                 @mousedown="onMouseDown"
                 @mouseleave="onMouseLeave"
@@ -103,7 +104,7 @@
                   <!-- Render available move/place markers before tiles -->
                   <AvailableMoveMarker
                     v-for="position in gameData.state.availablePlaces.moveTo"
-                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isProcessingAI && gameData.state.status !== 'finished'"
+                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isReincarnationMode && !isProcessingAI && gameData.state.status !== 'finished'"
                     :key="`move-${position}`"
                     :position="position"
                     :x="parseInt(position.split(',')[0])"
@@ -143,6 +144,30 @@
                       cursor: 'pointer'
                     }"
                     @click="handleTeleportClick(tile.position)"
+                  >
+                    <div class="healing-fountain-indicator">
+                      <span class="fountain-emoji">🌿</span>
+                    </div>
+                  </div>
+
+                  <!-- Warrior "Reincarnation": healing fountain markers to choose the respawn tile -->
+                  <div
+                    v-for="tile in reincarnationFountainTiles"
+                    v-if="isReincarnationMode"
+                    :key="`reincarnation-${tile.position}`"
+                    class="healing-fountain-marker reincarnation-marker"
+                    :data-testid="`reincarnation-target-${tile.position}`"
+                    :style="{
+                      position: 'absolute',
+                      left: `${(tile.x - (gameData.field.size.minX || 0)) * tileSize}px`,
+                      top: `${(tile.y - (gameData.field.size.minY || 0)) * tileSize}px`,
+                      width: `${tileSize}px`,
+                      height: `${tileSize}px`,
+                      pointerEvents: 'auto',
+                      opacity: 1,
+                      cursor: 'pointer'
+                    }"
+                    @click="handleReincarnationClick(tile.position)"
                   >
                     <div class="healing-fountain-indicator">
                       <span class="fountain-emoji">🌿</span>
@@ -353,8 +378,15 @@
                   <span class="player-name">
                     {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : player.username || 'Player' }}
                   </span>
+                  <span
+                    v-if="player.hero"
+                    class="hero-badge"
+                    :class="{ 'awaiting-reincarnation': player.awaitingReincarnation }"
+                    :title="heroTooltip(player)"
+                    data-testid="hero-badge"
+                  >{{ player.awaitingReincarnation ? '💀' : '⚔️' }} {{ heroShortName(player) }}</span>
                   <span class="hp-indicator">
-                    ❤️ {{ player.hp !== undefined ? player.hp : 5 }}/5
+                    ❤️ {{ player.hp !== undefined ? player.hp : 5 }}/{{ player.maxHp ?? 5 }}
                   </span>
                   <span 
                     v-if="gameData?.state?.currentPlayerId === player.id"
@@ -477,9 +509,19 @@
               </button>
             </div>
 
+            <!-- Warrior "Reincarnation" Controls -->
+            <div
+              v-if="isReincarnationMode"
+              class="sidebar-section teleport-controls reincarnation-controls"
+              data-testid="reincarnation-banner"
+            >
+              <h3>💀 Reincarnation</h3>
+              <p>The Warrior lost his last HP. Click a healing fountain (🌿) to return there with full HP. The turn ends afterwards.</p>
+            </div>
+
             <!-- End Turn Button -->
             <div
-              v-if="isPlayerTurn && (gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && !isTeleportMode"
+              v-if="isPlayerTurn && (gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && !isTeleportMode && !isReincarnationMode"
               class="sidebar-section end-turn-section"
             >
               <button
@@ -576,6 +618,7 @@
       @pick-item-with-replacement="handlePickItemWithReplacement"
       @finalize-battle="handleFinalizeBattle"
       @finalize-battle-and-pick-up="handleFinalizeBattleAndPickUp"
+      @reroll-battle="handleRerollBattle"
     />
 
     <!-- Leaderboard Modal -->
@@ -894,6 +937,25 @@ const itemPickupTurnId = ref(null); // Store the turn ID when the dialog is show
 // Teleport spell state
 const isTeleportMode = ref(false);
 const selectedTeleportSpell = ref(null);
+
+// Warrior "Reincarnation": the fallen hero must pick a healing fountain before the turn ends
+const isReincarnationMode = ref(false);
+const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend, empty = all fountains
+
+// Hero helpers for the player panel
+const HERO_SHORT_NAMES = { warrior: 'Warrior' };
+const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
+const heroTooltip = (player) => {
+  if (!player?.hero) return '';
+  const lines = [player.heroLabel || heroShortName(player)];
+  for (const skill of player.heroSkills || []) {
+    lines.push(`${skill.name}: ${skill.description}`);
+  }
+  if (player.awaitingReincarnation) {
+    lines.push('Fallen — choose a healing fountain to reincarnate');
+  }
+  return lines.join('\n');
+};
 
 // Game turns for action log
 const gameTurns = ref([]);
@@ -4057,7 +4119,7 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
     }
 
     // Call the finalize battle API
-    await gameApi.finalizeBattle({
+    const finalizeResult = await gameApi.finalizeBattle({
       battleId: finalizeBattleData.battleId,
       gameId: id.value,
       playerId: currentPlayerId.value,
@@ -4065,10 +4127,15 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
       selectedConsumableIds: finalizeBattleData.selectedConsumableIds,
       pickupItem: false // Explicitly set to false to ensure item is not picked up
     });
-    
+
+    // Warrior "Reincarnation": the hero lost the last HP, the turn stays open until a fountain is chosen
+    if (finalizeResult?.awaitingReincarnation) {
+      enterReincarnationMode(finalizeResult.healingFountainPositions || []);
+    }
+
     // The backend only automatically ends the turn for LOSE/DRAW results
     // For WIN results where the player doesn't pick up the item, we need to manually end the turn
-    if (predictedResult === 'win') {
+    if (predictedResult === 'win' && !finalizeResult?.awaitingReincarnation) {
 
       await gameApi.endTurn({
         gameId: id.value,
@@ -4358,6 +4425,95 @@ const cancelTeleportMode = () => {
   isTeleportMode.value = false;
   selectedTeleportSpell.value = null;
 
+};
+
+// ===== Warrior hero skills =====
+
+// "Double Attack": reroll the dice of the open battle once; the modal is updated in place (same battleId)
+const handleRerollBattle = async ({ battleId }) => {
+  const currentTurnId = gameData.value?.state?.currentTurnId;
+  if (!battleId || !currentTurnId) {
+    console.error('Missing battle or turn ID for Double Attack reroll');
+    return;
+  }
+
+  try {
+    loadingStatus.value = 'Double Attack! Rerolling...';
+    const response = await gameApi.rerollBattle({
+      battleId,
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: currentTurnId
+    });
+
+    if (response?.battleInfo) {
+      // Keep the frontend-only fields (reward etc. are recomputed by the backend as well)
+      battleInfo.value = { ...battleInfo.value, ...response.battleInfo };
+    } else {
+      console.warn('Reroll response has no battleInfo, reloading game data', response);
+      await loadGameData(false);
+    }
+  } catch (err) {
+    console.error('Failed to reroll battle dice:', err);
+    error.value = `Double Attack failed: ${err.message}`;
+  } finally {
+    loadingStatus.value = '';
+  }
+};
+
+// Fountain tiles offered for reincarnation (backend list when provided, otherwise all discovered fountains)
+const reincarnationFountainTiles = computed(() => {
+  const allowed = reincarnationFountainPositions.value;
+  if (!allowed || allowed.length === 0) return healingFountainTiles.value;
+  return healingFountainTiles.value.filter(tile => allowed.includes(tile.position));
+});
+
+const enterReincarnationMode = (fountainPositions = []) => {
+  reincarnationFountainPositions.value = fountainPositions;
+  isReincarnationMode.value = true;
+  isTeleportMode.value = false;
+  selectedTeleportSpell.value = null;
+};
+
+// Re-enter the mode after a page reload while the hero is still fallen
+watch(() => getCurrentPlayerData.value?.awaitingReincarnation, (awaiting) => {
+  if (awaiting && isPlayerTurn.value && !isReincarnationMode.value) {
+    enterReincarnationMode(gameData.value?.field?.lastBattleInfo?.healingFountainPositions || []);
+  }
+  if (!awaiting && isReincarnationMode.value) {
+    isReincarnationMode.value = false;
+    reincarnationFountainPositions.value = [];
+  }
+});
+
+// "Reincarnation": teleport to the chosen healing fountain with full HP; the backend ends the turn
+const handleReincarnationClick = async (position) => {
+  if (!isReincarnationMode.value || isRequestInProgress.value) return;
+
+  try {
+    loading.value = true;
+    loadingStatus.value = 'Reincarnating...';
+
+    const [x, y] = position.split(',').map(n => parseInt(n));
+    await gameApi.reincarnate({
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: gameData.value.state.currentTurnId,
+      targetPosition: { positionX: x, positionY: y }
+    });
+
+    isReincarnationMode.value = false;
+    reincarnationFountainPositions.value = [];
+
+    // Reload game data (turn has ended; this also triggers the AI turn if needed)
+    await loadGameData();
+  } catch (err) {
+    console.error('Failed to reincarnate:', err);
+    error.value = `Reincarnation failed: ${err.message}`;
+  } finally {
+    loading.value = false;
+    loadingStatus.value = '';
+  }
 };
 
 // Helper to check if a position is the current player's position
@@ -5353,6 +5509,41 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   background: rgba(244, 67, 54, 0.3);
   border-color: rgba(244, 67, 54, 0.5);
   animation: hp-flash 0.5s ease-in-out;
+}
+
+/* Hero badge (Warrior etc.) in the player panel header */
+.hero-badge {
+  font-size: 0.72em;
+  padding: 2px 8px;
+  margin-left: 6px;
+  background: rgba(131, 110, 255, 0.14);
+  border: 1px solid rgba(131, 110, 255, 0.35);
+  border-radius: 10px;
+  color: #c9c2e6;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.hero-badge.awaiting-reincarnation {
+  background: rgba(244, 67, 54, 0.18);
+  border-color: rgba(244, 67, 54, 0.45);
+  color: #ff8a80;
+  animation: hp-flash 1s ease-in-out infinite;
+}
+
+/* Reincarnation target markers pulse so the choice is obvious */
+.reincarnation-marker .healing-fountain-indicator {
+  box-shadow: 0 0 0 3px rgba(131, 110, 255, 0.6), 0 0 18px rgba(131, 110, 255, 0.8);
+  animation: reincarnation-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes reincarnation-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
 }
 
 @keyframes hp-flash {

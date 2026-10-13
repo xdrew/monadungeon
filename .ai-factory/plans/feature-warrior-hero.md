@@ -121,18 +121,18 @@ Authority: user request (verbatim Karak rulebook text) > `a4-karak-rulebook.pdf`
 
 ### Phase 4: Frontend
 
-- [ ] Task 10: API client, hero selection in lobby, hero badge in the player panel (depends on 2)
+- [x] Task 10: API client, hero selection in lobby, hero badge in the player panel (depends on 2)
   - `fe/src/services/api.js`: `joinGame(..., isAi = false, hero = null)` sends `hero`; add `pickHero(gameId, playerId, hero)`, `rerollBattle({battleId, gameId, playerId, turnId})` (returns `battleInfo`), `reincarnate({gameId, playerId, turnId, targetPosition})`.
   - `fe/src/views/HomeView.vue`: a hero picker above the "Create game" button (L46): two cards — "No hero" and "⚔️ Horan, the Warrior" with the two skill lines; selection stored in `selectedHero` ref + `localStorage('selectedHero')`; `createNewGame()` passes it to the human `joinGame` call (L919); AI join (L924) stays `null`. Styles: scoped in HomeView like the rest of the lobby, reuse `design-tokens.css` variables.
   - `fe/src/views/GameView.vue` player header (`.player-inventory-header`, ~L340-360): hero badge (`⚔️ Warrior`) with a `title` tooltip listing `heroSkills`; replace the hardcoded `/5` at L357 with `player.maxHp ?? 5`. Add a small "💀 choosing fountain…" state when `player.awaitingReincarnation`.
   - Files: api.js, HomeView.vue, GameView.vue, (optional) fe/src/styles/components/inventory.css.
 
-- [ ] Task 11: Double Attack in the battle modal (depends on 5, 10)
+- [x] Task 11: Double Attack in the battle modal (depends on 5, 10)
   - `fe/src/components/game/BattleReportModal.vue`: when `battleInfo.canReroll && !battleFinalized && !isProcessing` render `🎲 Double Attack — reroll (R)` (class `reroll-btn`, `data-testid="reroll-battle"`) next to the consumable/retreat buttons (~L420-445); keyboard `r` in the existing key handler (~L1080). Emit `reroll-battle` with `{battleId}`; add it to `defineEmits` (L495). When `battleInfo.rerolled` show the first roll struck-through (`firstDiceResults`) under the dice and a "Double Attack used — second roll stands" note. Re-run the dice rolling animation when `battleInfo.diceResults` changes (extend the watch at ~L529-549).
   - `fe/src/views/GameView.vue`: `handleRerollBattle` → `gameApi.rerollBattle({...})` → `battleInfo.value = { ...battleInfo.value, ...response.battleInfo }`; keep `lastProcessedBattleId` untouched (same battleId). Wire `@reroll-battle` on the modal (~L498).
   - Files: BattleReportModal.vue, GameView.vue, fe/src/styles/components/modals.css (button style).
 
-- [ ] Task 12: Reincarnation mode on the board (depends on 8, 10)
+- [x] Task 12: Reincarnation mode on the board (depends on 8, 10)
   - `fe/src/views/GameView.vue`: after `handleFinalizeBattle` / `handleFinalizeBattleAndPickUp` resolve, if `response.awaitingReincarnation` (or `gameData.players[me].awaitingReincarnation` after reload) → `isReincarnationMode = true`, `reincarnationTargets = healingFountainPositions`. Reuse the teleport-mode mechanics (`isTeleportMode` L895, target highlighting ~L94-132, `.teleport-mode` class) to highlight HF tiles and show a banner "💀 Reincarnation: choose a healing fountain" (`data-testid="reincarnation-banner"`). Clicking a highlighted tile → `gameApi.reincarnate(...)` → `loadGameData` → exit mode → `checkAndHandleVirtualPlayerTurn()`. Hide the End Turn button while in this mode.
   - `fe/src/components/ActionLog.vue`: render FIGHT_MONSTER with `rerolled` as "… used Double Attack (first roll X+Y)" and USE_HERO_ABILITY/reincarnation as "… reincarnated at the healing fountain (x,y)".
   - Files: GameView.vue, ActionLog.vue, fe/src/styles/components/gameView.css.

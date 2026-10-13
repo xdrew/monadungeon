@@ -76,7 +76,7 @@ export const gameApi = {
     }
   },
 
-  joinGame: async (gameId, playerId, externalId = null, username = null, walletAddress = null, isAi = false) => {
+  joinGame: async (gameId, playerId, externalId = null, username = null, walletAddress = null, isAi = false, hero = null) => {
     try {
       const payload = {gameId: gameId, playerId: playerId, isAi: isAi};
       if (externalId) {
@@ -87,6 +87,9 @@ export const gameApi = {
       }
       if (walletAddress) {
         payload.walletAddress = walletAddress;
+      }
+      if (hero) {
+        payload.hero = hero;
       }
       const response = await apiClient.post(`/game/player`, payload);
       return response.data;
@@ -553,6 +556,55 @@ export const gameApi = {
       return response.data;
     } catch (error) {
       console.error('Error using spell:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Pick a hero for a player before the game starts
+   * @param {string} gameId - The game ID
+   * @param {string} playerId - The player ID
+   * @param {string} hero - Hero type (e.g. 'warrior')
+   * @returns {Promise<Object>} Promise with response data
+   */
+  pickHero: async (gameId, playerId, hero) => {
+    try {
+      const response = await apiClient.post('/game/pick-hero', { gameId, playerId, hero });
+      return response.data;
+    } catch (error) {
+      console.error('Error picking hero:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Warrior "Double Attack": reroll the dice of the current battle once
+   * @returns {Promise<Object>} Promise with { battleId, gameId, battleInfo }
+   */
+  rerollBattle: async ({ battleId, gameId, playerId, turnId }) => {
+    try {
+      const response = await apiClient.post('/game/reroll-battle', { battleId, gameId, playerId, turnId });
+      console.log('Battle dice rerolled:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error rerolling battle dice:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Warrior "Reincarnation": teleport the fallen hero to the chosen healing fountain
+   * @param {Object} params
+   * @param {Object} params.targetPosition - { positionX, positionY }
+   * @returns {Promise<Object>} Promise with response data
+   */
+  reincarnate: async ({ gameId, playerId, turnId, targetPosition }) => {
+    try {
+      const response = await apiClient.post('/game/reincarnate', { gameId, playerId, turnId, targetPosition });
+      console.log('Hero reincarnated:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error reincarnating hero:', error);
       throw error;
     }
   },
