@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Api\Game\AddPlayer;
 
+use App\Game\Player\HeroType;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -20,5 +21,7 @@ final readonly class Request
         public ?string $username = null,
         public ?string $walletAddress = null,
         public bool $isAi = false,
+        #[Assert\Choice(callback: [HeroType::class, 'values'])]
+        public ?string $hero = null,
     ) {}
 }

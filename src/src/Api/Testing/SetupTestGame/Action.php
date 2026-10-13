@@ -30,6 +30,7 @@ final readonly class Action
                 $playerConfigs[$playerId] = new PlayerTestConfig(
                     maxHp: $config['maxHp'] ?? null,
                     maxActions: $config['maxActions'] ?? null,
+                    hero: $config['hero'] ?? null,
                 );
             }
 

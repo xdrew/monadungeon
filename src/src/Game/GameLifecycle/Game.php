@@ -126,6 +126,7 @@ class Game extends AggregateRoot
             username: $command->username,
             walletAddress: $command->walletAddress,
             isAi: $command->isAi,
+            hero: $command->hero,
         ));
     }
 

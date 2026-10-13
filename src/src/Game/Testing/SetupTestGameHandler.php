@@ -7,6 +7,7 @@ namespace App\Game\Testing;
 use App\Game\GameLifecycle\AddPlayer;
 use App\Game\GameLifecycle\CreateGame;
 use App\Game\GameLifecycle\StartGame;
+use App\Game\Player\HeroType;
 use App\Game\Player\Player;
 use App\Infrastructure\Uuid\Uuid;
 use Telephantast\MessageBus\Handler\Mapping\Handler;
@@ -78,11 +79,12 @@ final readonly class SetupTestGameHandler
         // Add players if specified in configuration
         // The HP will be set from TestMode during player creation
         if (\count($config->playerConfigs) > 0) {
-            foreach (array_keys($config->playerConfigs) as $playerId) {
+            foreach ($config->playerConfigs as $playerId => $playerConfig) {
                 $this->messageBus->dispatch(new AddPlayer(
                     gameId: $gameId,
                     playerId: Uuid::fromString($playerId),
                     isAi: false, // Explicitly set as human player for tests
+                    hero: $playerConfig->hero !== null ? HeroType::from($playerConfig->hero) : null,
                 ));
             }
         }

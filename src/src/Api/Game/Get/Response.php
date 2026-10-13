@@ -216,6 +216,12 @@ final readonly class Response
                 if (isset($playerData[$playerIdStr]['username'])) {
                     $playerFormattedData['username'] = $playerData[$playerIdStr]['username'];
                 }
+                // Hero data (null hero is meaningful, so use array_key_exists)
+                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'awaitingReincarnation'] as $heroKey) {
+                    if (\array_key_exists($heroKey, $playerData[$playerIdStr])) {
+                        $playerFormattedData[$heroKey] = $playerData[$playerIdStr][$heroKey];
+                    }
+                }
             }
 
             // If we have no player health data and a message bus is provided, try to get detailed player information

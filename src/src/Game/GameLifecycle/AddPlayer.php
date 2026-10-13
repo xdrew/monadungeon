@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Game\GameLifecycle;
 
+use App\Game\Player\HeroType;
 use App\Infrastructure\Uuid\Uuid;
 use Telephantast\Message\Message;
 
@@ -21,5 +22,6 @@ final readonly class AddPlayer implements Message
         public ?string $username = null,
         public ?string $walletAddress = null,
         public bool $isAi = false,
+        public ?HeroType $hero = null,
     ) {}
 }

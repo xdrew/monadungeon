@@ -62,6 +62,11 @@ final readonly class Action
                         'isAi' => $player->isAi(),
                         'externalId' => $player->getExternalId(),
                         'username' => $player->getUsername(),
+                        'maxHp' => Player::MAX_HP,
+                        'hero' => $player->getHero()?->value,
+                        'heroLabel' => $player->getHero()?->label(),
+                        'heroSkills' => $player->getHero()?->skills() ?? [],
+                        'awaitingReincarnation' => $player->isAwaitingReincarnation(),
                         'inventory' => [
                             'keys' => $this->formatInventoryItems($inventory['key'] ?? []),
                             'weapons' => $this->formatInventoryItems($inventory['weapon'] ?? []),

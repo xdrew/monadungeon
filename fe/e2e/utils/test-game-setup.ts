@@ -1,12 +1,16 @@
 import { APIRequestContext } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
 
+export type HeroType = 'warrior';
+
 export interface PlayerTestConfig {
   maxHp?: number;
   maxActions?: number;
+  /** Hero with special skills (e.g. 'warrior' = Double Attack + Reincarnation). Omit for no hero. */
+  hero?: HeroType;
 }
 
-// Note: The test API only supports setting maxHp and maxActions.
+// Note: The test API only supports setting maxHp, maxActions and hero.
 // Properties like hp, actionsRemaining, isStunned, and inventory
 // cannot be set directly via the test API and must be achieved
 // through game mechanics (e.g., losing battles to become stunned).
@@ -67,15 +71,15 @@ export class TestGameSetup {
   async createGameWithPlayers(
     request: APIRequestContext,
     gameId: string,
-    players: Array<{ id: string; name: string; characterType: string }>
+    players: Array<{ id: string; name: string; hero?: HeroType }>
   ): Promise<void> {
     for (const player of players) {
       const response = await request.post(`${this.apiUrl}/api/game/player`, {
         data: {
           gameId,
           playerId: player.id,
-          name: player.name,
-          characterType: player.characterType
+          username: player.name,
+          hero: player.hero ?? null
         }
       });
       

@@ -6,6 +6,7 @@ namespace App\Api\Game\AddPlayer;
 
 use App\Api\Error;
 use App\Game\GameLifecycle\AddPlayer;
+use App\Game\Player\HeroType;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
@@ -28,6 +29,7 @@ final readonly class Action
                 username: $request->username,
                 walletAddress: $request->walletAddress,
                 isAi: $request->isAi,
+                hero: $request->hero !== null ? HeroType::from($request->hero) : null,
             ));
         } catch (\Throwable $e) {
             return new Error(Uuid::v7(), 'Failed to add player to game: ' . $e->getMessage());

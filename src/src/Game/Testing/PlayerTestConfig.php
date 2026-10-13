@@ -9,9 +9,11 @@ final readonly class PlayerTestConfig
     /**
      * @param int|null $maxHp Player's max HP (null = default)
      * @param int|null $maxActions Max actions per turn (null = default)
+     * @param string|null $hero Hero type value (see HeroType), null = no hero
      */
     public function __construct(
         public ?int $maxHp = null,
         public ?int $maxActions = null,
+        public ?string $hero = null,
     ) {}
 }

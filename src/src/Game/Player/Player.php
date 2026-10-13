@@ -47,6 +47,18 @@ class Player extends AggregateRoot
     #[Column(type: UuidType::class, nullable: true)]
     private ?Uuid $characterId = null;
 
+    /**
+     * Chosen hero (null = no hero skills).
+     */
+    #[Column(type: Types::STRING, nullable: true, enumType: HeroType::class)]
+    private ?HeroType $hero = null;
+
+    /**
+     * True while a reincarnating hero (HP = 0) still has to choose a healing fountain.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $awaitingReincarnation = false;
+
     #[Column(type: BooleanType::class)]
     private bool $ready = false;
 
@@ -119,8 +131,25 @@ class Player extends AggregateRoot
         $player->username = $event->username ?? null;
         $player->walletAddress = $event->walletAddress ?? null;
         $player->isAi = $event->isAi;
+        $player->hero = $event->hero;
 
         return $player;
+    }
+
+    #[Handler]
+    public function pickHero(PickHero $command, MessageContext $messageContext): void
+    {
+        if ($this->ready) {
+            throw new \DomainException('Cannot change hero after the player is ready');
+        }
+
+        $this->hero = $command->hero;
+
+        $messageContext->dispatch(new HeroPicked(
+            gameId: $command->gameId,
+            playerId: $this->playerId,
+            hero: $command->hero,
+        ));
     }
 
     #[Handler]
@@ -152,14 +181,50 @@ class Player extends AggregateRoot
         $oldHp = $this->hp;
         $this->hp = max(0, $this->hp - $command->amount);
 
-        // If HP becomes 0, dispatch PlayerStunned event
         if ($oldHp > 0 && $this->hp === 0) {
+            // Warrior "Reincarnation": instead of being stunned the hero chooses a healing fountain
+            if ($this->hero?->reincarnates() === true) {
+                $this->awaitingReincarnation = true;
+
+                $messageContext->dispatch(new ReincarnationRequired(
+                    gameId: $command->gameId,
+                    playerId: $this->playerId,
+                    turnId: $command->turnId ?? Uuid::v7(),
+                ));
+
+                return;
+            }
+
+            // If HP becomes 0, dispatch PlayerStunned event
             $messageContext->dispatch(new PlayerStunned(
                 gameId: $command->gameId,
                 playerId: $this->playerId,
                 turnId: $command->turnId ?? Uuid::v7(),
             ));
         }
+    }
+
+    /**
+     * Warrior "Reincarnation": all HP are replenished once the healing fountain was chosen.
+     *
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function completeReincarnation(CompleteReincarnation $command, MessageContext $messageContext): void
+    {
+        if (!$this->awaitingReincarnation) {
+            throw new \DomainException('Player is not awaiting reincarnation');
+        }
+
+        $this->awaitingReincarnation = false;
+        $this->hp = self::MAX_HP;
+
+        $messageContext->dispatch(new PlayerReincarnated(
+            gameId: $command->gameId,
+            playerId: $this->playerId,
+            position: $command->position,
+            reincarnatedAt: new \DateTimeImmutable(),
+        ));
     }
 
     #[Handler]
@@ -481,6 +546,16 @@ class Player extends AggregateRoot
         return $this->characterId;
     }
 
+    public function getHero(): ?HeroType
+    {
+        return $this->hero;
+    }
+
+    public function isAwaitingReincarnation(): bool
+    {
+        return $this->awaitingReincarnation;
+    }
+
     public function getPlayerId(): Uuid
     {
         return $this->playerId;
@@ -649,7 +724,11 @@ class Player extends AggregateRoot
         return [
             'playerId' => $this->playerId->toString(),
             'hp' => $this->hp,
+            'maxHp' => self::MAX_HP,
             'isStunned' => $this->isDefeated(),
+            'hero' => $this->hero?->value,
+            'heroLabel' => $this->hero?->label(),
+            'awaitingReincarnation' => $this->awaitingReincarnation,
             'externalId' => $this->externalId,
             'username' => $this->username,
             'inventory' => [
