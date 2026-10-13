@@ -25,6 +25,9 @@ use App\Game\GameLifecycle\CreateGame;
 use App\Game\GameLifecycle\Game;
 use App\Game\GameLifecycle\GameCreated;
 use App\Game\GameLifecycle\GetGame;
+use App\Game\GameLifecycle\PlayerAdded;
+use App\Game\Player\GetPlayer;
+use App\Game\Player\Player;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use function App\Tests\Infrastructure\MessageBus\handle;
 use function App\Tests\Infrastructure\MessageBus\startMessageContext;
@@ -115,6 +118,7 @@ class BattleTurnEndingTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $gameId, playerId: $playerId)),
         );
         $tester->handle($gameTurn->performAction(...), $performBattle);
 
@@ -233,6 +237,7 @@ class BattleTurnEndingTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $gameId, playerId: $playerId)),
         );
         $tester->handle($gameTurn->performAction(...), $performBattle);
 
@@ -295,6 +300,7 @@ class BattleTurnEndingTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $gameId, playerId: $playerId)),
         );
         $tester->handle($gameTurn->performAction(...), $performMove);
 
@@ -379,6 +385,7 @@ class BattleTurnEndingTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $gameId, playerId: $playerId)),
         );
         $tester->handle($gameTurn->performAction(...), $performBattle);
 

@@ -23,6 +23,9 @@ use App\Game\GameLifecycle\CreateGame;
 use App\Game\GameLifecycle\Game;
 use App\Game\GameLifecycle\GameCreated;
 use App\Game\GameLifecycle\GetGame;
+use App\Game\GameLifecycle\PlayerAdded;
+use App\Game\Player\GetPlayer;
+use App\Game\Player\Player;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -227,6 +230,7 @@ final class GameTurnTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
         $tester->handle($gameTurn->end(...), $endTurn);
 
@@ -331,6 +335,7 @@ final class GameTurnTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
         [, $messages] = $tester->handle($gameTurn->end(...), $endTurn);
 
@@ -369,6 +374,7 @@ final class GameTurnTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
 
         $this->expectException(NotYourTurnException::class);
@@ -397,6 +403,7 @@ final class GameTurnTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
 
         // End turn first time
@@ -485,6 +492,7 @@ final class GameTurnTest extends TestCase
         $tester = MessageBusTester::create(
             fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
             fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
         $tester->handle($gameTurn->end(...), $endTurn);
 

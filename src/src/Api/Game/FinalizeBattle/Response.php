@@ -15,5 +15,13 @@ final readonly class Response
         public int $finalTotalDamage,
         public bool $success = true,
         public bool $itemPickedUp = false,
+        /**
+         * Warrior "Reincarnation": the hero lost the last HP and must choose a healing fountain before the turn ends.
+         */
+        public bool $awaitingReincarnation = false,
+        /**
+         * @var list<string> Healing fountain positions ("x,y") available for reincarnation
+         */
+        public array $healingFountainPositions = [],
     ) {}
 }

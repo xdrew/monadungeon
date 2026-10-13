@@ -6,6 +6,9 @@ namespace App\Api\Game\FinalizeBattle;
 
 use App\Api\Error;
 use App\Game\Battle\FinalizeBattle;
+use App\Game\Field\FieldPlace;
+use App\Game\Field\GetField;
+use App\Game\Player\GetPlayer;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Annotation\Route;
@@ -38,6 +41,18 @@ final readonly class Action
             // Dispatch the command
             $this->messageBus->dispatch($command);
 
+            // Warrior "Reincarnation": tell the frontend to let the hero choose a healing fountain
+            $player = $this->messageBus->dispatch(new GetPlayer($request->playerId));
+            $awaitingReincarnation = $player->isAwaitingReincarnation();
+            $healingFountainPositions = [];
+            if ($awaitingReincarnation) {
+                $field = $this->messageBus->dispatch(new GetField($request->gameId));
+                $healingFountainPositions = array_map(
+                    static fn(FieldPlace $place): string => $place->toString(),
+                    $field->getHealingFountainPositions(),
+                );
+            }
+
             // Return success response
             return new Response(
                 battleId: $request->battleId,
@@ -46,6 +61,8 @@ final readonly class Action
                 finalTotalDamage: 0, // Will be updated by battle logic
                 success: true,
                 itemPickedUp: $pickupItem,
+                awaitingReincarnation: $awaitingReincarnation,
+                healingFountainPositions: $healingFountainPositions,
             );
         } catch (\Throwable $e) {
             return new Error(

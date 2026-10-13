@@ -7,6 +7,7 @@ namespace App\Game\Turn;
 use App\Game\Field\GetField;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\GameLifecycle\NextTurn;
+use App\Game\Player\GetPlayer;
 use App\Game\Turn\Error\InvalidTurnActionException;
 use App\Game\Turn\Error\NotYourTurnException;
 use App\Game\Turn\Error\TurnAlreadyEndedException;
@@ -281,6 +282,12 @@ class GameTurn extends AggregateRoot
         $unplacedTile = $field->getUnplacedTile();
         if ($unplacedTile !== null && isset($unplacedTile['tileId']) && $unplacedTile['tileId'] !== null) {
             throw new UnplacedTileException('Cannot end turn with an unplaced tile. Please place the tile first.');
+        }
+
+        // Warrior "Reincarnation": the fallen hero must choose a healing fountain first (Field::reincarnate ends the turn)
+        $player = $messageContext->dispatch(new GetPlayer($command->playerId));
+        if ($player->isAwaitingReincarnation()) {
+            throw new \DomainException('Choose a healing fountain to reincarnate before ending the turn');
         }
 
         $this->endTurn($command->at);
