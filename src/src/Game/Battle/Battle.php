@@ -7,6 +7,7 @@ namespace App\Game\Battle;
 // BattleResult is now in the same namespace
 use App\Game\Field\FieldPlace;
 use App\Game\Field\GetField;
+use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\DoctrineDBAL\ItemArrayJsonType;
 use App\Game\Item\Item;
@@ -18,6 +19,8 @@ use App\Game\Player\PickItem;
 use App\Game\Player\ReducePlayerHP;
 use App\Game\Player\RemoveItemFromInventory;
 use App\Game\Turn\EndTurn;
+use App\Game\Turn\Error\NotYourTurnException;
+use App\Game\Turn\GetCurrentTurn;
 use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\TurnAction;
 use App\Infrastructure\Doctrine\AggregateRoot;
@@ -65,6 +68,20 @@ class Battle extends AggregateRoot
     #[Column(type: Types::BOOLEAN)]
     private bool $battleCompleted = false;
 
+    /**
+     * Warrior "Double Attack": true once the dice have been rerolled in this battle.
+     */
+    #[Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $rerollUsed = false;
+
+    /**
+     * The discarded first roll when "Double Attack" was used.
+     *
+     * @var array<int>|null
+     */
+    #[Column(type: JsonType::class, nullable: true, columnDefinition: 'jsonb')]
+    private ?array $firstDiceResults = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -107,56 +124,73 @@ class Battle extends AggregateRoot
         // First battle calculation: weapons only (non-consumables)
         $battle->calculateInitialBattle($messageContext);
 
-        // Calculate dice roll and item damage separately
-        $diceRollDamage = array_sum($battle->diceResults);
-        $itemDamage = $battle->totalDamage - $diceRollDamage;
-
-        // Check initial battle result (weapons only)
-        $initialResult = $command->monster->attack($battle->totalDamage);
-        // If player wins with weapons only, that's the final result
-        if ($initialResult === BattleResult::WIN) {
-            // Dispatch battle completed event BEFORE processing result to ensure correct event order
-            $messageContext->dispatch(new BattleCompleted(
-                battleId: $command->battleId,
-                gameId: $command->gameId,
-                playerId: $command->playerId,
-                result: $initialResult, // Use initial result here
-                diceResults: $battle->diceResults,
-                diceRollDamage: $diceRollDamage,
-                itemDamage: $itemDamage,
-                totalDamage: $battle->totalDamage,
-                monsterHP: $command->monster->guardHP,
-                usedItems: $battle->usedItems,
-            ));
-
-            // Process the battle result after BattleCompleted event
-            $battle->processBattleResult($command->monster, $command->fromPosition, $command->toPosition, $messageContext);
-        } else {
-            // Player draws or loses with weapons only - give them the choice to use consumables
-            // Don't process the battle result yet, just send the initial result to frontend
-            $player = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
-            $availableConsumables = $player->getConsumableItems();
-
-            // Dispatch battle completed event with consumable selection data
-            // The frontend will show the consumable selection interface
-            $messageContext->dispatch(new BattleCompleted(
-                battleId: $command->battleId,
-                gameId: $command->gameId,
-                playerId: $command->playerId,
-                result: $initialResult, // Show the initial result (DRAW or LOSE)
-                diceResults: $battle->diceResults,
-                diceRollDamage: $diceRollDamage,
-                itemDamage: $itemDamage,
-                totalDamage: $battle->totalDamage,
-                monsterHP: $command->monster->guardHP,
-                usedItems: $battle->usedItems, // Show only weapons used initially
-                // Additional data for frontend consumable selection
-                availableConsumables: $availableConsumables,
-                needsConsumableConfirmation: true,
-            ));
-        }
+        // Evaluate the weapons-only roll: auto-finalize a WIN, otherwise ask for consumables / reroll
+        $battle->evaluateInitialRoll($command->monster, $command->fromPosition, $command->toPosition, $messageContext);
 
         return $battle;
+    }
+
+    /**
+     * Warrior "Double Attack": reroll both dice once per battle, the second roll must be accepted.
+     *
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function rerollDice(RerollBattleDice $command, MessageContext $messageContext): void
+    {
+        $game = $messageContext->dispatch(new GetGame($command->gameId));
+        if ($game->getStatus()->isFinished()) {
+            throw new \DomainException('Game is already finished');
+        }
+
+        if ($this->battleCompleted) {
+            throw new \DomainException('Battle is already completed');
+        }
+
+        if ($this->rerollUsed) {
+            throw new \DomainException('Dice were already rerolled in this battle, the second roll must be accepted');
+        }
+
+        $currentTurnId = $messageContext->dispatch(new GetCurrentTurn($command->gameId));
+        if ($currentTurnId === null || !$currentTurnId->equals($command->turnId) || !$this->turnId->equals($command->turnId)) {
+            throw new \DomainException('Invalid turn ID');
+        }
+
+        $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($command->gameId));
+        if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId) || !$this->playerId->equals($command->playerId)) {
+            throw new NotYourTurnException();
+        }
+
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
+        if ($player->getHero()?->canRerollBattle() !== true) {
+            throw new \DomainException('Only the Warrior can reroll the dice (Double Attack)');
+        }
+
+        $monster = $this->getMonster();
+        if ($monster === null || $this->fromPosition === null || $this->toPosition === null) {
+            throw new \DomainException('Battle is not properly initialized');
+        }
+
+        $this->firstDiceResults = $this->diceResults;
+        $this->rerollUsed = true;
+
+        $this->rollDice($messageContext);
+        $this->calculateInitialBattle($messageContext);
+
+        $messageContext->dispatch(new BattleDiceRerolled(
+            battleId: $this->battleId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            firstDiceResults: $this->firstDiceResults,
+            diceResults: $this->diceResults,
+        ));
+
+        $this->evaluateInitialRoll(
+            $monster,
+            FieldPlace::fromString($this->fromPosition),
+            FieldPlace::fromString($this->toPosition),
+            $messageContext,
+        );
     }
 
     #[Handler]
@@ -309,13 +343,17 @@ class Battle extends AggregateRoot
                 }
             }
 
-            // End the turn after battle processing
-            $messageContext->dispatch(new EndTurn(
-                turnId: $this->turnId,
-                gameId: $this->gameId,
-                playerId: $this->playerId,
-                at: new \DateTimeImmutable(),
-            ));
+            // End the turn after battle processing (a reincarnating hero ends it after choosing a fountain)
+            $awaitingReincarnation = $finalResult === BattleResult::LOSE
+                && $messageContext->dispatch(new GetPlayer($command->playerId))->isAwaitingReincarnation();
+            if (!$awaitingReincarnation) {
+                $messageContext->dispatch(new EndTurn(
+                    turnId: $this->turnId,
+                    gameId: $this->gameId,
+                    playerId: $this->playerId,
+                    at: new \DateTimeImmutable(),
+                ));
+            }
         } else {
             // This should not happen with properly initialized battles
             // But we'll try to handle it anyway
@@ -366,6 +404,74 @@ class Battle extends AggregateRoot
             'itemId' => $monster->itemId->toString(),
             'endsGame' => $monster->endsGame,
         ];
+    }
+
+    /**
+     * Evaluate the weapons-only roll (first roll or Double Attack reroll).
+     * A WIN is final and processed immediately; otherwise the player chooses consumables (and may reroll if the hero can).
+     */
+    private function evaluateInitialRoll(
+        Item $monster,
+        FieldPlace $fromPosition,
+        FieldPlace $toPosition,
+        MessageContext $messageContext,
+    ): void {
+        // Calculate dice roll and item damage separately
+        $diceRollDamage = array_sum($this->diceResults);
+        $itemDamage = $this->totalDamage - $diceRollDamage;
+
+        // Check initial battle result (weapons only)
+        $initialResult = $monster->attack($this->totalDamage);
+        // If player wins with weapons only, that's the final result
+        if ($initialResult === BattleResult::WIN) {
+            // Dispatch battle completed event BEFORE processing result to ensure correct event order
+            $messageContext->dispatch(new BattleCompleted(
+                battleId: $this->battleId,
+                gameId: $this->gameId,
+                playerId: $this->playerId,
+                result: $initialResult, // Use initial result here
+                diceResults: $this->diceResults,
+                diceRollDamage: $diceRollDamage,
+                itemDamage: $itemDamage,
+                totalDamage: $this->totalDamage,
+                monsterHP: $monster->guardHP,
+                usedItems: $this->usedItems,
+                rerolled: $this->rerollUsed,
+                firstDiceResults: $this->firstDiceResults,
+            ));
+
+            // Process the battle result after BattleCompleted event
+            $this->processBattleResult($monster, $fromPosition, $toPosition, $messageContext);
+
+            return;
+        }
+
+        // Player draws or loses with weapons only - give them the choice to use consumables (or reroll)
+        // Don't process the battle result yet, just send the initial result to frontend
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
+        $availableConsumables = $player->getConsumableItems();
+        $canReroll = !$this->rerollUsed && $player->getHero()?->canRerollBattle() === true;
+
+        // Dispatch battle completed event with consumable selection data
+        // The frontend will show the consumable selection interface
+        $messageContext->dispatch(new BattleCompleted(
+            battleId: $this->battleId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            result: $initialResult, // Show the initial result (DRAW or LOSE)
+            diceResults: $this->diceResults,
+            diceRollDamage: $diceRollDamage,
+            itemDamage: $itemDamage,
+            totalDamage: $this->totalDamage,
+            monsterHP: $monster->guardHP,
+            usedItems: $this->usedItems, // Show only weapons used initially
+            // Additional data for frontend consumable selection
+            availableConsumables: $availableConsumables,
+            needsConsumableConfirmation: true,
+            canReroll: $canReroll,
+            rerolled: $this->rerollUsed,
+            firstDiceResults: $this->firstDiceResults,
+        ));
     }
 
     /**
@@ -465,11 +571,15 @@ class Battle extends AggregateRoot
                 'result' => $result->name,
                 'fromPosition' => $fromPosition->toString(),
                 'toPosition' => $toPosition->toString(),
+                'rerolled' => $this->rerollUsed,
+                'firstDiceResults' => $this->firstDiceResults,
+                'heroAbility' => $this->rerollUsed ? 'double_attack' : null,
             ],
             at: new \DateTimeImmutable(),
         ));
 
         // Handle player movement and HP changes based on battle result
+        $awaitingReincarnation = false;
         if ($result !== BattleResult::WIN) {
             // If the player lost, reduce their HP FIRST (before moving)
             if ($result === BattleResult::LOSE) {
@@ -479,6 +589,9 @@ class Battle extends AggregateRoot
                     amount: 1,
                     turnId: $this->turnId,
                 ));
+
+                // Warrior "Reincarnation": the hero must choose a healing fountain before the turn ends
+                $awaitingReincarnation = $messageContext->dispatch(new GetPlayer($this->playerId))->isAwaitingReincarnation();
             }
 
             // THEN move player back to previous position
@@ -503,7 +616,10 @@ class Battle extends AggregateRoot
 
         // Only end the turn for LOSE or DRAW results
         // For WIN, the turn continues so the player can pick up the item
-        if (!$this->battleCompleted && $result !== BattleResult::WIN) {
+        // For a reincarnating hero, the turn ends after the healing fountain was chosen (Field::reincarnate)
+        if ($awaitingReincarnation) {
+            $this->battleCompleted = true;
+        } elseif (!$this->battleCompleted && $result !== BattleResult::WIN) {
             $messageContext->dispatch(new EndTurn(
                 turnId: $this->turnId,
                 gameId: $this->gameId,

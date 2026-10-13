@@ -120,6 +120,16 @@ final class BattleTest extends TestCase
             {
                 return []; // No consumable items for testing
             }
+
+            public function getHero(): ?\App\Game\Player\HeroType
+            {
+                return null; // No hero skills for testing
+            }
+
+            public function isAwaitingReincarnation(): bool
+            {
+                return false;
+            }
         };
         
         // Create a field for dice rolls

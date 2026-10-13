@@ -18,6 +18,9 @@ final readonly class BattleCompleted implements Event
      * @param array<int> $diceResults
      * @param array<Item>|null $usedItems
      * @param array<Item>|null $availableConsumables
+     * @param bool $canReroll Hero may still use "Double Attack" on this roll
+     * @param bool $rerolled This result comes from a "Double Attack" reroll
+     * @param array<int>|null $firstDiceResults The discarded first roll when rerolled
      */
     public function __construct(
         public Uuid $battleId,
@@ -33,6 +36,9 @@ final readonly class BattleCompleted implements Event
         public ?array $availableConsumables = null,
         public bool $needsConsumableConfirmation = false,
         public bool $itemPickedUp = false,
+        public bool $canReroll = false,
+        public bool $rerolled = false,
+        public ?array $firstDiceResults = null,
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}
 }

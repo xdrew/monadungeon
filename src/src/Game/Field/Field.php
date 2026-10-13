@@ -36,6 +36,7 @@ use App\Game\Movement\GetPlayerPosition;
 use App\Game\Movement\MovementService;
 use App\Game\Movement\MovementValidator;
 use App\Game\Player\AddItemToInventory;
+use App\Game\Player\CompleteReincarnation;
 use App\Game\Player\Error\InventoryFullException;
 use App\Game\Player\Error\MissingKeyException;
 use App\Game\Player\GetPlayer;
@@ -47,6 +48,7 @@ use App\Game\Player\PickItem;
 use App\Game\Player\PlayerHealedAtFountain;
 use App\Game\Player\PlayerStunned;
 use App\Game\Player\QueryPlayerInventory;
+use App\Game\Player\ReincarnationRequired;
 use App\Game\Player\RemoveItemFromInventory;
 use App\Game\Player\ReplaceInventoryItem;
 use App\Game\Player\ResetPlayerHP;
@@ -265,7 +267,8 @@ class Field extends AggregateRoot
         // Only heal if this is a battle return movement (player was pushed back after losing)
         if ($event->isBattleReturn && $this->hasHealingFountain($event->toPosition)) {
             $player = $context->dispatch(new GetPlayer($event->playerId));
-            if ($player->needsHealing()) {
+            // A reincarnating hero is teleported away instead of being healed in place
+            if ($player->needsHealing() && !$player->isAwaitingReincarnation()) {
                 // Heal player to full HP
                 $context->dispatch(new ResetPlayerHP(
                     playerId: $event->playerId,
@@ -1133,6 +1136,10 @@ class Field extends AggregateRoot
             // New fields for refined battle system
             'availableConsumables' => $event->availableConsumables ?? [],
             'needsConsumableConfirmation' => $event->needsConsumableConfirmation,
+            // Hero skills (Warrior "Double Attack")
+            'canReroll' => $event->canReroll,
+            'rerolled' => $event->rerolled,
+            'firstDiceResults' => $event->firstDiceResults,
         ];
 
         // Check if there are items at this position
@@ -1838,6 +1845,86 @@ class Field extends AggregateRoot
             ));
         }
         // TODO: Handle other spell types in the future
+    }
+
+    /**
+     * Warrior "Reincarnation": the fallen hero must choose a healing fountain; expose it in the last battle info.
+     */
+    #[Handler]
+    public function onReincarnationRequired(ReincarnationRequired $event): void
+    {
+        $this->lastBattleInfo['awaitingReincarnation'] = true;
+        $this->lastBattleInfo['healingFountainPositions'] = array_map(
+            static fn(FieldPlace $place): string => $place->toString(),
+            $this->healingFountainPositions,
+        );
+    }
+
+    /**
+     * Warrior "Reincarnation": teleport to the chosen healing fountain, replenish HP and end the turn.
+     *
+     * @throws \InvalidArgumentException
+     * @throws NotYourTurnException
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function reincarnate(Reincarnate $command, MessageContext $context): void
+    {
+        $currentTurnId = $context->dispatch(new GetCurrentTurn($command->gameId));
+        if ($currentTurnId === null || !$currentTurnId->equals($command->turnId)) {
+            throw new \InvalidArgumentException('Invalid turn ID');
+        }
+
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
+        if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId)) {
+            throw new NotYourTurnException();
+        }
+
+        $player = $context->dispatch(new GetPlayer($command->playerId));
+        if (!$player->isAwaitingReincarnation()) {
+            throw new \DomainException('Player is not awaiting reincarnation');
+        }
+
+        if (!$this->hasHealingFountain($command->targetPosition)) {
+            throw new \InvalidArgumentException('Reincarnation target must be a healing fountain');
+        }
+
+        // Teleport the hero to the chosen fountain
+        $context->dispatch(new ResetPlayerPosition(
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            position: $command->targetPosition,
+        ));
+
+        // Replenish all HP
+        $context->dispatch(new CompleteReincarnation(
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            position: $command->targetPosition,
+        ));
+
+        // Record the hero ability in the turn log
+        $context->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::USE_HERO_ABILITY,
+            tileId: null,
+            additionalData: [
+                'ability' => 'reincarnation',
+                'position' => $command->targetPosition->toString(),
+            ],
+            at: new \DateTimeImmutable(),
+        ));
+
+        unset($this->lastBattleInfo['awaitingReincarnation'], $this->lastBattleInfo['healingFountainPositions']);
+
+        // The turn ends anyway
+        $context->dispatch(new EndTurn(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+        ));
     }
 
     protected function getTile(Uuid $tileId, MessageContext $messageContext): Tile
