@@ -101,9 +101,9 @@ class EnhancedAIMultiActionSimpleTest extends TestCase
             'Method should contain the multi-action while loop'
         );
         
-        // Verify action counting logic
-        $this->assertStringContainsString(
-            '$this->currentTurnActions++',
+        // Verify action counting logic (cs-fixer normalizes to pre-increment)
+        $this->assertMatchesRegularExpression(
+            '/\+\+\$this->currentTurnActions|\$this->currentTurnActions\+\+/',
             $methodBody,
             'Method should increment action counter'
         );
