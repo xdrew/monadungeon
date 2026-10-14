@@ -151,9 +151,9 @@
                   </div>
 
                   <!-- Warrior "Reincarnation": healing fountain markers to choose the respawn tile -->
+                  <template v-if="isReincarnationMode">
                   <div
                     v-for="tile in reincarnationFountainTiles"
-                    v-if="isReincarnationMode"
                     :key="`reincarnation-${tile.position}`"
                     class="healing-fountain-marker reincarnation-marker"
                     :data-testid="`reincarnation-target-${tile.position}`"
@@ -173,6 +173,7 @@
                       <span class="fountain-emoji">🌿</span>
                     </div>
                   </div>
+                  </template>
 
                   <!-- Render ghost tile if we have one and deck is not empty -->
                   <GhostTile
