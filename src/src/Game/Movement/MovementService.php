@@ -46,6 +46,24 @@ final class MovementService
     }
 
     /**
+     * Wizard "Astral Walking": a move to an orthogonally adjacent position that already has a placed tile, no door needed.
+     */
+    public function canWalkThroughWallTo(FieldPlace $from, FieldPlace $to): bool
+    {
+        if ($from->equals($to) || !isset($this->placedTiles[$to->toString()])) {
+            return false;
+        }
+
+        foreach ($from->getAllSiblingsBySides() as $sibling) {
+            if ($sibling->equals($to)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get all possible destinations from a given position.
      *
      * @return list<FieldPlace>

@@ -1073,6 +1073,7 @@ class Field extends AggregateRoot
         }
 
         // Check if player is stunned (HP = 0)
+        $hero = null;
 
         try {
             $player = $messageBus->dispatch(new GetPlayer($playerId));
@@ -1082,6 +1083,7 @@ class Field extends AggregateRoot
                     'placeTile' => [],
                 ];
             }
+            $hero = $player->getHero();
         } catch (\Throwable) {
         }
 
@@ -1099,8 +1101,19 @@ class Field extends AggregateRoot
         // Get places where player can move to
         $moveToPlaces = $this->getAvailableMovesToPlaces($positionX, $positionY, $playerId, $messageBus);
 
-        // Always get tile placement places - remove deck empty check
+        // Always get tile placement places - remove deck empty check (doors only, even for the Wizard)
         $placeTilePlaces = $this->getAvailablePlaceTilePlaces($positionX, $positionY, $playerId, $messageBus);
+
+        // Wizard "Astral Walking": every adjacent placed tile is reachable, door or not
+        if ($hero?->walksThroughWalls() === true) {
+            $knownPlaces = array_map(static fn(FieldPlace $place): string => $place->toString(), $moveToPlaces);
+            foreach ($fp->getAllSiblingsBySides() as $sibling) {
+                $siblingKey = $sibling->toString();
+                if (isset($this->tiles[$siblingKey]) && !\in_array($siblingKey, $knownPlaces, true)) {
+                    $moveToPlaces[] = $sibling;
+                }
+            }
+        }
 
         return [
             'moveTo' => array_map(static fn(FieldPlace $fp) => $fp->toString(), $moveToPlaces),

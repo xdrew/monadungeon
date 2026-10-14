@@ -33,7 +33,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Telephantast\MessageBus\MessageContext;
-
 use function App\Tests\Infrastructure\MessageBus\startMessageContext;
 
 /**
@@ -44,10 +43,15 @@ use function App\Tests\Infrastructure\MessageBus\startMessageContext;
 final class WizardMagicalAffinityTest extends TestCase
 {
     private Uuid $gameId;
+
     private Uuid $playerId;
+
     private Uuid $turnId;
+
     private Uuid $battleId;
+
     private Field $field;
+
     private Item $fireball;
 
     protected function setUp(): void
@@ -228,7 +232,7 @@ final class WizardMagicalAffinityTest extends TestCase
      */
     private function createPlayer(?HeroType $hero, array $spells): object
     {
-        return new class($hero, $spells) {
+        return new class ($hero, $spells) {
             /**
              * @param list<Item> $spells
              */
@@ -300,10 +304,10 @@ final class WizardMagicalAffinityTest extends TestCase
 
     private function createTester(object $player): MessageBusTester
     {
-        $game = new class {
+        $game = new class () {
             public function getStatus(): object
             {
-                return new class {
+                return new class () {
                     public function isFinished(): bool
                     {
                         return false;

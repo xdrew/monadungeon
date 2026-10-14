@@ -619,7 +619,7 @@ class Battle extends AggregateRoot
             unstoppable: $unstoppable,
             canSacrificeHp: $canSacrificeHp,
             hpSacrificed: $this->hpSacrificed,
-                spellsKept: $this->spellsKept,
+            spellsKept: $this->spellsKept,
         ));
     }
 

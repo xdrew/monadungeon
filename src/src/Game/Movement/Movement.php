@@ -182,6 +182,12 @@ class Movement extends AggregateRoot
             $destinationHasMonster = false;
         }
 
+        // Wizard "Astral Walking": without a door, a hero who walks through walls may still step onto an adjacent placed tile
+        $canTransition = $movementService->canTransition($currentPosition, $command->toPosition);
+        $throughWall = !$canTransition
+            && $player->getHero()?->walksThroughWalls() === true
+            && $movementService->canWalkThroughWallTo($currentPosition, $command->toPosition);
+
         // Validate movement
         $validator = new MovementValidator();
         $validator->validateMovement(
@@ -191,7 +197,7 @@ class Movement extends AggregateRoot
             toPosition: $command->toPosition,
             actualPlayerPosition: $currentPosition,
             hasMovedAfterBattle: $this->hasMovedAfterBattle[$playerId] ?? false,
-            canTransition: $movementService->canTransition($currentPosition, $command->toPosition),
+            canTransition: $canTransition || $throughWall,
             playerHp: $playerHp,
             destinationHasMonster: $destinationHasMonster,
         );
@@ -226,6 +232,12 @@ class Movement extends AggregateRoot
                     'type' => $sneakedPastMonster->type->value,
                     'hp' => $sneakedPastMonster->guardHP,
                 ];
+            }
+            if ($throughWall) {
+                $additionalData['throughWall'] = true;
+                $additionalData['heroAbility'] = isset($additionalData['heroAbility'])
+                    ? $additionalData['heroAbility'] . '+astral_walking'
+                    : 'astral_walking';
             }
 
             try {
