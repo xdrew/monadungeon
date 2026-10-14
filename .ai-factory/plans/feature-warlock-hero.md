@@ -89,4 +89,5 @@ Authority: rulebook text (above) > existing implementation (`Battle.php`, `Movem
 - Session started fresh after `/clear`; `/cost` baseline before planning: $0.66.
 - `/cost` after planning (before implementation): $5.49 → planning cost $4.83 (33.8k output, 3.2M cache read, 27 requests).
 - ai-factory instructions loaded for this hero: aif-plan SKILL.md; subagents: 0 (codebase read directly, ~16 Bash reads for the plan).
-- `/cost` after implementation: (fill in).
+- Implementation notes: 3 commits, PHPUnit only (no showcase runs); `doctrine:migrations:diff` emitted the pre-existing `unique_player_wallet` drift again (stripped); a finalized fight always ends the turn in the backend (plan line for test (a) corrected).
+- `/cost` after implementation: $17.38 → implementation $11.89; **whole Warlock hero = $16.72** (95.0k output, 16.2M cache read, 79 requests, 1485 lines added across 30 files, API 20m, wall 2h 27m incl. one idle cache miss ≈ 154k tokens re-cached).
