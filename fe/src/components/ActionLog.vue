@@ -271,6 +271,9 @@ const formatActionText = (action) => {
     
     case 'player_moved':
     case 'move':
+      if (details?.sneakedPastMonster) {
+        return `🥷 Sneaked past ${details?.monster?.name ? details.monster.name.replace(/_/g, ' ') : 'a monster'} (Stealth)`;
+      }
       const moveDirection = details?.direction || '';
       const moveStrategy = details?.strategy;
       if (moveStrategy === 'moving toward item') {

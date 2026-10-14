@@ -138,21 +138,31 @@ class Movement extends AggregateRoot
         $field = $context->dispatch(new GetField($this->gameId));
         $items = $field->getItems();
         $destinationKey = $command->toPosition->toString();
-        $destinationHasMonster = isset($items[$destinationKey]);
+        $destinationHasMonster = false;
         $monsterItem = null;
-        if ($destinationHasMonster && !$command->ignoreMonster) {
-            $monsterItem = Item::fromAnything($items[$destinationKey]);
-            // Only start battle if monster is not already defeated
-            if ($monsterItem->guardHP > 0 && !$monsterItem->guardDefeated) {
+        if (isset($items[$destinationKey])) {
+            $destinationItem = Item::fromAnything($items[$destinationKey]);
+            // Only an undefeated monster blocks the way / starts a battle
+            if ($destinationItem->guardHP > 0 && !$destinationItem->guardDefeated) {
                 $destinationHasMonster = true;
-            } else {
-                $destinationHasMonster = false;
+                $monsterItem = $destinationItem;
             }
         }
 
         // Get player HP
         $player = $context->dispatch(new GetPlayer($command->playerId));
         $playerHp = $player->getHP();
+
+        // Thief "Stealth": only a hero with Stealth may enter a monster tile without fighting;
+        // the sneak is then recorded as a regular move and no battle starts
+        $sneakedPastMonster = null;
+        if ($command->ignoreMonster && $destinationHasMonster && $monsterItem !== null) {
+            if ($player->getHero()?->canSneakPastMonsters() !== true) {
+                throw new InvalidMovementException('Only the Thief can sneak past a monster (Stealth)');
+            }
+            $sneakedPastMonster = $monsterItem;
+            $destinationHasMonster = false;
+        }
 
         // Validate movement
         $validator = new MovementValidator();
@@ -193,6 +203,20 @@ class Movement extends AggregateRoot
                 }
             }
 
+            $additionalData = [
+                'from' => $currentPosition->toString(),
+                'to' => $command->toPosition->toString(),
+            ];
+            if ($sneakedPastMonster !== null) {
+                $additionalData['sneakedPastMonster'] = true;
+                $additionalData['heroAbility'] = 'stealth';
+                $additionalData['monster'] = [
+                    'name' => $sneakedPastMonster->name->value,
+                    'type' => $sneakedPastMonster->type->value,
+                    'hp' => $sneakedPastMonster->guardHP,
+                ];
+            }
+
             try {
                 $context->dispatch(new PerformTurnAction(
                     turnId: $command->turnId,
@@ -200,10 +224,7 @@ class Movement extends AggregateRoot
                     playerId: $command->playerId,
                     action: TurnAction::MOVE,
                     tileId: null,
-                    additionalData: [
-                        'from' => $currentPosition->toString(),
-                        'to' => $command->toPosition->toString(),
-                    ],
+                    additionalData: $additionalData,
                     at: new \DateTimeImmutable(),
                     deferTurnEnd: $hasPickableItem,
                 ));

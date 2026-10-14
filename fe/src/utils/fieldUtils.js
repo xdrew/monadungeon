@@ -353,11 +353,35 @@ export const scrollToPosition = (x, y, gameData, tileSize) => {
   console.log('Applied scroll position:', scrollPosition);
 };
 
+// Thief "Stealth": ask whether to sneak past an undefeated monster at the destination.
+// Resolves to true when the move must ignore the monster (no battle).
+const shouldSneakPast = async ({ gameData, gameApi, gameId, currentPlayerId, position, confirmStealth }) => {
+  if (typeof confirmStealth !== 'function') return false;
+  const player = gameData?.players?.find(p => p.id === currentPlayerId.value);
+  if (!player?.heroFlags?.canSneakPastMonsters) return false;
+
+  // Items placed with a new tile are not in the local state yet: ask the backend
+  let item = gameData?.field?.items?.[position];
+  if (!item && gameApi?.getGame) {
+    try {
+      const fresh = await gameApi.getGame(gameId);
+      item = fresh?.field?.items?.[position];
+    } catch (e) {
+      console.warn('Could not refresh items before the move:', e);
+    }
+  }
+  if (!item || !(item.guardHP > 0) || item.guardDefeated) return false;
+
+  const sneak = await confirmStealth({ position, monster: item });
+  console.log(`Stealth choice at ${position}:`, sneak ? 'sneak past' : 'fight');
+  return sneak === true;
+};
+
 // Action handlers for handlePlaceClick
 const handlePlayerMovement = async (params) => {
   const { 
     position, gameData, currentPlayerId, gameApi, gameId, currentTurnId,
-    loadingState, battleState, updateGameDataSelectively, centerViewOnTile
+    loadingState, battleState, updateGameDataSelectively, centerViewOnTile, confirmStealth
   } = params;
   
   const { loading, loadingStatus, error } = loadingState;
@@ -369,10 +393,13 @@ const handlePlayerMovement = async (params) => {
     return;
   }
 
+  // Thief "Stealth": decide before the move whether the monster is fought or ignored
+  const ignoreMonster = await shouldSneakPast({ gameData, gameApi, gameId, currentPlayerId, position, confirmStealth });
+
   try {
     isRequestInProgress = true;
     loading.value = true;
-    loadingStatus.value = 'Moving player...';
+    loadingStatus.value = ignoreMonster ? 'Sneaking past...' : 'Moving player...';
 
     const currentPosition = gameData.field.playerPositions[currentPlayerId.value];
     
@@ -381,7 +408,8 @@ const handlePlayerMovement = async (params) => {
       fromPosition: currentPosition,
       toPosition: position,
       playerId: currentPlayerId.value,
-      turnId: currentTurnId
+      turnId: currentTurnId,
+      ignoreMonster
     });
 
     if (moveResponse?.battleInfo) {
@@ -489,7 +517,7 @@ const handlePlayerMovement = async (params) => {
 const handleTilePlacement = async (params) => {
   const {
     position, gameData, currentPlayerId, gameApi, gameId, currentTurnId,
-    tileState, battleState, updateGameDataSelectively, centerViewOnTile, tileUtils
+    tileState, battleState, updateGameDataSelectively, centerViewOnTile, tileUtils, confirmStealth
   } = params;
   
   const { pickedTileId, pickedTile, ghostTileOrientation } = tileState;
@@ -544,14 +572,16 @@ const handleTilePlacement = async (params) => {
       );
     }
 
-    // Move player to the newly placed tile
+    // Move player to the newly placed tile (Thief "Stealth": a monster in the new room may be ignored)
     const currentPosition = gameData.field.playerPositions[currentPlayerId.value];
+    const ignoreMonster = await shouldSneakPast({ gameData, gameApi, gameId, currentPlayerId, position, confirmStealth });
     const moveResponse = await gameApi.movePlayer({
       gameId,
       fromPosition: currentPosition,
       toPosition: position,
       playerId: currentPlayerId.value,
       turnId: currentTurnId,
+      ignoreMonster,
       isTilePlacementMove: true  // This flag prevents turn from ending after tile placement
     });
 
