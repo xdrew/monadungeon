@@ -83,9 +83,9 @@ enum TurnAction: string
                 || $this === self::HEAL_AT_FOUNTAIN; // Allow healing as first action (e.g., when placed on fountain)
         }
 
-        // After combat, allow manual pickup or end turn (for manual pickup system)
+        // After combat, allow manual pickup, end turn, or a hero ability (Warrior "Reincarnation" after a lost fight)
         if ($previousAction === self::FIGHT_MONSTER) {
-            return $this === self::PICK_ITEM || $this === self::END_TURN;
+            return $this === self::PICK_ITEM || $this === self::END_TURN || $this === self::USE_HERO_ABILITY;
         }
 
         // After pick up, unlock, or heal, turn ends

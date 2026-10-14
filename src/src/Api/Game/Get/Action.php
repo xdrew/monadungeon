@@ -13,6 +13,7 @@ use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\Player;
 use App\Game\Player\QueryPlayerInventory;
 use App\Game\Turn\Repository\GameTurnRepository;
 use App\Infrastructure\Uuid\Uuid;

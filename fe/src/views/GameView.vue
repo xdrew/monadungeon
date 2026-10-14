@@ -4468,8 +4468,13 @@ const reincarnationFountainTiles = computed(() => {
   return healingFountainTiles.value.filter(tile => allowed.includes(tile.position));
 });
 
+// Set once the fountain was chosen, so a stale game-data response (fetched before the reincarnation
+// completed) cannot re-open the fountain choice
+const reincarnationHandled = ref(false);
+
 const enterReincarnationMode = (fountainPositions = []) => {
   reincarnationFountainPositions.value = fountainPositions;
+  reincarnationHandled.value = false;
   isReincarnationMode.value = true;
   isTeleportMode.value = false;
   selectedTeleportSpell.value = null;
@@ -4477,7 +4482,7 @@ const enterReincarnationMode = (fountainPositions = []) => {
 
 // Re-enter the mode after a page reload while the hero is still fallen
 watch(() => getCurrentPlayerData.value?.awaitingReincarnation, (awaiting) => {
-  if (awaiting && isPlayerTurn.value && !isReincarnationMode.value) {
+  if (awaiting && isPlayerTurn.value && !isReincarnationMode.value && !reincarnationHandled.value) {
     enterReincarnationMode(gameData.value?.field?.lastBattleInfo?.healingFountainPositions || []);
   }
   if (!awaiting && isReincarnationMode.value) {
@@ -4502,6 +4507,7 @@ const handleReincarnationClick = async (position) => {
       targetPosition: { positionX: x, positionY: y }
     });
 
+    reincarnationHandled.value = true;
     isReincarnationMode.value = false;
     reincarnationFountainPositions.value = [];
 
@@ -4907,11 +4913,12 @@ const isCurrentPlayerStunned = computed(() => {
   const playerData = gameData.value.players?.find(p => p.id === currentPlayerId.value);
   if (!playerData) return false;
   
+  // Warrior "Reincarnation": the hero is at 0 HP but chooses a healing fountain instead of being stunned
+  if (playerData.awaitingReincarnation || isReincarnationMode.value) return false;
+
   // Show stunned dialog if it's player's turn AND they're stunned
   const isStunned = playerData.hp === 0 || playerData.defeated === true;
-  
 
-  
   return isStunned;
 });
 

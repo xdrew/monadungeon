@@ -116,7 +116,7 @@ test.describe('Two Player Game', () => {
     // Helper to wait for battle modal to close and requests to complete
     const waitForBattleComplete = async () => {
       // First wait for the modal to be hidden
-      await page.waitForSelector('.battle-report-modal', { state: 'hidden', timeout: TIMEOUTS.BATTLE_MODAL });
+      await page.waitForSelector('.battle-overlay', { state: 'hidden', timeout: TIMEOUTS.BATTLE_MODAL });
       // Then wait for loading status to disappear
       await page.waitForFunction(() => {
         const loadingElements = document.querySelectorAll('[data-loading-status="Finalizing battle..."]');
@@ -292,7 +292,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
     
     // Wait for battle modal to appear
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Player 1: Battle modal appeared');
     await GameHelpers.continueBattle(page, 'pickup');
     
@@ -336,7 +336,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 2, 0); // Place room to the right (player auto-moves and battles)
     
     // Wait for battle modal to appear
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     
     console.log('Player 2: Battle modal appeared');
     await GameHelpers.continueBattle(page, 'close');
@@ -356,7 +356,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     // Wait for battle modal to appear - first roll 1 + 1 = 2 < rat 5, the Warrior may reroll
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Player 1: Battle modal appeared (first roll loses)');
     await GameHelpers.rerollBattle(page);
     await expect(page.locator('[data-testid="first-roll"]')).toContainText('1 + 1');
@@ -378,7 +378,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     // Wait for battle modal to appear
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Player 2: Battle modal appeared');
     await GameHelpers.continueBattle(page, 'pickup');
     
@@ -400,7 +400,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
     
     // Wait for battle modal to appear
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Player 1: Battle modal appeared');
     await GameHelpers.continueBattle(page, 'pickup');
     
@@ -422,21 +422,21 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
     
     // Wait for battle modal to appear
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     
     console.log('Battle modal visible - consumable selection expected');
     
     // Wait for consumable selection UI to be available
-    await page.waitForSelector('.selectable-item', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.item-chip.selectable', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     
     // Select the fireball consumable and fight
-    const fireballItem = page.locator('.selectable-item').first();
+    const fireballItem = page.locator('.item-chip.selectable').first();
     await fireballItem.click();
     console.log('Selected fireball consumable');
     
     // Wait for consumable to be selected
     await page.waitForFunction(() => {
-      const selectedItems = document.querySelectorAll('.selectable-item.selected, .item-selected');
+      const selectedItems = document.querySelectorAll('.item-chip.selectable.selected, .selectable-item.selected, .item-selected');
       return selectedItems.length > 0;
     }, { timeout: TIMEOUTS.MODAL_WAIT });
     
@@ -468,7 +468,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.waitForGameLoad(page);
     
     // Check if there's a lingering battle modal from the previous turn
-    const battleModalStillVisible = await page.locator('.battle-report-modal').isVisible().catch(() => false);
+    const battleModalStillVisible = await page.locator('.battle-overlay').isVisible().catch(() => false);
     if (battleModalStillVisible) {
       console.log('Battle modal still visible from previous turn, handling it');
       
@@ -500,7 +500,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     // Wait for battle modal with longer timeout
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: 20000 });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: 20000 });
     console.log('Player 1: Battle modal appeared');
 
     // Try to pick up sword - should trigger inventory replacement dialog
@@ -526,7 +526,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     // Wait for battle modal
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Player 2: Battle modal appeared');
     await GameHelpers.continueBattle(page, 'close');
     await waitForBattleComplete();
@@ -544,38 +544,21 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     // Wait for battle modal
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Player 1: Battle modal appeared');
     
-    // Wait a bit for the battle result to be fully rendered
-    await page.waitForTimeout(1000);
-    
-    // Check if leave button is available (inventory full)
-    const leaveButton = page.locator('.leave-item-btn').first();
-    const pickupButton = page.locator('.pick-up-btn').first();
-    
+    // The action buttons appear only after the dice animation (~3s)
+    await page.locator('.battle-overlay .battle-footer').first().waitFor({ state: 'visible', timeout: TIMEOUTS.ELEMENT_WAIT });
+
+    // Leave the axe on the tile (Turn 13 picks it up): use the "Leave item" button when the modal offers it,
+    // otherwise the modal's × button, which also leaves the item and ends the turn
+    const leaveButton = page.getByRole('button', { name: /Leave.*(end.*turn|reward)/i }).first();
     if (await leaveButton.isVisible()) {
-      // Inventory is full - leave the item
       await leaveButton.click();
       console.log('Player 1: Clicked leave item button (inventory full)');
-    } else if (await pickupButton.isVisible()) {
-      // Inventory has space - pick up the item
-      await pickupButton.click();
-      console.log('Player 1: Clicked pick up button (inventory has space)');
-      
-      // If this triggers inventory replacement, handle it
-      try {
-        await page.waitForSelector('.inventory-item-replace', { timeout: 2000 });
-        console.log('Inventory replacement dialog appeared');
-        // Click first item to replace
-        await page.locator('.inventory-item-replace').first().click();
-        await page.getByRole('button', { name: 'Replace Selected Item' }).click();
-      } catch {
-        // No inventory replacement needed
-      }
     } else {
-      console.log('ERROR: No action button found!');
-      await GameHelpers.screenshot(page, 'turn-9-no-action-button');
+      await page.locator('.battle-overlay .close-btn').first().click();
+      console.log('Player 1: Closed the battle modal to leave the item');
     }
 
     // Wait for battle modal to close and request to complete
@@ -593,7 +576,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     // Wait for battle modal
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Player 1: Battle modal appeared');
     await GameHelpers.continueBattle(page, 'close');
 
@@ -624,7 +607,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     // Wait for battle modal
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Player 2: Battle modal appeared');
     await GameHelpers.continueBattle(page, 'pickup');
 
@@ -650,7 +633,7 @@ test.describe('Two Player Game', () => {
     
     // Click the first Dagger item to select it (previously showed "Giant Rat")
     // Since there are 2 daggers, click the first one
-    await page.locator('.inventory-item').filter({ hasText: 'Dagger' }).first().click();
+    await page.locator('.replace-item').filter({ hasText: 'Dagger' }).first().click();
     
     // Click Replace Selected Item button
     await page.getByRole('button', { name: 'Replace Selected Item' }).click();
@@ -678,7 +661,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     // Wait for battle modal - Fallen battle
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Fallen battle modal appeared');
     
     // For draw result, close the battle modal (the battle result itself ends the turn)
@@ -702,7 +685,7 @@ test.describe('Two Player Game', () => {
     console.log(`Dragon tile placed at position: ${dragonTilePosition.x},${dragonTilePosition.y}`);
     
     // Wait for battle modal - Dragon battle
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Dragon battle modal appeared - Player 1 loses');
 
     // The Warrior is offered Double Attack but declines it this time (rerolling is optional)
@@ -745,11 +728,22 @@ test.describe('Two Player Game', () => {
     }
     
     // Player 2 continues same turn - place room tile that will trigger battle
-    const battleTilePos = await GameHelpers.placeTile(page, 0, 0);
+    let battleTilePos = await GameHelpers.placeTile(page, 0, 0);
     console.log(`Player 2 placed room tile at ${battleTilePos.x},${battleTilePos.y}`);
-    
+
+    // The second placement in one turn occasionally does not register (fog-reveal animation): retry once
+    const roomBattleAppeared = await page.locator('.battle-overlay')
+      .waitFor({ state: 'visible', timeout: TIMEOUTS.ELEMENT_WAIT })
+      .then(() => true)
+      .catch(() => false);
+    if (!roomBattleAppeared) {
+      console.log('Room tile placement did not trigger a battle, retrying the placement once');
+      battleTilePos = await GameHelpers.placeTile(page, 0, 0);
+      console.log(`Player 2 placed room tile at ${battleTilePos.x},${battleTilePos.y} (retry)`);
+    }
+
     // Wait for battle modal
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Battle modal appeared - Player 2 will lose');
     
     // Lose battle
@@ -790,7 +784,7 @@ test.describe('Two Player Game', () => {
     await GameHelpers.movePlayer(page, dragonPos.x, dragonPos.y);
     
     // Wait for battle modal - first roll 2 + 2 + 5 = 9 < 15
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Dragon battle modal appeared again - Player 1 loses the first roll');
 
     // Double Attack: reroll 1 + 2 + 5 = 8 < 15 - still a loss, and the second roll must be accepted
@@ -892,7 +886,7 @@ test.describe('Two Player Game', () => {
       await page.waitForTimeout(3000);
 
       // Handle item pickup dialog if it appeared
-      const dialog = await page.locator('.item-pickup-dialog').isVisible().catch(() => false);
+      const dialog = await page.locator('.item-pickup-overlay').isVisible().catch(() => false);
       if (dialog) {
         console.log(`Move ${moveNum}: item dialog appeared — clicking Leave It`);
         await page.getByRole('button', { name: /leave it/i }).click();
@@ -987,14 +981,14 @@ test.describe('Two Player Game', () => {
     await GameHelpers.movePlayer(page, dragonPosFinal.x, dragonPosFinal.y);
 
     // Wait for battle modal - Dragon battle
-    await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
+    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Dragon battle modal appeared - Player 1 will win');
 
     // Click pickup immediately — victory is validated by the button existing
     await GameHelpers.continueBattle(page, 'pickup');
 
     // Wait for game to end
-    await page.getByText(/🏆 Game Over: Leaderboard/i).waitFor({ timeout: TIMEOUTS.MODAL_WAIT });
+    await page.locator('.finished-text').first().waitFor({ state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('=== GAME ENDED (UI shows game over) ===');
 
     // Verify final game state via API

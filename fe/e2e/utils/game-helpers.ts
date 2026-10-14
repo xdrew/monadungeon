@@ -456,7 +456,7 @@ export class GameHelpers {
           { timeout: TIMEOUTS.MODAL_WAIT }
         ),
         // Wait for battle modal to appear
-        page.waitForSelector('.battle-report-modal', { 
+        page.waitForSelector('.battle-overlay', { 
           state: 'visible',
           timeout: TIMEOUTS.MODAL_WAIT 
         }),
@@ -567,8 +567,13 @@ export class GameHelpers {
    * @param replaceItemId - ID of item to replace when inventory is full
    */
   static async continueBattle(page: Page, action: 'pickup' | 'leave' | 'close' | 'consumables' = 'close', consumableIds?: string[], replaceItemId?: string): Promise<void> {
-    // Don't wait for modal - caller should ensure it's already visible
-    
+    // Don't wait for modal - caller should ensure it's already visible.
+    // The action buttons live in the modal footer, which stays hidden while the dice are rolling (~3s):
+    // wait for it so we never fall back to the sidebar End Turn button behind the overlay.
+    await page.locator('.battle-overlay .battle-footer').first()
+      .waitFor({ state: 'visible', timeout: TIMEOUTS.ELEMENT_WAIT })
+      .catch(() => console.log('Battle footer did not become visible in time, trying buttons anyway'));
+
     switch (action) {
       case 'pickup':
         // Click "Pick up and end turn" button (may appear after dice animation)
@@ -642,11 +647,11 @@ export class GameHelpers {
               break;
             }
             // If consumable selection is visible, prefer a safe finalize action
-            const hasConsumablesUI = await page.locator('.selectable-item').isVisible().catch(() => false);
+            const hasConsumablesUI = await page.locator('.item-chip.selectable').isVisible().catch(() => false);
             if (hasConsumablesUI) {
               const fightWinPickup = page.locator('button').filter({ hasText: /fight.*win.*pick/i }).first();
               const fightWinLeave = page.locator('button').filter({ hasText: /fight.*win.*leave/i }).first();
-              const finalizeBtn = page.locator('.finalize-battle-btn, .accept-defeat-btn').first();
+              const finalizeBtn = page.locator('.finalize-battle-btn, .accept-defeat-btn, .btn-defeat, .btn-draw').first();
               if (await fightWinPickup.isVisible().catch(() => false)) {
                 await fightWinPickup.click();
                 console.log('Clicked fight, win, and pick up reward (fallback)');
@@ -679,7 +684,7 @@ export class GameHelpers {
         
       case 'leave':
         // Click "Leave item and end turn" button
-        const leaveButton = page.locator('.leave-item-btn').first();
+        const leaveButton = page.locator('.leave-item-btn, .battle-overlay button:has-text("Leave")').first();
         if (await leaveButton.isVisible()) {
           await leaveButton.click();
           console.log('Clicked leave item and end turn button');
@@ -697,7 +702,7 @@ export class GameHelpers {
         // First select consumables if provided
         if (consumableIds && consumableIds.length > 0) {
           for (const itemId of consumableIds) {
-            const consumableItem = page.locator(`.selectable-item`).filter({ has: page.locator(`[data-item-id="${itemId}"]`) });
+            const consumableItem = page.locator(`.item-chip.selectable`).filter({ has: page.locator(`[data-item-id="${itemId}"]`) });
             if (await consumableItem.count() > 0) {
               await consumableItem.click();
               console.log(`Selected consumable with ID: ${itemId}`);
@@ -726,8 +731,8 @@ export class GameHelpers {
         
       case 'close':
       default:
-        // Click the X close button or End Turn button
-        const closeButton = page.locator('.close-battle-btn').first();
+        // Click the X close button of the battle modal (accepts defeat / retreats / leaves the item) or End Turn button
+        const closeButton = page.locator('.battle-overlay .close-btn, .close-battle-btn').first();
         const endTurnButton = page.locator('.end-turn-btn').first();
         
         if (await closeButton.isVisible()) {
@@ -745,16 +750,16 @@ export class GameHelpers {
     // Handle inventory replacement if needed
     if (replaceItemId && (action === 'pickup' || action === 'consumables')) {
       // Wait for inventory selection UI
-      const inventorySelection = page.locator('.inventory-item-replace').first();
+      const inventorySelection = page.locator('.replace-item').first();
       if (await inventorySelection.isVisible({ timeout: TIMEOUTS.DIALOG_WAIT })) {
         // Click the item to replace
-        const itemToReplace = page.locator('.inventory-item-replace').filter({ 
+        const itemToReplace = page.locator('.replace-item').filter({ 
           has: page.locator(`[data-item-id="${replaceItemId}"]`) 
         }).first();
         
         if (await itemToReplace.count() === 0) {
           // Fallback: click by matching item content
-          const itemByContent = page.locator('.inventory-item-replace').filter({
+          const itemByContent = page.locator('.replace-item').filter({
             hasText: replaceItemId
           }).first();
           if (await itemByContent.count() > 0) {
@@ -837,7 +842,7 @@ export class GameHelpers {
     console.log(`Move ${moveNum}: clicked marker for ${targetPos}`);
     await page.waitForTimeout(3000);
 
-    const dialog = await page.locator('.item-pickup-dialog').isVisible().catch(() => false);
+    const dialog = await page.locator('.item-pickup-overlay').isVisible().catch(() => false);
     if (dialog) {
       console.log(`Move ${moveNum}: item dialog appeared — clicking Leave It`);
       await page.getByRole('button', { name: /leave it/i }).click();
@@ -852,7 +857,7 @@ export class GameHelpers {
    * Pick up an item after battle
    */
   static async pickupItem(page: Page): Promise<void> {
-    await page.waitForSelector('.item-pickup-dialog, .item-modal, [class*="item-pickup"]', { 
+    await page.waitForSelector('.item-pickup-overlay, .item-modal, [class*="item-pickup"]', { 
       state: 'visible',
       timeout: TIMEOUTS.NETWORK_IDLE 
     });
@@ -966,14 +971,14 @@ export class GameHelpers {
    */
   static async handleInventoryReplacement(page: Page, itemToReplaceIndex: number = 0): Promise<void> {
     // Wait for inventory full dialog
-    await page.waitForSelector('.inventory-full-dialog', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.inventory-full-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Inventory full dialog appeared');
     
     // Wait a bit for dialog to fully render
     await page.waitForTimeout(TIMEOUTS.ANIMATION_WAIT);
     
     // Click on the item to replace (by index)
-    const inventoryItems = page.locator('.inventory-item');
+    const inventoryItems = page.locator('.inventory-full-overlay .replace-item');
     const itemCount = await inventoryItems.count();
     console.log(`Found ${itemCount} items in inventory`);
     
@@ -986,13 +991,13 @@ export class GameHelpers {
     }
     
     // Click replace button
-    const replaceButton = page.locator('button.replace-btn').first();
+    const replaceButton = page.getByRole('button', { name: /Replace Selected Item/i }).first();
     await replaceButton.waitFor({ state: 'visible' });
     await replaceButton.click();
     console.log('Clicked replace button');
     
     // Wait for dialog to close
-    await page.waitForSelector('.inventory-full-dialog', { state: 'hidden', timeout: TIMEOUTS.MODAL_WAIT });
+    await page.waitForSelector('.inventory-full-overlay', { state: 'hidden', timeout: TIMEOUTS.MODAL_WAIT });
   }
 
   /**
@@ -1005,7 +1010,7 @@ export class GameHelpers {
       console.log('Item pickup dialog appeared');
     } catch {
       // Fallback to checking for dialog/modal elements
-      await page.waitForSelector('.item-pickup-dialog, .pickup-dialog, [role="dialog"]', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
+      await page.waitForSelector('.item-pickup-overlay, .pickup-dialog, [role="dialog"]', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
       console.log('Item pickup dialog appeared (via selector)');
     }
     

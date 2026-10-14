@@ -47,10 +47,10 @@ final readonly class Action
             $healingFountainPositions = [];
             if ($awaitingReincarnation) {
                 $field = $this->messageBus->dispatch(new GetField($request->gameId));
-                $healingFountainPositions = array_map(
+                $healingFountainPositions = array_values(array_unique(array_map(
                     static fn(FieldPlace $place): string => $place->toString(),
                     $field->getHealingFountainPositions(),
-                );
+                )));
             }
 
             // Return success response

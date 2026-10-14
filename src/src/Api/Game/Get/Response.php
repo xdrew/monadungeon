@@ -14,6 +14,7 @@ use App\Game\Field\TileFeature;
 use App\Game\GameLifecycle\Game as GameLifecycleGame;
 use App\Game\Movement\GetAllPlayerPositions;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\Player;
 use App\Infrastructure\Uuid\Uuid;
 use Telephantast\MessageBus\MessageBus;
 
@@ -233,6 +234,11 @@ final readonly class Response
                     $playerFormattedData['isAi'] = $player->isAi();
                     $playerFormattedData['externalId'] = $player->getExternalId();
                     $playerFormattedData['username'] = $player->getUsername();
+                    $playerFormattedData['maxHp'] = Player::MAX_HP;
+                    $playerFormattedData['hero'] = $player->getHero()?->value;
+                    $playerFormattedData['heroLabel'] = $player->getHero()?->label();
+                    $playerFormattedData['heroSkills'] = $player->getHero()?->skills() ?? [];
+                    $playerFormattedData['awaitingReincarnation'] = $player->isAwaitingReincarnation();
                 } catch (\Throwable) {
                     // Unable to get player data, continue with what we have
                 }

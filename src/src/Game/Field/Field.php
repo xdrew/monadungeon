@@ -1854,10 +1854,10 @@ class Field extends AggregateRoot
     public function onReincarnationRequired(ReincarnationRequired $event): void
     {
         $this->lastBattleInfo['awaitingReincarnation'] = true;
-        $this->lastBattleInfo['healingFountainPositions'] = array_map(
+        $this->lastBattleInfo['healingFountainPositions'] = array_values(array_unique(array_map(
             static fn(FieldPlace $place): string => $place->toString(),
             $this->healingFountainPositions,
-        );
+        )));
     }
 
     /**
