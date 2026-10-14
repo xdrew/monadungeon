@@ -1991,28 +1991,60 @@ class Field extends AggregateRoot
                 throw new \InvalidArgumentException('Teleport target must be a healing fountain');
             }
 
+            // Portal of Healing: the caster or any other player of this game is carried to the fountain
+            $target = $command->targetPlayerId ?? $command->playerId;
+            $game = $context->dispatch(new GetGame($command->gameId));
+            $targetKnown = false;
+            foreach ($game->getPlayers() as $knownPlayerId) {
+                if ($knownPlayerId->equals($target)) {
+                    $targetKnown = true;
+                    break;
+                }
+            }
+            if (!$targetKnown) {
+                throw new \InvalidArgumentException('Target player is not in this game');
+            }
+
             // Mark the spell as consumed so it won't be dropped on the field
             $this->consumedItemIds[] = $command->spellId->toString();
 
-            // Update player position via Movement context
+            // Move the target via Movement context and heal them right away (this also lifts the Curse of Karak)
             $context->dispatch(new ResetPlayerPosition(
                 gameId: $command->gameId,
-                playerId: $command->playerId,
+                playerId: $target,
                 position: $command->targetPosition,
             ));
+            $context->dispatch(new ResetPlayerHP(
+                playerId: $target,
+                gameId: $command->gameId,
+                afterStun: false,
+            ));
+            $context->dispatch(new PlayerHealedAtFountain(
+                playerId: $target,
+                gameId: $command->gameId,
+                position: $command->targetPosition,
+                healedAt: new \DateTimeImmutable(),
+            ));
 
-            // Remove spell from inventory
+            // Remove spell from the caster's inventory
             $context->dispatch(new RemoveItemFromInventory(
                 gameId: $command->gameId,
                 playerId: $command->playerId,
                 itemId: $command->spellId,
             ));
 
-            // End turn after using teleport spell
-            $context->dispatch(new EndTurn(
+            // The portal costs no move and does not end the turn: the caster keeps the remaining moves
+            $context->dispatch(new PerformTurnAction(
                 turnId: $command->turnId,
                 gameId: $command->gameId,
                 playerId: $command->playerId,
+                action: TurnAction::USE_SPELL,
+                additionalData: [
+                    'spell' => 'teleport',
+                    'target' => $target->toString(),
+                    'self' => $target->equals($command->playerId),
+                    'position' => $command->targetPosition->toString(),
+                ],
             ));
         }
         // TODO: Handle other spell types in the future

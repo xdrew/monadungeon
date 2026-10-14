@@ -10,7 +10,8 @@ use Telephantast\Message\Message;
 
 /**
  * Command to use a spell from player's inventory.
- * For teleport spell, targetPosition must be provided and must be a healing fountain position.
+ * For the Portal of Healing (teleport spell), targetPosition must be a revealed healing fountain;
+ * targetPlayerId is the player carried to the fountain (the caster when null).
  * @psalm-immutable
  * @implements Message<void>
  */
@@ -22,5 +23,6 @@ final readonly class UseSpell implements Message
         public Uuid $turnId,
         public Uuid $spellId,
         public ?FieldPlace $targetPosition = null,
+        public ?Uuid $targetPlayerId = null,
     ) {}
 }

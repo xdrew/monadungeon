@@ -24,5 +24,7 @@ final readonly class Request
         #[Assert\Uuid]
         public Uuid $spellId,
         public ?FieldPlace $targetPosition = null,
+        #[Assert\Uuid]
+        public ?Uuid $targetPlayerId = null,
     ) {}
 }

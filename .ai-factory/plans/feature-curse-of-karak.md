@@ -63,12 +63,12 @@ Authority: rulebook text (above) > existing implementation (`Game.php`, `Player.
   - Run `--filter 'CursedPlayer|CurseOfKarak|MummyCurse|GameTurnTest|HeroTest|BattleTest'`; keep all hero tests green (stubs implement `getHero()` only, nothing else changes).
 
 ### Phase 2: Portal of Healing (backend)
-- [ ] Task 5: UseSpell with a target player, no turn end (depends on 2)
+- [x] Task 5: UseSpell with a target player, no turn end (depends on 2)
   - `src/src/Game/Player/UseSpell.php`: `public ?Uuid $targetPlayerId = null` (docblock "Portal of Healing: the player moved to the fountain, the caster when null").
   - `src/src/Game/Field/Field.php::useSpell` teleport branch: `$target = $command->targetPlayerId ?? $command->playerId`; `\in_array` check against `GetGame($command->gameId)->getPlayers()` (compare `toString()`) else `\InvalidArgumentException('Target player is not in this game')`; keep the fountain validation; `ResetPlayerPosition(gameId, target, position)`; `ResetPlayerHP(playerId: $target, gameId, afterStun: false)`; `PlayerHealedAtFountain(playerId: $target, gameId, position)`; `consumedItemIds[]` + `RemoveItemFromInventory` for the **caster** (unchanged); `PerformTurnAction(turnId, gameId, playerId, action: TurnAction::USE_SPELL, additionalData: ['spell' => 'teleport', 'target' => $target->toString(), 'position' => ..., 'self' => $target->equals($command->playerId)])`; **remove the `EndTurn` dispatch** and update the comment ("the portal costs no move and does not end the turn").
   - `src/src/Api/Game/UseSpell/Request.php` + `Action.php`: `?Uuid $targetPlayerId = null` passed through.
   - Files: UseSpell.php, Field.php, UseSpell/Request.php, UseSpell/Action.php.
-- [ ] Task 6: PHPUnit Portal of Healing (depends on 5)
+- [x] Task 6: PHPUnit Portal of Healing (depends on 5)
   - `src/tests/Game/Field/PortalOfHealingTest.php` (real `Field::create`; seed `healingFountainPositions` via Reflection as `AstralWalkingPlacesTest` seeds tiles; stubs `GetCurrentTurn`, `GetCurrentPlayer`, `QueryPlayerInventory` → `['spell' => [$teleport->toArray()]]` with `$teleport = Item::createGiantSpider()->defeatMonster()`, `GetGame` → players [P1, P2]): (a) caster target (null) → `ResetPlayerPosition(P1, fountain)`, `ResetPlayerHP(P1, afterStun false)`, `PlayerHealedAtFountain(P1)`, `RemoveItemFromInventory(P1, spell)`, `PerformTurnAction` USE_SPELL with `self = true`, **no `EndTurn`** in the messages; (b) target P2 → position/HP/healed events for P2, the spell removed from P1, `self = false`; (c) target not in the game → `\InvalidArgumentException`; (d) target position not a fountain → `\InvalidArgumentException` (existing rule kept).
   - Run `--filter 'PortalOfHealing|FieldTest|HealingFountain'`.
 

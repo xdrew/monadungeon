@@ -26,6 +26,7 @@ final readonly class Action
                 turnId: $request->turnId,
                 spellId: $request->spellId,
                 targetPosition: $request->targetPosition,
+                targetPlayerId: $request->targetPlayerId,
             ));
 
             return new Response($request->gameId);
