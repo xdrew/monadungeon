@@ -18,6 +18,10 @@ services:
       - BASE_URL=http://localhost:5173
       - API_URL=http://sf.sf:18080
     network_mode: host
+    # Docker generates the container's /etc/hosts even in host network mode, so the
+    # host's "sf.sf" entry is not inherited; nginx (port 18080) routes by this name.
+    extra_hosts:
+      - "sf.sf:127.0.0.1"
     command: >
       sh -c "
         echo 'Running Playwright tests...' &&
