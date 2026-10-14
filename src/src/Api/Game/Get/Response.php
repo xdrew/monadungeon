@@ -160,6 +160,7 @@ final readonly class Response
             state: [
                 'status' => $game->getStatus()->value,
                 'turn' => $game->getCurrentTurnNumber(),
+                'startingRolls' => $game->getStartingRolls(), // who rolled what for the starting player (empty in test mode)
                 'currentPlayerId' => (string) $currentPlayerId,
                 'currentTurnId' => $game->getCurrentTurnId() ? (string) $game->getCurrentTurnId() : null,
                 'availablePlaces' => $availablePlaces,

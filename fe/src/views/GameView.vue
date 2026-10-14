@@ -408,6 +408,12 @@
                   <span class="hp-indicator">
                     ❤️ {{ player.hp !== undefined ? player.hp : 5 }}/{{ player.maxHp ?? 5 }}
                   </span>
+                  <span
+                    v-if="gameData?.state?.startingRolls?.[player.id] && (gameData.state.turn || 0) <= (gameData.players?.length || 1)"
+                    class="starting-roll"
+                    title="Roll for the starting player"
+                    data-testid="starting-roll"
+                  >🎲 {{ gameData.state.startingRolls[player.id] }}</span>
                   <span 
                     v-if="gameData?.state?.currentPlayerId === player.id"
                     class="turn-badge"
@@ -6227,5 +6233,9 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .portal-target.selected {
   border-color: #66bb6a;
   background: rgba(102, 187, 106, 0.25);
+}
+.starting-roll {
+  font-size: 0.8rem;
+  opacity: 0.8;
 }
 </style>

@@ -6,11 +6,11 @@ This document outlines all the rules of the Monadungeon
 Monadungeon is a dungeon-crawling adventure game where players explore a labyrinth, fight monsters, collect treasures, and race to defeat the final boss to claim the most victory points.
 
 ## Game Setup ✅
-- **Players**: 1-4 players maximum ✅
+- **Players**: 1-5 players maximum (five hero stands) ✅
 - **Starting Position**: All players start at position (0,0) on the central starting tile ✅
 - **Initial HP**: Each player starts with 5 HP tokens ✅
 - **Starting Tile**: A pre-placed starting tile is set at position (0,0) ✅
-- **Turn Order**: Players take turns clockwise starting with player 1 ✅
+- **Turn Order**: every player rolls 2d6, the highest roll starts (a tie goes to the first of the tied players in seating order), then play goes clockwise; in test mode player 1 starts and no dice are spent ✅
 
 ## Turn Structure ✅
 Each player has **4 movement actions** per turn. During their turn, players can:

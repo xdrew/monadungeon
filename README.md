@@ -13,7 +13,7 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 - **Multiple Login Options**: Connect via MetaMask, email, or social accounts through Privy
 
 ### Core Gameplay
-- **Multiplayer Support**: 1-4 players taking turns in clockwise order
+- **Multiplayer Support**: 1-5 players; the dice pick who starts, then turns go clockwise
 - **Dynamic Tile Exploration**: Procedurally generated dungeon layout as players explore
 - **Turn-Based Combat**: Roll dice to battle monsters with weapons and spells
 - **Inventory Management**: Collect and manage keys, weapons, spells, and treasures

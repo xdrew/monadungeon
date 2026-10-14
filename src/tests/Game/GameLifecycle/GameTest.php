@@ -24,6 +24,7 @@ use App\Game\GameLifecycle\NextTurn;
 use App\Game\GameLifecycle\PlayerAdded;
 use App\Game\GameLifecycle\StartGame;
 use App\Game\GameLifecycle\TurnChanged;
+use App\Game\Testing\TestMode;
 use App\Game\Player\AddItemToInventory;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
@@ -50,6 +51,7 @@ final class GameTest extends TestCase
     private Uuid $player3Id;
     private Uuid $player4Id;
     private Uuid $player5Id;
+    private Uuid $player6Id;
     private \DateTimeImmutable $fixedTime;
 
     protected function setUp(): void
@@ -60,7 +62,15 @@ final class GameTest extends TestCase
         $this->player3Id = Uuid::v7();
         $this->player4Id = Uuid::v7();
         $this->player5Id = Uuid::v7();
+        $this->player6Id = Uuid::v7();
         $this->fixedTime = new \DateTimeImmutable('2024-01-01 12:00:00');
+        // The dice decide who starts; the fixed order of test mode keeps the turn-order assertions stable
+        TestMode::getInstance()->enable();
+    }
+
+    protected function tearDown(): void
+    {
+        TestMode::getInstance()->disable();
     }
 
     #[Test]
@@ -169,15 +179,69 @@ final class GameTest extends TestCase
 
         $tester = MessageBusTester::create();
 
-        // Add 4 players (maximum)
+        // Add 5 players (maximum: Karak has 5 hero stands)
         $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player1Id));
         $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player2Id));
         $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player3Id));
         $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player4Id));
-
-        // Try to add 5th player
-        $this->expectException(CannotAddPlayerToAlreadyFullGame::class);
         $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player5Id));
+
+        // Try to add a 6th player
+        $this->expectException(CannotAddPlayerToAlreadyFullGame::class);
+        $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player6Id));
+    }
+
+    #[Test]
+    public function theDiceDecideWhoStarts(): void
+    {
+        [$game, ] = handle(Game::create(...), new CreateGame(gameId: $this->gameId, at: $this->fixedTime, deckSize: 88));
+        $tester = MessageBusTester::create();
+        foreach ([$this->player1Id, $this->player2Id, $this->player3Id] as $playerId) {
+            $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $playerId));
+        }
+
+        TestMode::getInstance()->disable();
+        try {
+            $tester->handle($game->start(...), new StartGame($this->gameId, $this->fixedTime));
+        } finally {
+            TestMode::getInstance()->enable();
+        }
+
+        $rolls = $game->getStartingRolls();
+        self::assertSame([$this->player1Id->toString(), $this->player2Id->toString(), $this->player3Id->toString()], array_keys($rolls));
+        foreach ($rolls as $roll) {
+            self::assertGreaterThanOrEqual(2, $roll);
+            self::assertLessThanOrEqual(12, $roll);
+        }
+        $starter = $game->getCurrentPlayerId();
+        self::assertNotNull($starter);
+        self::assertSame(max($rolls), $rolls[$starter->toString()], 'The highest roll starts');
+        // A tie goes to the first of the tied players in seating order
+        foreach ($rolls as $playerId => $roll) {
+            if ($roll === max($rolls)) {
+                self::assertSame($playerId, $starter->toString());
+                break;
+            }
+        }
+    }
+
+    #[Test]
+    public function theFirstPlayerStartsInTestMode(): void
+    {
+        [$game, ] = handle(Game::create(...), new CreateGame(gameId: $this->gameId, at: $this->fixedTime, deckSize: 88));
+        $tester = MessageBusTester::create();
+        $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player1Id));
+        $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player2Id));
+
+        TestMode::getInstance()->enable();
+        try {
+            $tester->handle($game->start(...), new StartGame($this->gameId, $this->fixedTime));
+        } finally {
+            TestMode::getInstance()->disable();
+        }
+
+        self::assertSame([], $game->getStartingRolls(), 'No dice are spent in test mode');
+        self::assertEquals($this->player1Id, $game->getCurrentPlayerId());
     }
 
     #[Test]

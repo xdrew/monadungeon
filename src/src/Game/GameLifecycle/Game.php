@@ -44,7 +44,8 @@ use Telephantast\MessageBus\MessageContext;
 #[FindBy(['gameId' => new Property('gameId')])]
 class Game extends AggregateRoot
 {
-    private const int MAX_PLAYERS_COUNT = 4;
+    // Karak comes with 5 hero stands
+    private const int MAX_PLAYERS_COUNT = 5;
 
     #[Column(type: Types::STRING, enumType: GameStatus::class)]
     private GameStatus $status = GameStatus::LOBBY;
@@ -69,6 +70,14 @@ class Game extends AggregateRoot
 
     #[Column(type: UuidType::class, nullable: true)]
     private ?Uuid $winnerId = null;
+
+    /**
+     * The dice roll of every player for the starting player (playerId => 2d6); empty in test mode.
+     *
+     * @var array<string, int>|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $startingRolls = null;
 
     /**
      * Curse of Karak: the player carrying the single curse token.
@@ -166,7 +175,7 @@ class Game extends AggregateRoot
         }
 
         $this->status = GameStatus::STARTED;
-        $this->currentPlayerId = $this->players[0];
+        $this->currentPlayerId = $this->rollForStartingPlayer();
         $this->currentTurnNumber = 1;
 
         $messageContext->dispatch(new GameStarted(
@@ -299,6 +308,14 @@ class Game extends AggregateRoot
     public function getCursedPlayerId(): ?Uuid
     {
         return $this->cursedPlayerId;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public function getStartingRolls(): array
+    {
+        return $this->startingRolls ?? [];
     }
 
     public function getCurseChoicePendingBy(): ?Uuid
@@ -476,6 +493,31 @@ class Game extends AggregateRoot
             winnerId: $this->winnerId,
             scores: $scores,
         ));
+    }
+
+    /**
+     * Karak: the dice decide who starts (highest 2d6, a tie goes to the first of the tied players in seating order).
+     * In test mode the first player starts and no dice are spent, so scripted games stay predictable.
+     */
+    private function rollForStartingPlayer(): Uuid
+    {
+        $this->startingRolls = [];
+        if (TestMode::getInstance()->isEnabled() || \count($this->players) < 2) {
+            return $this->players[0];
+        }
+
+        $starter = $this->players[0];
+        $best = 0;
+        foreach ($this->players as $playerId) {
+            $roll = random_int(1, 6) + random_int(1, 6);
+            $this->startingRolls[$playerId->toString()] = $roll;
+            if ($roll > $best) {
+                $best = $roll;
+                $starter = $playerId;
+            }
+        }
+
+        return $starter;
     }
 
     /**
