@@ -137,6 +137,18 @@ Each player may pick a hero before the game starts (lobby); a player without a h
   - A Swordsman who loses his last HP falls unconscious and his turn ends like everyone else's ✅
   - The usual limit of 4 actions per turn applies to the rest of the turn ✅
 
+#### Lord Xanros, the Warlock ✅
+- **Sacrifice** ✅
+  - After the dice are rolled (when the weapons-only roll is a tie or a loss) the Warlock may pay 1 HP for +1 strength, once per combat ✅
+  - The HP is paid before the result is resolved, whatever the outcome; the bonus is shown separately from item bonuses ✅
+  - He may pay his last HP: he then falls unconscious and skips his next turn (restoring 1 HP), exactly like after a lost fight ✅
+  - A fight already won with weapons only is final, no sacrifice is offered ✅
+- **Magic Swap** ✅
+  - As the first action of his turn the Warlock may trade places with any other hero: he moves to that hero's tile, the other hero to his ✅
+  - It costs all 4 moves, so the turn ends right after the swap ✅
+  - The ability of the new tile still applies: a reward lying there may be picked up (a chest still needs a key) and a healing fountain heals when the turn ends there ✅
+  - Arriving by swap never starts a battle and nothing else about the swapped hero changes ✅
+
 
 ### Healing Fountains ✅
 - Special tiles that restore all HP ✅

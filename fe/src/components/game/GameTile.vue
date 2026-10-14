@@ -98,8 +98,11 @@
           v-for="(player, index) in allPlayerEmojis" 
           :key="player.playerId"
           class="player-emoji"
+          :class="{ 'swap-target': swapTargetable && !isCurrentUser(player.playerId) }"
           :style="{ left: `${index * 8}px` }"
-          :title="`Player ${player.playerId}`"
+          :title="swapTargetable && !isCurrentUser(player.playerId) ? 'Magic Swap: trade places with this hero' : `Player ${player.playerId}`"
+          :data-testid="`player-figure-${player.playerId}`"
+          @click.stop="onPlayerClick(player.playerId)"
         >
           <img 
             v-if="isCurrentUser(player.playerId)"
@@ -221,6 +224,11 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  // Warlock "Magic Swap": the other heroes' figures can be clicked to trade places
+  swapTargetable: {
+    type: Boolean,
+    default: false
+  },
   hasItem: {
     type: Boolean,
     default: false
@@ -308,7 +316,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['highlight', 'unhighlight', 'center-view', 'item-click']);
+const emit = defineEmits(['highlight', 'unhighlight', 'center-view', 'item-click', 'player-click']);
 
 // Tile background image and rotation
 const tileBackgroundImage = ref(null);
@@ -354,6 +362,11 @@ const tileBackgroundStyle = computed(() => {
 const isAIPlayer = (playerId) => {
   const virtualPlayerId = typeof localStorage !== 'undefined' ? localStorage.getItem('virtualPlayerId') : null;
   return virtualPlayerId && playerId === virtualPlayerId;
+};
+
+// Warlock "Magic Swap": clicking another hero's figure
+const onPlayerClick = (playerId) => {
+  emit('player-click', { playerId, position: props.position });
 };
 
 // Helper function to check if player is current user
@@ -572,6 +585,21 @@ const onItemClick = () => {
   top: 10px;
   font-size: 24px;
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
+}
+
+.player-emoji.swap-target {
+  cursor: pointer;
+  z-index: 6;
+  animation: swapTargetPulse 1s ease-in-out infinite;
+}
+
+@keyframes swapTargetPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(186, 104, 200, 0.9));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(186, 104, 200, 1));
+  }
 }
 
 .player-image {

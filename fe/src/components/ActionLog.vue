@@ -216,6 +216,7 @@ const getActionIcon = (actionType) => {
     'move': '👟',
     'fight_monster': '⚔️',
     'use_hero_ability': '💀',
+    'magic_swap': '🔮',
     'pick_item': '',
     'drop_item': '',
     'end_turn': '✅',
@@ -286,6 +287,10 @@ const formatActionText = (action) => {
       }
       return `Moved ${moveDirection}`;
     
+    case 'magic_swap':
+      // Warlock "Magic Swap": traded places with another hero (costs the whole turn)
+      return `🔮 Magic Swap — traded places with another hero (${details?.from || '?'} → ${details?.to || '?'})`;
+
     case 'battle_started':
       // Skip this to avoid duplication - battle info will come from fight_monster
       return null;
@@ -401,6 +406,11 @@ const formatActionText = (action) => {
       // Swordsman "Combat Training": dice showing 1 were rerolled
       if (details?.onesRerolled > 0) {
         damageBreakdown = `Combat Training! (rerolled ${details.onesRerolled} one${details.onesRerolled === 1 ? '' : 's'}) ${damageBreakdown}`;
+      }
+
+      // Warlock "Sacrifice": 1 HP paid for +1 strength
+      if (details?.hpSacrificed) {
+        damageBreakdown = `🩸 Sacrifice! (−1 HP, +1) ${damageBreakdown}`;
       }
 
       if (result === 'WIN') {

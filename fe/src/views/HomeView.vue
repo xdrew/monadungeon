@@ -98,6 +98,20 @@
                 <strong>Unstoppable</strong> — a 6 on the dice keeps his turn going, even after a lost fight
               </span>
             </button>
+            <button
+              type="button"
+              class="hero-card"
+              :class="{ selected: selectedHero === 'warlock' }"
+              data-testid="hero-warlock"
+              @click="selectHero('warlock')"
+            >
+              <span class="hero-icon">🧙</span>
+              <span class="hero-name">Lord Xanros, the Warlock</span>
+              <span class="hero-skills">
+                <strong>Sacrifice</strong> — after the roll, pay 1 HP for +1 strength (once per fight)<br>
+                <strong>Magic Swap</strong> — trade places with any hero as the first action of the turn, for all 4 moves
+              </span>
+            </button>
           </div>
         </div>
 
@@ -183,7 +197,7 @@ const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
 const readStoredHero = () => {
   try {
     const stored = localStorage.getItem('selectedHero');
-    return ['warrior', 'thief', 'swordsman'].includes(stored) ? stored : null;
+    return ['warrior', 'thief', 'swordsman', 'warlock'].includes(stored) ? stored : null;
   } catch (e) {
     return null;
   }

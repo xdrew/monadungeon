@@ -488,7 +488,7 @@ export const gameApi = {
    * @param {string} [params.replaceItemId] - ID of the item to replace if inventory is full
    * @returns {Promise<Object>} Promise with finalized battle result data
    */
-  finalizeBattle: async ({ battleId, gameId, playerId, turnId, selectedConsumableIds, pickupItem = false, replaceItemId = null }) => {
+  finalizeBattle: async ({ battleId, gameId, playerId, turnId, selectedConsumableIds, pickupItem = false, replaceItemId = null, sacrificeHp = false }) => {
     try {
       const payload = {
         battleId,
@@ -505,6 +505,11 @@ export const gameApi = {
       
       if (replaceItemId) {
         payload.replaceItemId = replaceItemId;
+      }
+
+      // Warlock "Sacrifice": pay 1 HP for +1 strength in this battle
+      if (sacrificeHp) {
+        payload.sacrificeHp = true;
       }
       
       const response = await apiClient.post('/game/finalize-battle', payload);
@@ -605,6 +610,20 @@ export const gameApi = {
       return response.data;
     } catch (error) {
       console.error('Error reincarnating hero:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Warlock "Magic Swap": trade places with another hero (costs all 4 moves, first action of the turn only)
+   */
+  magicSwap: async ({ gameId, playerId, turnId, targetPlayerId }) => {
+    try {
+      const response = await apiClient.post('/game/magic-swap', { gameId, playerId, turnId, targetPlayerId });
+      console.log('Magic swap done:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error swapping places:', error);
       throw error;
     }
   },

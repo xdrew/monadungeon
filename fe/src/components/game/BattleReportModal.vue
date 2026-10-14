@@ -101,8 +101,8 @@
               </span>
             </div>
             <!-- Player HP -->
-            <div v-if="!isRolling" class="hero-hp" :class="{ 'hp-loss': dynamicResult === 'lose' }">
-              ❤️ {{ dynamicResult === 'lose' ? playerHpAfterBattle : playerHp }}/5
+            <div v-if="!isRolling" class="hero-hp" :class="{ 'hp-loss': dynamicResult === 'lose' || sacrificeHp }">
+              ❤️ {{ dynamicResult === 'lose' || sacrificeHp ? playerHpAfterBattle : playerHp }}/5
             </div>
           </div>
 
@@ -184,6 +184,14 @@
           >
             🎯 Combat Training! Rerolled a 1 ×{{ battleInfo.onesRerolled }}
           </div>
+          <!-- Warlock "Sacrifice": 1 HP was paid for +1 strength -->
+          <div
+            v-if="!isRolling && battleInfo.hpSacrificed"
+            class="first-roll-note"
+            data-testid="sacrifice-note"
+          >
+            🩸 Sacrifice! 1 HP paid for +1 strength
+          </div>
           <!-- Swordsman "Unstoppable": a 6 keeps the turn going -->
           <div
             v-if="!isRolling && turnContinues"
@@ -254,6 +262,18 @@
                 <span v-else class="chip-emoji">{{ getInventoryItemEmoji(item) }}</span>
                 <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
               </div>
+              <!-- Warlock "Sacrifice": pay 1 HP for +1 strength -->
+              <div
+                v-if="sacrificeAvailable"
+                class="item-chip selectable sacrifice-chip"
+                :class="{ 'selected': sacrificeHp }"
+                data-testid="sacrifice-hp"
+                title="Sacrifice: pay 1 HP for +1 strength (once per combat)"
+                @click="toggleSacrifice"
+              >
+                <span class="chip-emoji">🩸</span>
+                <span class="chip-damage">+1</span>
+              </div>
             </div>
           </div>
         </div>
@@ -310,7 +330,7 @@
           class="items-section"
           :class="{ 'section-reveal': showResults }"
         >
-          <div class="items-section-title">Select consumables to use:</div>
+          <div class="items-section-title">{{ availableDamageConsumables.length > 0 ? 'Select consumables to use:' : 'Sacrifice 1 HP for +1 strength?' }}</div>
           <div class="items-list">
             <div
               v-for="(item, index) in availableDamageConsumables"
@@ -328,6 +348,19 @@
               <span v-else class="chip-emoji">{{ getInventoryItemEmoji(item) }}</span>
               <span class="chip-name">{{ getSpellDisplayName(item) }}</span>
               <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
+            </div>
+            <!-- Warlock "Sacrifice": pay 1 HP for +1 strength -->
+            <div
+              v-if="sacrificeAvailable"
+              class="item-chip selectable sacrifice-chip"
+              :class="{ 'selected': sacrificeHp }"
+              data-testid="sacrifice-hp"
+              title="Sacrifice: pay 1 HP for +1 strength (once per combat)"
+              @click="toggleSacrifice"
+            >
+              <span class="chip-emoji">🩸</span>
+              <span class="chip-name">Sacrifice 1 HP</span>
+              <span class="chip-damage">+1</span>
             </div>
           </div>
         </div>
@@ -440,7 +473,7 @@
             🎲 Double Attack — reroll <span class="kbd-hint">(R)</span>
           </button>
           <button
-            v-if="selectedConsumables.length > 0 && beatsMonster(totalCalculatedDamage)"
+            v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
             class="btn-primary"
             :disabled="isProcessing"
             @click="finalizeBattleAndPickUp"
@@ -448,7 +481,7 @@
             🎒 Fight, win, and pick up reward
           </button>
           <button
-            v-if="selectedConsumables.length > 0 && beatsMonster(totalCalculatedDamage)"
+            v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
             class="btn-secondary"
             :disabled="isProcessing"
             @click="finalizeBattleAndLeaveItem"
@@ -456,7 +489,7 @@
             Leave reward after victory
           </button>
           <button
-            v-else-if="selectedConsumables.length > 0 && totalCalculatedDamage === battleInfo.monster && !battleInfo.tieIsWin"
+            v-else-if="hasBoost && totalCalculatedDamage === battleInfo.monster && !battleInfo.tieIsWin"
             class="btn-draw"
             :disabled="isProcessing"
             @click="finalizeBattleWithConsumables"
@@ -630,6 +663,7 @@ watch(() => props.battleInfo?.battleId, (newId, oldId) => {
     startRollingAnimation();
     isProcessing.value = false;
     battleFinalized.value = false;
+    sacrificeHp.value = false;
   }
 });
 
@@ -637,6 +671,7 @@ watch(() => props.battleInfo?.battleId, (newId, oldId) => {
 watch(() => props.battleInfo?.rerolled, (rerolled, wasRerolled) => {
   if (rerolled && !wasRerolled) {
     selectedConsumables.value = [];
+    sacrificeHp.value = false;
     isProcessing.value = false;
     startRollingAnimation();
   }
@@ -665,6 +700,19 @@ const pendingPickupItem = ref(null);
 const showConsumableSelection = ref(false);
 const availableConsumables = ref([]);
 const selectedConsumables = ref([]);
+
+// Warlock "Sacrifice": pay 1 HP for +1 strength, decided together with the consumables
+const sacrificeHp = ref(false);
+const sacrificeAvailable = computed(() => props.battleInfo?.canSacrificeHp === true && !battleFinalized.value);
+const sacrificeBonus = computed(() => (sacrificeHp.value ? 1 : 0));
+// Something was added to the roll (a consumable or the sacrifice), so the result must be recomputed
+const hasBoost = computed(() => selectedConsumables.value.length > 0 || sacrificeHp.value);
+
+const toggleSacrifice = () => {
+  if (!sacrificeAvailable.value || isProcessing.value) return;
+  sacrificeHp.value = !sacrificeHp.value;
+  console.log('Sacrifice toggled:', sacrificeHp.value);
+};
 
 const setShowConsumableSelection = (value, reason = '') => {
   if (showConsumableSelection.value === value) return;
@@ -716,7 +764,7 @@ const potentialVictoryWithConsumables = computed(() => {
   const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
   const maxConsumableDamage = availableConsumables.value
     .filter(item => getItemTypeDamage(item.type) > 0)
-    .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+    .reduce((total, item) => total + getItemTypeDamage(item.type), 0) + (sacrificeAvailable.value ? 1 : 0);
   console.log('Log damage:', {
     dice: props.battleInfo.diceRollDamage,
     weaponDamageTotal: weaponDamageTotal.value,
@@ -734,7 +782,7 @@ const potentialImprovementWithConsumables = computed(() => {
   const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
   const maxConsumableDamage = availableConsumables.value
     .filter(item => getItemTypeDamage(item.type) > 0)
-    .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+    .reduce((total, item) => total + getItemTypeDamage(item.type), 0) + (sacrificeAvailable.value ? 1 : 0);
 
   const totalPossibleDamage = currentDamage + maxConsumableDamage;
 
@@ -748,7 +796,7 @@ const potentialImprovementWithConsumables = computed(() => {
 });
 
 const dynamicResult = computed(() => {
-  if (selectedConsumables.value.length > 0 && (showConsumableSelection.value || showInventorySelection.value)) {
+  if (hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
 
@@ -765,7 +813,7 @@ const dynamicResultText = computed(() => {
     return 'Rolling...';
   }
 
-  if (selectedConsumables.value.length > 0 && (showConsumableSelection.value || showInventorySelection.value)) {
+  if (hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
 
@@ -815,10 +863,10 @@ const usedConsumableDamageTotal = computed(() => {
 });
 
 const consumableDamageTotal = computed(() => {
-  if (!availableConsumables.value || selectedConsumables.value.length === 0) return 0;
+  if (!availableConsumables.value || selectedConsumables.value.length === 0) return sacrificeBonus.value;
   return availableConsumables.value
     .filter(item => selectedConsumables.value.includes(item.itemId))
-    .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+    .reduce((total, item) => total + getItemTypeDamage(item.type), 0) + sacrificeBonus.value;
 });
 
 const totalCalculatedDamage = computed(() => {
@@ -826,10 +874,11 @@ const totalCalculatedDamage = computed(() => {
 });
 
 const playerHpAfterBattle = computed(() => {
+  const hpAfterSacrifice = props.playerHp - sacrificeBonus.value;
   if (dynamicResult.value === 'lose') {
-    return Math.max(0, props.playerHp - 1);
+    return Math.max(0, hpAfterSacrifice - 1);
   }
-  return props.playerHp;
+  return Math.max(0, hpAfterSacrifice);
 });
 
 const damageBarPercent = computed(() => {
@@ -893,22 +942,24 @@ const initializeConsumableSelection = () => {
     console.log('No reward in battleInfo, but monster exists. This might be a bug.');
   }
 
-  if (props.battleInfo.needsConsumableConfirmation && props.battleInfo.availableConsumables) {
+  if (props.battleInfo.needsConsumableConfirmation && (props.battleInfo.availableConsumables || props.battleInfo.canSacrificeHp)) {
     const didNotWin = props.battleInfo.result !== 'win';
     console.log('Player did not win:', didNotWin, 'result:', props.battleInfo.result);
 
     if (didNotWin) {
       const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
-      const consumablesWithDamage = props.battleInfo.availableConsumables.filter(item => getItemTypeDamage(item.type) > 0);
-      console.log('Current damage:', currentDamage, 'consumables with damage:', consumablesWithDamage);
+      const consumablesWithDamage = (props.battleInfo.availableConsumables || []).filter(item => getItemTypeDamage(item.type) > 0);
+      // Warlock "Sacrifice" counts as one more +1 the player may add
+      const sacrificeMax = props.battleInfo.canSacrificeHp ? 1 : 0;
+      console.log('Current damage:', currentDamage, 'consumables with damage:', consumablesWithDamage, 'sacrifice:', sacrificeMax);
 
-      if (consumablesWithDamage.length === 0) {
+      if (consumablesWithDamage.length === 0 && sacrificeMax === 0) {
         console.log('No damage-dealing consumables available, skipping consumables interface');
         setShowConsumableSelection(false, 'no damage-dealing consumables available');
         return;
       }
 
-      const maxConsumableDamage = consumablesWithDamage.reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+      const maxConsumableDamage = consumablesWithDamage.reduce((total, item) => total + getItemTypeDamage(item.type), 0) + sacrificeMax;
       const maxPossibleDamage = currentDamage + maxConsumableDamage;
 
       if (maxPossibleDamage > props.battleInfo.monster) {
@@ -983,7 +1034,8 @@ const finalizeBattleWithConsumables = () => {
   battleFinalized.value = true;
   emit('finalize-battle', {
     battleId: props.battleInfo.battleId,
-    selectedConsumableIds: selectedConsumables.value
+    selectedConsumableIds: selectedConsumables.value,
+    sacrificeHp: sacrificeHp.value
   });
   setShowConsumableSelection(false, 'finalizeBattleWithConsumables reset');
   selectedConsumables.value = [];
@@ -1016,6 +1068,7 @@ const finalizeBattleAndPickUp = () => {
   const eventData = {
     battleId: props.battleInfo.battleId,
     selectedConsumableIds: selectedConsumables.value,
+    sacrificeHp: sacrificeHp.value,
     replaceItemId: selectedItemForReplacement.value?.itemId
   };
 
@@ -1030,6 +1083,7 @@ const finalizeBattleAndLeaveItem = () => {
   emit('finalize-battle', {
     battleId: props.battleInfo.battleId,
     selectedConsumableIds: selectedConsumables.value,
+    sacrificeHp: sacrificeHp.value,
     hideModalImmediately: true
   });
   setShowConsumableSelection(false, 'finalizeBattleAndLeaveItem reset');
@@ -1049,11 +1103,12 @@ const confirmReplacement = () => {
 
   isProcessing.value = true;
 
-  if (selectedConsumables.value && selectedConsumables.value.length > 0) {
-    console.log('Confirming replacement with consumables:', selectedConsumables.value);
+  if (hasBoost.value) {
+    console.log('Confirming replacement with consumables:', selectedConsumables.value, 'sacrifice:', sacrificeHp.value);
     const eventData = {
       battleId: props.battleInfo.battleId,
       selectedConsumableIds: selectedConsumables.value,
+    sacrificeHp: sacrificeHp.value,
       replaceItemId: selectedItemForReplacement.value.itemId,
       hideModalImmediately: true
     };
@@ -2326,6 +2381,11 @@ const potentialRewardTip = computed(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.sacrifice-chip.selected {
+  border-color: #e53935;
+  box-shadow: 0 0 8px rgba(229, 57, 53, 0.6);
 }
 
 .item-chip {

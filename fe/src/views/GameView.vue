@@ -99,8 +99,9 @@
                   'ctrl-pressed': isCtrlPressed, 
                   'dragging': isDragging,
                   'is-replaying': isReplaying,
-                  'teleport-mode': isTeleportMode || isReincarnationMode,
-                  'reincarnation-mode': isReincarnationMode
+                  'teleport-mode': isTeleportMode || isReincarnationMode || isMagicSwapMode,
+                  'reincarnation-mode': isReincarnationMode,
+                  'magic-swap-mode': isMagicSwapMode
                 }"
                 @mousedown="onMouseDown"
                 @mouseleave="onMouseLeave"
@@ -112,7 +113,7 @@
                   <!-- Render available move/place markers before tiles -->
                   <AvailableMoveMarker
                     v-for="position in gameData.state.availablePlaces.moveTo"
-                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isReincarnationMode && !isProcessingAI && gameData.state.status !== 'finished'"
+                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isProcessingAI && gameData.state.status !== 'finished'"
                     :key="`move-${position}`"
                     :position="position"
                     :x="parseInt(position.split(',')[0])"
@@ -251,6 +252,8 @@
                     @unhighlight="unhighlightTile"
                     @center-view="centerViewOnTile"
                     @item-click="handleItemClick"
+                    :swap-targetable="isMagicSwapMode && !isPlayerPosition(tile.position)"
+                    @player-click="handlePlayerFigureClick"
                   />
 
                   <!-- AI Battle Overlay - floating damage numbers on the field -->
@@ -528,9 +531,41 @@
               <p>The Warrior lost his last HP. Click a healing fountain (🌿) to return there with full HP. The turn ends afterwards.</p>
             </div>
 
+            <!-- Warlock "Magic Swap" Controls -->
+            <div
+              v-if="isMagicSwapMode"
+              class="sidebar-section teleport-controls magic-swap-controls"
+              data-testid="magic-swap-banner"
+            >
+              <h3>🔮 Magic Swap</h3>
+              <p>Click another hero's figure to trade places. It costs all 4 moves: the turn ends on the new tile (a chest or a fountain there still counts).</p>
+              <button
+                class="end-turn-btn btn--block"
+                data-testid="magic-swap-cancel"
+                :disabled="loading || isRequestInProgress"
+                @click="isMagicSwapMode = false"
+              >
+                Cancel
+              </button>
+            </div>
+            <div
+              v-else-if="canMagicSwapNow"
+              class="sidebar-section magic-swap-section"
+            >
+              <button
+                class="end-turn-btn btn--block magic-swap-btn"
+                data-testid="magic-swap"
+                :disabled="loading || isRequestInProgress"
+                title="Warlock: trade places with any other hero (first action of the turn, costs all 4 moves)"
+                @click="isMagicSwapMode = true"
+              >
+                🔮 Magic Swap
+              </button>
+            </div>
+
             <!-- End Turn Button -->
             <div
-              v-if="isPlayerTurn && (gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && !isTeleportMode && !isReincarnationMode"
+              v-if="isPlayerTurn && (gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode"
               class="sidebar-section end-turn-section"
             >
               <button
@@ -964,8 +999,11 @@ const handleStealthChoice = (sneak) => {
 const isReincarnationMode = ref(false);
 const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend, empty = all fountains
 
+// Warlock "Magic Swap": the player picks another hero's figure on the field to trade places
+const isMagicSwapMode = ref(false);
+
 // Hero helpers for the player panel
-const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman' };
+const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman', warlock: 'Warlock' };
 // Swordsman "Unstoppable": the backend keeps the turn open after a battle with a 6, so the client must not end it
 const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
@@ -4075,7 +4113,8 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
       turnId: currentTurnId,
       selectedConsumableIds: finalizeBattleData.selectedConsumableIds,
       pickupItem: true,  // Always try to pick up
-      replaceItemId: finalizeBattleData.replaceItemId  // Include replacement if selected
+      replaceItemId: finalizeBattleData.replaceItemId,  // Include replacement if selected
+      sacrificeHp: finalizeBattleData.sacrificeHp === true // Warlock "Sacrifice"
     });
 
 
@@ -4142,10 +4181,16 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
 
     // Check predicted battle result based on damage vs monster HP
     const monster = battleInfo.value?.monster;
-    const totalDamage = battleInfo.value?.totalDamage || 0;
+    const sacrificeHp = finalizeBattleData.sacrificeHp === true; // Warlock "Sacrifice": +1 strength for 1 HP
+    const totalDamage = (battleInfo.value?.totalDamage || 0) + (sacrificeHp ? 1 : 0);
     const tieIsWin = battleInfo.value?.tieIsWin === true; // Thief "Backstab"
     const predictedResult = monster && totalDamage < monster.hp ? 'loose' :
                           (monster && totalDamage === monster.hp && !tieIsWin ? 'draw' : 'win');
+
+    // The sacrifice is paid whatever the result
+    if (sacrificeHp && getCurrentPlayerData.value && getCurrentPlayerData.value.hp > 0) {
+      getCurrentPlayerData.value.hp -= 1;
+    }
 
     // If we predict a loss, immediately update the UI to show reduced HP
     if (predictedResult === 'loose') {
@@ -4162,7 +4207,8 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
       playerId: currentPlayerId.value,
       turnId: currentTurnId,
       selectedConsumableIds: finalizeBattleData.selectedConsumableIds,
-      pickupItem: false // Explicitly set to false to ensure item is not picked up
+      pickupItem: false, // Explicitly set to false to ensure item is not picked up
+      sacrificeHp: finalizeBattleData.sacrificeHp === true // Warlock "Sacrifice"
     });
 
     // Warrior "Reincarnation": the hero lost the last HP, the turn stays open until a fountain is chosen
@@ -4528,6 +4574,66 @@ watch(() => getCurrentPlayerData.value?.awaitingReincarnation, (awaiting) => {
     reincarnationFountainPositions.value = [];
   }
 });
+
+// Actions already recorded in the current turn (the Magic Swap must be the first one)
+const currentTurnActions = computed(() => {
+  const currentTurnId = gameData.value?.state?.currentTurnId;
+  if (!currentTurnId) return [];
+  const turn = gameTurns.value.find(t => t.turnId === currentTurnId);
+  return turn?.actions || [];
+});
+
+// Other heroes standing somewhere on the field
+const otherPlayersWithPosition = computed(() => {
+  const positions = gameData.value?.field?.playerPositions || {};
+  return Object.keys(positions).filter(playerId => playerId !== currentPlayerId.value);
+});
+
+// Warlock "Magic Swap" is offered only as the first action of the turn
+const canMagicSwapNow = computed(() => {
+  if (!isPlayerTurn.value || isReplaying.value || isProcessingAI.value) return false;
+  if (gameData.value?.state?.status === 'finished') return false;
+  if (getCurrentPlayerData.value?.heroFlags?.canMagicSwap !== true) return false;
+  if (pickedTileId.value || isTeleportMode.value || isReincarnationMode.value) return false;
+  if (currentTurnActions.value.length > 0) return false;
+  return otherPlayersWithPosition.value.length > 0;
+});
+
+// Leave the swap mode as soon as it is no longer possible (turn changed, actions recorded)
+watch(canMagicSwapNow, (possible) => {
+  if (!possible && isMagicSwapMode.value) {
+    isMagicSwapMode.value = false;
+  }
+});
+
+// "Magic Swap": trade places with the clicked hero; the backend spends the 4 moves (and ends the turn unless a reward waits)
+const handlePlayerFigureClick = async ({ playerId }) => {
+  if (!isMagicSwapMode.value || isRequestInProgress.value) return;
+  if (!playerId || playerId === currentPlayerId.value) return;
+
+  try {
+    loading.value = true;
+    loadingStatus.value = 'Swapping places...';
+
+    await gameApi.magicSwap({
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: gameData.value.state.currentTurnId,
+      targetPlayerId: playerId
+    });
+
+    isMagicSwapMode.value = false;
+
+    // Reload game data (the turn usually ended; this also triggers the AI turn if needed)
+    await loadGameData();
+  } catch (err) {
+    console.error('Failed to swap places:', err);
+    error.value = `Magic Swap failed: ${err.message}`;
+  } finally {
+    loading.value = false;
+    loadingStatus.value = '';
+  }
+};
 
 // "Reincarnation": teleport to the chosen healing fountain with full HP; the backend ends the turn
 const handleReincarnationClick = async (position) => {
