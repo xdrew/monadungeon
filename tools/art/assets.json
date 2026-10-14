@@ -1,0 +1,107 @@
+{
+  "assets": [
+    {
+      "id": "giant_rat",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/giant_rat.webp",
+      "subject": "a giant dungeon rat the size of a dog, matted grey-brown fur, bared yellow teeth, pink scarred tail, red beady eyes, crouching ready to bite"
+    },
+    {
+      "id": "giant_spider",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/giant_spider.webp",
+      "subject": "a giant hairy dungeon spider, dark brown body with bone-white markings, eight legs spread, glowing amber eyes, dripping fangs"
+    },
+    {
+      "id": "mummy",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/mummy.webp",
+      "subject": "an ancient mummy wrapped in tattered yellowed bandages, one arm stretched forward, dark hollow eye sockets with a faint ember glow, a cracked golden amulet on its chest"
+    },
+    {
+      "id": "skeleton_turnkey",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/skeleton_turnkey.webp",
+      "subject": "a skeleton jailer (the turnkey) in a rusty chainmail vest, holding up a big iron ring of golden keys in one bony hand and a lantern in the other"
+    },
+    {
+      "id": "skeleton_warrior",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/skeleton_warrior.webp",
+      "subject": "a skeleton warrior in a dented iron helmet and breastplate, raising a notched sword, holding a round wooden shield, glowing ember eyes"
+    },
+    {
+      "id": "skeleton_king",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/skeleton_king.webp",
+      "subject": "a skeleton king on a bone throne fragment, tall golden crown with red gems, tattered purple royal cloak, holding a great axe, cold blue glowing eyes"
+    },
+    {
+      "id": "fallen",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/fallen.webp",
+      "subject": "the Fallen: a spectral undead knight, translucent pale blue ghostly armour and a torn cape, a cursed sword, a hovering skull face under the helm, wisps of ghost-light"
+    },
+    {
+      "id": "dragon",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/dragon.webp",
+      "subject": "the dungeon dragon, the final boss: a hulking dark red dragon with ember-glowing cracks on its scales, horns, spread bat wings, smoke from its nostrils, coiled around a pile of gold"
+    },
+    {
+      "id": "adventurer",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/adventurer.webp",
+      "subject": "a plain adventurer with no special skills: a young traveller in a brown leather jerkin and a short cloak, holding a burning torch and a simple short sword"
+    },
+    {
+      "id": "warrior",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/warrior.webp",
+      "subject": "Horan the Warrior: a broad, battle-scarred veteran in heavy iron plate armour with a horned helm, a long sword and a kite shield with a red boar emblem"
+    },
+    {
+      "id": "thief",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/thief.webp",
+      "subject": "Aderyn the Thief: a slim hooded woman in dark grey leather, face half in shadow, twin daggers, a coil of rope and lockpicks on her belt, crouched and ready"
+    },
+    {
+      "id": "swordsman",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/swordsman.webp",
+      "subject": "Victorius the Swordsman: a proud duelist in polished half-plate with a red sash, both hands on a tall two-handed sword planted before him, confident stance"
+    },
+    {
+      "id": "warlock",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/warlock.webp",
+      "subject": "Lord Xanros the Warlock: a gaunt man in black and violet robes with a high collar, a staff topped with a glowing skull, pale hands crackling with dark magic"
+    },
+    {
+      "id": "wizard",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/wizard.webp",
+      "subject": "Argentus the Wizard: an old wizard with a long silver beard in deep blue star-embroidered robes and a pointed hat, holding a gnarled staff with a glowing fire orb and a scroll"
+    },
+    {
+      "id": "oracle",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/oracle.webp",
+      "subject": "Taia the Oracle: a serene priestess in flowing white and gold robes with a veil, holding a glowing warm golden crystal sphere in one hand, eyes closed, a thin golden (never green or yellow-green) halo of light behind her head"
+    },
+    {
+      "id": "lobby_bg",
+      "kind": "background",
+      "out": "fe/public/themes/base/lobby-bg.webp",
+      "subject": "Around the chest gather the dungeon's monsters, drawn like the attached monster sprites: a huge dark red dragon looming behind the chest, a crowned skeleton king, a bandaged mummy, a giant hairy spider on the left, a giant rat sniffing at the coins, a skeleton warrior with a shield and a pale ghostly knight (the Fallen) fading in the back.",
+      "character_refs": [
+        "dragon",
+        "skeleton_king",
+        "mummy",
+        "giant_spider",
+        "giant_rat"
+      ]
+    }
+  ]
+}
