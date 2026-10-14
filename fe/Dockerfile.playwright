@@ -1,22 +1,22 @@
 FROM mcr.microsoft.com/playwright:v1.53.0-jammy
 
-# Set work directory
+# Set work directory, owned by the non-root pwuser shipped with the image
 WORKDIR /app
+RUN chown pwuser:pwuser /app
+
+# Run everything as pwuser so no recursive chown over node_modules is needed afterwards
+# (a `chown -R` after `npm ci` rewrites the whole 390 MB node_modules into a new layer on every build)
+USER pwuser
 
 # Install dependencies first (better layer caching)
-COPY package*.json ./
+COPY --chown=pwuser:pwuser package*.json ./
 RUN npm ci
 
 # Copy application files
-COPY . .
+COPY --chown=pwuser:pwuser . .
 
-# Ensure Playwright browsers are installed
-RUN npx playwright install chromium firefox
-
-# The playwright image already has a pwuser, just set ownership
-RUN chown -R pwuser:pwuser /app
-
-USER pwuser
+# Browsers (chromium, firefox, webkit) are pre-installed in the base image for this Playwright version;
+# keep the package version in package.json in sync with the image tag above.
 
 # Default command runs tests
 CMD ["npm", "run", "test:e2e"]
