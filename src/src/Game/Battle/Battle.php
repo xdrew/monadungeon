@@ -278,7 +278,7 @@ class Battle extends AggregateRoot
         $monster = $this->getMonster();
 
         if ($monster !== null) {
-            $finalResult = $monster->attack($this->totalDamage);
+            $finalResult = $this->resolveResult($monster, $messageContext);
 
             // Dispatch event to indicate battle was finalized
             $messageContext->dispatch(new BattleFinalized(
@@ -316,6 +316,9 @@ class Battle extends AggregateRoot
                 needsConsumableConfirmation: false,
                 // Add info about item pickup
                 itemPickedUp: $finalResult === BattleResult::WIN && $command->pickupItem,
+                rerolled: $this->rerollUsed,
+                firstDiceResults: $this->firstDiceResults,
+                tieIsWin: $this->playerWinsTies($messageContext),
             ));
 
             // NOW process the battle result (movement, HP changes, turn ending)
@@ -359,7 +362,7 @@ class Battle extends AggregateRoot
             // But we'll try to handle it anyway
             $monster = $this->getMonster();
             if ($monster !== null) {
-                $finalResult = $monster->attack($this->totalDamage);
+                $finalResult = $this->resolveResult($monster, $messageContext);
 
                 // Try to get player position and handle movement
                 try {
@@ -407,6 +410,29 @@ class Battle extends AggregateRoot
     }
 
     /**
+     * Whether the fighting player's hero turns ties into victories (Thief "Backstab").
+     */
+    private function playerWinsTies(MessageContext $messageContext): bool
+    {
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
+
+        return $player->getHero()?->winsTies() === true;
+    }
+
+    /**
+     * Battle result for the current total damage, with hero skills applied.
+     */
+    private function resolveResult(Item $monster, MessageContext $messageContext): BattleResult
+    {
+        $result = $monster->attack($this->totalDamage);
+        if ($result === BattleResult::DRAW && $this->playerWinsTies($messageContext)) {
+            return BattleResult::WIN;
+        }
+
+        return $result;
+    }
+
+    /**
      * Evaluate the weapons-only roll (first roll or Double Attack reroll).
      * A WIN is final and processed immediately; otherwise the player chooses consumables (and may reroll if the hero can).
      */
@@ -421,7 +447,8 @@ class Battle extends AggregateRoot
         $itemDamage = $this->totalDamage - $diceRollDamage;
 
         // Check initial battle result (weapons only)
-        $initialResult = $monster->attack($this->totalDamage);
+        $initialResult = $this->resolveResult($monster, $messageContext);
+        $tieIsWin = $this->playerWinsTies($messageContext);
         // If player wins with weapons only, that's the final result
         if ($initialResult === BattleResult::WIN) {
             // Dispatch battle completed event BEFORE processing result to ensure correct event order
@@ -438,6 +465,7 @@ class Battle extends AggregateRoot
                 usedItems: $this->usedItems,
                 rerolled: $this->rerollUsed,
                 firstDiceResults: $this->firstDiceResults,
+                tieIsWin: $tieIsWin,
             ));
 
             // Process the battle result after BattleCompleted event
@@ -471,6 +499,7 @@ class Battle extends AggregateRoot
             canReroll: $canReroll,
             rerolled: $this->rerollUsed,
             firstDiceResults: $this->firstDiceResults,
+            tieIsWin: $tieIsWin,
         ));
     }
 
@@ -542,8 +571,10 @@ class Battle extends AggregateRoot
         FieldPlace $toPosition,
         MessageContext $messageContext,
     ): BattleResult {
-        // Attack the monster
-        $result = $monster->attack($this->totalDamage);
+        // Attack the monster (Thief "Backstab": a tie becomes a victory)
+        $rawResult = $monster->attack($this->totalDamage);
+        $result = $this->resolveResult($monster, $messageContext);
+        $backstab = $rawResult === BattleResult::DRAW && $result === BattleResult::WIN;
 
         // Calculate dice roll and item damage separately
         $diceRollDamage = array_sum($this->diceResults);
@@ -573,7 +604,11 @@ class Battle extends AggregateRoot
                 'toPosition' => $toPosition->toString(),
                 'rerolled' => $this->rerollUsed,
                 'firstDiceResults' => $this->firstDiceResults,
-                'heroAbility' => $this->rerollUsed ? 'double_attack' : null,
+                'backstab' => $backstab,
+                'heroAbility' => implode('+', array_filter([
+                    $this->rerollUsed ? 'double_attack' : null,
+                    $backstab ? 'backstab' : null,
+                ])) ?: null,
             ],
             at: new \DateTimeImmutable(),
         ));

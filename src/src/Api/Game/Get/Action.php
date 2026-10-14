@@ -67,6 +67,7 @@ final readonly class Action
                         'hero' => $player->getHero()?->value,
                         'heroLabel' => $player->getHero()?->label(),
                         'heroSkills' => $player->getHero()?->skills() ?? [],
+                        'heroFlags' => $player->getHero()?->flags() ?? [],
                         'awaitingReincarnation' => $player->isAwaitingReincarnation(),
                         'inventory' => [
                             'keys' => $this->formatInventoryItems($inventory['key'] ?? []),

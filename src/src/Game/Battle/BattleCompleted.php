@@ -39,6 +39,7 @@ final readonly class BattleCompleted implements Event
         public bool $canReroll = false,
         public bool $rerolled = false,
         public ?array $firstDiceResults = null,
+        public bool $tieIsWin = false,
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}
 }

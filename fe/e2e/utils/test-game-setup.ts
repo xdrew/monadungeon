@@ -1,7 +1,7 @@
 import { APIRequestContext } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
 
-export type HeroType = 'warrior';
+export type HeroType = 'warrior' | 'thief';
 
 export interface PlayerTestConfig {
   maxHp?: number;

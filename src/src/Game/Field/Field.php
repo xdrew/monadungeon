@@ -1140,6 +1140,8 @@ class Field extends AggregateRoot
             'canReroll' => $event->canReroll,
             'rerolled' => $event->rerolled,
             'firstDiceResults' => $event->firstDiceResults,
+            // Hero skills (Thief "Backstab": a tie counts as a victory)
+            'tieIsWin' => $event->tieIsWin,
         ];
 
         // Check if there are items at this position

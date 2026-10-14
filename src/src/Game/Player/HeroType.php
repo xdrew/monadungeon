@@ -10,6 +10,7 @@ namespace App\Game\Player;
 enum HeroType: string
 {
     case WARRIOR = 'warrior';
+    case THIEF = 'thief';
 
     /**
      * @return list<string>
@@ -23,6 +24,7 @@ enum HeroType: string
     {
         return match ($this) {
             self::WARRIOR => 'Horan, the Warrior',
+            self::THIEF => 'Aderyn, the Thief',
         };
     }
 
@@ -31,9 +33,7 @@ enum HeroType: string
      */
     public function canRerollBattle(): bool
     {
-        return match ($this) {
-            self::WARRIOR => true,
-        };
+        return $this === self::WARRIOR;
     }
 
     /**
@@ -41,9 +41,38 @@ enum HeroType: string
      */
     public function reincarnates(): bool
     {
-        return match ($this) {
-            self::WARRIOR => true,
-        };
+        return $this === self::WARRIOR;
+    }
+
+    /**
+     * Backstab: a combat that would be a tie is a victory.
+     */
+    public function winsTies(): bool
+    {
+        return $this === self::THIEF;
+    }
+
+    /**
+     * Stealth: may enter a tile with a monster without fighting it and keep moving.
+     */
+    public function canSneakPastMonsters(): bool
+    {
+        return $this === self::THIEF;
+    }
+
+    /**
+     * Skill flags for API consumers (frontend decides which prompts/buttons to show).
+     *
+     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool}
+     */
+    public function flags(): array
+    {
+        return [
+            'canRerollBattle' => $this->canRerollBattle(),
+            'reincarnates' => $this->reincarnates(),
+            'winsTies' => $this->winsTies(),
+            'canSneakPastMonsters' => $this->canSneakPastMonsters(),
+        ];
     }
 
     /**
@@ -60,6 +89,16 @@ enum HeroType: string
                 [
                     'name' => 'Reincarnation',
                     'description' => 'If the Warrior loses his last HP, he does not fall unconscious. Instead he teleports to any tile with a healing fountain, where all his HP are replenished. His turn ends anyway.',
+                ],
+            ],
+            self::THIEF => [
+                [
+                    'name' => 'Backstab',
+                    'description' => 'The Thief attacks from the shadows: she wins any combat that would normally result in a tie.',
+                ],
+                [
+                    'name' => 'Stealth',
+                    'description' => 'The Thief moves in the shadows: when entering a tile with a monster, she can decide to fight it or to sneak past and continue moving.',
                 ],
             ],
         };

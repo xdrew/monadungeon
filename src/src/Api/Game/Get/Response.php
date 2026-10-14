@@ -218,7 +218,7 @@ final readonly class Response
                     $playerFormattedData['username'] = $playerData[$playerIdStr]['username'];
                 }
                 // Hero data (null hero is meaningful, so use array_key_exists)
-                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'awaitingReincarnation'] as $heroKey) {
+                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation'] as $heroKey) {
                     if (\array_key_exists($heroKey, $playerData[$playerIdStr])) {
                         $playerFormattedData[$heroKey] = $playerData[$playerIdStr][$heroKey];
                     }
@@ -238,6 +238,7 @@ final readonly class Response
                     $playerFormattedData['hero'] = $player->getHero()?->value;
                     $playerFormattedData['heroLabel'] = $player->getHero()?->label();
                     $playerFormattedData['heroSkills'] = $player->getHero()?->skills() ?? [];
+                    $playerFormattedData['heroFlags'] = $player->getHero()?->flags() ?? [];
                     $playerFormattedData['awaitingReincarnation'] = $player->isAwaitingReincarnation();
                 } catch (\Throwable) {
                     // Unable to get player data, continue with what we have
