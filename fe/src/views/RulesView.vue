@@ -3,7 +3,7 @@
     <MusicToggle />
     <div class="rules-content">
       <div class="rules-header">
-        <h1 class="rules-title">📜 MONADUNGEON RULES</h1>
+        <h1 class="rules-title">📜 {{ theme.appName }} RULES</h1>
         <button class="back-button" @click="$router.push('/')">
           ← Back to Lobby
         </button>
@@ -13,8 +13,8 @@
       <section class="rules-section">
         <h2>🎮 Game Overview</h2>
         <p>
-          Monadungeon is a dungeon-crawling adventure where players explore a labyrinth, 
-          fight monsters, collect treasures, and race to defeat the bullish monster to claim victory!
+          {{ theme.appName }} is a dungeon-crawling adventure where players explore a labyrinth,
+          fight monsters, collect treasures, and race to defeat the {{ dragonName }} to claim victory!
         </p>
         <div class="overview-grid">
           <div class="overview-item">
@@ -42,7 +42,7 @@
         <div class="win-conditions">
           <div class="win-step">
             <span class="step-number">1</span>
-            <p>Defeat the Bullish to end the game</p>
+            <p>Defeat the {{ dragonName }} to end the game</p>
           </div>
           <div class="win-step">
             <span class="step-number">2</span>
@@ -53,8 +53,8 @@
           <h3>Victory Points Sources:</h3>
           <ul>
             <li>🎁 Regular Treasure Chest: <strong>2 VP</strong></li>
-            <li>💎 Ruby Chest (Bullish's reward): <strong>3 VP</strong></li>
-            <li>☠️ Bee's Treasure: <strong>2 VP</strong></li>
+            <li>💎 Ruby Chest ({{ dragonName }}'s reward): <strong>3 VP</strong></li>
+            <li>☠️ {{ fallenName }}'s Treasure: <strong>2 VP</strong></li>
           </ul>
         </div>
       </section>
@@ -66,92 +66,26 @@
           Battle monsters by rolling 2 dice. Win if your total damage exceeds their HP!
         </p>
         <div class="monsters-grid">
-          <div class="monster-card">
+          <div
+            v-for="monster in monsterCards"
+            :key="monster.key"
+            class="monster-card"
+            :class="{ 'boss-card': monster.boss }"
+          >
             <div class="monster-header">
-              <img class="monster-image" src="/images/items/ikan.webp" alt="Salmonad" />
-              <span class="monster-name">Salmonad</span>
+              <ThemedImage
+                :src="monster.image"
+                :emoji="monster.emoji"
+                :alt="monster.name"
+                :img-class="['monster-image', { 'boss-image': monster.boss }]"
+                :emoji-class="['monster-image', 'monster-emoji', { 'boss-image': monster.boss }]"
+              />
+              <span class="monster-name">{{ monster.name }}<template v-if="monster.boss"> (BOSS)</template></span>
             </div>
             <div class="monster-stats">
-              <div class="stat">❤️ 5 HP</div>
-              <div class="stat">🗡️ Drops: Dagger (+1 damage)</div>
-            </div>
-          </div>
-
-          <div class="monster-card">
-            <div class="monster-header">
-              <img class="monster-image" src="/images/items/moyaki.webp" alt="Moyaki" />
-              <span class="monster-name">Moyaki</span>
-            </div>
-            <div class="monster-stats">
-              <div class="stat">❤️ 6 HP</div>
-              <div class="stat">✨ Drops: Teleport Spell</div>
-            </div>
-          </div>
-
-          <div class="monster-card">
-            <div class="monster-header">
-              <img class="monster-image" src="/images/items/ubur.webp" alt="Jellyfish" />
-              <span class="monster-name">Jellyfish</span>
-            </div>
-            <div class="monster-stats">
-              <div class="stat">❤️ 7 HP</div>
-              <div class="stat">🔥 Drops: Fireball (+1 damage)</div>
-            </div>
-          </div>
-
-          <div class="monster-card">
-            <div class="monster-header">
-              <img class="monster-image" src="/images/items/bearded.webp" alt="Bearded nad" />
-              <span class="monster-name">Bearded nad</span>
-            </div>
-            <div class="monster-stats">
-              <div class="stat">❤️ 8 HP</div>
-              <div class="stat">🗝️ Drops: Key (unlocks chests)</div>
-            </div>
-          </div>
-
-          <div class="monster-card">
-            <div class="monster-header">
-              <img class="monster-image" src="/images/items/taekwonnad.webp" alt="Taekwonnad" />
-              <span class="monster-name">Taekwonnad</span>
-            </div>
-            <div class="monster-stats">
-              <div class="stat">❤️ 9 HP</div>
-              <div class="stat">🗡️ Drops: Sword (+2 damage)</div>
-            </div>
-          </div>
-
-          <div class="monster-card">
-            <div class="monster-header">
-              <img class="monster-image" src="/images/items/molandak.webp" alt="Molandak" />
-              <span class="monster-name">Molandak</span>
-            </div>
-            <div class="monster-stats">
-              <div class="stat">❤️ 10 HP</div>
-              <div class="stat">🪓 Drops: Axe (+3 damage)</div>
-            </div>
-          </div>
-
-          <div class="monster-card">
-            <div class="monster-header">
-              <img class="monster-image" src="/images/items/bee.webp" alt="Bee" />
-              <span class="monster-name">Bee</span>
-            </div>
-            <div class="monster-stats">
-              <div class="stat">❤️ 12 HP</div>
-              <div class="stat">🎁 Drops: Treasure Chest (2 VP)</div>
-            </div>
-          </div>
-
-          <div class="monster-card boss-card">
-            <div class="monster-header">
-              <img class="monster-image boss-image" src="/images/items/bullish.webp" alt="Bullish" />
-              <span class="monster-name">Bullish (BOSS)</span>
-            </div>
-            <div class="monster-stats">
-              <div class="stat">❤️ 15 HP</div>
-              <div class="stat">💎 Drops: Ruby Chest (3 VP)</div>
-              <div class="stat">🏁 Ends the game!</div>
+              <div class="stat">❤️ {{ monster.hp }} HP</div>
+              <div class="stat">{{ monster.drop }}</div>
+              <div v-if="monster.extra" class="stat">{{ monster.extra }}</div>
             </div>
           </div>
         </div>
@@ -337,8 +271,8 @@
             <p>Save healing spells for emergencies</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><img class="monster-image" src="/images/items/bullish.webp" alt="Bullish" /></span>
-            <p>Prepare well before fighting the Bullish!</p>
+            <span class="tip-icon"><ThemedImage :src="dragon.image" :emoji="dragon.emoji" :alt="dragon.name" img-class="monster-image" emoji-class="monster-image monster-emoji" /></span>
+            <p>Prepare well before fighting the {{ dragonName }}!</p>
           </div>
         </div>
       </section>
@@ -349,7 +283,27 @@
 <script setup>
 import { onMounted, onBeforeUnmount } from 'vue';
 import MusicToggle from '@/components/game/MusicToggle.vue';
+import ThemedImage from '@/components/ThemedImage.vue';
 import { musicService } from '@/services/musicService';
+import { theme, getMonster } from '@/theme';
+
+// Monster stats from the rulebook; names and images come from the active theme
+const MONSTER_RULES = [
+  { key: 'giant_rat', hp: 5, drop: '🗡️ Drops: Dagger (+1 damage)' },
+  { key: 'giant_spider', hp: 6, drop: '✨ Drops: Teleport Spell' },
+  { key: 'mummy', hp: 7, drop: '🔥 Drops: Fireball (+1 damage)' },
+  { key: 'skeleton_turnkey', hp: 8, drop: '🗝️ Drops: Key (unlocks chests)' },
+  { key: 'skeleton_warrior', hp: 9, drop: '🗡️ Drops: Sword (+2 damage)' },
+  { key: 'skeleton_king', hp: 10, drop: '🪓 Drops: Axe (+3 damage)' },
+  { key: 'fallen', hp: 12, drop: '🎁 Drops: Treasure Chest (2 VP)' },
+  { key: 'dragon', hp: 15, drop: '💎 Drops: Ruby Chest (3 VP)', boss: true, extra: '🏁 Ends the game!' }
+];
+
+const monsterCards = MONSTER_RULES.map((rule) => ({ ...rule, ...getMonster(rule.key) }));
+const dragon = getMonster('dragon');
+const fallen = getMonster('fallen');
+const dragonName = dragon.name;
+const fallenName = fallen.name;
 
 onMounted(() => {
   // Initialize music service with placeholder URL
@@ -386,6 +340,7 @@ onBeforeUnmount(() => {
 
 .rules-title {
   font-size: 3rem;
+  text-transform: uppercase;
   background: linear-gradient(45deg, #ffd700, #ffed4e);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -556,6 +511,14 @@ onBeforeUnmount(() => {
   height: 56px;
   border-color: #ff6b6b;
   box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+.monster-image.monster-emoji {
+  font-size: 26px;
+}
+
+.monster-image.monster-emoji.boss-image {
+  font-size: 32px;
 }
 
 .monster-name {

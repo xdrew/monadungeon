@@ -10,13 +10,13 @@
       </div>
 
       <div class="stealth-monster">
-        <img
-          v-if="monsterImage"
+        <ThemedImage
           :src="monsterImage"
+          :emoji="monsterEmoji"
           :alt="monsterName"
-          class="stealth-monster-image"
+          img-class="stealth-monster-image"
+          emoji-class="stealth-monster-emoji"
         />
-        <span v-else class="stealth-monster-emoji">👹</span>
         <div class="stealth-monster-name">{{ monsterName }}</div>
         <div v-if="monsterHp" class="stealth-monster-hp">♥ {{ monsterHp }}</div>
       </div>
@@ -45,7 +45,8 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue';
-import { getMonsterDisplayName, getMonsterImage } from '@/utils/monsterUtils';
+import { getMonsterDisplayName, getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
+import ThemedImage from '@/components/ThemedImage.vue';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -57,7 +58,8 @@ const emit = defineEmits(['choose']);
 
 const monsterKey = computed(() => props.monster?.name || props.monster?.type || '');
 const monsterName = computed(() => getMonsterDisplayName(monsterKey.value) || monsterKey.value || 'Monster');
-const monsterImage = computed(() => getMonsterImage({ monster_name: monsterKey.value }));
+const monsterImage = computed(() => getMonsterImage({ monster_name: monsterKey.value, monster: props.monster?.guardHP || 0 }));
+const monsterEmoji = computed(() => getMonsterEmoji({ monster_name: monsterKey.value, monster: props.monster?.guardHP || 0 }));
 const monsterHp = computed(() => props.monster?.guardHP || 0);
 
 // true = sneak past (ignore the monster), false = fight

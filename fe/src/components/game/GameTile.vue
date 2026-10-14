@@ -58,11 +58,13 @@
         :title="itemTooltip"
         @click="onItemClick"
       >
-        <img 
+        <ThemedImage
           v-if="monsterImage && item && !item.guardDefeated && item.guardHP > 0"
           :src="monsterImage"
+          :emoji="monsterEmoji"
           :alt="item.name"
-          class="monster-image"
+          img-class="monster-image"
+          emoji-class="monster-emoji"
         />
         <img
           v-else-if="chestImage"
@@ -104,17 +106,12 @@
           :data-testid="`player-figure-${player.playerId}`"
           @click.stop="onPlayerClick(player.playerId)"
         >
-          <img 
-            v-if="isCurrentUser(player.playerId)"
-            src="/images/player.webp" 
-            alt="Current Player" 
-            class="player-image"
-          />
-          <img 
-            v-else
-            src="/images/ai.webp" 
-            alt="AI Player" 
-            class="ai-player-image"
+          <!-- hero portrait from the theme when known, else the generic figure -->
+          <img
+            :src="figureSrc(player.playerId)"
+            :alt="isCurrentUser(player.playerId) ? 'Current Player' : 'AI Player'"
+            :class="isCurrentUser(player.playerId) ? 'player-image' : 'ai-player-image'"
+            @error="onFigureError($event, player.playerId)"
           />
         </span>
       </div>
@@ -176,7 +173,9 @@
 import { defineProps, defineEmits, computed, ref, onMounted } from 'vue';
 import { getPlayerEmoji } from '@/utils/playerUtils';
 import { getItemDamage } from '@/utils/itemUtils';
-import { getMonsterImage } from '@/utils/monsterUtils';
+import { getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
+import { getHero } from '@/theme';
+import ThemedImage from '@/components/ThemedImage.vue';
 import { getTileImageWithRotation } from '@/config/tileImageConfig';
 
 const props = defineProps({
@@ -223,6 +222,11 @@ const props = defineProps({
   allPlayerIds: {
     type: Array,
     default: () => []
+  },
+  /** { [playerId]: heroKey|null } — theme hero portraits for the figures */
+  playerHeroes: {
+    type: Object,
+    default: () => ({})
   },
   // Warlock "Magic Swap": the other heroes' figures can be clicked to trade places
   swapTargetable: {
@@ -401,6 +405,21 @@ const allPlayerEmojis = computed(() => {
   }));
 });
 
+const defaultFigure = (playerId) => (isCurrentUser(playerId) ? '/images/player.webp' : '/images/ai.webp');
+
+const figureSrc = (playerId) => {
+  const heroKey = props.playerHeroes?.[playerId];
+  return (heroKey && getHero(heroKey).image) || defaultFigure(playerId);
+};
+
+const onFigureError = (event, playerId) => {
+  const fallback = defaultFigure(playerId);
+  if (event.target.getAttribute('src') !== fallback) {
+    console.warn('[theme] hero portrait missing, using default figure:', event.target.getAttribute('src'));
+    event.target.src = fallback;
+  }
+};
+
 // Computed property to get monster image
 const monsterImage = computed(() => {
   if (!props.item) return null;
@@ -412,6 +431,12 @@ const monsterImage = computed(() => {
   };
   
   return getMonsterImage(battleInfo);
+});
+
+// Emoji shown while the theme has no image for this monster (or the file is missing)
+const monsterEmoji = computed(() => {
+  if (!props.item) return '👹';
+  return getMonsterEmoji({ monster_name: props.item.name, monster: props.item.guardHP || 0 });
 });
 
 // Computed property to get chest image
@@ -872,6 +897,12 @@ const onItemClick = () => {
   width: 32px;
   height: 32px;
   object-fit: contain;
+}
+
+.monster-emoji {
+  width: 32px;
+  height: 32px;
+  font-size: 22px;
 }
 
 .weapon-image {

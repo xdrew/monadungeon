@@ -231,6 +231,7 @@
                     :has-player="tile.hasPlayer"
                     :player-id="tile.playerId"
                     :all-player-ids="tile.allPlayerIds"
+                    :player-heroes="playerHeroes"
                     :player-emoji="getPlayerEmoji(tile.playerId)"
                     :has-item="tile.hasItem"
                     :item="tile.item"
@@ -346,9 +347,7 @@
         <!-- Game sidebar on the right -->
         <div class="game-sidebar">
           <div class="sidebar-header">
-            <div class="monad-logo-small">
-              <img src="/assets/monad-logo-black.webp" alt="Monad" />
-            </div>
+            <ThemeLogo size="small" />
             <h3 v-if="gameData?.state?.turn">
               Turn: {{ gameData.state.turn }}
             </h3>
@@ -382,17 +381,12 @@
               >
                 <div class="player-inventory-header">
                   <span class="player-emoji">
-                    <img 
-                      v-if="isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })"
-                      src="/images/player.webp" 
-                      alt="Player" 
-                      class="player-avatar-image"
-                    />
-                    <img 
-                      v-else
-                      src="/images/ai.webp" 
-                      alt="AI Player" 
-                      class="ai-avatar-image"
+                    <!-- hero portrait from the theme when the player chose a hero, else the generic figure -->
+                    <img
+                      :src="playerAvatar(player)"
+                      :alt="isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'Player' : 'AI Player'"
+                      :class="isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'player-avatar-image' : 'ai-avatar-image'"
+                      @error="onAvatarError($event, player)"
                     />
                   </span>
                   <span class="player-name">
@@ -696,6 +690,7 @@
       v-if="showBattleReportModal"
       ref="battleReportModalRef"
       :battle-info="battleInfo"
+      :hero-key="getCurrentPlayerData?.hero ?? null"
       :has-inventory-space="hasInventorySpaceForReward"
       :player-hp="getCurrentPlayerData?.hp ?? 5"
       :curse-choice="curseChoice"
@@ -819,6 +814,8 @@ import { gameApi } from '@/services/api';
 
 // Import the components
 import LoadingScreen from '@/components/game/LoadingScreen.vue';
+import ThemeLogo from '@/components/ThemeLogo.vue';
+import { getHero } from '@/theme';
 import LoadingOverlay from '@/components/game/LoadingOverlay.vue';
 import ErrorDisplay from '@/components/game/ErrorDisplay.vue';
 import PlayerSwitchNotification from '@/components/game/PlayerSwitchNotification.vue';
@@ -1080,6 +1077,25 @@ const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Sword
 // Swordsman "Unstoppable": the backend keeps the turn open after a battle with a 6, so the client must not end it
 const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
+
+// Hero per player id for the tile figures (theme portraits); AI players have no hero
+const playerHeroes = computed(() => Object.fromEntries(
+  (gameData.value?.players || []).map((p) => [p.id, p.hero || null])
+));
+
+const defaultAvatar = (player) =>
+  (isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? '/images/player.webp' : '/images/ai.webp');
+
+// Sidebar avatar: the theme's hero portrait when the player has a hero and the theme has an image
+const playerAvatar = (player) => (player.hero && getHero(player.hero).image) || defaultAvatar(player);
+
+const onAvatarError = (event, player) => {
+  const fallback = defaultAvatar(player);
+  if (event.target.getAttribute('src') !== fallback) {
+    console.warn('[theme] hero portrait missing, using default avatar:', event.target.getAttribute('src'));
+    event.target.src = fallback;
+  }
+};
 const heroTooltip = (player) => {
   if (!player?.hero) return '';
   const lines = [player.heroLabel || heroShortName(player)];
@@ -5379,9 +5395,9 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .player-inventory-section {
   margin-bottom: 8px;
   padding: 10px;
-  background: rgba(123, 63, 242, 0.06);
+  background: rgba(var(--accent-rgb), 0.06);
   border-radius: 8px;
-  border: 1px solid rgba(123, 63, 242, 0.15);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
   transition: all 0.3s ease;
 }
 
@@ -5391,8 +5407,8 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .player-inventory-section.is-current-user {
-  border-color: rgba(123, 63, 242, 0.4);
-  box-shadow: 0 0 10px rgba(123, 63, 242, 0.1);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.1);
 }
 
 .player-inventory-header {
@@ -5412,7 +5428,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   height: 26px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 0 3px rgba(123, 63, 242, 0.6));
+  filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.6));
 }
 
 .ai-avatar-image {
@@ -5426,7 +5442,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .player-name {
   flex: 1;
   font-size: 0.85rem;
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
 }
 
 .turn-badge {
@@ -5449,7 +5465,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   height: 46px;
   padding: 3px;
   position: relative;
-  border: 1px solid rgba(123, 63, 242, 0.12) !important;
+  border: 1px solid rgba(var(--accent-rgb), 0.12) !important;
   background: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
@@ -5459,8 +5475,8 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .inventory-item.compact:hover {
-  border-color: rgba(123, 63, 242, 0.3) !important;
-  background: rgba(123, 63, 242, 0.08);
+  border-color: rgba(var(--accent-rgb), 0.3) !important;
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 .inventory-item.key-item.compact {
@@ -5542,7 +5558,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 /* ============================================
-   LEADERBOARD (Monad Theme)
+   LEADERBOARD (theme tokens)
    ============================================ */
 .leaderboard-overlay {
   position: fixed;
@@ -5562,14 +5578,14 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .leaderboard-card {
-  background: var(--monad-bg-card, #1A1830);
-  border: 1px solid rgba(123, 63, 242, 0.3);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
   border-radius: 14px;
   width: 380px;
   max-width: 95vw;
   padding: 0;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(123, 63, 242, 0.1);
-  color: var(--monad-text-primary, #F5F3FF);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(var(--accent-rgb), 0.1);
+  color: var(--text-primary);
   animation: lbCardIn 0.4s ease-out;
   overflow: hidden;
 }
@@ -5581,8 +5597,8 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .leaderboard-header {
   padding: 10px 20px;
-  background: linear-gradient(135deg, rgba(123, 63, 242, 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
-  border-bottom: 1px solid rgba(123, 63, 242, 0.2);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
 }
 
 .leaderboard-header-label {
@@ -5590,7 +5606,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--monad-text-secondary, #C4B5FD);
+  color: var(--text-secondary);
 }
 
 /* Result banner */
@@ -5609,7 +5625,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .result-banner.result-win {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(123, 63, 242, 0.1));
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(var(--accent-rgb), 0.1));
   border: 1px solid rgba(255, 215, 0, 0.4);
 }
 
@@ -5635,7 +5651,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .result-loss .result-text {
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
 }
 
 .result-icon {
@@ -5655,8 +5671,8 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   align-items: center;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(123, 63, 242, 0.06);
-  border: 1px solid rgba(123, 63, 242, 0.15);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
   transition: all 0.2s ease;
 }
 
@@ -5666,12 +5682,12 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .lb-entry.lb-you {
-  border-color: rgba(123, 63, 242, 0.5);
-  box-shadow: 0 0 10px rgba(123, 63, 242, 0.15);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.15);
 }
 
 .lb-entry.lb-winner.lb-you {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(123, 63, 242, 0.1));
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(var(--accent-rgb), 0.1));
   border-color: rgba(255, 215, 0, 0.4);
   box-shadow: 0 0 16px rgba(255, 215, 0, 0.15);
   animation: lbWinnerPulse 2s infinite ease-in-out;
@@ -5695,7 +5711,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .rank-num {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
 }
 
 .lb-player {
@@ -5711,7 +5727,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: rgba(123, 63, 242, 0.15);
+  background: rgba(var(--accent-rgb), 0.15);
   border-radius: 50%;
   font-size: 16px;
 }
@@ -5722,7 +5738,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .lb-you-badge {
-  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  background: var(--gradient-primary);
   color: white;
   padding: 2px 8px;
   border-radius: 10px;
@@ -5755,14 +5771,14 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
-  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  background: var(--gradient-primary);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(123, 63, 242, 0.35);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.35);
 }
 
 .lb-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.5);
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.5);
 }
 
 .lb-btn-secondary {
@@ -5774,12 +5790,12 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   cursor: pointer;
   transition: all 0.2s ease;
   background: transparent;
-  color: var(--monad-text-secondary, #C4B5FD);
-  border: 1px solid rgba(123, 63, 242, 0.25);
+  color: var(--text-secondary);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
 }
 
 .lb-btn-secondary:hover {
-  background: rgba(123, 63, 242, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   transform: translateY(-2px);
 }
 

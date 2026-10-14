@@ -61,9 +61,10 @@
             <div class="combatant-sprite-wrap">
               <div class="combatant-glow hero-glow" />
               <img
-                src="/images/player.webp"
+                :src="heroSprite"
                 alt="Hero"
                 class="combatant-sprite"
+                @error="onHeroSpriteError"
                 :class="{
                   'hero-entrance': isAnimating,
                   'hero-idle': !isAnimating && isRolling,
@@ -120,22 +121,19 @@
           <div class="combatant monster-side">
             <div class="combatant-sprite-wrap">
               <div class="combatant-glow monster-glow" />
-              <img
-                v-if="displayMonsterImage"
+              <ThemedImage
                 :src="displayMonsterImage"
-                alt="Monster"
-                class="combatant-sprite"
-                :class="{
+                :emoji="displayMonsterEmoji"
+                :alt="formattedMonsterName"
+                :img-class="['combatant-sprite', {
                   'monster-entrance': isAnimating,
                   'monster-idle': !isAnimating && isRolling,
                   'monster-victory': !isRolling && dynamicResult === 'lose',
                   'monster-defeat': !isRolling && dynamicResult === 'win',
                   'monster-draw': !isRolling && dynamicResult === 'draw'
-                }"
+                }]"
+                :emoji-class="['monster-emoji-large', { 'monster-entrance': isAnimating }]"
               />
-              <div v-else class="monster-emoji-large" :class="{ 'monster-entrance': isAnimating }">
-                {{ displayMonsterEmoji }}
-              </div>
             </div>
             <div class="monster-name-label">{{ formattedMonsterName }}</div>
           </div>
@@ -261,7 +259,7 @@
               </div>
             </div>
             <div v-else class="reward-compact-inner">
-              <img v-if="displayMonsterImage" :src="displayMonsterImage" alt="Monster" class="reward-img-sm" />
+              <ThemedImage :src="displayMonsterImage" :emoji="displayMonsterEmoji" :alt="formattedMonsterName" img-class="reward-img-sm" emoji-class="reward-img-sm" />
               <span class="reward-compact-name">Treasure</span>
             </div>
           </div>
@@ -593,10 +591,17 @@
 
 <script setup>
 import { defineProps, defineEmits, computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
-import { getMonsterImage, getMonsterDisplayName } from '@/utils/monsterUtils';
+import { getMonsterImage, getMonsterDisplayName, getMonsterEmoji } from '@/utils/monsterUtils';
+import ThemedImage from '@/components/ThemedImage.vue';
 import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
+import { getHero } from '@/theme';
 
 const props = defineProps({
+  /** HeroType of the fighting player (null = no hero) — picks the theme's hero portrait */
+  heroKey: {
+    type: String,
+    default: null
+  },
   battleInfo: {
     type: Object,
     required: true
@@ -1388,19 +1393,24 @@ const getInventoryItemEmoji = (item) => {
 
 const displayMonsterEmoji = computed(() => {
   if (!props.battleInfo) return '👹';
-  const monsterType = props.battleInfo.monsterType || '';
-  switch (monsterType) {
-    case 'dragon': return '🐉';
-    case 'skeleton_king': return '👑';
-    case 'skeleton_warrior': return '🛡️';
-    case 'skeleton_turnkey': return '🦴';
-    case 'fallen': return '👻';
-    case 'giant_rat': return '🐀';
-    case 'giant_spider': return '🕷️';
-    case 'mummy': return '🧟';
-    default: return '👹';
-  }
+  return getMonsterEmoji({
+    monster_name: props.battleInfo.monsterType || '',
+    monster: props.battleInfo.monster || 0
+  });
 });
+
+const DEFAULT_HERO_SPRITE = '/images/player.webp';
+const heroSpriteFailed = ref(false);
+watch(() => props.heroKey, () => { heroSpriteFailed.value = false; });
+const heroSprite = computed(() => (
+  (!heroSpriteFailed.value && props.heroKey && getHero(props.heroKey).image) || DEFAULT_HERO_SPRITE
+));
+const onHeroSpriteError = () => {
+  if (!heroSpriteFailed.value) {
+    console.warn('[theme] hero portrait missing, using default sprite:', heroSprite.value);
+    heroSpriteFailed.value = true;
+  }
+};
 
 const displayMonsterImage = computed(() => {
   if (!props.battleInfo) return null;
@@ -1493,7 +1503,7 @@ const potentialRewardTip = computed(() => {
 
 <style scoped>
 /* ============================================
-   OVERLAY & CARD (Monad Theme)
+   OVERLAY & CARD (theme tokens)
    ============================================ */
 .battle-overlay {
   position: fixed;
@@ -1513,8 +1523,8 @@ const potentialRewardTip = computed(() => {
 }
 
 .battle-card {
-  background: var(--monad-bg-card, #1A1830);
-  border: 1px solid rgba(123, 63, 242, 0.25);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
   border-radius: 10px;
   width: 400px;
   max-width: 95vw;
@@ -1523,7 +1533,7 @@ const potentialRewardTip = computed(() => {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
   animation: cardIn 0.35s ease-out;
 }
 
@@ -1565,8 +1575,8 @@ const potentialRewardTip = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 6px 12px;
-  border-bottom: 1px solid rgba(123, 63, 242, 0.2);
-  background: linear-gradient(135deg, rgba(123, 63, 242, 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
 }
 
 .header-left {
@@ -1580,7 +1590,7 @@ const potentialRewardTip = computed(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--monad-text-secondary, #C4B5FD);
+  color: var(--text-secondary);
 }
 
 .result-title {
@@ -1607,7 +1617,7 @@ const potentialRewardTip = computed(() => {
 }
 
 .rolling-title {
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
   animation: titlePulse 0.8s infinite ease-in-out;
 }
 
@@ -1633,13 +1643,13 @@ const potentialRewardTip = computed(() => {
   border: none;
   font-size: 1.6rem;
   cursor: pointer;
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
   line-height: 1;
   transition: color 0.2s;
 }
 
 .close-btn:hover {
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
 }
 
 /* ============================================
@@ -1664,7 +1674,7 @@ const potentialRewardTip = computed(() => {
   margin-bottom: 4px;
   background: rgba(0, 0, 0, 0.25);
   border-radius: 10px;
-  border: 1px solid rgba(123, 63, 242, 0.15);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
   position: relative;
   overflow: hidden;
 }
@@ -1694,7 +1704,7 @@ const potentialRewardTip = computed(() => {
 }
 
 .hero-glow {
-  background: radial-gradient(circle, rgba(123, 63, 242, 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.3) 0%, transparent 70%);
   animation: glowPulse 2.5s ease-in-out infinite;
 }
 
@@ -1900,7 +1910,7 @@ const potentialRewardTip = computed(() => {
 .hero-hp {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--monad-text-secondary, #C4B5FD);
+  color: var(--text-secondary);
   text-align: center;
 }
 
@@ -1928,7 +1938,7 @@ const potentialRewardTip = computed(() => {
 
 .monster-name-label {
   font-size: 0.7rem;
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1947,7 +1957,7 @@ const potentialRewardTip = computed(() => {
 .vs-energy-line {
   width: 2px;
   height: 10px;
-  background: linear-gradient(180deg, transparent, rgba(123, 63, 242, 0.5), transparent);
+  background: linear-gradient(180deg, transparent, rgba(var(--accent-rgb), 0.5), transparent);
 }
 
 .vs-badge {
@@ -1962,7 +1972,7 @@ const potentialRewardTip = computed(() => {
 }
 
 .vs-text {
-  background: linear-gradient(135deg, #C4B5FD, #7B3FF2);
+  background: linear-gradient(135deg, var(--color-secondary-hover), var(--color-primary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2028,8 +2038,8 @@ const potentialRewardTip = computed(() => {
     rollDice3D 0.3s infinite linear,
     floatDice 0.8s infinite ease-in-out;
   box-shadow:
-    0 4px 12px rgba(123, 63, 242, 0.4),
-    0 0 20px rgba(123, 63, 242, 0.2),
+    0 4px 12px rgba(var(--accent-rgb), 0.4),
+    0 0 20px rgba(var(--accent-rgb), 0.2),
     inset 0 2px 4px rgba(255,255,255,0.8);
 }
 
@@ -2191,7 +2201,7 @@ const potentialRewardTip = computed(() => {
 .reward-compact-name {
   font-weight: 600;
   font-size: 0.85rem;
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
 }
 
 .badge-sm {
@@ -2203,8 +2213,8 @@ const potentialRewardTip = computed(() => {
   flex: 0 0 auto;
   padding: 8px;
   border-radius: 8px;
-  background: rgba(123, 63, 242, 0.06);
-  border: 1px solid rgba(123, 63, 242, 0.2);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2216,7 +2226,7 @@ const potentialRewardTip = computed(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
 }
 
 .consumable-compact-list {
@@ -2298,7 +2308,7 @@ const potentialRewardTip = computed(() => {
   justify-content: center;
   font-size: 0.7rem;
   font-weight: bold;
-  border: 2px solid var(--monad-bg-card, #1A1830);
+  border: 2px solid var(--bg-secondary);
 }
 
 .reward-details {
@@ -2310,7 +2320,7 @@ const potentialRewardTip = computed(() => {
 .reward-item-name {
   font-weight: 700;
   font-size: 0.95rem;
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
 }
 
 .reward-badges {
@@ -2349,7 +2359,7 @@ const potentialRewardTip = computed(() => {
 .reward-note.potential { color: #ff9800; }
 
 .no-reward {
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
   font-style: italic;
   font-size: 0.9rem;
   text-align: center;
@@ -2400,8 +2410,8 @@ const potentialRewardTip = computed(() => {
   margin-bottom: 6px;
   padding: 8px;
   border-radius: 8px;
-  background: rgba(123, 63, 242, 0.06);
-  border: 1px solid rgba(123, 63, 242, 0.2);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   max-height: 120px;
   overflow-y: auto;
 }
@@ -2418,7 +2428,7 @@ const potentialRewardTip = computed(() => {
 .items-section-title {
   font-weight: 600;
   margin-bottom: 8px;
-  color: var(--monad-text-secondary, #C4B5FD);
+  color: var(--text-secondary);
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2442,14 +2452,14 @@ const potentialRewardTip = computed(() => {
   padding: 6px 10px;
   border-radius: 16px;
   font-size: 0.82rem;
-  color: var(--monad-text-primary, #F5F3FF);
-  background: rgba(123, 63, 242, 0.12);
-  border: 1px solid rgba(123, 63, 242, 0.25);
+  color: var(--text-primary);
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
 }
 
 .item-chip.consumable-used {
-  background: linear-gradient(135deg, rgba(123, 63, 242, 0.2) 0%, rgba(99, 102, 241, 0.15) 100%);
-  border-color: rgba(123, 63, 242, 0.4);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border-color: rgba(var(--accent-rgb), 0.4);
 }
 
 /* Wizard "Magical Affinity": the spell was used but not consumed */
@@ -2492,8 +2502,8 @@ const potentialRewardTip = computed(() => {
 }
 
 .item-chip.selectable:hover {
-  background: rgba(123, 63, 242, 0.2);
-  border-color: rgba(123, 63, 242, 0.5);
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.5);
   transform: translateY(-1px);
 }
 
@@ -2538,7 +2548,7 @@ const potentialRewardTip = computed(() => {
   justify-content: center;
   font-size: 11px;
   font-weight: bold;
-  border: 2px solid var(--monad-bg-card, #1A1830);
+  border: 2px solid var(--bg-secondary);
 }
 
 .item-chip.inventory-replace {
@@ -2550,7 +2560,7 @@ const potentialRewardTip = computed(() => {
    ============================================ */
 .battle-footer {
   padding: 8px 12px;
-  border-top: 1px solid rgba(123, 63, 242, 0.2);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.2);
   background: linear-gradient(180deg, rgba(26, 24, 48, 0.8) 0%, rgba(15, 14, 28, 0.9) 100%);
   flex-shrink: 0;
 }
@@ -2577,9 +2587,9 @@ const potentialRewardTip = computed(() => {
   max-width: 360px;
 }
 
-/* Primary button (Monad purple gradient) */
+/* Primary button (theme gradient) */
 .btn-primary {
-  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  background: var(--gradient-primary);
   color: #fff;
   border: none;
   padding: 9px 16px;
@@ -2588,16 +2598,16 @@ const potentialRewardTip = computed(() => {
   font-size: 0.9rem;
   font-weight: 600;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(123, 63, 242, 0.35);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.5);
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.5);
 }
 
 .btn-primary:disabled {
-  background: rgba(123, 63, 242, 0.3);
+  background: rgba(var(--accent-rgb), 0.3);
   cursor: not-allowed;
   opacity: 0.5;
   transform: none;
@@ -2607,8 +2617,8 @@ const potentialRewardTip = computed(() => {
 /* Secondary button */
 .btn-secondary {
   background: transparent;
-  color: var(--monad-text-secondary, #C4B5FD);
-  border: 1px solid rgba(123, 63, 242, 0.25);
+  color: var(--text-secondary);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
   padding: 9px 16px;
   border-radius: 8px;
   cursor: pointer;
@@ -2618,7 +2628,7 @@ const potentialRewardTip = computed(() => {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: rgba(123, 63, 242, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   transform: translateY(-2px);
 }
 
@@ -2693,7 +2703,7 @@ const potentialRewardTip = computed(() => {
 /* Defeat/Retreat button */
 .btn-defeat {
   background: transparent;
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
   border: 1px solid rgba(156, 163, 175, 0.25);
   padding: 9px 16px;
   border-radius: 8px;

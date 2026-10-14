@@ -2,8 +2,8 @@
   <div class="loading-screen">
     <div class="loading-content">
       <div class="loading-logo">
-        <img src="/assets/monad-logo-black.webp" alt="Monad" class="loading-logo-img" />
-        <div class="loading-title">MONADUNGEON</div>
+        <ThemeLogo />
+        <div class="loading-title">{{ theme.appName }}</div>
       </div>
       <div class="loading-spinner">
         <div class="spinner-icon" />
@@ -19,7 +19,8 @@
 </template>
 
 <script setup>
-// No props or functionality needed for this simple component
+import ThemeLogo from '@/components/ThemeLogo.vue';
+import { theme } from '@/theme';
 </script>
 
 <style scoped>
@@ -50,19 +51,13 @@
   gap: 1rem;
 }
 
-.loading-logo-img {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 15px rgba(123, 63, 242, 0.5));
-}
-
 .loading-title {
   font-size: 2.5rem;
   font-weight: bold;
-  color: var(--monad-purple-light, #9F6EFF);
-  text-shadow: 0 0 10px rgba(159, 110, 255, 0.5);
+  color: var(--color-secondary);
+  text-shadow: 0 0 10px rgba(var(--accent-light-rgb), 0.5);
   letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .loading-spinner {
@@ -76,10 +71,10 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  border: 8px solid rgba(123, 63, 242, 0.1);
-  border-top-color: var(--monad-purple, #7B3FF2);
+  border: 8px solid rgba(var(--accent-rgb), 0.1);
+  border-top-color: var(--color-primary);
   animation: spin 1s linear infinite;
-  box-shadow: 0 0 20px rgba(123, 63, 242, 0.3);
+  box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.3);
 }
 
 .loading-text {

@@ -20,13 +20,13 @@
           class="fateweaver-token"
           :class="{ 'is-monster': token.isMonster }"
         >
-          <img
-            v-if="token.image"
+          <ThemedImage
             :src="token.image"
+            :emoji="token.emoji"
             :alt="token.label"
-            class="fateweaver-token-image"
+            img-class="fateweaver-token-image"
+            emoji-class="fateweaver-token-emoji"
           />
-          <span v-else class="fateweaver-token-emoji">{{ token.emoji }}</span>
           <div class="fateweaver-token-name">{{ token.label }}</div>
           <div class="fateweaver-token-badges">
             <span v-if="token.isMonster" class="badge badge-hp">👹 HP {{ token.hp }}</span>
@@ -48,7 +48,8 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, getItemImage, formatItemName } from '@/utils/itemUtils';
-import { getMonsterDisplayName, getMonsterImage } from '@/utils/monsterUtils';
+import { getMonsterDisplayName, getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
+import ThemedImage from '@/components/ThemedImage.vue';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -68,8 +69,8 @@ const tokens = computed(() => (props.choice?.items || []).map((item) => {
     label: isMonster
       ? (getMonsterDisplayName(item.name) || formatItemName(item.name))
       : formatItemName(item.name),
-    image: isMonster ? getMonsterImage({ monster_name: item.name }) : getItemImage(item),
-    emoji: getItemEmoji(item)
+    image: isMonster ? getMonsterImage({ monster_name: item.name, monster: item.guardHP || 0 }) : getItemImage(item),
+    emoji: isMonster ? getMonsterEmoji({ monster_name: item.name, monster: item.guardHP || 0 }) : getItemEmoji(item)
   };
 }));
 

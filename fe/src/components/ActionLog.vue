@@ -58,6 +58,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { getMonsterDisplayName, getMonsterEmoji as getThemedMonsterEmoji, getMonsterImage as getThemedMonsterImage } from '@/utils/monsterUtils';
 
 const props = defineProps({
   turns: {
@@ -167,25 +168,21 @@ const getItemIcon = (itemType) => {
 // Swordsman "Unstoppable": the turn goes on after the fight
 const unstoppableSuffix = (details) => (details?.unstoppable ? ' ⚡ Unstoppable — turn continues' : '');
 
+const CHEST_IMAGE = '/images/chest-opened.webp';
+
 const getMonsterImage = (monsterName) => {
   if (!monsterName) return 'monster';
-  
-  // Map monster names to their proper sprite images in /images/items/
-  const monsterSprites = {
-    'skeleton_king': '/images/items/molandak.webp',
-    'skeleton_warrior': '/images/items/taekwonnad.webp',
-    'skeleton_turnkey': '/images/items/bearded.webp',
-    'dragon': '/images/items/bullish.webp',
-    'fallen': '/images/items/bee.webp',
-    'giant_rat': '/images/items/ikan.webp',
-    'giant_spider': '/images/items/moyaki.webp',
-    'mummy': '/images/items/ubur.webp',
-    'treasure_chest': '/images/chest-opened.webp',
-    'chest': '/images/chest-opened.webp'
-  };
-  
-  const imagePath = monsterSprites[monsterName.toLowerCase()] || '/images/items/ubur.webp'; // Default fallback
-  return `<img src="${imagePath}" style="width: 20px; height: 20px; vertical-align: middle; image-rendering: pixelated;" title="${monsterName}" />`;
+
+  const key = String(monsterName).toLowerCase();
+  const isChest = key === 'treasure_chest' || key === 'chest';
+  // Monster name and image come from the active theme; a missing image file shows the emoji
+  const title = isChest ? monsterName : getMonsterDisplayName(key);
+  const emoji = isChest ? '📦' : getThemedMonsterEmoji({ monster_name: key });
+  const imagePath = isChest ? CHEST_IMAGE : getThemedMonsterImage({ monster_name: key });
+  if (!imagePath) {
+    return `<span title="${title}">${emoji}</span>`;
+  }
+  return `<img src="${imagePath}" style="width: 20px; height: 20px; vertical-align: middle; image-rendering: pixelated;" title="${title}" alt="${title}" onerror="this.outerHTML='${emoji}'" />`;
 };
 
 // Get icon for different action types

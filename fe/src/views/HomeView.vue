@@ -1,21 +1,20 @@
 <template>
-  <div class="home-container">
+  <div class="home-container" :style="lobbyStyle">
     <MusicToggle />
     
     <div class="main-content">
       <!-- Game Options Panel -->
       <div class="game-panel">
-        <div class="monad-logo">
-          <img src="/assets/monad-logo-black.webp" alt="Monad" />
-        </div>
+        <ThemeLogo />
         <h1 class="title">
-          MONADUNGEON
+          {{ theme.appName }}
         </h1>
         <p class="description">
           Embark on an epic journey through dangerous dungeons filled with monsters, treasures, and ancient secrets.
         </p>
 
-      <div v-if="authenticatedUser" class="user-info">
+      <!-- Monad Games ID sign-in exists only in the monad theme -->
+      <div v-if="theme.monadGamesId && authenticatedUser" class="user-info">
         <p class="welcome">
           Welcome back,
           <strong>{{ getDisplayName() }}</strong>!
@@ -28,7 +27,7 @@
 
       <div class="actions">
         <button
-            v-if="!authenticatedUser"
+            v-if="theme.monadGamesId && !authenticatedUser"
             class="monad-button"
             @click="loginWithMonad"
             :disabled="loading"
@@ -37,7 +36,7 @@
           Sign in with Monad Games ID
         </button>
 
-        <div v-if="!authenticatedUser" class="divider">
+        <div v-if="theme.monadGamesId && !authenticatedUser" class="divider">
           <span>OR</span>
         </div>
 
@@ -46,98 +45,27 @@
           <p class="hero-picker-title">Choose your hero</p>
           <div class="hero-options">
             <button
+              v-for="card in heroCards"
+              :key="card.testid"
               type="button"
               class="hero-card"
-              :class="{ selected: selectedHero === null }"
-              data-testid="hero-none"
-              @click="selectHero(null)"
+              :class="{ selected: selectedHero === card.key }"
+              :data-testid="card.testid"
+              @click="selectHero(card.key)"
             >
-              <span class="hero-icon">🧑</span>
-              <span class="hero-name">Adventurer</span>
-              <span class="hero-skills">No special skills</span>
-            </button>
-            <button
-              type="button"
-              class="hero-card"
-              :class="{ selected: selectedHero === 'warrior' }"
-              data-testid="hero-warrior"
-              @click="selectHero('warrior')"
-            >
-              <span class="hero-icon">⚔️</span>
-              <span class="hero-name">Horan, the Warrior</span>
+              <ThemedImage
+                :src="card.image"
+                :emoji="card.emoji"
+                :alt="card.name"
+                img-class="hero-portrait"
+                emoji-class="hero-icon"
+              />
+              <span class="hero-name">{{ card.name }}</span>
               <span class="hero-skills">
-                <strong>Double Attack</strong> — reroll the dice once per fight, the second roll stands<br>
-                <strong>Reincarnation</strong> — losing the last HP teleports him to a healing fountain with full HP
-              </span>
-            </button>
-            <button
-              type="button"
-              class="hero-card"
-              :class="{ selected: selectedHero === 'thief' }"
-              data-testid="hero-thief"
-              @click="selectHero('thief')"
-            >
-              <span class="hero-icon">🗡️</span>
-              <span class="hero-name">Aderyn, the Thief</span>
-              <span class="hero-skills">
-                <strong>Backstab</strong> — a tie in combat counts as her victory<br>
-                <strong>Stealth</strong> — may sneak past a monster instead of fighting and keep moving
-              </span>
-            </button>
-            <button
-              type="button"
-              class="hero-card"
-              :class="{ selected: selectedHero === 'swordsman' }"
-              data-testid="hero-swordsman"
-              @click="selectHero('swordsman')"
-            >
-              <span class="hero-icon">🤺</span>
-              <span class="hero-name">Victorius, the Swordsman</span>
-              <span class="hero-skills">
-                <strong>Combat Training</strong> — every die showing 1 is rerolled until it shows better<br>
-                <strong>Unstoppable</strong> — a 6 on the dice keeps his turn going, even after a lost fight
-              </span>
-            </button>
-            <button
-              type="button"
-              class="hero-card"
-              :class="{ selected: selectedHero === 'warlock' }"
-              data-testid="hero-warlock"
-              @click="selectHero('warlock')"
-            >
-              <span class="hero-icon">🧙</span>
-              <span class="hero-name">Lord Xanros, the Warlock</span>
-              <span class="hero-skills">
-                <strong>Sacrifice</strong> — after the roll, pay 1 HP for +1 strength (once per fight)<br>
-                <strong>Magic Swap</strong> — trade places with any hero as the first action of the turn, for all 4 moves
-              </span>
-            </button>
-            <button
-              type="button"
-              class="hero-card"
-              :class="{ selected: selectedHero === 'wizard' }"
-              data-testid="hero-wizard"
-              @click="selectHero('wizard')"
-            >
-              <span class="hero-icon">🪄</span>
-              <span class="hero-name">Argentus, the Wizard</span>
-              <span class="hero-skills">
-                <strong>Magical Affinity</strong> — fireballs are not consumed in combat<br>
-                <strong>Astral Walking</strong> — may step onto any adjacent discovered tile, even through a wall
-              </span>
-            </button>
-            <button
-              type="button"
-              class="hero-card"
-              :class="{ selected: selectedHero === 'oracle' }"
-              data-testid="hero-oracle"
-              @click="selectHero('oracle')"
-            >
-              <span class="hero-icon">👁️</span>
-              <span class="hero-name">Taia, the Oracle</span>
-              <span class="hero-skills">
-                <strong>Farseeing</strong> — +1 to the roll when fighting on the first move of the turn<br>
-                <strong>Fateweaver</strong> — draws two tokens for a new room, places one and returns the other
+                <template v-if="card.skills.length === 0">No special skills</template>
+                <template v-for="(skill, index) in card.skills" :key="skill.name">
+                  <strong>{{ skill.name }}</strong> — {{ skill.text }}<br v-if="index < card.skills.length - 1">
+                </template>
               </span>
             </button>
           </div>
@@ -194,8 +122,9 @@
     </div>
   </div>
 
-  <!-- Privy Authentication Modal -->
+  <!-- Privy Authentication Modal (monad theme only) -->
   <PrivyAuth
+      v-if="theme.monadGamesId"
       :show="showPrivyModal"
       @close="showPrivyModal = false"
       @success="handlePrivySuccess"
@@ -209,7 +138,10 @@ import { gameApi } from '@/services/api';
 import { privyService } from '@/services/privy';
 import PrivyAuth from '@/components/PrivyAuth.vue';
 import MusicToggle from '@/components/game/MusicToggle.vue';
+import ThemeLogo from '@/components/ThemeLogo.vue';
+import ThemedImage from '@/components/ThemedImage.vue';
 import { musicService } from '@/services/musicService';
+import { theme, getHero } from '@/theme';
 
 const router = useRouter();
 const errorMessage = ref('');
@@ -220,6 +152,39 @@ const showPrivyModal = ref(false);
 
 // Build version for debugging deployment issues
 const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
+
+// Hero cards: skills from the Karak rulebook; name and portrait/emoji from the active theme
+const HERO_SKILLS = [
+  { key: null, testid: 'hero-none', skills: [] },
+  { key: 'warrior', testid: 'hero-warrior', skills: [
+    { name: 'Double Attack', text: 'reroll the dice once per fight, the second roll stands' },
+    { name: 'Reincarnation', text: 'losing the last HP teleports him to a healing fountain with full HP' }
+  ] },
+  { key: 'thief', testid: 'hero-thief', skills: [
+    { name: 'Backstab', text: 'a tie in combat counts as her victory' },
+    { name: 'Stealth', text: 'may sneak past a monster instead of fighting and keep moving' }
+  ] },
+  { key: 'swordsman', testid: 'hero-swordsman', skills: [
+    { name: 'Combat Training', text: 'every die showing 1 is rerolled until it shows better' },
+    { name: 'Unstoppable', text: 'a 6 on the dice keeps his turn going, even after a lost fight' }
+  ] },
+  { key: 'warlock', testid: 'hero-warlock', skills: [
+    { name: 'Sacrifice', text: 'after the roll, pay 1 HP for +1 strength (once per fight)' },
+    { name: 'Magic Swap', text: 'trade places with any hero as the first action of the turn, for all 4 moves' }
+  ] },
+  { key: 'wizard', testid: 'hero-wizard', skills: [
+    { name: 'Magical Affinity', text: 'fireballs are not consumed in combat' },
+    { name: 'Astral Walking', text: 'may step onto any adjacent discovered tile, even through a wall' }
+  ] },
+  { key: 'oracle', testid: 'hero-oracle', skills: [
+    { name: 'Farseeing', text: '+1 to the roll when fighting on the first move of the turn' },
+    { name: 'Fateweaver', text: 'draws two tokens for a new room, places one and returns the other' }
+  ] }
+];
+const heroCards = HERO_SKILLS.map((card) => ({ ...card, ...getHero(card.key), key: card.key }));
+
+// Lobby background art comes from the theme (none in the base theme)
+const lobbyStyle = { '--lobby-bg': theme.lobbyBackground ? `url('${theme.lobbyBackground}')` : 'none' };
 
 // Hero selection ('warrior' or null = no hero skills), remembered per browser
 const readStoredHero = () => {
@@ -266,7 +231,13 @@ onMounted(async () => {
   // Initialize music service with placeholder URL
   // Replace this with your actual music track URL
   musicService.init('/music/game-theme.mp3');
-  
+
+  // No Monad Games ID in this theme: no OAuth redirect handling, no Privy init
+  if (!theme.monadGamesId) {
+    console.info('[theme] Monad Games ID sign-in disabled');
+    return;
+  }
+
   // First check if we're returning from OAuth redirect
   const urlParams = new URLSearchParams(window.location.search);
   const oauthCode = urlParams.get('privy_oauth_code');
@@ -1095,7 +1066,7 @@ const createNewGame = async () => {
   transform: translateY(-50%);
   width: 60%;
   height: 80%;
-  background-image: url('/images/hero.webp');
+  background-image: var(--lobby-bg, none);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -1135,6 +1106,7 @@ const createNewGame = async () => {
   text-shadow: 2px 2px 4px #000;
   font-weight: bold;
   letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .subtitle {
@@ -1156,16 +1128,6 @@ const createNewGame = async () => {
   color: #666;
   margin-top: -5px;
   margin-bottom: 15px;
-}
-
-.monad-logo {
-  margin-bottom: 20px;
-}
-
-.monad-logo img {
-  width: 60px;
-  height: auto;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
 }
 
 .actions {
@@ -1303,7 +1265,7 @@ const createNewGame = async () => {
   padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(135deg, #1f1538 0%, #170f2b 100%);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
   color: #b8b8b8;
   text-align: left;
   cursor: pointer;
@@ -1312,20 +1274,27 @@ const createNewGame = async () => {
 }
 
 .hero-card:hover {
-  border-color: rgba(131, 110, 255, 0.5);
+  border-color: rgba(var(--accent-light-rgb), 0.5);
   transform: translateY(-1px);
 }
 
 .hero-card.selected {
-  border-color: #836eff;
-  background: linear-gradient(135deg, #3d1f79 0%, #2a1a4d 100%);
+  border-color: var(--color-primary-hover);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.45) 0%, var(--bg-tertiary) 100%);
   color: #ece8ff;
-  box-shadow: 0 0 0 1px #836eff, 0 4px 14px rgba(131, 110, 255, 0.35);
+  box-shadow: 0 0 0 1px var(--color-primary-hover), 0 4px 14px rgba(var(--accent-light-rgb), 0.35);
 }
 
 .hero-icon {
   font-size: 22px;
   line-height: 1;
+}
+
+.hero-portrait {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: var(--radius-md, 4px);
 }
 
 .hero-name {
@@ -1350,7 +1319,7 @@ const createNewGame = async () => {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, #3d1f79 0%, #2a1a4d 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   color: #b8b8b8;
   border: none;
   padding: 15px 30px;
@@ -1371,7 +1340,7 @@ const createNewGame = async () => {
 .primary-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background: linear-gradient(135deg, #2a1a4d 0%, #1f1538 100%);
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
 }
 
 .secondary-button {
