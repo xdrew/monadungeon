@@ -22,6 +22,7 @@ use App\Game\Player\RemoveItemFromInventory;
 use App\Game\Turn\EndTurn;
 use App\Game\Turn\Error\NotYourTurnException;
 use App\Game\Turn\GetCurrentTurn;
+use App\Game\Turn\GetTurn;
 use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\TurnAction;
 use App\Infrastructure\Doctrine\AggregateRoot;
@@ -101,6 +102,12 @@ class Battle extends AggregateRoot
      */
     private bool $spellsKept = false;
 
+    /**
+     * Oracle "Farseeing": the battle started on the first move of the turn, +1 to the roll.
+     */
+    #[Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $farseeing = false;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -136,6 +143,13 @@ class Battle extends AggregateRoot
             fromPosition: $command->fromPosition,
             toPosition: $command->toPosition,
         );
+
+        // Oracle "Farseeing": +1 when no move of the turn has been spent yet (placing a tile is not a move)
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
+        if ($player->getHero()?->fightsBetterOnFirstMove() === true) {
+            $turn = $messageContext->dispatch(new GetTurn($command->turnId));
+            $battle->farseeing = $turn !== null && $turn->getPerformedActionsCount() === 0;
+        }
 
         // Roll the dice immediately
         $battle->rollDice($messageContext);
@@ -304,7 +318,7 @@ class Battle extends AggregateRoot
 
         // Update battle data
         $this->usedItems = $finalUsedItems;
-        $this->totalDamage = array_sum($this->diceResults) + $totalItemDamage + $this->sacrificeBonus();
+        $this->totalDamage = array_sum($this->diceResults) + $totalItemDamage + $this->sacrificeBonus() + $this->farseeingBonus();
 
         // Calculate final damage breakdown for the event
         $diceRollDamage = array_sum($this->diceResults);
@@ -365,6 +379,7 @@ class Battle extends AggregateRoot
                 unstoppable: $unstoppable,
                 hpSacrificed: $this->hpSacrificed,
                 spellsKept: $this->spellsKept,
+                farseeing: $this->farseeing,
             ));
 
             // NOW process the battle result (movement, HP changes, turn ending)
@@ -477,6 +492,14 @@ class Battle extends AggregateRoot
     }
 
     /**
+     * Oracle "Farseeing": +1 to the roll when the battle started on the first move of the turn.
+     */
+    private function farseeingBonus(): int
+    {
+        return $this->farseeing ? 1 : 0;
+    }
+
+    /**
      * Warlock "Sacrifice": pay 1 HP for +1 strength, once per combat. Paying the last HP knocks the hero out
      * for his next turn (Player::reduceHP dispatches PlayerStunned).
      *
@@ -551,7 +574,7 @@ class Battle extends AggregateRoot
     ): void {
         // Calculate dice roll and item damage separately
         $diceRollDamage = array_sum($this->diceResults);
-        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus();
+        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus();
 
         // Check initial battle result (weapons only)
         $initialResult = $this->resolveResult($monster, $messageContext);
@@ -579,6 +602,7 @@ class Battle extends AggregateRoot
                 unstoppable: $unstoppable,
                 hpSacrificed: $this->hpSacrificed,
                 spellsKept: $this->spellsKept,
+                farseeing: $this->farseeing,
             ));
 
             // Process the battle result after BattleCompleted event
@@ -620,6 +644,7 @@ class Battle extends AggregateRoot
             canSacrificeHp: $canSacrificeHp,
             hpSacrificed: $this->hpSacrificed,
             spellsKept: $this->spellsKept,
+            farseeing: $this->farseeing,
         ));
     }
 
@@ -649,7 +674,7 @@ class Battle extends AggregateRoot
             }
         }
 
-        $this->totalDamage = array_sum($this->diceResults);
+        $this->totalDamage = array_sum($this->diceResults) + $this->farseeingBonus();
     }
 
     /**
@@ -677,8 +702,8 @@ class Battle extends AggregateRoot
      */
     private function calculateBattleWithConsumables(MessageContext $messageContext): void
     {
-        // Reset to base dice damage
-        $this->totalDamage = array_sum($this->diceResults);
+        // Reset to base dice damage (plus the Oracle "Farseeing" bonus, which belongs to the roll)
+        $this->totalDamage = array_sum($this->diceResults) + $this->farseeingBonus();
 
         // Get player instance
         $player = $messageContext->dispatch(new GetPlayer(
@@ -713,7 +738,7 @@ class Battle extends AggregateRoot
 
         // Calculate dice roll and item damage separately
         $diceRollDamage = array_sum($this->diceResults);
-        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus();
+        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus();
 
         // Record the FIGHT_MONSTER action FIRST (before any HP changes that might trigger stunning)
         // We use a standard format for the monster data to ensure compatibility
@@ -744,6 +769,7 @@ class Battle extends AggregateRoot
                 'unstoppable' => $unstoppable,
                 'hpSacrificed' => $this->hpSacrificed,
                 'spellsKept' => $this->spellsKept,
+                'farseeing' => $this->farseeing,
                 'heroAbility' => implode('+', array_filter([
                     $this->rerollUsed ? 'double_attack' : null,
                     $this->onesRerolled > 0 ? 'combat_training' : null,
@@ -751,6 +777,7 @@ class Battle extends AggregateRoot
                     $unstoppable ? 'unstoppable' : null,
                     $this->hpSacrificed ? 'sacrifice' : null,
                     $this->spellsKept ? 'magical_affinity' : null,
+                    $this->farseeing ? 'farseeing' : null,
                 ])) ?: null,
             ],
             at: new \DateTimeImmutable(),

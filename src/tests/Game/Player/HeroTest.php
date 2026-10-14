@@ -175,7 +175,7 @@ final class HeroTest extends TestCase
     #[Test]
     public function warriorSkillsAreDescribed(): void
     {
-        self::assertSame(['warrior', 'thief', 'swordsman', 'warlock', 'wizard'], HeroType::values());
+        self::assertSame(['warrior', 'thief', 'swordsman', 'warlock', 'wizard', 'oracle'], HeroType::values());
         self::assertTrue(HeroType::WARRIOR->canRerollBattle());
         self::assertTrue(HeroType::WARRIOR->reincarnates());
         self::assertSame(['Double Attack', 'Reincarnation'], array_column(HeroType::WARRIOR->skills(), 'name'));
@@ -198,7 +198,7 @@ final class HeroTest extends TestCase
             self::assertFalse($other->continuesTurnOnSix(), $other->value);
         }
         self::assertSame(
-            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix', 'sacrificesHp', 'canMagicSwap', 'keepsSpellsInCombat', 'walksThroughWalls'],
+            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix', 'sacrificesHp', 'canMagicSwap', 'keepsSpellsInCombat', 'walksThroughWalls', 'fightsBetterOnFirstMove', 'drawsTwoTokens'],
             array_keys(HeroType::SWORDSMAN->flags()),
         );
     }
@@ -247,6 +247,36 @@ final class HeroTest extends TestCase
         }
         self::assertTrue(HeroType::WIZARD->flags()['keepsSpellsInCombat']);
         self::assertTrue(HeroType::WIZARD->flags()['walksThroughWalls']);
+    }
+
+    #[Test]
+    public function oracleSkillsAreDescribed(): void
+    {
+        self::assertSame('Taia, the Oracle', HeroType::ORACLE->label());
+        self::assertTrue(HeroType::ORACLE->fightsBetterOnFirstMove());
+        self::assertTrue(HeroType::ORACLE->drawsTwoTokens());
+        self::assertFalse(HeroType::ORACLE->canRerollBattle());
+        self::assertFalse(HeroType::ORACLE->reincarnates());
+        self::assertFalse(HeroType::ORACLE->winsTies());
+        self::assertFalse(HeroType::ORACLE->canSneakPastMonsters());
+        self::assertFalse(HeroType::ORACLE->rerollsOnes());
+        self::assertFalse(HeroType::ORACLE->continuesTurnOnSix());
+        self::assertFalse(HeroType::ORACLE->sacrificesHp());
+        self::assertFalse(HeroType::ORACLE->canMagicSwap());
+        self::assertFalse(HeroType::ORACLE->keepsSpellsInCombat());
+        self::assertFalse(HeroType::ORACLE->walksThroughWalls());
+        self::assertSame(['Farseeing', 'Fateweaver'], array_column(HeroType::ORACLE->skills(), 'name'));
+
+        foreach ([HeroType::WARRIOR, HeroType::THIEF, HeroType::SWORDSMAN, HeroType::WARLOCK, HeroType::WIZARD] as $other) {
+            self::assertFalse($other->fightsBetterOnFirstMove(), $other->value);
+            self::assertFalse($other->drawsTwoTokens(), $other->value);
+        }
+        self::assertTrue(HeroType::ORACLE->flags()['fightsBetterOnFirstMove']);
+        self::assertTrue(HeroType::ORACLE->flags()['drawsTwoTokens']);
+        self::assertSame(
+            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix', 'sacrificesHp', 'canMagicSwap', 'keepsSpellsInCombat', 'walksThroughWalls', 'fightsBetterOnFirstMove', 'drawsTwoTokens'],
+            array_keys(HeroType::ORACLE->flags()),
+        );
     }
 
     private function createPlayer(?HeroType $hero, int $hp): Player

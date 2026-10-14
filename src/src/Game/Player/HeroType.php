@@ -14,6 +14,7 @@ enum HeroType: string
     case SWORDSMAN = 'swordsman';
     case WARLOCK = 'warlock';
     case WIZARD = 'wizard';
+    case ORACLE = 'oracle';
 
     /**
      * @return list<string>
@@ -31,6 +32,7 @@ enum HeroType: string
             self::SWORDSMAN => 'Victorius, the Swordsman',
             self::WARLOCK => 'Lord Xanros, the Warlock',
             self::WIZARD => 'Argentus, the Wizard',
+            self::ORACLE => 'Taia, the Oracle',
         };
     }
 
@@ -115,9 +117,25 @@ enum HeroType: string
     }
 
     /**
+     * Farseeing: +1 to the roll when the battle starts before any move of the turn was spent.
+     */
+    public function fightsBetterOnFirstMove(): bool
+    {
+        return $this === self::ORACLE;
+    }
+
+    /**
+     * Fateweaver: draws two tokens from the bag, places one and returns the other.
+     */
+    public function drawsTwoTokens(): bool
+    {
+        return $this === self::ORACLE;
+    }
+
+    /**
      * Skill flags for API consumers (frontend decides which prompts/buttons to show).
      *
-     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool, rerollsOnes: bool, continuesTurnOnSix: bool, sacrificesHp: bool, canMagicSwap: bool, keepsSpellsInCombat: bool, walksThroughWalls: bool}
+     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool, rerollsOnes: bool, continuesTurnOnSix: bool, sacrificesHp: bool, canMagicSwap: bool, keepsSpellsInCombat: bool, walksThroughWalls: bool, fightsBetterOnFirstMove: bool, drawsTwoTokens: bool}
      */
     public function flags(): array
     {
@@ -132,6 +150,8 @@ enum HeroType: string
             'canMagicSwap' => $this->canMagicSwap(),
             'keepsSpellsInCombat' => $this->keepsSpellsInCombat(),
             'walksThroughWalls' => $this->walksThroughWalls(),
+            'fightsBetterOnFirstMove' => $this->fightsBetterOnFirstMove(),
+            'drawsTwoTokens' => $this->drawsTwoTokens(),
         ];
     }
 
@@ -189,6 +209,16 @@ enum HeroType: string
                 [
                     'name' => 'Astral Walking',
                     'description' => 'The Wizard can move through walls, so he does not have to respect the continuity of the dungeon. This can be used only while moving over the discovered tiles.',
+                ],
+            ],
+            self::ORACLE => [
+                [
+                    'name' => 'Farseeing',
+                    'description' => 'The Oracle has the best knowledge of all her enemies: if she fights in the first move of her turn, she gains a bonus of +1 to her roll.',
+                ],
+                [
+                    'name' => 'Fateweaver',
+                    'description' => 'The Oracle can influence her future: whenever she is supposed to draw a token from the bag, she draws two instead, places one on the tile and puts the other one back in the bag.',
                 ],
             ],
         };

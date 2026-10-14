@@ -25,6 +25,7 @@ final readonly class BattleCompleted implements Event
      * @param bool $unstoppable Swordsman "Unstoppable": the turn continues after this battle
      * @param bool $canSacrificeHp Warlock "Sacrifice": the hero may still pay 1 HP for +1 strength
      * @param bool $hpSacrificed Warlock "Sacrifice": 1 HP was paid for +1 strength in this battle
+     * @param bool $farseeing Oracle "Farseeing": +1 was added to this roll (battle on the first move of the turn)
      */
     public function __construct(
         public Uuid $battleId,
@@ -49,6 +50,7 @@ final readonly class BattleCompleted implements Event
         public bool $canSacrificeHp = false,
         public bool $hpSacrificed = false,
         public bool $spellsKept = false,
+        public bool $farseeing = false,
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}
 }

@@ -77,6 +77,41 @@ final class GameTurnTest extends TestCase
     }
 
     #[Test]
+    public function itCountsOnlyMovesAsPerformedActions(): void
+    {
+        $startTurn = new StartTurn(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            turnNumber: 1,
+            turnId: $this->turnId,
+            at: $this->fixedTime,
+        );
+        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        self::assertSame(0, $gameTurn->getPerformedActionsCount());
+
+        // Oracle "Farseeing": exploring (pick + place) does not spend a move
+        foreach ([TurnAction::PICK_TILE, TurnAction::PLACE_TILE] as $action) {
+            $gameTurn->updateActionCounter(new TurnActionPerformed(
+                turnId: $this->turnId,
+                gameId: $this->gameId,
+                playerId: $this->playerId,
+                action: $action,
+                performedAt: $this->fixedTime,
+            ));
+        }
+        self::assertSame(0, $gameTurn->getPerformedActionsCount());
+
+        $gameTurn->updateActionCounter(new TurnActionPerformed(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: TurnAction::MOVE,
+            performedAt: $this->fixedTime,
+        ));
+        self::assertSame(1, $gameTurn->getPerformedActionsCount());
+    }
+
+    #[Test]
     public function itPerformsValidMoveAction(): void
     {
         $startTurn = new StartTurn(

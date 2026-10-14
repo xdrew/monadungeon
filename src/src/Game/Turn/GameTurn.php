@@ -341,6 +341,14 @@ class GameTurn extends AggregateRoot
         return $this->turnNumber;
     }
 
+    /**
+     * Moves spent this turn (Oracle "Farseeing" reads it: the bonus applies only before the first one).
+     */
+    public function getPerformedActionsCount(): int
+    {
+        return $this->performedActionsCount;
+    }
+
     public function getActions(): array
     {
         return $this->actions;

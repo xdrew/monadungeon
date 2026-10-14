@@ -1164,6 +1164,8 @@ class Field extends AggregateRoot
             'hpSacrificed' => $event->hpSacrificed,
             // Wizard "Magical Affinity"
             'spellsKept' => $event->spellsKept,
+            // Oracle "Farseeing"
+            'farseeing' => $event->farseeing,
         ];
 
         // Check if there are items at this position
