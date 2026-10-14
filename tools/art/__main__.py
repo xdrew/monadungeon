@@ -66,6 +66,15 @@ def cmd_generate(args) -> int:
     return 0
 
 
+def cmd_reprocess(args) -> int:
+    style = load_style()
+    assets = load_assets()
+    only = set(args.only.split(",")) if args.only else None
+    n = pipeline.reprocess(style, assets, only)
+    LOG.info("reprocess: %d asset(s)", n)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tools.art", description="Generate base-theme art with Gemini.")
     parser.add_argument("--verbose", "-v", action="store_true", help="DEBUG logging (prompts, references)")
@@ -78,6 +87,9 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--force", action="store_true", help="regenerate even if the output exists")
     gen.add_argument("--dry-run", action="store_true", help="build prompts and references, no API calls")
     gen.set_defaults(func=cmd_generate)
+    rep = sub.add_parser("reprocess", help="re-run the post-processing from out/raw, no API calls")
+    rep.add_argument("--only", help="comma-separated asset ids")
+    rep.set_defaults(func=cmd_reprocess)
     args = parser.parse_args(argv)
     setup_logging(args.verbose)
     LOG.debug("raw dir %s", rel(RAW_DIR))

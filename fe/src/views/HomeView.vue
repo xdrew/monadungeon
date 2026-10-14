@@ -184,7 +184,7 @@ const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
 
 // Hero cards: skills from the Karak rulebook; name and portrait/emoji from the active theme
 const HERO_SKILLS = [
-  { key: null, testid: 'hero-none', skills: [] },
+  { key: null, testid: 'hero-none', shortName: 'No hero', skills: [] },
   { key: 'warrior', testid: 'hero-warrior', skills: [
     { name: 'Double Attack', text: 'reroll the dice once per fight, the second roll stands' },
     { name: 'Reincarnation', text: 'losing the last HP teleports him to a healing fountain with full HP' }
@@ -1127,7 +1127,7 @@ const createNewGame = async () => {
 }
 
 .title {
-  color: #b8950d;
+  color: var(--text-accent);
   margin-bottom: 10px;
   font-size: 48px;
   text-shadow: 2px 2px 4px #000;
@@ -1311,10 +1311,10 @@ const createNewGame = async () => {
 }
 
 .hero-tile.selected {
-  border-color: #b8950d;
-  color: #f3e6b4;
-  background: linear-gradient(180deg, rgba(184, 149, 13, 0.18) 0%, rgba(0, 0, 0, 0.45) 100%);
-  box-shadow: 0 0 0 1px rgba(184, 149, 13, 0.6), 0 6px 18px rgba(184, 149, 13, 0.18);
+  border-color: var(--color-primary-hover);
+  color: var(--text-primary);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.16) 0%, rgba(0, 0, 0, 0.45) 100%);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.7), 0 6px 18px rgba(var(--accent-rgb), 0.16);
 }
 
 .hero-tile-figure {
@@ -1335,7 +1335,7 @@ const createNewGame = async () => {
 }
 
 .hero-tile.selected .hero-tile-image {
-  filter: drop-shadow(0 0 6px rgba(184, 149, 13, 0.55));
+  filter: drop-shadow(0 0 6px rgba(var(--accent-light-rgb), 0.45));
 }
 
 .hero-tile-emoji {
@@ -1362,9 +1362,9 @@ const createNewGame = async () => {
   padding: 14px 16px;
   min-height: 150px;
   border-radius: 8px;
-  border: 1px solid rgba(184, 149, 13, 0.35);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
   background:
-    radial-gradient(ellipse at 18% 60%, rgba(224, 122, 42, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 18% 60%, rgba(207, 113, 40, 0.14) 0%, transparent 55%),
     linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.5);
   text-align: left;
@@ -1409,7 +1409,7 @@ const createNewGame = async () => {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: #e3c35a;
+  color: var(--text-accent);
   text-shadow: 0 1px 2px #000;
 }
 
@@ -1438,7 +1438,7 @@ const createNewGame = async () => {
 
 .hero-skill-name::before {
   content: '\25C6\00A0';
-  color: #b8950d;
+  color: var(--color-secondary-hover);
   font-size: 9px;
   vertical-align: 2px;
 }
@@ -1495,8 +1495,10 @@ const createNewGame = async () => {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: #1a1206;
+  background: var(--gradient-primary);
+  color: var(--text-primary);
+  border: 1px solid rgba(var(--accent-light-rgb), 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   border: none;
   padding: 15px 30px;
   border-radius: 5px;
@@ -1508,7 +1510,8 @@ const createNewGame = async () => {
 }
 
 .primary-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-hover) 0%, var(--color-secondary) 100%);
+  background: var(--gradient-secondary);
+  border-color: rgba(var(--accent-light-rgb), 0.6);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
@@ -1520,23 +1523,24 @@ const createNewGame = async () => {
 }
 
 .secondary-button {
-  background: linear-gradient(135deg, #4d3d00 0%, #3d2f00 100%);
-  color: #998833;
-  border: none;
+  background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
   padding: 15px 30px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 18px;
   font-weight: 400;
   transition: all 0.2s;
-  margin-top: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-.secondary-button:hover {
-  background: linear-gradient(135deg, #5d4a00 0%, #4d3a00 100%);
+.secondary-button:hover:not(:disabled) {
+  border-color: rgba(var(--accent-light-rgb), 0.7);
+  color: var(--text-primary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 .error-message {

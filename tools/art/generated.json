@@ -40,7 +40,7 @@
         "bbox": [
           30,
           139,
-          963,
+          962,
           866
         ],
         "source_size": [
@@ -49,11 +49,13 @@
         ],
         "touches_border": false,
         "green_residue_pct": 0.0,
+        "outline_removed_pct": 10.7,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:46+00:00"
     },
     "giant_spider": {
       "kind": "monster",
@@ -98,7 +100,7 @@
       "post": {
         "bbox": [
           34,
-          179,
+          180,
           991,
           892
         ],
@@ -108,11 +110,13 @@
         ],
         "touches_border": false,
         "green_residue_pct": 0.0,
+        "outline_removed_pct": 20.12,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:46+00:00"
     },
     "mummy": {
       "kind": "monster",
@@ -160,9 +164,9 @@
       "interaction_id": "v1_Chc2dHZQYXFDdUF2UF9uc0VQX3J2RXFBOBIXNnR2UGFxQ3VBdlBfbnNFUF9ydkVxQTg",
       "post": {
         "bbox": [
-          157,
+          158,
           72,
-          867,
+          864,
           976
         ],
         "source_size": [
@@ -171,11 +175,13 @@
         ],
         "touches_border": false,
         "green_residue_pct": 0.0,
+        "outline_removed_pct": 14.06,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:46+00:00"
     },
     "skeleton_turnkey": {
       "kind": "monster",
@@ -227,9 +233,9 @@
       "interaction_id": "v1_ChdFTnpQYXBhaExQR19uc0VQay1US2lRdxIXRU56UGFwYWhMUEdfbnNFUGstVEtpUXc",
       "post": {
         "bbox": [
-          89,
+          94,
           77,
-          917,
+          916,
           978
         ],
         "source_size": [
@@ -237,12 +243,14 @@
           1024
         ],
         "touches_border": false,
-        "green_residue_pct": 0.0,
+        "green_residue_pct": 0.06,
+        "outline_removed_pct": 12.66,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:47+00:00"
     },
     "skeleton_warrior": {
       "kind": "monster",
@@ -309,11 +317,13 @@
         ],
         "touches_border": false,
         "green_residue_pct": 0.0,
+        "outline_removed_pct": 14.01,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:47+00:00"
     },
     "skeleton_king": {
       "kind": "monster",
@@ -373,8 +383,8 @@
       "interaction_id": "v1_ChdVTnpQYXRlQU42MkNrZFVQM2JldHdRNBIXVU56UGF0ZUFONjJDa2RVUDNiZXR3UTQ",
       "post": {
         "bbox": [
-          46,
-          74,
+          52,
+          80,
           966,
           974
         ],
@@ -383,12 +393,14 @@
           1024
         ],
         "touches_border": false,
-        "green_residue_pct": 0.0,
+        "green_residue_pct": 0.05,
+        "outline_removed_pct": 8.73,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:47+00:00"
     },
     "fallen": {
       "kind": "monster",
@@ -458,12 +470,14 @@
           1024
         ],
         "touches_border": false,
-        "green_residue_pct": 0.2,
+        "green_residue_pct": 0.22,
+        "outline_removed_pct": 7.66,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:47+00:00"
     },
     "dragon": {
       "kind": "monster",
@@ -524,9 +538,9 @@
       "post": {
         "bbox": [
           49,
-          83,
-          975,
-          955
+          84,
+          974,
+          954
         ],
         "source_size": [
           1024,
@@ -534,11 +548,13 @@
         ],
         "touches_border": false,
         "green_residue_pct": 0.02,
+        "outline_removed_pct": 6.74,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:48+00:00"
     },
     "adventurer": {
       "kind": "hero",
@@ -584,7 +600,7 @@
         "bbox": [
           108,
           116,
-          699,
+          698,
           1206
         ],
         "source_size": [
@@ -592,12 +608,14 @@
           1264
         ],
         "touches_border": false,
-        "green_residue_pct": 0.02,
+        "green_residue_pct": 0.05,
+        "outline_removed_pct": 13.68,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:48+00:00"
     },
     "warrior": {
       "kind": "hero",
@@ -646,7 +664,7 @@
       "post": {
         "bbox": [
           44,
-          43,
+          49,
           809,
           1216
         ],
@@ -656,11 +674,13 @@
         ],
         "touches_border": false,
         "green_residue_pct": 0.0,
+        "outline_removed_pct": 6.97,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:48+00:00"
     },
     "thief": {
       "kind": "hero",
@@ -712,8 +732,8 @@
       "interaction_id": "v1_ChdCOTNQYXNTZE1iSGQ3TThQb0lTYS1RMBIXQjkzUGFzU2RNYkhkN004UG9JU2EtUTA",
       "post": {
         "bbox": [
-          92,
-          63,
+          100,
+          64,
           758,
           1208
         ],
@@ -722,12 +742,14 @@
           1264
         ],
         "touches_border": false,
-        "green_residue_pct": 0.02,
+        "green_residue_pct": 0.1,
+        "outline_removed_pct": 12.51,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:48+00:00"
     },
     "swordsman": {
       "kind": "hero",
@@ -785,7 +807,7 @@
         "bbox": [
           190,
           76,
-          665,
+          664,
           1200
         ],
         "source_size": [
@@ -793,12 +815,14 @@
           1264
         ],
         "touches_border": false,
-        "green_residue_pct": 0.0,
+        "green_residue_pct": 0.11,
+        "outline_removed_pct": 8.04,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:48+00:00"
     },
     "warlock": {
       "kind": "hero",
@@ -858,8 +882,8 @@
       "interaction_id": "v1_ChdSZDNQYXAtcUk0RF9uc0VQeXVqcWtBSRIXUmQzUGFwLXFJNERfbnNFUHl1anFrQUk",
       "post": {
         "bbox": [
-          87,
-          67,
+          90,
+          74,
           762,
           1202
         ],
@@ -869,11 +893,13 @@
         ],
         "touches_border": false,
         "green_residue_pct": 0.0,
+        "outline_removed_pct": 8.86,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:49+00:00"
     },
     "wizard": {
       "kind": "hero",
@@ -947,12 +973,14 @@
           1264
         ],
         "touches_border": false,
-        "green_residue_pct": 0.0,
+        "green_residue_pct": 0.02,
+        "outline_removed_pct": 8.9,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:49+00:00"
     },
     "oracle": {
       "kind": "hero",
@@ -1027,11 +1055,13 @@
         ],
         "touches_border": false,
         "green_residue_pct": 0.0,
+        "outline_removed_pct": 4.46,
         "corner_alpha": [
           0,
           0
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:49+00:00"
     },
     "lobby_bg": {
       "kind": "background",
@@ -1078,7 +1108,8 @@
           2528,
           1696
         ]
-      }
+      },
+      "reprocessed_at": "2026-10-14T20:13:49+00:00"
     }
   }
 }

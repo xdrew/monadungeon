@@ -116,3 +116,31 @@ def run(style: Style, assets: list[Asset], client: ImageClient | None, only: set
         _save_log(log)
         generated += 1
     return generated
+
+
+def reprocess(style: Style, assets: list[Asset], only: set[str] | None) -> int:
+    """Re-run the post-processing from out/raw without calling the API (after tuning postprocess.py)."""
+    log = _load_log()
+    done = 0
+    for asset in assets:
+        if only is not None and asset.id not in only:
+            continue
+        entry = log["assets"].get(asset.id)
+        raw_path = RAW_DIR / Path(entry["raw"]).name if entry else None
+        if raw_path is None or not raw_path.exists():
+            LOG.warning("reprocess %s: no raw file in %s, skipped", asset.id, rel(RAW_DIR))
+            continue
+        settings = style.kinds[asset.kind]
+        raw = raw_path.read_bytes()
+        if asset.kind == "background":
+            image, post = postprocess.process_background(raw, settings.width, settings.height)
+            postprocess.save_background(image, asset.out, settings.quality or 85)
+        else:
+            image, post = postprocess.process_sprite(raw, settings.width, settings.height)
+            postprocess.save_sprite(image, asset.out)
+        entry["post"] = post
+        entry["reprocessed_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        LOG.info("reprocess %s → %s %s", asset.id, rel(asset.out), post)
+        done += 1
+    _save_log(log)
+    return done

@@ -1,30 +1,31 @@
 /* Design Tokens - CSS Custom Properties */
 :root {
   /* Colors */
-  /* Dungeon palette: aged gold accent, ember secondary, warm dark stone backgrounds */
-  --color-primary: #c9a227;
-  --color-primary-hover: #e3c35a;
-  --color-secondary: #e07a2a;
-  --color-secondary-hover: #f09a4a;
-  --color-danger: #ff6b6b;
-  --color-warning: #ffb700;
-  --color-warning-hover: #ffc800;
-  --color-info: #5b8fc9;
-  --color-info-hover: #7aa8dc;
+  /* Dungeon palette, tuned to the painted art: antique bronze accent, ember glow as the only
+     bright note, near-black warm stone surfaces, parchment text */
+  --color-primary: #8a6a2f;
+  --color-primary-hover: #a8853e;
+  --color-secondary: #b35a1c;
+  --color-secondary-hover: #cf7128;
+  --color-danger: #b8433a;
+  --color-warning: #c98f2a;
+  --color-warning-hover: #dba63f;
+  --color-info: #4f7a9c;
+  --color-info-hover: #6a94b5;
   
   /* Background Colors */
-  --bg-primary: #1b1816;
-  --bg-secondary: #26211d;
-  --bg-tertiary: #332b26;
-  --bg-field: #110f0d;
-  --bg-modal: #1f1a17;
-  --bg-overlay: rgba(0, 0, 0, 0.7);
+  --bg-primary: #131110;
+  --bg-secondary: #1b1715;
+  --bg-tertiary: #262019;
+  --bg-field: #0b0a09;
+  --bg-modal: #171311;
+  --bg-overlay: rgba(0, 0, 0, 0.78);
   
   /* Text Colors */
-  --text-primary: #e0e0e0;
-  --text-secondary: #aaa;
-  --text-muted: #7f8c8d;
-  --text-accent: #e3c35a;
+  --text-primary: #e2d7c3;
+  --text-secondary: #a89a84;
+  --text-muted: #6e655a;
+  --text-accent: #d4b36a;
   
   /* Spacing */
   --spacing-xs: 4px;
@@ -45,17 +46,17 @@
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 10px rgba(201, 162, 39, 0.7);
-  --shadow-glow-strong: 0 0 30px rgba(227, 195, 90, 0.7);
+  --shadow-glow: 0 0 10px rgba(207, 113, 40, 0.55);
+  --shadow-glow-strong: 0 0 30px rgba(207, 113, 40, 0.6);
 
   /* rgba() helpers for glows and tints: rgba(var(--accent-rgb), 0.3) — themes override them */
-  --accent-rgb: 201, 162, 39;
-  --accent-light-rgb: 227, 195, 90;
+  --accent-rgb: 168, 133, 62;
+  --accent-light-rgb: 212, 179, 106;
 
   /* Gradients — themes override them */
-  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  --gradient-secondary: linear-gradient(135deg, var(--color-info) 0%, var(--color-primary) 100%);
-  --gradient-dark: linear-gradient(135deg, #1b1816 0%, #2a211c 100%);
+  --gradient-primary: linear-gradient(180deg, var(--color-primary-hover) 0%, var(--color-primary) 100%);
+  --gradient-secondary: linear-gradient(180deg, var(--color-secondary-hover) 0%, var(--color-secondary) 100%);
+  --gradient-dark: linear-gradient(135deg, #131110 0%, #1f1915 100%);
   
   /* Transitions */
   --transition-fast: 0.2s ease;

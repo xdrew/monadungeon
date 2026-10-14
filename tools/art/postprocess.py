@@ -67,6 +67,44 @@ def remove_chroma_key(img: Image.Image) -> Image.Image:
     return out
 
 
+# sticker outline: near-white pixels touching the transparent edge (R,G,B high, almost no saturation)
+OUTLINE_MIN = 215
+OUTLINE_MAX_SPREAD = 22
+
+
+def strip_outline(img: Image.Image) -> tuple[Image.Image, float]:
+    """Remove the white sticker outline: near-white pixels connected to the transparent edge.
+
+    Flood-fills inward from every transparent pixel through near-white pixels only, so interior
+    whites (bone, highlights) survive unless they touch the silhouette through pure white.
+    """
+    data = np.array(img.convert("RGBA"), dtype=np.uint8)
+    rgb = data[..., :3].astype(np.int16)
+    alpha = data[..., 3]
+    near_white = (rgb.min(axis=-1) >= OUTLINE_MIN) & ((rgb.max(axis=-1) - rgb.min(axis=-1)) <= OUTLINE_MAX_SPREAD) & (alpha > 0)
+    transparent = alpha == 0
+    # iterative 4-neighbour dilation of the transparent region, constrained to near-white pixels
+    front = transparent.copy()
+    removed = np.zeros_like(transparent)
+    for _ in range(64):
+        grown = front.copy()
+        grown[1:, :] |= front[:-1, :]
+        grown[:-1, :] |= front[1:, :]
+        grown[:, 1:] |= front[:, :-1]
+        grown[:, :-1] |= front[:, 1:]
+        new = grown & near_white & ~removed & ~transparent
+        if not new.any():
+            break
+        removed |= new
+        front = transparent | removed
+    opaque_before = int((alpha > 0).sum())
+    alpha[removed] = 0
+    data[..., 3] = alpha
+    pct = float(removed.sum()) / max(opaque_before, 1) * 100
+    LOG.debug("outline: removed %.1f%% of opaque pixels", pct)
+    return Image.fromarray(data, mode="RGBA"), pct
+
+
 def green_residue_pct(img: Image.Image) -> float:
     """Share of opaque pixels that are still green-dominant (fringe left after keying)."""
     data = np.asarray(img.convert("RGBA"), dtype=np.int16)
@@ -113,9 +151,11 @@ def trim_and_fit(img: Image.Image, width: int, height: int, padding: float = 0.0
 def process_sprite(raw: bytes, width: int, height: int) -> tuple[Image.Image, dict]:
     img = load(raw)
     keyed = remove_chroma_key(img)
+    keyed, outline_pct = strip_outline(keyed)
     fitted, info = trim_and_fit(keyed, width, height)
     residue = green_residue_pct(fitted)
     info["green_residue_pct"] = round(residue, 2)
+    info["outline_removed_pct"] = round(outline_pct, 2)
     if residue > 0.5:
         LOG.warning("green residue %.2f%% of opaque pixels — consider regenerating", residue)
     corners = [fitted.getpixel((0, 0))[3], fitted.getpixel((width - 1, height - 1))[3]]

@@ -1,5 +1,5 @@
 {
-  "style_version": 1,
+  "style_version": 2,
   "default_model": "gemini-nano-banana-2.1",
   "style_prompt": "Game asset for a dark-fantasy dungeon-crawler board game (Karak). Match the style of the attached reference icons exactly: small cartoon game sprite with a crisp, slightly pixel-art look, soft painterly shading, warm torch-light highlights from the upper left, thin dark outline, 3/4 front view, a single subject, centered with padding, readable at 32 px. Palette: aged gold, worn leather brown, bone white, mossy green, stone grey, ember orange, deep shadow violet-black.",
   "negative_prompt": "No text, no letters, no watermark, no frame or border, no background scene, no floor, no shadows on the background, no blur, no photo-realism, no anime, no 3D render look.",
@@ -16,8 +16,8 @@
     "#1a1226"
   ],
   "frames": {
-    "monster": "Subject: {subject}. It is a monster the hero fights in the dungeon; make it menacing but readable as a tiny token. Background: EXACTLY one flat, uniform chroma-key green #00FF00 (RGB 0,255,0) filling the whole canvas, no gradient, no vignette, no shadow or lighting on it. Draw a clean solid white outline 2-3 px wide around the whole subject so it separates from the green. Never use green on the subject itself (use teal, olive or brown instead).",
-    "hero": "Subject: {subject}. It is a playable hero figure, full body standing, facing the viewer at 3/4, feet visible, like the attached reference figures. Background: EXACTLY one flat, uniform chroma-key green #00FF00 (RGB 0,255,0) filling the whole canvas, no gradient, no vignette, no shadow or lighting on it. Draw a clean solid white outline 2-3 px wide around the whole figure so it separates from the green. Never use green on the figure itself (use teal, olive or brown instead).",
+    "monster": "Subject: {subject}. It is a monster the hero fights in the dungeon; make it menacing but readable as a tiny token. Background: EXACTLY one flat, uniform chroma-key green #00FF00 (RGB 0,255,0) filling the whole canvas, no gradient, no vignette, no shadow or lighting on it. No white border or sticker outline around the subject; keep the subject's own thin dark outline and crisp edges against the green. Never use green on the subject itself (use teal, olive or brown instead).",
+    "hero": "Subject: {subject}. It is a playable hero figure, full body standing, facing the viewer at 3/4, feet visible, like the attached reference figures. Background: EXACTLY one flat, uniform chroma-key green #00FF00 (RGB 0,255,0) filling the whole canvas, no gradient, no vignette, no shadow or lighting on it. No white border or sticker outline around the figure; keep the figure's own thin dark outline and crisp edges against the green. Never use green on the figure itself (use teal, olive or brown instead).",
     "background": "Wide painterly scene for the game's title screen, in the same mood, lighting and composition as the attached reference painting: a dark stone dungeon hall with arches, wall torches with warm orange flames, an open wooden treasure chest full of glowing gold coins at the centre of the floor. {subject} Deep shadows, warm light only from the torches and the chest, muted desaturated colours, worn stone and moss. No text, no letters, no watermark, no frame."
   },
   "references": [
