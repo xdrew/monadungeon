@@ -82,6 +82,12 @@ class Battle extends AggregateRoot
     #[Column(type: JsonType::class, nullable: true, columnDefinition: 'jsonb')]
     private ?array $firstDiceResults = null;
 
+    /**
+     * Swordsman "Combat Training": how many times a die showing 1 was rerolled in the current roll.
+     */
+    #[Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $onesRerolled = 0;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -318,6 +324,7 @@ class Battle extends AggregateRoot
                 itemPickedUp: $finalResult === BattleResult::WIN && $command->pickupItem,
                 rerolled: $this->rerollUsed,
                 firstDiceResults: $this->firstDiceResults,
+                onesRerolled: $this->onesRerolled,
                 tieIsWin: $this->playerWinsTies($messageContext),
             ));
 
@@ -465,6 +472,7 @@ class Battle extends AggregateRoot
                 usedItems: $this->usedItems,
                 rerolled: $this->rerollUsed,
                 firstDiceResults: $this->firstDiceResults,
+                onesRerolled: $this->onesRerolled,
                 tieIsWin: $tieIsWin,
             ));
 
@@ -499,6 +507,7 @@ class Battle extends AggregateRoot
             canReroll: $canReroll,
             rerolled: $this->rerollUsed,
             firstDiceResults: $this->firstDiceResults,
+            onesRerolled: $this->onesRerolled,
             tieIsWin: $tieIsWin,
         ));
     }
@@ -515,6 +524,19 @@ class Battle extends AggregateRoot
             $field->getNextDiceRoll(1, 6),
             $field->getNextDiceRoll(1, 6),
         ];
+
+        // Swordsman "Combat Training": a die showing 1 is rerolled until it shows something better
+        $this->onesRerolled = 0;
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
+        if ($player->getHero()?->rerollsOnes() === true) {
+            foreach ($this->diceResults as $index => $value) {
+                while ($value === 1) {
+                    ++$this->onesRerolled;
+                    $value = $field->getNextDiceRoll(1, 6);
+                }
+                $this->diceResults[$index] = $value;
+            }
+        }
 
         $this->totalDamage = array_sum($this->diceResults);
     }
@@ -604,9 +626,11 @@ class Battle extends AggregateRoot
                 'toPosition' => $toPosition->toString(),
                 'rerolled' => $this->rerollUsed,
                 'firstDiceResults' => $this->firstDiceResults,
+                'onesRerolled' => $this->onesRerolled,
                 'backstab' => $backstab,
                 'heroAbility' => implode('+', array_filter([
                     $this->rerollUsed ? 'double_attack' : null,
+                    $this->onesRerolled > 0 ? 'combat_training' : null,
                     $backstab ? 'backstab' : null,
                 ])) ?: null,
             ],

@@ -11,6 +11,7 @@ enum HeroType: string
 {
     case WARRIOR = 'warrior';
     case THIEF = 'thief';
+    case SWORDSMAN = 'swordsman';
 
     /**
      * @return list<string>
@@ -25,6 +26,7 @@ enum HeroType: string
         return match ($this) {
             self::WARRIOR => 'Horan, the Warrior',
             self::THIEF => 'Aderyn, the Thief',
+            self::SWORDSMAN => 'Victorius, the Swordsman',
         };
     }
 
@@ -61,9 +63,25 @@ enum HeroType: string
     }
 
     /**
+     * Combat Training: every die showing 1 is rerolled until it shows something better.
+     */
+    public function rerollsOnes(): bool
+    {
+        return $this === self::SWORDSMAN;
+    }
+
+    /**
+     * Unstoppable: when at least one die shows 6 the turn continues after the combat, whatever its result.
+     */
+    public function continuesTurnOnSix(): bool
+    {
+        return $this === self::SWORDSMAN;
+    }
+
+    /**
      * Skill flags for API consumers (frontend decides which prompts/buttons to show).
      *
-     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool}
+     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool, rerollsOnes: bool, continuesTurnOnSix: bool}
      */
     public function flags(): array
     {
@@ -72,6 +90,8 @@ enum HeroType: string
             'reincarnates' => $this->reincarnates(),
             'winsTies' => $this->winsTies(),
             'canSneakPastMonsters' => $this->canSneakPastMonsters(),
+            'rerollsOnes' => $this->rerollsOnes(),
+            'continuesTurnOnSix' => $this->continuesTurnOnSix(),
         ];
     }
 
@@ -99,6 +119,16 @@ enum HeroType: string
                 [
                     'name' => 'Stealth',
                     'description' => 'The Thief moves in the shadows: when entering a tile with a monster, she can decide to fight it or to sneak past and continue moving.',
+                ],
+            ],
+            self::SWORDSMAN => [
+                [
+                    'name' => 'Combat Training',
+                    'description' => 'The Swordsman is an experienced fighter and his strikes are always precise: any die that shows a 1 is rerolled as many times as necessary.',
+                ],
+                [
+                    'name' => 'Unstoppable',
+                    'description' => 'If at least one die shows a 6 during combat, the Swordsman continues his turn afterwards. He may even fight the same monster again after a tie or a loss.',
                 ],
             ],
         };

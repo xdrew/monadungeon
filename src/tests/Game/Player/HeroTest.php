@@ -7,6 +7,7 @@ namespace App\Tests\Game\Player;
 use App\Game\Field\FieldPlace;
 use App\Game\GameLifecycle\PlayerAdded;
 use App\Game\Player\CompleteReincarnation;
+use App\Game\Player\GetPlayerStatus;
 use App\Game\Player\GetReady;
 use App\Game\Player\HeroPicked;
 use App\Game\Player\HeroType;
@@ -31,7 +32,9 @@ use function App\Tests\Infrastructure\MessageBus\handle;
 final class HeroTest extends TestCase
 {
     private Uuid $gameId;
+
     private Uuid $playerId;
+
     private Uuid $turnId;
 
     protected function setUp(): void
@@ -52,7 +55,7 @@ final class HeroTest extends TestCase
 
         self::assertSame(HeroType::WARRIOR, $player->getHero());
         self::assertFalse($player->isAwaitingReincarnation());
-        self::assertSame('warrior', $player->getPlayerStatus(new \App\Game\Player\GetPlayerStatus($this->playerId))['hero']);
+        self::assertSame('warrior', $player->getPlayerStatus(new GetPlayerStatus($this->playerId))['hero']);
     }
 
     #[Test]
@@ -172,10 +175,32 @@ final class HeroTest extends TestCase
     #[Test]
     public function warriorSkillsAreDescribed(): void
     {
-        self::assertSame(['warrior', 'thief'], HeroType::values());
+        self::assertSame(['warrior', 'thief', 'swordsman'], HeroType::values());
         self::assertTrue(HeroType::WARRIOR->canRerollBattle());
         self::assertTrue(HeroType::WARRIOR->reincarnates());
         self::assertSame(['Double Attack', 'Reincarnation'], array_column(HeroType::WARRIOR->skills(), 'name'));
+    }
+
+    #[Test]
+    public function swordsmanSkillsAreDescribed(): void
+    {
+        self::assertSame('Victorius, the Swordsman', HeroType::SWORDSMAN->label());
+        self::assertTrue(HeroType::SWORDSMAN->rerollsOnes());
+        self::assertTrue(HeroType::SWORDSMAN->continuesTurnOnSix());
+        self::assertFalse(HeroType::SWORDSMAN->canRerollBattle());
+        self::assertFalse(HeroType::SWORDSMAN->reincarnates());
+        self::assertFalse(HeroType::SWORDSMAN->winsTies());
+        self::assertFalse(HeroType::SWORDSMAN->canSneakPastMonsters());
+        self::assertSame(['Combat Training', 'Unstoppable'], array_column(HeroType::SWORDSMAN->skills(), 'name'));
+
+        foreach ([HeroType::WARRIOR, HeroType::THIEF] as $other) {
+            self::assertFalse($other->rerollsOnes(), $other->value);
+            self::assertFalse($other->continuesTurnOnSix(), $other->value);
+        }
+        self::assertSame(
+            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix'],
+            array_keys(HeroType::SWORDSMAN->flags()),
+        );
     }
 
     private function createPlayer(?HeroType $hero, int $hp): Player

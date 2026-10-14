@@ -21,6 +21,7 @@ final readonly class BattleCompleted implements Event
      * @param bool $canReroll Hero may still use "Double Attack" on this roll
      * @param bool $rerolled This result comes from a "Double Attack" reroll
      * @param array<int>|null $firstDiceResults The discarded first roll when rerolled
+     * @param int $onesRerolled Swordsman "Combat Training": how many dice showing 1 were rerolled
      */
     public function __construct(
         public Uuid $battleId,
@@ -39,6 +40,7 @@ final readonly class BattleCompleted implements Event
         public bool $canReroll = false,
         public bool $rerolled = false,
         public ?array $firstDiceResults = null,
+        public int $onesRerolled = 0,
         public bool $tieIsWin = false,
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}

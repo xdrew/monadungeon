@@ -1140,6 +1140,8 @@ class Field extends AggregateRoot
             'canReroll' => $event->canReroll,
             'rerolled' => $event->rerolled,
             'firstDiceResults' => $event->firstDiceResults,
+            // Hero skills (Swordsman "Combat Training": dice showing 1 were rerolled)
+            'onesRerolled' => $event->onesRerolled,
             // Hero skills (Thief "Backstab": a tie counts as a victory)
             'tieIsWin' => $event->tieIsWin,
         ];
