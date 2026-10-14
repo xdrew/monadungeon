@@ -16,6 +16,16 @@
       class="game-interface"
       :class="{ 'game-finished': gameData?.state?.status === 'finished' }"
     >
+      <!-- Transient notice for a rejected action (the game stays on screen) -->
+      <transition name="action-notice">
+        <div
+          v-if="actionNotice"
+          class="action-notice"
+          role="status"
+          data-testid="action-notice"
+        >{{ actionNotice }}</div>
+      </transition>
+
       <!-- Game finished banner -->
       <div
         v-if="gameData?.state?.status === 'finished'"
@@ -379,40 +389,48 @@
                   'is-current-user': isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })
                 }"
               >
-                <div class="player-inventory-header">
-                  <span class="player-emoji">
-                    <!-- hero portrait from the theme when the player chose a hero, else the generic figure -->
-                    <img
-                      :src="playerAvatar(player)"
-                      :alt="isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'Player' : 'AI Player'"
-                      :class="isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'player-avatar-image' : 'ai-avatar-image'"
-                      @error="onAvatarError($event, player)"
-                    />
-                  </span>
-                  <span class="player-name">
-                    {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : player.username || 'Player' }}
-                  </span>
-                  <span
-                    v-if="player.hero"
-                    class="hero-badge"
-                    :class="{ 'awaiting-reincarnation': player.awaitingReincarnation, cursed: player.cursed }"
-                    :title="heroTooltip(player)"
-                    data-testid="hero-badge"
-                  >{{ player.awaitingReincarnation ? '💀' : player.cursed ? '☠️' : '⚔️' }} {{ heroShortName(player) }}</span>
-                  <span class="hp-indicator">
-                    ❤️ {{ player.hp !== undefined ? player.hp : 5 }}/{{ player.maxHp ?? 5 }}
-                  </span>
-                  <span
-                    v-if="gameData?.state?.startingRolls?.[player.id] && (gameData.state.turn || 0) <= (gameData.players?.length || 1)"
-                    class="starting-roll"
-                    title="Roll for the starting player"
-                    data-testid="starting-roll"
-                  >🎲 {{ gameData.state.startingRolls[player.id] }}</span>
-                  <span 
-                    v-if="gameData?.state?.currentPlayerId === player.id"
-                    class="turn-badge"
-                  >📍</span>
+                <!-- Player card: hero figure on the left, name / stats / inventory on the right -->
+                <div class="player-card-figure">
+                  <img
+                    :src="playerAvatar(player)"
+                    :alt="isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'Player' : 'AI Player'"
+                    class="player-figure-image"
+                    :class="{ 'is-ai': !isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) }"
+                    @error="onAvatarError($event, player)"
+                  />
                 </div>
+                <div class="player-card-body">
+                  <div class="player-inventory-header">
+                    <span class="player-name">
+                      {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : player.username || 'Player' }}
+                    </span>
+                    <span
+                      v-if="player.hero"
+                      class="hero-badge"
+                      :class="{ 'awaiting-reincarnation': player.awaitingReincarnation, cursed: player.cursed }"
+                      :title="heroTooltip(player)"
+                      data-testid="hero-badge"
+                    >{{ player.awaitingReincarnation ? '💀' : player.cursed ? '☠️' : '⚔️' }} {{ heroShortName(player) }}</span>
+                    <span
+                      v-if="gameData?.state?.currentPlayerId === player.id"
+                      class="turn-badge"
+                      title="Current turn"
+                    >📍</span>
+                  </div>
+                  <div class="player-card-stats">
+                    <span class="hp-indicator">
+                      ❤️ {{ player.hp !== undefined ? player.hp : 5 }}/{{ player.maxHp ?? 5 }}
+                    </span>
+                    <span class="player-treasure-total" title="Victory points">
+                      💎 {{ calculatePlayerTreasure(player) }}
+                    </span>
+                    <span
+                      v-if="gameData?.state?.startingRolls?.[player.id] && (gameData.state.turn || 0) <= (gameData.players?.length || 1)"
+                      class="starting-roll"
+                      title="Roll for the starting player"
+                      data-testid="starting-roll"
+                    >🎲 {{ gameData.state.startingRolls[player.id] }}</span>
+                  </div>
 
               <div class="inventory-container">
                 <div class="unified-inventory-grid compact">
@@ -504,12 +522,8 @@
                       {{ item.treasureValue }}
                     </div>
                   </div>
-
-                  <!-- Total treasure value -->
-                  <div class="player-treasure-total">
-                    💎 {{ calculatePlayerTreasure(player) }}
-                  </div>
                 </div>
+              </div>
               </div>
               </div>
             </div>
@@ -894,6 +908,16 @@ const router = useRouter();
 const route = useRoute();
 const id = computed(() => route.params.id);
 const loading = ref(true);
+
+// Transient notice for a rejected action — unlike `error` it does not replace the game view
+const actionNotice = ref('');
+let actionNoticeTimer = null;
+const showActionNotice = (text) => {
+  actionNotice.value = text;
+  if (actionNoticeTimer) clearTimeout(actionNoticeTimer);
+  actionNoticeTimer = setTimeout(() => { actionNotice.value = ''; }, 5000);
+};
+const apiErrorMessage = (err) => err?.response?.data?.message || err?.message || 'Unknown error';
 const loadingStatus = ref('');  // Add this line to track specific loading operations
 const error = ref(null);
 const gameData = ref(null);
@@ -4773,6 +4797,15 @@ const handlePlayerFigureClick = async ({ playerId }) => {
     loading.value = true;
     loadingStatus.value = 'Swapping places...';
 
+    // Fresh turn id and actions: the swap is legal only while the turn has no actions yet
+    await loadGameData();
+    if (!canMagicSwapNow.value) {
+      isMagicSwapMode.value = false;
+      showActionNotice('Magic Swap is only possible at the beginning of the turn, before any move.');
+      console.warn('[magic-swap] refused after refresh: turn already has actions');
+      return;
+    }
+
     await gameApi.magicSwap({
       gameId: id.value,
       playerId: currentPlayerId.value,
@@ -4786,7 +4819,9 @@ const handlePlayerFigureClick = async ({ playerId }) => {
     await loadGameData();
   } catch (err) {
     console.error('Failed to swap places:', err);
-    error.value = `Magic Swap failed: ${err.message}`;
+    isMagicSwapMode.value = false;
+    showActionNotice(`Magic Swap failed: ${apiErrorMessage(err)}`);
+    await loadGameData().catch(() => {});
   } finally {
     loading.value = false;
     loadingStatus.value = '';
@@ -5393,12 +5428,92 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 /* Both players inventory styles */
 .player-inventory-section {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
   margin-bottom: 8px;
-  padding: 10px;
-  background: rgba(var(--accent-rgb), 0.06);
+  padding: 8px 10px 10px 8px;
+  background:
+    radial-gradient(ellipse at 0% 100%, rgba(207, 113, 40, 0.10) 0%, transparent 60%),
+    rgba(var(--accent-rgb), 0.05);
   border-radius: 8px;
   border: 1px solid rgba(var(--accent-rgb), 0.15);
   transition: all 0.3s ease;
+}
+
+.player-card-figure {
+  flex: 0 0 64px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.player-figure-image {
+  height: 96px;
+  width: auto;
+  max-width: 64px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.25));
+}
+
+.player-figure-image.is-ai {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 6px rgba(79, 122, 156, 0.35));
+}
+
+.player-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.player-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-card-stats .hp-indicator {
+  margin-left: 0;
+}
+
+.player-card-stats .player-treasure-total {
+  font-size: 0.75em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(79, 122, 156, 0.14);
+  border: 1px solid rgba(79, 122, 156, 0.3);
+  color: var(--text-primary);
+}
+
+.action-notice {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--bg-modal);
+  border: 1px solid rgba(var(--accent-light-rgb), 0.5);
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  font-size: 0.9rem;
+}
+
+.action-notice-enter-active,
+.action-notice-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.action-notice-enter-from,
+.action-notice-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-6px);
 }
 
 .player-inventory-section.current-turn {
@@ -5415,28 +5530,11 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
   font-weight: 600;
 }
 
 .player-emoji {
   font-size: 1.5rem;
-}
-
-.player-avatar-image {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
-  display: block;
-  filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.6));
-}
-
-.ai-avatar-image {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
-  display: block;
-  filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.6));
 }
 
 .player-name {
@@ -5458,6 +5556,11 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
   gap: 4px;
+}
+
+/* nothing carried yet: no empty strip under the stats */
+.player-card-body .inventory-container:has(.unified-inventory-grid.compact:empty) {
+  display: none;
 }
 
 .inventory-item.compact {
