@@ -1,29 +1,30 @@
 /* Design Tokens - CSS Custom Properties */
 :root {
   /* Colors */
-  --color-primary: #4CAF50;
-  --color-primary-hover: #45a049;
-  --color-secondary: #e67e22;
-  --color-secondary-hover: #d35400;
+  /* Dungeon palette: aged gold accent, ember secondary, warm dark stone backgrounds */
+  --color-primary: #c9a227;
+  --color-primary-hover: #e3c35a;
+  --color-secondary: #e07a2a;
+  --color-secondary-hover: #f09a4a;
   --color-danger: #ff6b6b;
   --color-warning: #ffb700;
   --color-warning-hover: #ffc800;
-  --color-info: #3498db;
-  --color-info-hover: #2980b9;
+  --color-info: #5b8fc9;
+  --color-info-hover: #7aa8dc;
   
   /* Background Colors */
-  --bg-primary: #222;
-  --bg-secondary: #2a2a2a;
-  --bg-tertiary: #333;
-  --bg-field: #111;
-  --bg-modal: #1a1a2e;
+  --bg-primary: #1b1816;
+  --bg-secondary: #26211d;
+  --bg-tertiary: #332b26;
+  --bg-field: #110f0d;
+  --bg-modal: #1f1a17;
   --bg-overlay: rgba(0, 0, 0, 0.7);
   
   /* Text Colors */
   --text-primary: #e0e0e0;
   --text-secondary: #aaa;
   --text-muted: #7f8c8d;
-  --text-accent: #4CAF50;
+  --text-accent: #e3c35a;
   
   /* Spacing */
   --spacing-xs: 4px;
@@ -44,17 +45,17 @@
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 10px rgba(76, 175, 80, 0.7);
-  --shadow-glow-strong: 0 0 30px rgba(129, 199, 132, 0.7);
+  --shadow-glow: 0 0 10px rgba(201, 162, 39, 0.7);
+  --shadow-glow-strong: 0 0 30px rgba(227, 195, 90, 0.7);
 
   /* rgba() helpers for glows and tints: rgba(var(--accent-rgb), 0.3) — themes override them */
-  --accent-rgb: 76, 175, 80;
-  --accent-light-rgb: 129, 199, 132;
+  --accent-rgb: 201, 162, 39;
+  --accent-light-rgb: 227, 195, 90;
 
   /* Gradients — themes override them */
   --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   --gradient-secondary: linear-gradient(135deg, var(--color-info) 0%, var(--color-primary) 100%);
-  --gradient-dark: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --gradient-dark: linear-gradient(135deg, #1b1816 0%, #2a211c 100%);
   
   /* Transitions */
   --transition-fast: 0.2s ease;

@@ -700,8 +700,8 @@ const formatActionText = (action) => {
 }
 
 .turn-log.current-player {
-  border-left-color: #4CAF50;
-  background: rgba(76, 175, 80, 0.1);
+  border-left-color: var(--color-primary);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .turn-header {
@@ -724,7 +724,7 @@ const formatActionText = (action) => {
   object-fit: contain;
   display: inline-block;
   vertical-align: middle;
-  filter: drop-shadow(0 0 2px rgba(0, 255, 0, 0.6));
+  filter: drop-shadow(0 0 2px rgba(var(--accent-light-rgb), 0.6));
 }
 
 .ai-avatar-small {
@@ -767,7 +767,7 @@ const formatActionText = (action) => {
 
 /* Different styling for different action types */
 .action-item.battle_won {
-  color: #4CAF50;
+  color: var(--color-primary);
 }
 
 .action-item.battle_lost {
@@ -784,11 +784,11 @@ const formatActionText = (action) => {
 }
 
 .action-item.chest_opened {
-  color: #4CAF50;
+  color: var(--color-primary);
 }
 
 .action-item.player_healed {
-  color: #4CAF50;
+  color: var(--color-primary);
 }
 
 .action-item.player_stunned {

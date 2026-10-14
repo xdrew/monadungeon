@@ -220,7 +220,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   margin: 0 -24px;
   padding: 10px 24px;
   border-radius: 14px 14px 0 0;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(var(--accent-light-rgb), 0.08) 100%);
   border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
   margin-bottom: 20px;
 }

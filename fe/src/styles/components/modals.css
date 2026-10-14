@@ -213,12 +213,12 @@
 }
 
 .reward-section {
-  background-color: rgba(76, 175, 80, 0.1);
+  background-color: rgba(var(--accent-rgb), 0.1);
   border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   margin-top: var(--spacing-lg);
   margin-bottom: var(--spacing-lg);
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
 }
 
 .reward-title {

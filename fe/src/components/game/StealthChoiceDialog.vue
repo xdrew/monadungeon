@@ -98,9 +98,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   width: min(360px, calc(100vw - 32px));
   padding: 18px 20px 20px;
   border-radius: 12px;
-  border: 1px solid rgba(131, 110, 255, 0.45);
+  border: 1px solid rgba(var(--accent-light-rgb), 0.45);
   background: linear-gradient(160deg, #1f1538 0%, #120c22 100%);
-  box-shadow: 0 0 0 1px rgba(131, 110, 255, 0.2), 0 18px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 1px rgba(var(--accent-light-rgb), 0.2), 0 18px 40px rgba(0, 0, 0, 0.6);
   color: #e6e1ff;
   text-align: center;
 }
@@ -178,7 +178,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 .btn-sneak {
   background: linear-gradient(135deg, #4a2590, #836eff);
-  box-shadow: 0 4px 14px rgba(131, 110, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(var(--accent-light-rgb), 0.35);
 }
 
 .kbd-hint {

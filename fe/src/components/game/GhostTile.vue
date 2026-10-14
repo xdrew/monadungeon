@@ -217,7 +217,7 @@ const placeTile = () => {
   width: 100px;
   height: 100px;
   transition: transform 0.3s, box-shadow 0.3s;
-  background-color: #1a1a2e;
+  background-color: var(--bg-modal);
   color: white;
   display: flex;
   align-items: center;
@@ -225,7 +225,7 @@ const placeTile = () => {
 }
 
 .corridor {
-  background-color: #1a1a2e;
+  background-color: var(--bg-modal);
 }
 
 .room {

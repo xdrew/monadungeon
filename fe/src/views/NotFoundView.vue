@@ -55,7 +55,7 @@ p {
 
 .home-button {
   padding: 12px 24px;
-  background-color: #4CAF50;
+  background-color: var(--color-primary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -65,6 +65,6 @@ p {
 }
 
 .home-button:hover {
-  background-color: #45a049;
+  background-color: var(--color-primary-hover);
 }
 </style>

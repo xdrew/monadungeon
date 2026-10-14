@@ -315,7 +315,7 @@
 
 /* Empty Slots */
 .empty-slot {
-  background-color: #1c1f2a;
+  background-color: var(--bg-secondary);
   border-radius: var(--radius-sm);
   padding: 4px var(--spacing-xs);
   display: flex;
@@ -780,7 +780,7 @@
 .start-button:hover:not(:disabled), .replay-button:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
 }
 
 .ready-button:disabled, .add-player-button:disabled, .start-button:disabled, .replay-button:disabled {

@@ -149,12 +149,12 @@ a {
 
 .btn-success {
   color: #fff;
-  background-color: #28a745;
-  border-color: #28a745;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .btn-success:hover {
-  background-color: #218838;
+  background-color: var(--color-primary-hover);
   border-color: #1e7e34;
 }
 

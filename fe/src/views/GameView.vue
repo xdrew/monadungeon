@@ -5597,7 +5597,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .leaderboard-header {
   padding: 10px 20px;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(var(--accent-light-rgb), 0.08) 100%);
   border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
 }
 
@@ -5825,8 +5825,8 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   font-size: 0.72em;
   padding: 2px 8px;
   margin-left: 6px;
-  background: rgba(131, 110, 255, 0.14);
-  border: 1px solid rgba(131, 110, 255, 0.35);
+  background: rgba(var(--accent-light-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-light-rgb), 0.35);
   border-radius: 10px;
   color: #c9c2e6;
   font-weight: 600;
@@ -5846,7 +5846,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 /* Reincarnation target markers pulse so the choice is obvious */
 .reincarnation-marker .healing-fountain-indicator {
-  box-shadow: 0 0 0 3px rgba(131, 110, 255, 0.6), 0 0 18px rgba(131, 110, 255, 0.8);
+  box-shadow: 0 0 0 3px rgba(var(--accent-light-rgb), 0.6), 0 0 18px rgba(var(--accent-light-rgb), 0.8);
   animation: reincarnation-pulse 1.2s ease-in-out infinite;
 }
 
@@ -6040,7 +6040,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   font-size: 1.1rem;
   font-weight: 800;
   color: #66ff66;
-  text-shadow: 0 0 8px rgba(50, 205, 50, 0.8), 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 0 8px rgba(var(--accent-light-rgb), 0.8), 0 2px 4px rgba(0, 0, 0, 0.8);
   pointer-events: none;
   transform: translateX(-50%);
   animation: healFloat 2s ease-out forwards;
@@ -6059,10 +6059,10 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle, rgba(76, 175, 80, 0.5) 0%, rgba(76, 175, 80, 0.2) 70%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.5) 0%, rgba(var(--accent-rgb), 0.2) 70%);
   animation: pulse 2s infinite;
-  border: 2px solid rgba(76, 175, 80, 0.8);
-  box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+  border: 2px solid rgba(var(--accent-rgb), 0.8);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.6);
   border-radius: 8px;
 }
 
@@ -6076,7 +6076,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .fountain-emoji {
   font-size: 2.5rem;
-  filter: drop-shadow(0 0 4px rgba(76, 175, 80, 0.8));
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.8));
 }
 
 .current-position-label {
@@ -6090,13 +6090,13 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.4);
   }
   70% {
-    box-shadow: 0 0 0 15px rgba(76, 175, 80, 0);
+    box-shadow: 0 0 0 15px rgba(var(--accent-rgb), 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0);
   }
 }
 
@@ -6159,7 +6159,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .player-damage.damage-win {
-  color: #69f0ae;
+  color: var(--color-primary-hover);
 }
 
 .player-damage.damage-lose {
@@ -6191,7 +6191,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .battle-result-label.win {
-  color: #69f0ae;
+  color: var(--color-primary-hover);
 }
 
 .battle-result-label.lose {
@@ -6247,7 +6247,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .portal-target.selected {
-  border-color: #66bb6a;
+  border-color: var(--color-primary-hover);
   background: rgba(102, 187, 106, 0.25);
 }
 .starting-roll {

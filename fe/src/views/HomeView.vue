@@ -43,39 +43,68 @@
         <!-- Hero selection (hero skills from the Karak board game) -->
         <div class="hero-picker" data-testid="hero-picker">
           <p class="hero-picker-title">Choose your hero</p>
-          <div class="hero-options">
+
+          <!-- roster: one portrait tile per hero; the skills live in the card below -->
+          <div class="hero-roster" role="radiogroup" aria-label="Hero">
             <button
               v-for="card in heroCards"
               :key="card.testid"
               type="button"
-              class="hero-card"
+              class="hero-tile"
               :class="{ selected: selectedHero === card.key }"
+              role="radio"
+              :aria-checked="selectedHero === card.key"
               :data-testid="card.testid"
+              :title="card.name"
               @click="selectHero(card.key)"
             >
-              <ThemedImage
-                :src="card.image"
-                :emoji="card.emoji"
-                :alt="card.name"
-                img-class="hero-portrait"
-                emoji-class="hero-icon"
-              />
-              <span class="hero-name">{{ card.name }}</span>
-              <span class="hero-skills">
-                <template v-if="card.skills.length === 0">No special skills</template>
-                <template v-for="(skill, index) in card.skills" :key="skill.name">
-                  <strong>{{ skill.name }}</strong> — {{ skill.text }}<br v-if="index < card.skills.length - 1">
-                </template>
+              <span class="hero-tile-figure">
+                <ThemedImage
+                  :src="card.image"
+                  :emoji="card.emoji"
+                  :alt="card.name"
+                  img-class="hero-tile-image"
+                  emoji-class="hero-tile-emoji"
+                />
               </span>
+              <span class="hero-tile-name">{{ card.shortName }}</span>
             </button>
           </div>
+
+          <!-- the selected hero's card, laid out like a rulebook entry -->
+          <transition name="hero-card" mode="out-in">
+            <div
+              :key="selectedCard.testid"
+              class="hero-card"
+              data-testid="hero-card"
+            >
+              <div class="hero-card-figure">
+                <ThemedImage
+                  :src="selectedCard.image"
+                  :emoji="selectedCard.emoji"
+                  :alt="selectedCard.name"
+                  img-class="hero-card-image"
+                  emoji-class="hero-card-emoji"
+                />
+              </div>
+              <div class="hero-card-body">
+                <span class="hero-card-role">{{ selectedCard.role }}</span>
+                <h3 class="hero-card-name">{{ selectedCard.shortName }}</h3>
+                <ul v-if="selectedCard.skills.length" class="hero-skills">
+                  <li v-for="skill in selectedCard.skills" :key="skill.name" class="hero-skill">
+                    <span class="hero-skill-name">{{ skill.name }}</span>
+                    <span class="hero-skill-text">{{ skill.text }}</span>
+                  </li>
+                </ul>
+                <p v-else class="hero-skills-none">No special skills. Plain dice, plain luck.</p>
+              </div>
+            </div>
+          </transition>
         </div>
 
         <button
             class="primary-button"
             @click="createNewGame"
-            @mouseover="hoverButton"
-            @mouseout="resetButton"
             :disabled="loading"
         >
           Play Against AI 🤖
@@ -132,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { gameApi } from '@/services/api';
 import { privyService } from '@/services/privy';
@@ -168,7 +197,7 @@ const HERO_SKILLS = [
     { name: 'Combat Training', text: 'every die showing 1 is rerolled until it shows better' },
     { name: 'Unstoppable', text: 'a 6 on the dice keeps his turn going, even after a lost fight' }
   ] },
-  { key: 'warlock', testid: 'hero-warlock', skills: [
+  { key: 'warlock', testid: 'hero-warlock', shortName: 'Xanros', skills: [
     { name: 'Sacrifice', text: 'after the roll, pay 1 HP for +1 strength (once per fight)' },
     { name: 'Magic Swap', text: 'trade places with any hero as the first action of the turn, for all 4 moves' }
   ] },
@@ -181,7 +210,12 @@ const HERO_SKILLS = [
     { name: 'Fateweaver', text: 'draws two tokens for a new room, places one and returns the other' }
   ] }
 ];
-const heroCards = HERO_SKILLS.map((card) => ({ ...card, ...getHero(card.key), key: card.key }));
+const heroCards = HERO_SKILLS.map((card) => {
+  const hero = getHero(card.key);
+  // "Horan, the Warrior" → short name "Horan", role "Warrior"; the Adventurer has no role
+  const [firstName, role] = hero.name.includes(', the ') ? hero.name.split(', the ') : [hero.name, 'No hero'];
+  return { ...card, ...hero, key: card.key, shortName: card.shortName || firstName, role };
+});
 
 // Lobby background art comes from the theme (none in the base theme)
 const lobbyStyle = { '--lobby-bg': theme.lobbyBackground ? `url('${theme.lobbyBackground}')` : 'none' };
@@ -196,6 +230,7 @@ const readStoredHero = () => {
   }
 };
 const selectedHero = ref(readStoredHero());
+const selectedCard = computed(() => heroCards.find((card) => card.key === selectedHero.value) || heroCards[0]);
 const selectHero = (hero) => {
   selectedHero.value = hero;
   try {
@@ -425,14 +460,6 @@ const getWalletAddress = () => {
 };
 
 // Style event handlers
-const hoverButton = (event) => {
-  event.target.style.backgroundColor = '#45a049';
-};
-
-const resetButton = (event) => {
-  event.target.style.backgroundColor = '#4CAF50';
-};
-
 // Logout function
 const logout = async () => {
   try {
@@ -1244,83 +1271,232 @@ const createNewGame = async () => {
 }
 
 .hero-picker-title {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #8f86a8;
 }
 
-.hero-options {
-  display: flex;
-  gap: 10px;
+/* Roster: a shelf of portrait tiles */
+.hero-roster {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
 }
 
-.hero-card {
-  flex: 1 1 0;
+.hero-tile {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
-  padding: 10px 12px;
+  padding: 6px 1px 5px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-  color: #b8b8b8;
-  text-align: left;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.35) 100%);
+  color: #9d95b8;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
 }
 
-.hero-card:hover {
+.hero-tile:hover {
   border-color: rgba(var(--accent-light-rgb), 0.5);
-  transform: translateY(-1px);
-}
-
-.hero-card.selected {
-  border-color: var(--color-primary-hover);
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.45) 0%, var(--bg-tertiary) 100%);
   color: #ece8ff;
-  box-shadow: 0 0 0 1px var(--color-primary-hover), 0 4px 14px rgba(var(--accent-light-rgb), 0.35);
+  transform: translateY(-2px);
 }
 
-.hero-icon {
-  font-size: 22px;
-  line-height: 1;
+.hero-tile:focus-visible {
+  outline: 2px solid var(--color-primary-hover);
+  outline-offset: 2px;
 }
 
-.hero-portrait {
-  width: 40px;
-  height: 56px;
+.hero-tile.selected {
+  border-color: #b8950d;
+  color: #f3e6b4;
+  background: linear-gradient(180deg, rgba(184, 149, 13, 0.18) 0%, rgba(0, 0, 0, 0.45) 100%);
+  box-shadow: 0 0 0 1px rgba(184, 149, 13, 0.6), 0 6px 18px rgba(184, 149, 13, 0.18);
+}
+
+.hero-tile-figure {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 72px;
+}
+
+.hero-tile-image {
+  height: 72px;
+  width: auto;
+  max-width: 100%;
   object-fit: contain;
-  object-position: top;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.6));
+  transition: filter 0.15s ease;
 }
 
-.hero-name {
-  font-size: 15px;
+.hero-tile.selected .hero-tile-image {
+  filter: drop-shadow(0 0 6px rgba(184, 149, 13, 0.55));
+}
+
+.hero-tile-emoji {
+  font-size: 40px;
+  line-height: 72px;
+}
+
+.hero-tile-name {
+  font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Card: the selected hero, laid out like a rulebook entry */
+.hero-card {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+  margin-top: 10px;
+  padding: 14px 16px;
+  min-height: 150px;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 149, 13, 0.35);
+  background:
+    radial-gradient(ellipse at 18% 60%, rgba(224, 122, 42, 0.18) 0%, transparent 55%),
+    linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.5);
+  text-align: left;
+}
+
+.hero-card-figure {
+  flex: 0 0 96px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hero-card-image {
+  height: 132px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7));
+}
+
+.hero-card-emoji {
+  font-size: 72px;
+  line-height: 132px;
+}
+
+.hero-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hero-card-role {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8f86a8;
+}
+
+.hero-card-name {
+  margin: 2px 0 10px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e3c35a;
+  text-shadow: 0 1px 2px #000;
 }
 
 .hero-skills {
-  font-size: 11px;
-  line-height: 1.35;
-  color: #9d95b8;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.hero-card.selected .hero-skills {
-  color: #c9c2e6;
+.hero-skill {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.hero-skill-name {
+  font-weight: 700;
+  color: #ece8ff;
+}
+
+.hero-skill-name::before {
+  content: '\25C6\00A0';
+  color: #b8950d;
+  font-size: 9px;
+  vertical-align: 2px;
+}
+
+.hero-skill-text {
+  color: #b7afd0;
+}
+
+.hero-skills-none {
+  margin: 0;
+  font-size: 13px;
+  color: #b7afd0;
+}
+
+/* Card swap: the figure steps in from the roster */
+.hero-card-enter-active,
+.hero-card-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.hero-card-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.hero-card-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-tile,
+  .hero-card-enter-active,
+  .hero-card-leave-active {
+    transition: none;
+  }
 }
 
 @media (max-width: 520px) {
-  .hero-options {
+  .hero-roster {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hero-card {
     flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero-skill {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
 }
 
 .primary-button {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: #b8b8b8;
+  color: #1a1206;
   border: none;
   padding: 15px 30px;
   border-radius: 5px;
@@ -1332,7 +1508,7 @@ const createNewGame = async () => {
 }
 
 .primary-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4a2590 0%, #35205e 100%);
+  background: linear-gradient(135deg, var(--color-primary-hover) 0%, var(--color-secondary) 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
@@ -1387,8 +1563,8 @@ const createNewGame = async () => {
   height: 100%;
   border-radius: 50%;
   border: 4px solid transparent;
-  border-top-color: #4CAF50;
-  border-bottom-color: #4CAF50;
+  border-top-color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
   animation: rotate 1.5s linear infinite;
 }
 

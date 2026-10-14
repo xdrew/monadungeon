@@ -98,7 +98,7 @@ const emit = defineEmits(['choose']);
 }
 
 .curse-target {
-  background: linear-gradient(135deg, #2e7d32, #66bb6a);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
   box-shadow: 0 4px 14px rgba(102, 187, 106, 0.35);
 }
 

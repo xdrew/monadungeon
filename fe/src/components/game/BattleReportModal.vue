@@ -1557,7 +1557,7 @@ const potentialRewardTip = computed(() => {
   animation: screenFlash 0.4s ease-out forwards;
 }
 
-.flash-victory { background: rgba(76, 175, 80, 0.4); }
+.flash-victory { background: rgba(var(--accent-rgb), 0.4); }
 .flash-defeat { background: rgba(244, 67, 54, 0.35); }
 .flash-draw { background: rgba(255, 152, 0, 0.3); }
 
@@ -1576,7 +1576,7 @@ const potentialRewardTip = computed(() => {
   align-items: center;
   padding: 6px 12px;
   border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(var(--accent-light-rgb), 0.08) 100%);
 }
 
 .header-left {
@@ -1602,8 +1602,8 @@ const potentialRewardTip = computed(() => {
 }
 
 .victory-title {
-  color: #4caf50;
-  text-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+  color: var(--color-primary);
+  text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.6);
 }
 
 .defeat-title {
@@ -1858,8 +1858,8 @@ const potentialRewardTip = computed(() => {
 
 /* Bar color = damage result */
 .hp-bar-fill.bar-win {
-  background: linear-gradient(90deg, #43a047 0%, #66bb6a 100%);
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.5);
 }
 
 .hp-bar-fill.bar-lose {
@@ -1893,7 +1893,7 @@ const potentialRewardTip = computed(() => {
   font-weight: 800;
 }
 
-.hp-dealt.dealt-win { color: #81c784; }
+.hp-dealt.dealt-win { color: var(--color-primary-hover); }
 .hp-dealt.dealt-lose { color: #ef9a9a; }
 .hp-dealt.dealt-draw { color: #ffcc80; }
 
@@ -2123,9 +2123,9 @@ const potentialRewardTip = computed(() => {
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: rgba(76, 175, 80, 0.15);
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  color: #81c784;
+  background: rgba(var(--accent-rgb), 0.15);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  color: var(--color-primary-hover);
 }
 
 .bonus-chip.spell-chip {
@@ -2159,8 +2159,8 @@ const potentialRewardTip = computed(() => {
   flex: 1;
   padding: 8px;
   border-radius: 8px;
-  background: rgba(76, 175, 80, 0.08);
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
   display: flex;
   align-items: center;
 }
@@ -2252,8 +2252,8 @@ const potentialRewardTip = computed(() => {
 .reward-card {
   padding: 8px 10px;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
-  border: 1px solid rgba(76, 175, 80, 0.4);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.1) 0%, rgba(var(--accent-rgb), 0.05) 100%);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
 }
 
 .reward-card.category-weapon { border-color: rgba(255, 87, 34, 0.5); }
@@ -2355,7 +2355,7 @@ const potentialRewardTip = computed(() => {
   font-style: italic;
 }
 
-.reward-note.success { color: #4caf50; }
+.reward-note.success { color: var(--color-primary); }
 .reward-note.potential { color: #ff9800; }
 
 .no-reward {
@@ -2484,7 +2484,7 @@ const potentialRewardTip = computed(() => {
 }
 
 .chip-damage {
-  color: #81c784;
+  color: var(--color-primary-hover);
   font-weight: 600;
   font-size: 0.75rem;
 }
@@ -2508,9 +2508,9 @@ const potentialRewardTip = computed(() => {
 }
 
 .item-chip.selectable.selected {
-  background: rgba(76, 175, 80, 0.2);
-  border-color: rgba(76, 175, 80, 0.5);
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.2);
 }
 
 /* Inventory replacement items */
@@ -2538,7 +2538,7 @@ const potentialRewardTip = computed(() => {
   position: absolute;
   top: -6px;
   right: -6px;
-  background: #4caf50;
+  background: var(--color-primary);
   color: white;
   border-radius: 50%;
   width: 18px;
@@ -2650,12 +2650,12 @@ const potentialRewardTip = computed(() => {
   font-size: 0.9rem;
   font-weight: 600;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(131, 110, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(var(--accent-light-rgb), 0.35);
 }
 
 .btn-reroll:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(131, 110, 255, 0.5);
+  box-shadow: 0 6px 20px rgba(var(--accent-light-rgb), 0.5);
 }
 
 .btn-reroll:disabled {

@@ -247,12 +247,12 @@
   background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-primary) 100%);
   color: white;
   margin-bottom: var(--spacing-sm);
-  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
+  box-shadow: 0 4px 15px rgba(var(--accent-light-rgb), 0.3);
 }
 
 .ready-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(167, 139, 250, 0.4);
+  box-shadow: 0 6px 20px rgba(var(--accent-light-rgb), 0.4);
 }
 
 .ready-button:disabled {

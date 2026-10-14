@@ -272,8 +272,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   gap: 12px;
   padding: 10px;
   border-radius: 10px;
-  background: rgba(76, 175, 80, 0.08);
-  border: 1px solid rgba(76, 175, 80, 0.35);
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
 }
 
 .found-item.category-weapon { border-color: rgba(255, 87, 34, 0.45); background: rgba(255, 87, 34, 0.06); }
@@ -388,7 +388,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 .replace-item.selected {
   background: rgba(var(--accent-rgb), 0.18);
-  border-color: rgba(167, 139, 250, 0.7);
+  border-color: rgba(var(--accent-light-rgb), 0.7);
   box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.2);
 }
 

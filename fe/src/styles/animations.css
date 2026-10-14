@@ -7,9 +7,9 @@
 }
 
 @keyframes pulse-text {
-  0% { opacity: 0.7; text-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
-  50% { opacity: 1; text-shadow: 0 0 20px rgba(76, 175, 80, 0.8), 0 0 30px rgba(33, 150, 243, 0.4); }
-  100% { opacity: 0.7; text-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+  0% { opacity: 0.7; text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.5); }
+  50% { opacity: 1; text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.8), 0 0 30px rgba(33, 150, 243, 0.4); }
+  100% { opacity: 0.7; text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.5); }
 }
 
 /* Tile animations - reveal from fog */

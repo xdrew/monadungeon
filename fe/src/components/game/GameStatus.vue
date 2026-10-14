@@ -78,7 +78,7 @@ const replayGame = () => {
 
 <style scoped>
 .sidebar-section {
-  background-color: #1a1a2e;
+  background-color: var(--bg-modal);
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 20px;
@@ -110,7 +110,7 @@ h4 {
 
 .status-value {
   font-weight: bold;
-  color: #4CAF50;
+  color: var(--color-primary);
 }
 
 .game-controls {
@@ -130,12 +130,12 @@ h4 {
 }
 
 .start-button {
-  background-color: #4CAF50;
+  background-color: var(--color-primary);
   color: white;
 }
 
 .start-button:hover {
-  background-color: #45a049;
+  background-color: var(--color-primary-hover);
 }
 
 .start-button:disabled {

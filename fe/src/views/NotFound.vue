@@ -79,7 +79,7 @@ p {
 }
 
 button {
-  background-color: #4CAF50;
+  background-color: var(--color-primary);
   color: white;
   padding: 0.8rem 1.5rem;
   border: none;
@@ -91,7 +91,7 @@ button {
 }
 
 button:hover {
-  background-color: #45a049;
+  background-color: var(--color-primary-hover);
   transform: translateY(-2px);
 }
 </style>

@@ -128,8 +128,8 @@ const handleClick = () => {
 }
 
 .move-marker.place-tile {
-  background-color: rgba(50, 205, 50, 0.3);
-  border-color: rgba(50, 205, 50, 0.5);
+  background-color: rgba(var(--accent-light-rgb), 0.3);
+  border-color: rgba(var(--accent-light-rgb), 0.5);
   animation: pulse-place 2s infinite;
 }
 
@@ -150,7 +150,7 @@ const handleClick = () => {
 
 .available-place.clickable:hover {
   background-color: rgba(var(--accent-rgb), 0.3);
-  border-color: rgba(167, 139, 250, 0.8);
+  border-color: rgba(var(--accent-light-rgb), 0.8);
   box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.5);
   z-index: 60 !important;
 }
@@ -193,7 +193,7 @@ const handleClick = () => {
 .move-arrow.arrow-up::before {
   border-left: 12px solid transparent;
   border-right: 12px solid transparent;
-  border-bottom: 18px solid rgba(167, 139, 250, 0.85);
+  border-bottom: 18px solid rgba(var(--accent-light-rgb), 0.85);
   top: 2px;
   left: 2px;
 }
@@ -203,7 +203,7 @@ const handleClick = () => {
 .move-arrow.arrow-down::before {
   border-left: 12px solid transparent;
   border-right: 12px solid transparent;
-  border-top: 18px solid rgba(167, 139, 250, 0.85);
+  border-top: 18px solid rgba(var(--accent-light-rgb), 0.85);
   bottom: 2px;
   left: 2px;
 }
@@ -213,7 +213,7 @@ const handleClick = () => {
 .move-arrow.arrow-left::before {
   border-top: 12px solid transparent;
   border-bottom: 12px solid transparent;
-  border-right: 18px solid rgba(167, 139, 250, 0.85);
+  border-right: 18px solid rgba(var(--accent-light-rgb), 0.85);
   left: 2px;
   top: 2px;
 }
@@ -223,7 +223,7 @@ const handleClick = () => {
 .move-arrow.arrow-right::before {
   border-top: 12px solid transparent;
   border-bottom: 12px solid transparent;
-  border-left: 18px solid rgba(167, 139, 250, 0.85);
+  border-left: 18px solid rgba(var(--accent-light-rgb), 0.85);
   right: 2px;
   top: 2px;
 }
@@ -235,8 +235,8 @@ const handleClick = () => {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background-color: rgba(50, 205, 50, 0.9);
-  box-shadow: 0 0 10px rgba(50, 205, 50, 0.5);
+  background-color: rgba(var(--accent-light-rgb), 0.9);
+  box-shadow: 0 0 10px rgba(var(--accent-light-rgb), 0.5);
 }
 
 .place-icon::before,

@@ -524,7 +524,7 @@ const onItemClick = () => {
   width: 100px;
   height: 100px;
   transition: transform 0.3s, box-shadow 0.3s;
-  background-color: #1a1a2e;
+  background-color: var(--bg-modal);
   color: white;
   display: flex;
   align-items: center;
@@ -532,7 +532,7 @@ const onItemClick = () => {
 }
 
 .corridor {
-  background-color: #1a1a2e;
+  background-color: var(--bg-modal);
 }
 
 .room {
@@ -586,7 +586,7 @@ const onItemClick = () => {
 }
 
 .starting-tile {
-  //box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
+  //box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.8);
   z-index: 2;
 }
 
@@ -632,20 +632,20 @@ const onItemClick = () => {
   height: 45px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.8)) 
+  filter: drop-shadow(0 0 8px rgba(var(--accent-light-rgb), 0.8)) 
           drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
   animation: playerGlow 2s ease-in-out infinite;
 }
 
 @keyframes playerGlow {
   0%, 100% {
-    filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.8)) 
+    filter: drop-shadow(0 0 8px rgba(var(--accent-light-rgb), 0.8)) 
             drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
   }
   50% {
-    filter: drop-shadow(0 0 12px rgba(0, 255, 0, 1)) 
+    filter: drop-shadow(0 0 12px rgba(var(--accent-light-rgb), 1)) 
             drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))
-            drop-shadow(0 0 35px rgba(0, 255, 0, 0.4));
+            drop-shadow(0 0 35px rgba(var(--accent-light-rgb), 0.4));
   }
 }
 
@@ -737,7 +737,7 @@ const onItemClick = () => {
 }
 
 .center-view-button:hover {
-  background-color: rgba(76, 175, 80, 0.5);
+  background-color: rgba(var(--accent-rgb), 0.5);
 }
 
 /* Tile openings */
@@ -828,7 +828,7 @@ const onItemClick = () => {
 
 /* Highlight styles for current action in replay */
 .is-current-action {
-  box-shadow: 0 0 20px rgba(76, 175, 80, 1), 0 0 40px rgba(76, 175, 80, 0.5);
+  box-shadow: 0 0 20px rgba(var(--accent-rgb), 1), 0 0 40px rgba(var(--accent-rgb), 0.5);
   z-index: 10;
 }
 

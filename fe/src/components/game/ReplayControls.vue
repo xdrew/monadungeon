@@ -142,7 +142,7 @@ const onSpeedChange = (newValue) => {
 
 <style scoped>
 .sidebar-section {
-  background-color: #1a1a2e;
+  background-color: var(--bg-modal);
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 20px;
@@ -179,7 +179,7 @@ h4 {
 
 .progress-fill {
   height: 100%;
-  background-color: #4CAF50;
+  background-color: var(--color-primary);
   transition: width 0.3s ease;
 }
 

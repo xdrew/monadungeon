@@ -206,7 +206,7 @@
 /* Tile Hover Effects */
 .tile:hover {
   z-index: var(--z-tooltip);
-  /*box-shadow: 0 0 12px rgba(76, 175, 80, 0.7);*/
+  /*box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.7);*/
   filter: brightness(1.2);
 }
 
@@ -256,7 +256,7 @@
 
 .opening {
   position: absolute;
-  background-color: rgba(76, 175, 80, 0.3);
+  background-color: rgba(var(--accent-rgb), 0.3);
 }
 
 .opening.top {
@@ -288,7 +288,7 @@
 }
 
 .room-opening {
-  /*background-color: rgba(76, 175, 80, 0.3) !important;*/
+  /*background-color: rgba(var(--accent-rgb), 0.3) !important;*/
   /*width: 30% !important;*/
   /*height: 30% !important;*/
 }
@@ -304,7 +304,7 @@
 }
 
 .has-player {
-  /*box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);*/
+  /*box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7);*/
   z-index: 10;
 }
 
@@ -423,8 +423,8 @@
 }
 
 .move-marker.place-tile {
-  /*border: 3px dashed rgba(50, 205, 50, 0.6);*/
-  background-color: rgba(50, 205, 50, 0.2);
+  /*border: 3px dashed rgba(var(--accent-light-rgb), 0.6);*/
+  background-color: rgba(var(--accent-light-rgb), 0.2);
   animation: pulse-place 2s infinite;
 }
 
@@ -436,7 +436,7 @@
 
 .available-place.clickable:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.8);
 }
 
 .marker-content {
@@ -450,7 +450,7 @@
 }
 
 .place-icon {
-  color: rgba(50, 205, 50, 0.9);
+  color: rgba(var(--accent-light-rgb), 0.9);
   filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
 }
 
@@ -518,7 +518,7 @@
 }
 
 .tile.is-current-action.tile-placing-animation {
-  box-shadow: 0 0 15px 5px rgba(var(--accent-rgb), 0.5), 0 0 30px rgba(167, 139, 250, 0.3);
+  box-shadow: 0 0 15px 5px rgba(var(--accent-rgb), 0.5), 0 0 30px rgba(var(--accent-light-rgb), 0.3);
 }
 
 .tile.tile-placing-animation::before {
@@ -569,7 +569,7 @@
 }
 
 .center-view-button {
-  background: rgba(76, 175, 80, 0.7);
+  background: rgba(var(--accent-rgb), 0.7);
   border: none;
   border-radius: var(--radius-sm);
   color: white;

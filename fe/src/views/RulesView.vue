@@ -319,7 +319,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .rules-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: var(--gradient-dark);
   color: #e0e0e0;
   padding: 20px;
 }
@@ -433,7 +433,7 @@ onBeforeUnmount(() => {
 
 .step-number {
   background: #ffd700;
-  color: #1a1a2e;
+  color: var(--bg-field);
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -633,8 +633,8 @@ onBeforeUnmount(() => {
 }
 
 .outcome.win {
-  background: rgba(0, 255, 0, 0.1);
-  border-left: 4px solid #00ff00;
+  background: rgba(var(--accent-light-rgb), 0.1);
+  border-left: 4px solid var(--color-primary);
 }
 
 .outcome.draw {

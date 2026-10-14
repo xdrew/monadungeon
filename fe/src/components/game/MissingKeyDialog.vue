@@ -91,7 +91,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 }
 
 .dialog-content {
-  background-color: #1a1a2e;
+  background-color: var(--bg-modal);
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   width: 400px;

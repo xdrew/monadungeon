@@ -86,7 +86,7 @@ defineEmits(['speed-change', 'skip']);
 
 <style scoped>
 .ai-playback {
-  background-color: #1a1a2e;
+  background-color: var(--bg-modal);
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 20px;
