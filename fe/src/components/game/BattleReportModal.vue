@@ -168,6 +168,14 @@
           >
             ⚔️ Double Attack! First roll <s>{{ battleInfo.firstDiceResults.join(' + ') }}</s> discarded — the second roll stands
           </div>
+          <!-- Thief "Backstab": a tie counts as a victory -->
+          <div
+            v-if="!isRolling && battleInfo.tieIsWin && battleInfo.result === 'win' && battleInfo.totalDamage === battleInfo.monster"
+            class="first-roll-note"
+            data-testid="backstab-note"
+          >
+            🗡️ Backstab! A tie counts as a victory for the Thief
+          </div>
         </div>
 
         <!-- Combined reward + consumable selection (side by side when both present) -->
@@ -416,7 +424,7 @@
             🎲 Double Attack — reroll <span class="kbd-hint">(R)</span>
           </button>
           <button
-            v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
+            v-if="selectedConsumables.length > 0 && beatsMonster(totalCalculatedDamage)"
             class="btn-primary"
             :disabled="isProcessing"
             @click="finalizeBattleAndPickUp"
@@ -424,7 +432,7 @@
             🎒 Fight, win, and pick up reward
           </button>
           <button
-            v-if="selectedConsumables.length > 0 && totalCalculatedDamage > battleInfo.monster"
+            v-if="selectedConsumables.length > 0 && beatsMonster(totalCalculatedDamage)"
             class="btn-secondary"
             :disabled="isProcessing"
             @click="finalizeBattleAndLeaveItem"
@@ -432,7 +440,7 @@
             Leave reward after victory
           </button>
           <button
-            v-else-if="selectedConsumables.length > 0 && totalCalculatedDamage === battleInfo.monster"
+            v-else-if="selectedConsumables.length > 0 && totalCalculatedDamage === battleInfo.monster && !battleInfo.tieIsWin"
             class="btn-draw"
             :disabled="isProcessing"
             @click="finalizeBattleWithConsumables"
@@ -674,6 +682,9 @@ const getItemTypeDamage = (itemType) => {
   return damageMap[itemType] || 0;
 };
 
+// Thief "Backstab": a tie counts as a victory when the backend says so
+const beatsMonster = (damage) => (props.battleInfo?.tieIsWin ? damage >= props.battleInfo.monster : damage > props.battleInfo.monster);
+
 const potentialVictoryWithConsumables = computed(() => {
   if (!availableConsumables.value) return false;
 
@@ -689,7 +700,7 @@ const potentialVictoryWithConsumables = computed(() => {
     potentialVictory: (currentDamage + maxConsumableDamage) > props.battleInfo.monster,
   });
 
-  return (currentDamage + maxConsumableDamage) > props.battleInfo.monster;
+  return beatsMonster(currentDamage + maxConsumableDamage);
 });
 
 const potentialImprovementWithConsumables = computed(() => {
@@ -706,7 +717,7 @@ const potentialImprovementWithConsumables = computed(() => {
     return totalPossibleDamage >= props.battleInfo.monster;
   }
   if (props.battleInfo.result === 'draw') {
-    return totalPossibleDamage > props.battleInfo.monster;
+    return beatsMonster(totalPossibleDamage);
   }
   return false;
 });
@@ -716,7 +727,7 @@ const dynamicResult = computed(() => {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
 
-    if (totalDamage > monsterHP) return 'win';
+    if (beatsMonster(totalDamage)) return 'win';
     if (totalDamage === monsterHP) return 'draw';
     return 'lose';
   }
@@ -1117,7 +1128,7 @@ const onKeyDown = (e) => {
     } else if (bi.result === 'win' && bi.reward && !showInventorySelection.value && !showConsumableSelection.value) {
       pickUpAndEndTurn();
     } else if (showConsumableSelection.value) {
-      if (selectedConsumables.value.length > 0 && totalCalculatedDamage.value > bi.monster) {
+      if (selectedConsumables.value.length > 0 && beatsMonster(totalCalculatedDamage.value)) {
         finalizeBattleAndPickUp();
       } else if (selectedConsumables.value.length > 0 && totalCalculatedDamage.value === bi.monster) {
         finalizeBattleWithConsumables();

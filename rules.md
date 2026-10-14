@@ -119,6 +119,13 @@ Each player may pick a hero before the game starts (lobby); a player without a h
   - All HP are replenished ✅
   - The turn ends anyway ✅
 
+#### Aderyn, the Thief ✅
+- **Backstab** ✅
+  - Any combat that would end in a tie is a victory for the Thief (also when the tie is reached with spells) ✅
+- **Stealth** ✅
+  - When entering a tile with a monster (by moving or by placing a new room) the Thief chooses: fight it, or sneak past ✅
+  - Sneaking costs the move like any other move, the monster stays on the tile, and she may keep moving ✅
+
 
 ### Healing Fountains ✅
 - Special tiles that restore all HP ✅

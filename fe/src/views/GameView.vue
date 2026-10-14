@@ -68,6 +68,14 @@
         @skip="skipItemAndEndTurn"
       />
 
+      <!-- Thief "Stealth": fight or sneak past the monster at the destination -->
+      <StealthChoiceDialog
+        v-if="stealthPrompt"
+        :show="!!stealthPrompt"
+        :monster="stealthPrompt.monster"
+        @choose="handleStealthChoice"
+      />
+
 
       <!-- Game layout -->
       <div class="game-layout">
@@ -748,6 +756,7 @@ import { useAiTurnPlayback } from '@/composables/useAiTurnPlayback';
 import GameTile from '@/components/game/GameTile.vue';
 import AvailableMoveMarker from '@/components/game/AvailableMoveMarker.vue';
 import ItemPickupDialog from '@/components/game/ItemPickupDialog.vue';
+import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import ActionLog from '@/components/ActionLog.vue';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import { musicService } from '@/services/musicService';
@@ -939,12 +948,23 @@ const itemPickupTurnId = ref(null); // Store the turn ID when the dialog is show
 const isTeleportMode = ref(false);
 const selectedTeleportSpell = ref(null);
 
+// Thief "Stealth": pending "fight or sneak past" prompt ({ position, monster, resolve })
+const stealthPrompt = ref(null);
+const confirmStealth = ({ position, monster }) => new Promise((resolve) => {
+  stealthPrompt.value = { position, monster, resolve };
+});
+const handleStealthChoice = (sneak) => {
+  const prompt = stealthPrompt.value;
+  stealthPrompt.value = null;
+  prompt?.resolve(sneak === true);
+};
+
 // Warrior "Reincarnation": the fallen hero must pick a healing fountain before the turn ends
 const isReincarnationMode = ref(false);
 const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend, empty = all fountains
 
 // Hero helpers for the player panel
-const HERO_SHORT_NAMES = { warrior: 'Warrior' };
+const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief' };
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
 const heroTooltip = (player) => {
   if (!player?.hero) return '';
@@ -2936,6 +2956,7 @@ const handlePlaceClick = async (position) => {
     gameId: id.value,
     loadingState: { loading, loadingStatus, error },
     battleState: { battleInfo, showBattleReportModal },
+    confirmStealth,
     updateGameDataSelectively,
     centerViewOnTile,
     tileState: { 
@@ -4108,8 +4129,9 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
     // Check predicted battle result based on damage vs monster HP
     const monster = battleInfo.value?.monster;
     const totalDamage = battleInfo.value?.totalDamage || 0;
-    const predictedResult = monster && totalDamage < monster.hp ? 'loose' : 
-                          (monster && totalDamage === monster.hp ? 'draw' : 'win');
+    const tieIsWin = battleInfo.value?.tieIsWin === true; // Thief "Backstab"
+    const predictedResult = monster && totalDamage < monster.hp ? 'loose' :
+                          (monster && totalDamage === monster.hp && !tieIsWin ? 'draw' : 'win');
 
     // If we predict a loss, immediately update the UI to show reduced HP
     if (predictedResult === 'loose') {

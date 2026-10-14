@@ -70,6 +70,20 @@
                 <strong>Reincarnation</strong> — losing the last HP teleports him to a healing fountain with full HP
               </span>
             </button>
+            <button
+              type="button"
+              class="hero-card"
+              :class="{ selected: selectedHero === 'thief' }"
+              data-testid="hero-thief"
+              @click="selectHero('thief')"
+            >
+              <span class="hero-icon">🗡️</span>
+              <span class="hero-name">Aderyn, the Thief</span>
+              <span class="hero-skills">
+                <strong>Backstab</strong> — a tie in combat counts as her victory<br>
+                <strong>Stealth</strong> — may sneak past a monster instead of fighting and keep moving
+              </span>
+            </button>
           </div>
         </div>
 
@@ -155,7 +169,7 @@ const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
 const readStoredHero = () => {
   try {
     const stored = localStorage.getItem('selectedHero');
-    return stored === 'warrior' ? stored : null;
+    return ['warrior', 'thief'].includes(stored) ? stored : null;
   } catch (e) {
     return null;
   }

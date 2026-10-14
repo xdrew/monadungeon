@@ -179,18 +179,17 @@ test.describe('Two Player Game', () => {
       gameId,
       diceRolls: [
         6, 6,   // Player 1 Turn 1: wins turnkey 8 (12 damage)
-        1, 1,   // Player 2 Turn 2: loses king 12 (2 damage)
         1, 1,   // Player 1 Turn 3: first roll 2 < rat 5 -> Warrior uses Double Attack (reroll)
         4, 3,   // Player 1 Turn 3: reroll wins rat 5 (7 damage)
         5, 5,   // Player 2 Turn 4: wins mummy 7 (10 damage) - gets fireball
         6, 6,   // Player 1 Turn 5: wins rat 5 (12 + 1 damage)
-        4, 4,   // Player 2 Turn 6: 8 damage + 1 fireball = 9 to defeat skeleton_turnkey 8
+        3, 4,   // Player 2 Turn 6: 7 + 1 fireball = 8 ties skeleton_turnkey 8 -> Thief Backstab victory
         5, 5,   // Player 1 Turn 7: wins warrior 9 (10 + 2 damage) - inventory full scenario
         1, 1,   // Player 2 Turn 8: loses again king 10 (2 damage) - becomes stunned
         6, 6,   // Player 1 Turn 9: wins skeleton_king 10 (12 + 3 damage) - leaves treasure
                 // Player 2 Turn 10: stunned, skips
         4, 4,   // Player 1 Turn 11: wins turnkey 8 (8 + 3 damage) - already has key
-        3, 3,   // Player 2 Turn 12: wins rat 5 (6 damage) - gets dagger
+        2, 3,   // Player 2 Turn 12: ties rat 5 (5 damage) -> Thief Backstab victory - gets dagger
                 // Player 1 Turn 13: skips turn (pick up axe)
         6, 6,   // Player 2 Turn 14: wins fallen (12 + 1 damage vs 12 HP)
         3, 3,   // Player 1 Turn 15: loses to dragon (6 + 3 + 2 = 11 damage vs 15 HP), declines Double Attack (HP 2 -> 1)
@@ -246,7 +245,7 @@ test.describe('Two Player Game', () => {
       ],
       playerConfigs: {
         [player1Id]: {hero: 'warrior', maxHp: 2},  // Warrior (Double Attack + Reincarnation); 2 HP so the 2nd dragon loss triggers Reincarnation
-        [player2Id]: {maxHp: 2}   // Lower HP to test stunning more easily
+        [player2Id]: {hero: 'thief', maxHp: 1}   // Thief (Backstab + Stealth); 1 HP so the Turn 8 loss still stuns her (she sneaks on Turn 2)
       }
     });
 
@@ -332,18 +331,28 @@ test.describe('Two Player Game', () => {
       localStorage.setItem('teleportGate1Position', JSON.stringify({ x: 1, y: 0 }));
     });
 
-    // Now place room tile from the teleportation gate position
-    await GameHelpers.placeTile(page, 2, 0); // Place room to the right (player auto-moves and battles)
+    // Now place room tile from the teleportation gate position; the Thief answers the Stealth prompt herself here
+    GameHelpers.autoStealthChoice = null;
+    await GameHelpers.placeTile(page, 2, 0); // Place room to the right (the Thief auto-moves into the skeleton king's room)
     
-    // Wait for battle modal to appear
-    await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
-    
-    console.log('Player 2: Battle modal appeared');
-    await GameHelpers.continueBattle(page, 'close');
-    
-    // Player 2 loses and moves back to corridor (1,0) - no healing fountain!
-    // Player 2 should now be at 1 HP (2 max HP - 1 damage from defeat)
-    // Wait for turn change from Turn 2 to Turn 3
+    // Thief "Stealth": the room holds the skeleton king (10) - she sneaks past instead of fighting
+    await GameHelpers.chooseStealth(page, 'sneak');
+    GameHelpers.autoStealthChoice = 'fight';
+    console.log('Player 2 (Thief) sneaked past the skeleton king - no battle');
+
+    // No battle: HP is untouched and she stands in the room with the monster
+    await page.waitForTimeout(TIMEOUTS.SHORT_WAIT);
+    const afterSneak = await (await request.get(`${apiUrl}/api/game/${gameId}`)).json();
+    const thiefAfterSneak = afterSneak.players.find((p: any) => p.id === player2Id);
+    expect(thiefAfterSneak.hero).toBe('thief');
+    expect(thiefAfterSneak.hp).toBe(1);
+    expect(page.locator('.battle-overlay')).toHaveCount(0);
+
+    // Sneaking does not end the turn: step back to the gate corridor (1,0) so the rest of the game
+    // starts from the same tile as before (the king keeps guarding his room), then end the turn
+    await GameHelpers.movePlayer(page, 1, 0);
+    await page.waitForTimeout(TIMEOUTS.SHORT_WAIT);
+    await GameHelpers.endTurn(page);
     await waitForTurnChange(2, 3);
     
     console.log('Turn complete');
@@ -604,11 +613,18 @@ test.describe('Two Player Game', () => {
       }
     }
 
+    GameHelpers.autoStealthChoice = null;
     await GameHelpers.placeTile(page, 0, 0);
 
-    // Wait for battle modal
+    // Thief "Stealth" asks first: this time she fights the giant rat
+    await GameHelpers.chooseStealth(page, 'fight');
+    GameHelpers.autoStealthChoice = 'fight';
+
+    // Wait for battle modal - 2 + 3 = 5 ties the rat (5): Backstab turns the tie into a victory
     await page.waitForSelector('.battle-overlay', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
     console.log('Player 2: Battle modal appeared');
+    await expect(page.locator('[data-testid="backstab-note"]')).toBeVisible({ timeout: TIMEOUTS.ELEMENT_WAIT });
+    console.log('Player 2 (Thief): Backstab - tie counts as a victory');
     await GameHelpers.continueBattle(page, 'pickup');
 
     // Wait for turn transition

@@ -16,6 +16,25 @@ const TIMEOUTS = {
  */
 export class GameHelpers {
   /**
+   * Thief "Stealth": what to answer when the "fight or sneak past" prompt appears after a move/placement.
+   * null = leave the prompt open so the spec answers it explicitly (see chooseStealth).
+   */
+  static autoStealthChoice: 'fight' | 'sneak' | null = 'fight';
+
+  /**
+   * Answer the Stealth prompt if it shows up shortly after a move or tile placement.
+   */
+  static async answerStealthIfAsked(page: Page): Promise<void> {
+    if (GameHelpers.autoStealthChoice === null) return;
+    const dialog = page.locator('[data-testid="stealth-dialog"]').first();
+    const appeared = await dialog.waitFor({ state: 'visible', timeout: 2500 }).then(() => true).catch(() => false);
+    if (!appeared) return;
+    await page.locator(`[data-testid="stealth-${GameHelpers.autoStealthChoice}"]`).first().click();
+    console.log(`Stealth prompt auto-answered: ${GameHelpers.autoStealthChoice}`);
+    await dialog.waitFor({ state: 'hidden', timeout: TIMEOUTS.ELEMENT_WAIT }).catch(() => {});
+  }
+
+  /**
    * Set up player session in the browser
    */
   static async setupPlayerSession(page: Page, playerId: string, isAIGame: boolean = false): Promise<void> {
@@ -348,6 +367,9 @@ export class GameHelpers {
     await page.waitForTimeout(TIMEOUTS.ANIMATION_WAIT);
     
     // Return the position where the tile was placed
+    // Thief "Stealth": the placed room may hold a monster - answer the prompt unless the spec wants to
+    await GameHelpers.answerStealthIfAsked(page);
+
     return placedPosition;
   }
 
@@ -468,6 +490,9 @@ export class GameHelpers {
       console.log('Move might have completed without UI change:', e.message);
     }
     
+    // Thief "Stealth": moving onto a monster tile asks first - answer the prompt unless the spec wants to
+    await GameHelpers.answerStealthIfAsked(page);
+
     // Verify move completed
     const newMoveCount = await page.locator('.move-marker.clickable:not(.place-tile)').count();
     console.log(`Move markers after movement: ${newMoveCount} (was ${initialMoveCount})`);
@@ -823,6 +848,17 @@ export class GameHelpers {
     console.log(`Chose healing fountain at ${x},${y} for reincarnation`);
 
     await page.locator('[data-testid="reincarnation-banner"]').first().waitFor({ state: 'hidden', timeout: TIMEOUTS.ELEMENT_WAIT });
+  }
+
+  /**
+   * Thief "Stealth": answer the "fight or sneak past" prompt shown when entering a monster tile.
+   */
+  static async chooseStealth(page: Page, action: 'fight' | 'sneak'): Promise<void> {
+    await page.locator('[data-testid="stealth-dialog"]').first().waitFor({ state: 'visible', timeout: TIMEOUTS.ELEMENT_WAIT });
+    console.log('Stealth dialog appeared');
+    await page.locator(`[data-testid="stealth-${action}"]`).first().click();
+    await page.locator('[data-testid="stealth-dialog"]').first().waitFor({ state: 'hidden', timeout: TIMEOUTS.ELEMENT_WAIT });
+    console.log(`Stealth choice: ${action}`);
   }
 
   /**
