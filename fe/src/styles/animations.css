@@ -18,19 +18,19 @@
     opacity: 0;
     transform: scale(0.95);
     filter: brightness(2) blur(4px);
-    box-shadow: 0 0 30px rgba(123, 63, 242, 0.6);
+    box-shadow: 0 0 30px rgba(var(--accent-rgb), 0.6);
   }
   40% {
     opacity: 1;
     transform: scale(1.02);
     filter: brightness(1.4) blur(1px);
-    box-shadow: 0 0 20px rgba(123, 63, 242, 0.4);
+    box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.4);
   }
   100% {
     opacity: 1;
     transform: scale(1);
     filter: brightness(1) blur(0px);
-    box-shadow: 0 0 0px rgba(123, 63, 242, 0);
+    box-shadow: 0 0 0px rgba(var(--accent-rgb), 0);
   }
 }
 

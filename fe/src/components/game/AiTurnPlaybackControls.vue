@@ -90,7 +90,7 @@ defineEmits(['speed-change', 'skip']);
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 20px;
-  border: 1px solid #7b3ff2;
+  border: 1px solid var(--color-primary);
   color: #e6e6e6;
 }
 
@@ -131,7 +131,7 @@ h4 {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #7b3ff2, #a855f7);
+  background: linear-gradient(90deg, var(--color-primary), #a855f7);
   transition: width 0.3s ease;
   border-radius: 4px;
 }
@@ -186,7 +186,7 @@ h4 {
 }
 
 .speed-btn.active {
-  background-color: #7b3ff2;
+  background-color: var(--color-primary);
   color: #fff;
   border-color: #a855f7;
 }

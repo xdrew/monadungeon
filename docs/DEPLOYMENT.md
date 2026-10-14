@@ -84,6 +84,7 @@ nano .env.prod
 # - LETSENCRYPT_EMAIL: Your email
 # - DB_PASSWORD: Secure database password
 # - RABBITMQ_PASSWORD: Secure RabbitMQ password
+# - VITE_THEME (optional): UI theme baked into the frontend build — base (default, Karak look, no sign-in) or monad
 ```
 
 ### 2.3 SSL Certificate Setup

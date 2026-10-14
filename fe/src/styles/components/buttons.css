@@ -188,15 +188,15 @@
   display: inline-block;
   font-size: 14px;
   width: 100%;
-  background: var(--monad-gradient-primary);
+  background: var(--gradient-primary);
   color: white;
   margin-bottom: var(--spacing-sm);
-  box-shadow: 0 4px 15px rgba(123, 63, 242, 0.3);
+  box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
 }
 
 .start-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.4);
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.4);
 }
 
 .start-button:disabled {
@@ -216,7 +216,7 @@
   display: inline-block;
   font-size: 14px;
   width: 100%;
-  background: var(--monad-gradient-secondary);
+  background: var(--gradient-secondary);
   color: white;
   margin-bottom: var(--spacing-sm);
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
@@ -244,7 +244,7 @@
   display: inline-block;
   font-size: 14px;
   width: 100%;
-  background: linear-gradient(135deg, var(--monad-violet) 0%, var(--monad-purple) 100%);
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-primary) 100%);
   color: white;
   margin-bottom: var(--spacing-sm);
   box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
@@ -298,15 +298,15 @@
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
-  background: var(--monad-gradient-primary);
+  background: var(--gradient-primary);
   color: white;
   margin-bottom: var(--spacing-sm);
-  box-shadow: 0 4px 15px rgba(123, 63, 242, 0.3);
+  box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
 }
 
 .end-turn-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.4);
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.4);
 }
 
 .end-turn-btn:disabled {

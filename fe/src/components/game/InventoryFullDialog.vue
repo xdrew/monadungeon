@@ -226,8 +226,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 /* Card */
 .inventory-full-card {
-  background: var(--monad-bg-card, #1A1830);
-  border: 1px solid rgba(123, 63, 242, 0.3);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
   border-radius: 12px;
   width: 360px;
   max-width: 95vw;
@@ -248,7 +248,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   margin: 0 -20px;
   padding: 10px 20px;
   border-radius: 12px 12px 0 0;
-  background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(123, 63, 242, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(var(--accent-rgb), 0.08) 100%);
   border-bottom: 1px solid rgba(244, 67, 54, 0.2);
   margin-bottom: 16px;
 }
@@ -305,7 +305,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 .found-item-name {
   font-weight: 700;
   font-size: 1.05rem;
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
 }
 
 .found-item-badges {
@@ -358,7 +358,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
@@ -374,22 +374,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   gap: 10px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(123, 63, 242, 0.06);
-  border: 1px solid rgba(123, 63, 242, 0.2);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
 }
 
 .replace-item:hover {
-  background: rgba(123, 63, 242, 0.12);
-  border-color: rgba(123, 63, 242, 0.4);
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.4);
 }
 
 .replace-item.selected {
-  background: rgba(123, 63, 242, 0.18);
+  background: rgba(var(--accent-rgb), 0.18);
   border-color: rgba(167, 139, 250, 0.7);
-  box-shadow: 0 0 10px rgba(123, 63, 242, 0.2);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.2);
 }
 
 .replace-item-img {
@@ -418,14 +418,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 .replace-item-name {
   font-weight: 600;
   font-size: 0.85rem;
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
 }
 
 .selected-check {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--monad-purple, #7B3FF2);
+  background: var(--color-primary);
   color: white;
   display: flex;
   align-items: center;
@@ -454,18 +454,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 }
 
 .btn-primary {
-  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  background: var(--gradient-primary);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(123, 63, 242, 0.35);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.5);
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.5);
 }
 
 .btn-primary:disabled {
-  background: rgba(123, 63, 242, 0.3);
+  background: rgba(var(--accent-rgb), 0.3);
   cursor: not-allowed;
   opacity: 0.5;
   transform: none;
@@ -474,12 +474,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 .btn-secondary {
   background: transparent;
-  color: var(--monad-text-secondary, #C4B5FD);
-  border: 1px solid rgba(123, 63, 242, 0.25);
+  color: var(--text-secondary);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
 }
 
 .btn-secondary:hover {
-  background: rgba(123, 63, 242, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   transform: translateY(-2px);
 }
 

@@ -109,7 +109,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(123, 63, 242, 0.07) 0%, transparent 70%);
+  background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.07) 0%, transparent 70%);
   animation: fogShimmer 5s ease-in-out infinite;
   animation-delay: var(--shimmer-delay, 0s);
 }

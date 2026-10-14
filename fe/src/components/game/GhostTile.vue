@@ -339,21 +339,21 @@ const placeTile = () => {
   animation: ghostPulse 2s infinite;
   pointer-events: auto;
   cursor: pointer;
-  border: 1px solid rgba(123, 63, 242, 0.2);
-  box-shadow: 0 0 15px rgba(123, 63, 242, 0.4), inset 0 0 10px rgba(123, 63, 242, 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.4), inset 0 0 10px rgba(var(--accent-rgb), 0.1);
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
 
 .ghost-tile.room {
-  box-shadow: 0 0 15px rgba(123, 63, 242, 0.4), inset 0 0 10px rgba(123, 63, 242, 0.1);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.4), inset 0 0 10px rgba(var(--accent-rgb), 0.1);
 }
 
 .ghost-tile:hover {
   opacity: 1;
-  border-color: rgba(123, 63, 242, 0.35);
-  box-shadow: 0 0 20px rgba(123, 63, 242, 0.5), inset 0 0 10px rgba(123, 63, 242, 0.15);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.5), inset 0 0 10px rgba(var(--accent-rgb), 0.15);
 }
 
 @keyframes ghostPulse {
@@ -378,23 +378,23 @@ const placeTile = () => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 2px solid rgba(123, 63, 242, 0.5);
+  border: 2px solid rgba(var(--accent-rgb), 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 17px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: #1A1830;
+  background: var(--bg-secondary);
   color: white;
-  box-shadow: 0 0 12px rgba(123, 63, 242, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.35), 0 2px 8px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
 }
 
 .ghost-rotate-btn:hover {
   transform: scale(1.15) rotate(90deg);
-  border-color: rgba(159, 110, 255, 0.8);
-  box-shadow: 0 0 20px rgba(123, 63, 242, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  border-color: rgba(var(--accent-light-rgb), 0.8);
+  box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .ghost-rotate-btn:active {

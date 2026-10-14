@@ -196,15 +196,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 /* Card */
 .dialog-card {
-  background: var(--monad-bg-card, #1A1830);
-  border: 1px solid rgba(123, 63, 242, 0.35);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
   border-radius: 14px;
   width: 320px;
   max-width: 90vw;
   padding: 0 24px 24px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(123, 63, 242, 0.15);
+    0 0 20px rgba(var(--accent-rgb), 0.15);
   animation: cardIn 0.3s ease-out;
   text-align: center;
 }
@@ -220,8 +220,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   margin: 0 -24px;
   padding: 10px 24px;
   border-radius: 14px 14px 0 0;
-  background: linear-gradient(135deg, rgba(123, 63, 242, 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
-  border-bottom: 1px solid rgba(123, 63, 242, 0.2);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(167, 139, 250, 0.08) 100%);
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
   margin-bottom: 20px;
 }
 
@@ -230,7 +230,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--monad-text-secondary, #C4B5FD);
+  color: var(--text-secondary);
 }
 
 /* Item showcase */
@@ -253,7 +253,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(123, 63, 242, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.25) 0%, transparent 70%);
   animation: glowPulse 2.5s ease-in-out infinite;
 }
 
@@ -280,7 +280,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   margin: 0 0 10px;
   font-size: 1.35em;
   font-weight: 700;
-  color: var(--monad-text-primary, #F5F3FF);
+  color: var(--text-primary);
 }
 
 /* Stat badges */
@@ -315,7 +315,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 /* Prompt text */
 .pickup-prompt {
-  color: var(--monad-text-muted, #9CA3AF);
+  color: var(--text-muted);
   font-size: 0.9em;
   margin: 0 0 18px;
 }
@@ -339,24 +339,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 }
 
 .btn-pickup {
-  background: var(--monad-gradient-primary, linear-gradient(135deg, #7B3FF2 0%, #A78BFA 100%));
+  background: var(--gradient-primary);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(123, 63, 242, 0.35);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.35);
 }
 
 .btn-pickup:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(123, 63, 242, 0.5);
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.5);
 }
 
 .btn-leave {
   background: transparent;
-  color: var(--monad-text-secondary, #C4B5FD);
-  border: 1px solid rgba(123, 63, 242, 0.25);
+  color: var(--text-secondary);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
 }
 
 .btn-leave:hover {
-  background: rgba(123, 63, 242, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   transform: translateY(-2px);
 }
 

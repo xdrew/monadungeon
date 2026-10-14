@@ -122,8 +122,8 @@ const handleClick = () => {
 
 .move-marker {
   border-radius: 10px;
-  background-color: rgba(123, 63, 242, 0.15);
-  border: 2px solid rgba(123, 63, 242, 0.35);
+  background-color: rgba(var(--accent-rgb), 0.15);
+  border: 2px solid rgba(var(--accent-rgb), 0.35);
   animation: markerPulse 2s infinite ease-in-out;
 }
 
@@ -134,8 +134,8 @@ const handleClick = () => {
 }
 
 @keyframes markerPulse {
-  0%, 100% { opacity: 0.7; border-color: rgba(123, 63, 242, 0.3); }
-  50% { opacity: 1; border-color: rgba(123, 63, 242, 0.6); }
+  0%, 100% { opacity: 0.7; border-color: rgba(var(--accent-rgb), 0.3); }
+  50% { opacity: 1; border-color: rgba(var(--accent-rgb), 0.6); }
 }
 
 @keyframes pulse-place {
@@ -149,9 +149,9 @@ const handleClick = () => {
 }
 
 .available-place.clickable:hover {
-  background-color: rgba(123, 63, 242, 0.3);
+  background-color: rgba(var(--accent-rgb), 0.3);
   border-color: rgba(167, 139, 250, 0.8);
-  box-shadow: 0 0 18px rgba(123, 63, 242, 0.5);
+  box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.5);
   z-index: 60 !important;
 }
 
@@ -186,7 +186,7 @@ const handleClick = () => {
   position: absolute;
   width: 0;
   height: 0;
-  filter: drop-shadow(0 0 4px rgba(123, 63, 242, 0.6));
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.6));
 }
 
 /* Arrow pointing up */
