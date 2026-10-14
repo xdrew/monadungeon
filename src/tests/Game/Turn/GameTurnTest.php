@@ -760,4 +760,93 @@ final class GameTurnTest extends TestCase
         self::assertEquals('move', $actions[0]['action']);
         self::assertEquals('fight_monster', $actions[1]['action']);
     }
+
+    #[Test]
+    public function itAppliesTheActionCapAgainAfterAnUnstoppableBattle(): void
+    {
+        $startTurn = new StartTurn(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            turnNumber: 1,
+            turnId: $this->turnId,
+            at: $this->fixedTime,
+        );
+        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        $tester = MessageBusTester::create();
+
+        // Swordsman "Unstoppable": the fight is recorded, but the turn goes on as if nothing had happened
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, [
+            'monster' => ['name' => 'giant_rat', 'hp' => 5],
+            'result' => 'LOSE',
+            'unstoppable' => true,
+        ]));
+        self::assertFalse($gameTurn->hasBattleInTurn(), 'An unstoppable battle does not lock the turn');
+
+        // Moving again is allowed and counted
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->updateActionCounter(...), $this->performed(TurnAction::MOVE));
+        $tester->handle($gameTurn->updateActionCounter(...), $this->performed(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->updateActionCounter(...), $this->performed(TurnAction::MOVE));
+        self::assertFalse($gameTurn->isEnded());
+
+        // The 4th move ends the turn exactly like in a turn without any battle
+        $tester->handle($gameTurn->updateActionCounter(...), $this->performed(TurnAction::MOVE));
+        [, $messages] = $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+
+        self::assertTrue($gameTurn->isEnded());
+        self::assertCount(1, array_filter($messages, static fn(object $message): bool => $message instanceof TurnEnded));
+    }
+
+    #[Test]
+    public function itStillLocksTheTurnAfterARegularBattle(): void
+    {
+        $startTurn = new StartTurn(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            turnNumber: 1,
+            turnId: $this->turnId,
+            at: $this->fixedTime,
+        );
+        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        $tester = MessageBusTester::create();
+
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, [
+            'monster' => ['name' => 'giant_rat', 'hp' => 5],
+            'result' => 'LOSE',
+            'unstoppable' => false,
+        ]));
+        self::assertTrue($gameTurn->hasBattleInTurn());
+
+        $this->expectException(InvalidTurnActionException::class);
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+    }
+
+    /**
+     * @param array<string, mixed>|null $additionalData
+     */
+    private function action(TurnAction $action, ?array $additionalData = null): PerformTurnAction
+    {
+        return new PerformTurnAction(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: $action,
+            additionalData: $additionalData,
+            at: $this->fixedTime,
+        );
+    }
+
+    private function performed(TurnAction $action): TurnActionPerformed
+    {
+        return new TurnActionPerformed(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: $action,
+            performedAt: $this->fixedTime,
+        );
+    }
 }

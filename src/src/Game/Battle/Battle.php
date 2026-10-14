@@ -285,6 +285,8 @@ class Battle extends AggregateRoot
 
         if ($monster !== null) {
             $finalResult = $this->resolveResult($monster, $messageContext);
+            // HP is not reduced yet: a loss will cost 1 HP
+            $unstoppable = $this->turnContinuesAfterBattle($finalResult, 1, $messageContext);
 
             // Dispatch event to indicate battle was finalized
             $messageContext->dispatch(new BattleFinalized(
@@ -326,6 +328,7 @@ class Battle extends AggregateRoot
                 firstDiceResults: $this->firstDiceResults,
                 onesRerolled: $this->onesRerolled,
                 tieIsWin: $this->playerWinsTies($messageContext),
+                unstoppable: $unstoppable,
             ));
 
             // NOW process the battle result (movement, HP changes, turn ending)
@@ -353,10 +356,13 @@ class Battle extends AggregateRoot
                 }
             }
 
-            // End the turn after battle processing (a reincarnating hero ends it after choosing a fountain)
+            // End the turn after battle processing (a reincarnating hero ends it after choosing a fountain,
+            // an Unstoppable Swordsman keeps his turn)
             $awaitingReincarnation = $finalResult === BattleResult::LOSE
                 && $messageContext->dispatch(new GetPlayer($command->playerId))->isAwaitingReincarnation();
-            if (!$awaitingReincarnation) {
+            // HP has already been reduced by processBattleResult
+            $unstoppable = $this->turnContinuesAfterBattle($finalResult, 0, $messageContext);
+            if (!$awaitingReincarnation && !$unstoppable) {
                 $messageContext->dispatch(new EndTurn(
                     turnId: $this->turnId,
                     gameId: $this->gameId,
@@ -427,6 +433,28 @@ class Battle extends AggregateRoot
     }
 
     /**
+     * Swordsman "Unstoppable": the turn continues after this battle when the hero rolled a 6
+     * and is not knocked out by the result.
+     *
+     * @param int $hpLoss HP the player is about to lose (or has just lost) because of the result
+     */
+    private function turnContinuesAfterBattle(BattleResult $result, int $hpLoss, MessageContext $messageContext): bool
+    {
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
+        if ($player->getHero()?->continuesTurnOnSix() !== true) {
+            return false;
+        }
+
+        if (!\in_array(6, $this->diceResults, true)) {
+            return false;
+        }
+
+        $hpAfterBattle = $player->getHP() - ($result === BattleResult::LOSE ? $hpLoss : 0);
+
+        return $hpAfterBattle > 0;
+    }
+
+    /**
      * Battle result for the current total damage, with hero skills applied.
      */
     private function resolveResult(Item $monster, MessageContext $messageContext): BattleResult
@@ -456,6 +484,8 @@ class Battle extends AggregateRoot
         // Check initial battle result (weapons only)
         $initialResult = $this->resolveResult($monster, $messageContext);
         $tieIsWin = $this->playerWinsTies($messageContext);
+        // Swordsman "Unstoppable": HP is not reduced yet, a loss will cost 1 HP
+        $unstoppable = $this->turnContinuesAfterBattle($initialResult, 1, $messageContext);
         // If player wins with weapons only, that's the final result
         if ($initialResult === BattleResult::WIN) {
             // Dispatch battle completed event BEFORE processing result to ensure correct event order
@@ -474,6 +504,7 @@ class Battle extends AggregateRoot
                 firstDiceResults: $this->firstDiceResults,
                 onesRerolled: $this->onesRerolled,
                 tieIsWin: $tieIsWin,
+                unstoppable: $unstoppable,
             ));
 
             // Process the battle result after BattleCompleted event
@@ -509,6 +540,7 @@ class Battle extends AggregateRoot
             firstDiceResults: $this->firstDiceResults,
             onesRerolled: $this->onesRerolled,
             tieIsWin: $tieIsWin,
+            unstoppable: $unstoppable,
         ));
     }
 
@@ -597,6 +629,8 @@ class Battle extends AggregateRoot
         $rawResult = $monster->attack($this->totalDamage);
         $result = $this->resolveResult($monster, $messageContext);
         $backstab = $rawResult === BattleResult::DRAW && $result === BattleResult::WIN;
+        // Swordsman "Unstoppable": recorded before the HP change, so a loss still has to be accounted for
+        $unstoppable = $this->turnContinuesAfterBattle($result, 1, $messageContext);
 
         // Calculate dice roll and item damage separately
         $diceRollDamage = array_sum($this->diceResults);
@@ -628,10 +662,12 @@ class Battle extends AggregateRoot
                 'firstDiceResults' => $this->firstDiceResults,
                 'onesRerolled' => $this->onesRerolled,
                 'backstab' => $backstab,
+                'unstoppable' => $unstoppable,
                 'heroAbility' => implode('+', array_filter([
                     $this->rerollUsed ? 'double_attack' : null,
                     $this->onesRerolled > 0 ? 'combat_training' : null,
                     $backstab ? 'backstab' : null,
+                    $unstoppable ? 'unstoppable' : null,
                 ])) ?: null,
             ],
             at: new \DateTimeImmutable(),
@@ -676,7 +712,8 @@ class Battle extends AggregateRoot
         // Only end the turn for LOSE or DRAW results
         // For WIN, the turn continues so the player can pick up the item
         // For a reincarnating hero, the turn ends after the healing fountain was chosen (Field::reincarnate)
-        if ($awaitingReincarnation) {
+        // For an Unstoppable Swordsman the turn goes on (he may even fight the same monster again)
+        if ($awaitingReincarnation || $unstoppable) {
             $this->battleCompleted = true;
         } elseif (!$this->battleCompleted && $result !== BattleResult::WIN) {
             $messageContext->dispatch(new EndTurn(

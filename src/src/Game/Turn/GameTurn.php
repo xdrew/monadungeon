@@ -88,6 +88,20 @@ class GameTurn extends AggregateRoot
         return $turn;
     }
 
+    /**
+     * Swordsman "Unstoppable": a battle after which the turn simply goes on.
+     *
+     * @param array{action: string, tileId: ?string, additionalData: ?array, performedAt: string} $action
+     */
+    private static function isUnstoppableBattle(array $action): bool
+    {
+        /** @var array<string, mixed> $additionalData */
+        $additionalData = $action['additionalData'] ?? [];
+
+        return $action['action'] === TurnAction::FIGHT_MONSTER->value
+            && ($additionalData['unstoppable'] ?? false) === true;
+    }
+
     #[Handler]
     public function performAction(PerformTurnAction $command, MessageContext $messageContext): void
     {
@@ -348,12 +362,15 @@ class GameTurn extends AggregateRoot
     }
 
     /**
-     * Check if a battle occurred during this turn.
+     * Check if a battle that locked the rest of the turn occurred during this turn.
+     *
+     * Swordsman "Unstoppable" battles (a 6 on the dice) do not count: the turn goes on
+     * and the regular action cap applies again.
      */
     public function hasBattleInTurn(): bool
     {
         foreach ($this->actions as $action) {
-            if ($action['action'] === TurnAction::FIGHT_MONSTER->value) {
+            if ($action['action'] === TurnAction::FIGHT_MONSTER->value && !self::isUnstoppableBattle($action)) {
                 return true;
             }
         }
@@ -381,15 +398,22 @@ class GameTurn extends AggregateRoot
         $this->maxActions = max(1, $maxActions);
     }
 
+    /**
+     * The last action that constrains what may follow.
+     * Unstoppable battles are transparent: the turn continues as if the fight had not interrupted it.
+     */
     private function getLastAction(): ?TurnAction
     {
-        if ($this->actions === []) {
-            return null;
+        for ($index = \count($this->actions) - 1; $index >= 0; --$index) {
+            $action = $this->actions[$index];
+            if (self::isUnstoppableBattle($action)) {
+                continue;
+            }
+
+            return TurnAction::from($action['action']);
         }
 
-        $lastAction = end($this->actions);
-
-        return TurnAction::from($lastAction['action']);
+        return null;
     }
 
     private function endTurn(\DateTimeImmutable $at): void

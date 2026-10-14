@@ -56,21 +56,21 @@ Authority: rulebook text (above) > existing implementation (`Battle.php`, `Movem
   - Run `docker exec php_monadungeon php vendor/bin/phpunit --filter SwordsmanCombatTraining`.
 
 ### Phase 2: Unstoppable (backend)
-- [ ] Task 4: Unstoppable in the Battle aggregate (depends on 1)
+- [x] Task 4: Unstoppable in the Battle aggregate (depends on 1)
   - `Battle.php`: `private function turnContinuesAfterBattle(BattleResult $result, MessageContext $ctx): bool` = hero `continuesTurnOnSix()` && `in_array(6, $this->diceResults, true)` && HP after the battle > 0, where HP after = `$player->getHP() - ($result === LOSE ? 1 : 0)` when evaluated before `ReducePlayerHP` (events) and `$player->getHP()` when evaluated after it (`processBattleResult`).
   - `BattleCompleted`: add `public bool $unstoppable = false` (= the turn continues after this battle); set it in `evaluateInitialRoll` (both events) and `finalizeBattle`. `Field::onBattleCompleted` → `lastBattleInfo['unstoppable']`.
   - `processBattleResult`: compute `$unstoppable` after the HP reduction; FIGHT_MONSTER `additionalData['unstoppable'] = $unstoppable`, `heroAbility` gains `'unstoppable'`. Turn ending: for LOSE/DRAW dispatch `EndTurn` only when `!$awaitingReincarnation && !$unstoppable`; always set `battleCompleted = true`.
   - `finalizeBattle`: the trailing `EndTurn` is skipped when `$awaitingReincarnation || $unstoppable` (recompute after `processBattleResult` with the player's current HP).
   - Files: Battle.php, BattleCompleted.php, Field.php.
-- [ ] Task 5: Movement and turn accounting (depends on 4)
+- [x] Task 5: Movement and turn accounting (depends on 4)
   - `src/src/Game/Movement/Movement.php::onBattleCompleted`: set `hasMovedAfterBattle` only when `$event->monsterHP > 0 && !$event->unstoppable`.
   - `src/src/Game/Turn/GameTurn.php::hasBattleInTurn()`: ignore FIGHT_MONSTER entries whose `additionalData['unstoppable'] === true`, so the 4-action auto-end works again after an Unstoppable fight (docblock: "a battle that locked the rest of the turn").
   - Check `src/src/Game/Field/Field.php` deprecated battle/move handlers (grep `hasMovedAfterBattle|CannotMoveAfterBattle`) — apply the same `unstoppable` guard if any is still registered.
   - Files: Movement.php, GameTurn.php (+ Field.php if needed).
-- [ ] Task 6: PHPUnit Unstoppable — battle (depends on 4)
+- [x] Task 6: PHPUnit Unstoppable — battle (depends on 4)
   - `src/tests/Game/Battle/SwordsmanUnstoppableTest.php` (same harness; the tester must record `EndTurn` dispatches and reduce the fake player's HP on `ReducePlayerHP` as `WarriorDoubleAttackTest` does): (a) swordsman HP 3, dice `[6, 2]` vs dragon (15), no consumables → LOSE, `hpReductions = 1`, `unstoppable = true`, no `EndTurn`, FIGHT_MONSTER `heroAbility = 'unstoppable'`; (b) dice `[2, 3]` vs dragon → LOSE, `unstoppable = false`, `EndTurn` dispatched; (c) HP 1, dice `[6, 2]` vs dragon → LOSE, stunned, `unstoppable = false`, `EndTurn` dispatched; (d) `[6, 2]` vs skeleton king (10) with a +1 fireball → finalize WIN → no `EndTurn`, `unstoppable = true`; (e) non-hero `[6, 6]` vs dragon → LOSE, `EndTurn` dispatched; (f) `[6, 4]` vs skeleton king (10) → DRAW, no `EndTurn`, player moved back (`ResetPlayerPosition` to `fromPosition`).
   - Run `--filter SwordsmanUnstoppable`.
-- [ ] Task 7: PHPUnit Unstoppable — movement and turn (depends on 5)
+- [x] Task 7: PHPUnit Unstoppable — movement and turn (depends on 5)
   - `src/tests/Game/Movement/MovementUnstoppableTest.php` (harness of `ThiefStealthTest`): feed `Movement::onBattleCompleted` a `BattleCompleted` with `monsterHP = 5`: `unstoppable = true` → a following `movePlayer` onto the monster tile dispatches `StartBattle` (no `CannotMoveAfterBattleException`); `unstoppable = false` → `CannotMoveAfterBattleException`.
   - `src/tests/Game/Turn/GameTurnTest.php`: new case — FIGHT_MONSTER with `additionalData['unstoppable' => true]` then MOVE actions: the 4th MOVE ends the turn (`TurnEnded` dispatched); control case without the flag keeps today's behaviour (no auto-end). Keep `BattleTurnEndingTest` green.
 

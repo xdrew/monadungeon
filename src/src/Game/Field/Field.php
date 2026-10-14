@@ -1144,6 +1144,8 @@ class Field extends AggregateRoot
             'onesRerolled' => $event->onesRerolled,
             // Hero skills (Thief "Backstab": a tie counts as a victory)
             'tieIsWin' => $event->tieIsWin,
+            // Hero skills (Swordsman "Unstoppable": the turn continues after this battle)
+            'unstoppable' => $event->unstoppable,
         ];
 
         // Check if there are items at this position
