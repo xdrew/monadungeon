@@ -1,116 +1,40 @@
 /**
- * Utility functions for monster-related operations in the game
+ * Utility functions for monster-related operations in the game.
+ * Names, emoji and images come from the active theme (src/theme) — this module only keeps
+ * the battle-object based signatures that the components use.
  */
+import {
+  getMonsterEmoji as themeMonsterEmoji,
+  getMonsterImage as themeMonsterImage,
+  getMonsterName
+} from '@/theme';
 
 /**
  * Gets monster emoji based on battle info
- * @param {Object} battle - The battle information
+ * @param {Object} battle - The battle information ({ monster_name, monster: hp })
  * @returns {string} The emoji representing the monster
  */
 export const getMonsterEmoji = (battle) => {
   if (!battle) return '❓';
-
-  // Try to extract monster name from additional data if available
-  const monsterName = battle.monster_name || '';
-
-  // Special handling for skeletons
-  if (monsterName.includes('skeleton_king')) {
-    return '👑'; // Crown for Skeleton King
-  } else if (monsterName.includes('skeleton_warrior')) {
-    return '🛡️'; // Shield for Skeleton Warrior
-  } else if (monsterName.includes('skeleton_turnkey')) {
-    return '🔐'; // Lock for Skeleton with Key
-  } else if (monsterName.includes('skeleton') && battle.monster_type === 'fireball') {
-    return '🔮'; // Crystal ball for Skeleton Mage
-  }
-
-  // For other monsters
-  switch (monsterName) {
-    case 'dragon':
-      return '🐉';
-    case 'fallen':
-      return '👻';
-    case 'giant_rat':
-      return '🐀';
-    case 'giant_spider':
-      return '🕷️';
-    case 'mummy':
-      return '🧟';
-    default:
-      // Default monsters based on HP value
-      if (battle.monster >= 10) {
-        return '👹'; // Big monster
-      } else if (battle.monster >= 7) {
-        return '👺'; // Medium monster
-      } else {
-        return '😈'; // Small monster
-      }
-  }
+  return themeMonsterEmoji(battle.monster_name || '', battle.monster || 0);
 };
 
 /**
- * Gets the Monad display name for a monster type
+ * Gets the display name for a monster type in the active theme
  * @param {string} monsterType - The monster type key (e.g. 'giant_spider')
- * @returns {string} The Monad character name
+ * @returns {string} The themed monster name
  */
 export const getMonsterDisplayName = (monsterType) => {
-  const nameMap = {
-    'skeleton_king': 'Molandak',
-    'skeleton_warrior': 'Taekwonnad',
-    'skeleton_turnkey': 'Bearded Nad',
-    'dragon': 'Bullish',
-    'fallen': 'Bee',
-    'giant_rat': 'Ikan',
-    'giant_spider': 'Moyaki',
-    'mummy': 'Ubur'
-  };
-
-  for (const [key, name] of Object.entries(nameMap)) {
-    if (monsterType && monsterType.includes(key)) {
-      return name;
-    }
-  }
-
-  return monsterType
-    ? monsterType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-    : 'Monster';
+  if (!monsterType) return 'Monster';
+  return getMonsterName(monsterType);
 };
 
 /**
  * Gets monster image path based on battle info
- * @param {Object} battle - The battle information
- * @returns {string|null} The path to the monster image, or null if no image available
+ * @param {Object} battle - The battle information ({ monster_name, monster: hp })
+ * @returns {string|null} The path to the monster image, or null if the theme has none
  */
 export const getMonsterImage = (battle) => {
   if (!battle) return null;
-
-  const monsterName = battle.monster_name || '';
-  
-  // Map monster names to Monad images
-  const monsterImageMap = {
-    'skeleton_king': '/images/items/molandak.webp',
-    'skeleton_warrior': '/images/items/taekwonnad.webp',
-    'skeleton_turnkey': '/images/items/bearded.webp',
-    'dragon': '/images/items/bullish.webp',
-    'fallen': '/images/items/bee.webp',
-    'giant_rat': '/images/items/ikan.webp',
-    'giant_spider': '/images/items/moyaki.webp',
-    'mummy': '/images/items/ubur.webp'
-  };
-
-  // Check for exact matches first
-  for (const [key, imagePath] of Object.entries(monsterImageMap)) {
-    if (monsterName.includes(key)) {
-      return imagePath;
-    }
-  }
-
-  // Default images based on HP value
-  if (battle.monster >= 10) {
-    return '/images/items/bullish.webp'; // Big monster
-  } else if (battle.monster >= 7) {
-    return '/images/items/taekwonnad.webp'; // Medium monster
-  } else {
-    return '/images/items/ikan.webp'; // Small monster
-  }
+  return themeMonsterImage(battle.monster_name || '', battle.monster || 0);
 };

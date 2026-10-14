@@ -2,7 +2,7 @@
 
 /* Foundation */
 @import './design-tokens.css';
-@import './monad-theme.css'; /* Monad testnet theme overrides */
+@import './themes/monad.css'; /* Monad flavour — applies only under html[data-theme="monad"] (VITE_THEME=monad) */
 @import './animations.css';
 
 /* Layout */

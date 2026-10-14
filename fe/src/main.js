@@ -1,6 +1,7 @@
 import { createApp, h, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import './assets/main.css'
+import { applyTheme } from './theme'
 import router from './router'
 import HomeView from './views/HomeView.vue'
 import GameView from './views/GameView.vue'
@@ -137,6 +138,8 @@ const App = {
 // ----------------
 // Create & Mount App
 // ----------------
+applyTheme()
+
 const app = createApp(App)
 
 // Add global error handler

@@ -4,6 +4,7 @@ import GameView from '@/views/GameView.vue';
 import NotFoundView from '@/views/NotFoundView.vue';
 import LeaderboardView from '@/views/LeaderboardView.vue';
 import RulesView from '@/views/RulesView.vue';
+import { theme } from '@/theme';
 
 const routes = [
   {
@@ -47,7 +48,7 @@ const router = createRouter({
 // Add navigation debugging
 router.beforeEach((to, from, next) => {
   console.log(`Navigating from ${from.path} to ${to.path}`);
-  document.title = to.meta.title ? `Monadungeon - ${to.meta.title}` : 'Monadungeon';
+  document.title = to.meta.title ? `${theme.appName} - ${to.meta.title}` : theme.appName;
   next();
 });
 

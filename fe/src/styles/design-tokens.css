@@ -45,6 +45,16 @@
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
   --shadow-glow: 0 0 10px rgba(76, 175, 80, 0.7);
+  --shadow-glow-strong: 0 0 30px rgba(129, 199, 132, 0.7);
+
+  /* rgba() helpers for glows and tints: rgba(var(--accent-rgb), 0.3) — themes override them */
+  --accent-rgb: 76, 175, 80;
+  --accent-light-rgb: 129, 199, 132;
+
+  /* Gradients — themes override them */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  --gradient-secondary: linear-gradient(135deg, var(--color-info) 0%, var(--color-primary) 100%);
+  --gradient-dark: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   
   /* Transitions */
   --transition-fast: 0.2s ease;
