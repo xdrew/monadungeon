@@ -46,6 +46,9 @@ export const selectItemToReplace = ({ selectedItemToReplace, item }) => {
  * @param {string} params.turnId - The current turn ID
  * @param {Function} params.loadGameData - Function to reload game data
  */
+/**
+ * @param {boolean} [params.keepTurn] - Do not end the turn after replacing (Swordsman "Unstoppable")
+ */
 export const replaceItem = async ({
   selectedItemToReplace,
   droppedItem,
@@ -57,7 +60,8 @@ export const replaceItem = async ({
   gameId,
   playerId,
   turnId,
-  loadGameData
+  loadGameData,
+  keepTurn = false
 }) => {
   if (!selectedItemToReplace.value || !droppedItem.value) return;
 
@@ -96,7 +100,8 @@ export const replaceItem = async ({
     selectedItemToReplace.value = null;
 
     // If we have a turn ID, end the turn after replacing the item
-    if (turnId) {
+    // (not when the turn goes on, e.g. an Unstoppable Swordsman after a battle)
+    if (turnId && !keepTurn) {
       console.log('Ending turn after item replacement...');
       await gameApi.endTurn({
         gameId,

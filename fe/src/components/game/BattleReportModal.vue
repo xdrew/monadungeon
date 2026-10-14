@@ -176,6 +176,22 @@
           >
             🗡️ Backstab! A tie counts as a victory for the Thief
           </div>
+          <!-- Swordsman "Combat Training": dice showing 1 were rerolled -->
+          <div
+            v-if="!isRolling && battleInfo.onesRerolled > 0"
+            class="first-roll-note"
+            data-testid="combat-training-note"
+          >
+            🎯 Combat Training! Rerolled a 1 ×{{ battleInfo.onesRerolled }}
+          </div>
+          <!-- Swordsman "Unstoppable": a 6 keeps the turn going -->
+          <div
+            v-if="!isRolling && turnContinues"
+            class="first-roll-note"
+            data-testid="unstoppable-note"
+          >
+            ⚡ Unstoppable! A 6 was rolled — the turn goes on
+          </div>
         </div>
 
         <!-- Combined reward + consumable selection (side by side when both present) -->
@@ -381,7 +397,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            End Turn (All keys are the same) <span class="kbd-hint">(Enter)</span>
+            {{ turnContinues ? 'Continue turn' : 'End Turn' }} (All keys are the same) <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Guard chest: auto-collected -->
@@ -391,7 +407,7 @@
             :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
-            End Turn (Treasure collected automatically) <span class="kbd-hint">(Enter)</span>
+            {{ turnContinues ? 'Continue turn' : 'End Turn' }} (Treasure collected automatically) <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Normal victory with reward -->
@@ -401,7 +417,7 @@
             :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
-            🎒 Pick up and end turn <span class="kbd-hint">(Enter)</span>
+            🎒 {{ turnContinues ? 'Pick up and continue' : 'Pick up and end turn' }} <span class="kbd-hint">(Enter)</span>
           </button>
           <button
             v-if="!hasInventorySpace && !isKeyReward && !isGuardChestReward"
@@ -409,7 +425,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            Leave item and end turn <span class="kbd-hint">(Esc)</span>
+            {{ turnContinues ? 'Leave item and continue' : 'Leave item and end turn' }} <span class="kbd-hint">(Esc)</span>
           </button>
         </div>
         <!-- Consumable selection buttons -->
@@ -453,7 +469,7 @@
             :disabled="isProcessing"
             @click="finalizeBattleWithoutConsumables"
           >
-            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }} <span class="kbd-hint">(Enter)</span>
+            {{ retreatLabel }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Lost or draw without consumable selection -->
@@ -472,7 +488,7 @@
             :disabled="isProcessing"
             @click="handleRetreat"
           >
-            {{ battleInfo.result === 'draw' ? '⬅️ Retreat' : '😵 Accept defeat' }} <span class="kbd-hint">(Enter)</span>
+            {{ retreatLabel }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Inventory replacement -->
@@ -482,7 +498,7 @@
             :class="potentialVictoryWithConsumables ? 'btn-primary' : 'btn-primary'"
             @click="confirmReplacement"
           >
-            {{ potentialVictoryWithConsumables ? '✅ Replace & Pick Up Reward' : '✅ Replace and end turn' }}
+            {{ potentialVictoryWithConsumables ? '✅ Replace & Pick Up Reward' : (turnContinues ? '✅ Replace and continue' : '✅ Replace and end turn') }}
           </button>
           <button
             class="btn-danger"
@@ -499,7 +515,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            End Turn <span class="kbd-hint">(Enter)</span>
+            {{ turnContinues ? 'Continue turn' : 'End Turn' }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
       </div>
@@ -684,6 +700,15 @@ const getItemTypeDamage = (itemType) => {
 
 // Thief "Backstab": a tie counts as a victory when the backend says so
 const beatsMonster = (damage) => (props.battleInfo?.tieIsWin ? damage >= props.battleInfo.monster : damage > props.battleInfo.monster);
+
+// Swordsman "Unstoppable": the backend says the turn continues after this battle (a 6 was rolled)
+const turnContinues = computed(() => props.battleInfo?.unstoppable === true);
+const retreatLabel = computed(() => {
+  if (props.battleInfo?.result === 'draw') {
+    return turnContinues.value ? '⬅️ Retreat and continue' : '⬅️ Retreat';
+  }
+  return turnContinues.value ? '😵 Take the hit and continue' : '😵 Accept defeat';
+});
 
 const potentialVictoryWithConsumables = computed(() => {
   if (!availableConsumables.value) return false;

@@ -934,6 +934,7 @@ const maxItemsInCategory = ref(0);
 const selectedItemToReplace = ref(null);
 const inventoryForCategory = ref([]);
 const isInventoryFullAfterBattle = ref(false); // Track if inventory full dialog is after battle
+const inventoryFullKeepsTurn = ref(false); // Swordsman "Unstoppable": the inventory full dialog must not end the turn
 
 // Missing key dialog state
 const showMissingKeyDialog = ref(false);
@@ -964,7 +965,9 @@ const isReincarnationMode = ref(false);
 const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend, empty = all fountains
 
 // Hero helpers for the player panel
-const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief' };
+const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman' };
+// Swordsman "Unstoppable": the backend keeps the turn open after a battle with a 6, so the client must not end it
+const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
 const heroTooltip = (player) => {
   if (!player?.hero) return '';
@@ -3558,8 +3561,10 @@ const replaceItem = async () => {
     gameId: id.value,
     playerId: currentPlayerId.value,
     turnId: currentTurnId,
-    loadGameData
+    loadGameData,
+    keepTurn: inventoryFullKeepsTurn.value
   });
+  inventoryFullKeepsTurn.value = false;
 };
 
 // Function to skip picking up an item
@@ -3581,8 +3586,9 @@ const skipItem = async () => {
     isAfterBattle: isInventoryFullAfterBattle.value
   });
   
-  // Reset the flag after use
+  // Reset the flags after use
   isInventoryFullAfterBattle.value = false;
+  inventoryFullKeepsTurn.value = false;
 };
 
 // Function to handle inventory full response
@@ -3815,12 +3821,14 @@ const handlePickItemAndEndTurn = async () => {
 
           // Item replaced successfully, now end the turn
 
-          // End the turn
-          await gameApi.endTurn({
-            gameId: id.value,
-            playerId: currentPlayerId.value,
-            turnId: currentTurnId
-          });
+          // End the turn (an Unstoppable Swordsman keeps playing)
+          if (!lastBattleUnstoppable()) {
+            await gameApi.endTurn({
+              gameId: id.value,
+              playerId: currentPlayerId.value,
+              turnId: currentTurnId
+            });
+          }
 
           // Close modal before refreshing (loadGameData auto-triggers AI turn)
           showBattleReportModal.value = false;
@@ -3833,7 +3841,8 @@ const handlePickItemAndEndTurn = async () => {
           await loadGameData();
         } else {
           // Fallback: show normal inventory full dialog if no keys found
-          isInventoryFullAfterBattle.value = true;
+          inventoryFullKeepsTurn.value = lastBattleUnstoppable();
+          isInventoryFullAfterBattle.value = !inventoryFullKeepsTurn.value;
           showInventoryFullDialog.value = true;
           droppedItem.value = response.item;
           itemCategory.value = response.itemCategory;
@@ -3846,7 +3855,8 @@ const handlePickItemAndEndTurn = async () => {
         }
       } else {
         // Set up inventory full dialog state for non-key items after battle
-        isInventoryFullAfterBattle.value = true;
+        inventoryFullKeepsTurn.value = lastBattleUnstoppable();
+        isInventoryFullAfterBattle.value = !inventoryFullKeepsTurn.value;
         showInventoryFullDialog.value = true;
         droppedItem.value = response.item;
         itemCategory.value = response.itemCategory;
@@ -3860,12 +3870,14 @@ const handlePickItemAndEndTurn = async () => {
     } else {
       // Item picked up successfully, now end the turn
 
-      // End the turn
-      await gameApi.endTurn({
-        gameId: id.value,
-        playerId: currentPlayerId.value,
-        turnId: currentTurnId
-      });
+      // End the turn (an Unstoppable Swordsman keeps playing)
+      if (!lastBattleUnstoppable()) {
+        await gameApi.endTurn({
+          gameId: id.value,
+          playerId: currentPlayerId.value,
+          turnId: currentTurnId
+        });
+      }
 
       // Close modal and clear loading BEFORE refreshing data
       // (loadGameData auto-triggers AI turn, so modal must be gone first)
@@ -3915,12 +3927,14 @@ const handlePickItemWithReplacement = async (itemIdToReplace) => {
     // Item replaced successfully, now end the turn
 
     
-    // End the turn
-    await gameApi.endTurn({
-      gameId: id.value,
-      playerId: currentPlayerId.value,
-      turnId: currentTurnId
-    });
+    // End the turn (an Unstoppable Swordsman keeps playing)
+    if (!lastBattleUnstoppable()) {
+      await gameApi.endTurn({
+        gameId: id.value,
+        playerId: currentPlayerId.value,
+        turnId: currentTurnId
+      });
+    }
     
     // Refresh game data
     await loadGameData();
@@ -4158,7 +4172,8 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
 
     // The backend only automatically ends the turn for LOSE/DRAW results
     // For WIN results where the player doesn't pick up the item, we need to manually end the turn
-    if (predictedResult === 'win' && !finalizeResult?.awaitingReincarnation) {
+    // (unless the Swordsman is Unstoppable: a 6 keeps his turn going)
+    if (predictedResult === 'win' && !finalizeResult?.awaitingReincarnation && !lastBattleUnstoppable()) {
 
       await gameApi.endTurn({
         gameId: id.value,

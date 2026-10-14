@@ -84,6 +84,20 @@
                 <strong>Stealth</strong> — may sneak past a monster instead of fighting and keep moving
               </span>
             </button>
+            <button
+              type="button"
+              class="hero-card"
+              :class="{ selected: selectedHero === 'swordsman' }"
+              data-testid="hero-swordsman"
+              @click="selectHero('swordsman')"
+            >
+              <span class="hero-icon">🤺</span>
+              <span class="hero-name">Victorius, the Swordsman</span>
+              <span class="hero-skills">
+                <strong>Combat Training</strong> — every die showing 1 is rerolled until it shows better<br>
+                <strong>Unstoppable</strong> — a 6 on the dice keeps his turn going, even after a lost fight
+              </span>
+            </button>
           </div>
         </div>
 
@@ -169,7 +183,7 @@ const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
 const readStoredHero = () => {
   try {
     const stored = localStorage.getItem('selectedHero');
-    return ['warrior', 'thief'].includes(stored) ? stored : null;
+    return ['warrior', 'thief', 'swordsman'].includes(stored) ? stored : null;
   } catch (e) {
     return null;
   }

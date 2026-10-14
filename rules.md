@@ -126,6 +126,17 @@ Each player may pick a hero before the game starts (lobby); a player without a h
   - When entering a tile with a monster (by moving or by placing a new room) the Thief chooses: fight it, or sneak past ✅
   - Sneaking costs the move like any other move, the monster stays on the tile, and she may keep moving ✅
 
+#### Victorius, the Swordsman ✅
+- **Combat Training** ✅
+  - Any die showing 1 is rerolled, as many times as necessary, until it shows 2–6 (automatic, in every combat) ✅
+  - Only the Swordsman rerolls ones; the Warrior's Double Attack is a separate skill ✅
+- **Unstoppable** ✅
+  - If at least one die shows 6 in a combat, the turn continues afterwards whatever the result ✅
+  - After a loss or a tie he still loses the HP / is moved back as usual, but may walk onto the monster tile again and fight once more ✅
+  - After a win he may pick up or leave the reward and keep moving ✅
+  - A Swordsman who loses his last HP falls unconscious and his turn ends like everyone else's ✅
+  - The usual limit of 4 actions per turn applies to the rest of the turn ✅
+
 
 ### Healing Fountains ✅
 - Special tiles that restore all HP ✅

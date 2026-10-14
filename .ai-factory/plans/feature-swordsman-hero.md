@@ -75,19 +75,20 @@ Authority: rulebook text (above) > existing implementation (`Battle.php`, `Movem
   - `src/tests/Game/Turn/GameTurnTest.php`: new case — FIGHT_MONSTER with `additionalData['unstoppable' => true]` then MOVE actions: the 4th MOVE ends the turn (`TurnEnded` dispatched); control case without the flag keeps today's behaviour (no auto-end). Keep `BattleTurnEndingTest` green.
 
 ### Phase 3: Frontend + docs
-- [ ] Task 8: Battle modal, lobby, action log (depends on 4)
+- [x] Task 8: Battle modal, lobby, action log (depends on 4)
   - `fe/src/components/game/BattleReportModal.vue`: notes under the dice (next to the Double Attack / Backstab notes): `battleInfo.onesRerolled > 0` → "🎯 Combat Training! Rerolled a 1 ×N" (`data-testid="combat-training-note"`); `battleInfo.unstoppable` → "⚡ Unstoppable! A 6 was rolled — the turn goes on" (`data-testid="unstoppable-note"`). Computed `turnContinues = !!battleInfo.unstoppable`; when true the footer labels read "Continue turn" (fallback / keys-same / guard-chest buttons), "🎒 Pick up and continue", "Leave item and continue", "✅ Replace and continue"; emitted events stay the same.
   - `fe/src/views/GameView.vue`: capture `const unstoppable = battleInfo.value?.unstoppable === true` at the start of each battle-modal handler and skip the manual `gameApi.endTurn` when it is true: `handleFinalizeBattle` (WIN branch ~L4160), `handleFinalizeBattleAndPickUp`, the pick-item / replace-item handlers reached from the modal (~L3800-3925), and `skipItem` via `isInventoryFullAfterBattle` (pass `isAfterBattle: isInventoryFullAfterBattle.value && !lastBattleUnstoppable`). `closeBattleReportAndEndTurn` already only refreshes state — after the refresh the same player is still active and can move. `HERO_SHORT_NAMES.swordsman = 'Swordsman'`.
   - `fe/src/views/HomeView.vue`: Swordsman hero card (🤺, `data-testid="hero-swordsman"`, two skill lines); `readStoredHero` whitelist adds `'swordsman'`.
   - `fe/src/components/ActionLog.vue` fight entry: prefix "Combat Training! (rerolled N ones)" when `details.onesRerolled > 0`; suffix "⚡ Unstoppable — turn continues" when `details.unstoppable`.
   - Files: BattleReportModal.vue, GameView.vue, HomeView.vue, ActionLog.vue.
-- [ ] Task 9: Docs + quality (depends on 8)
+- [x] Task 9: Docs + quality (depends on 8)
   - `rules.md`: "#### Victorius, the Swordsman" under Heroes (Combat Training, Unstoppable, incl. the stunned exception and the 4-action cap); README "Hero Skills" bullet mentions the Swordsman.
   - Quality: `task csfix`-equivalent and rector dry-run in the container, full PHPUnit (`docker exec php_monadungeon php vendor/bin/phpunit`), ESLint on changed FE files (no new errors). Psalm and e2e are run by the user.
 
 ## Token accounting for this hero
 - Session started fresh after `/clear`; `/cost` baseline before planning: $0.52.
 - `/cost` after planning (before implementation): $4.87 → planning cost $4.35.
-- ai-factory instructions loaded for this hero: aif-plan SKILL.md (this run); subagents: 0 (codebase read directly, ~15 Bash reads).
+- ai-factory instructions loaded for this hero: aif-plan and aif-implement SKILL.md; subagents: 0 (codebase read directly, ~15 Bash reads for the plan, ~25 for the implementation).
+- Implementation notes: `doctrine:migrations:diff` also emitted a pre-existing drift (`DROP INDEX unique_player_wallet` on `game.leaderboard`) that was stripped from the migration, same as for the Warrior migration; `php-cs-fixer` is configured for `src` only, running it on `tests` reformats 32 unrelated files (reverted).
 - Showcase runs needed: 0 (no e2e changes).
 - User records `/cost` after the hero is finished; the difference is the Swordsman's cost.

@@ -25,7 +25,7 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 - **Tile Placement**: Smart tile generation with proper corridor connections
 - **Special Tiles**: Healing fountains and teleportation gates for strategic gameplay
 - **Player States**: HP management, stunning/defeat mechanics with recovery
-- **Hero Skills**: Pick a hero in the lobby — Horan the Warrior rerolls the dice once per fight (Double Attack) and reincarnates at a healing fountain instead of falling unconscious (Reincarnation); Aderyn the Thief wins tied fights (Backstab) and can sneak past monsters (Stealth)
+- **Hero Skills**: Pick a hero in the lobby — Horan the Warrior rerolls the dice once per fight (Double Attack) and reincarnates at a healing fountain instead of falling unconscious (Reincarnation); Aderyn the Thief wins tied fights (Backstab) and can sneak past monsters (Stealth); Victorius the Swordsman rerolls every 1 on the dice (Combat Training) and keeps his turn going whenever he rolls a 6 (Unstoppable)
 - **Item System**: Weapons (dagger/sword/axe), consumable spells, keys, and treasures
 - **Win Conditions**: Game ends when final boss is defeated, winner has most victory points
 

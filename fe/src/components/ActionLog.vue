@@ -164,6 +164,9 @@ const getItemIcon = (itemType) => {
 };
 
 // Get monster image HTML
+// Swordsman "Unstoppable": the turn goes on after the fight
+const unstoppableSuffix = (details) => (details?.unstoppable ? ' ⚡ Unstoppable — turn continues' : '');
+
 const getMonsterImage = (monsterName) => {
   if (!monsterName) return 'monster';
   
@@ -395,12 +398,17 @@ const formatActionText = (action) => {
         damageBreakdown = `Double Attack! (first roll 🎲 [${details.firstDiceResults.join(', ')}] discarded) ${damageBreakdown}`;
       }
 
-      if (result === 'WIN') {
-        return { html: `WON vs ${monsterImg} (HP:${monsterHP}) ${damageBreakdown} damage!` };
-      } else if (result === 'LOSE') {
-        return { html: `LOST to ${monsterImg} (HP:${monsterHP}) ${damageBreakdown} damage` };
+      // Swordsman "Combat Training": dice showing 1 were rerolled
+      if (details?.onesRerolled > 0) {
+        damageBreakdown = `Combat Training! (rerolled ${details.onesRerolled} one${details.onesRerolled === 1 ? '' : 's'}) ${damageBreakdown}`;
       }
-      return { html: `Battle with ${monsterImg} (HP:${monsterHP})` };
+
+      if (result === 'WIN') {
+        return { html: `WON vs ${monsterImg} (HP:${monsterHP}) ${damageBreakdown} damage!${unstoppableSuffix(details)}` };
+      } else if (result === 'LOSE') {
+        return { html: `LOST to ${monsterImg} (HP:${monsterHP}) ${damageBreakdown} damage${unstoppableSuffix(details)}` };
+      }
+      return { html: `Battle with ${monsterImg} (HP:${monsterHP})${unstoppableSuffix(details)}` };
     
     case 'battle_detected':
       // Skip this to avoid duplication - battle info will come from fight_monster
