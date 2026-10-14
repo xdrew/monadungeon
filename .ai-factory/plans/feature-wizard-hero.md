@@ -79,6 +79,7 @@ Authority: rulebook text (above) > existing implementation (`Battle.php`, `Field
 
 ## Token accounting for this hero
 - Session started fresh after `/clear`; `/cost` baseline before planning: $0.62.
-- `/cost` after planning (before implementation): _pending_.
-- ai-factory instructions loaded for this hero: aif-plan SKILL.md; subagents: 0 (codebase read directly, ~14 Bash reads for the plan).
-- `/cost` after implementation: _pending_.
+- `/cost` after planning: not taken — `/aif-implement` was started right after the plan, so planning and implementation are measured together.
+- ai-factory instructions loaded for this hero: aif-plan and aif-implement SKILL.md; subagents: 0 (codebase read directly, ~14 Bash reads for the plan).
+- Implementation notes: 3 commits, PHPUnit only (no showcase runs); no migration needed (`spellsKept` is transient); `AstralWalkingPlacesTest` seeds `Field` tiles/transitions via Reflection because `placeTile` validation cannot produce an adjacent tile without a door.
+- `/cost` after implementation: $12.23 → **whole Wizard hero = $11.61** (61.8k output, 7.4M cache read, 44 requests, 998 lines added across 19 files, API 13m, wall 4h incl. one idle cache miss ≈ 169k tokens re-cached). Cheapest hero so far: both skills were local rules (one Battle branch, one Movement branch), no new API action and no new UI mode.
