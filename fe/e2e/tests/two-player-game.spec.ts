@@ -180,7 +180,8 @@ test.describe('Two Player Game', () => {
       diceRolls: [
         6, 6,   // Player 1 Turn 1: wins turnkey 8 (12 damage)
         1, 1,   // Player 2 Turn 2: loses king 12 (2 damage)
-        4, 3,   // Player 1 Turn 3: wins rat 5 (7 damage)
+        1, 1,   // Player 1 Turn 3: first roll 2 < rat 5 -> Warrior uses Double Attack (reroll)
+        4, 3,   // Player 1 Turn 3: reroll wins rat 5 (7 damage)
         5, 5,   // Player 2 Turn 4: wins mummy 7 (10 damage) - gets fireball
         6, 6,   // Player 1 Turn 5: wins rat 5 (12 + 1 damage)
         4, 4,   // Player 2 Turn 6: 8 damage + 1 fireball = 9 to defeat skeleton_turnkey 8
@@ -192,9 +193,10 @@ test.describe('Two Player Game', () => {
         3, 3,   // Player 2 Turn 12: wins rat 5 (6 damage) - gets dagger
                 // Player 1 Turn 13: skips turn (pick up axe)
         6, 6,   // Player 2 Turn 14: wins fallen (12 + 1 damage vs 12 HP)
-        3, 3,   // Player 1 Turn 15: loses to dragon (6 + 3 + 2 = 11 damage vs 15 HP)
+        3, 3,   // Player 1 Turn 15: loses to dragon (6 + 3 + 2 = 11 damage vs 15 HP), declines Double Attack (HP 2 -> 1)
         1, 1,   // Player 2 Turn 16: loses to skeleton_warrior (2 + 1 = 3 damage vs 9 HP)
-        2, 2,   // Player 1 Turn 17: loses to dragon again (4 + 3 + 2 = 9 damage vs 15 HP)
+        2, 2,   // Player 1 Turn 17: first roll loses to dragon (4 + 3 + 2 = 9 vs 15 HP) -> Double Attack (reroll)
+        1, 2,   // Player 1 Turn 17: reroll still loses (3 + 3 + 2 = 8 vs 15 HP) -> last HP lost -> Reincarnation at (0,0)
         6, 6    // Player 1 Turn 19: wins dragon (12 + 3 + 2 = 17 damage vs 15 HP)
       ],
       tileSequence: [
@@ -243,7 +245,7 @@ test.describe('Two Player Game', () => {
         'dragon'              // Turn 19: HP 15 (Player 1 wins 17 > 15)
       ],
       playerConfigs: {
-        [player1Id]: {},  // Default HP and actions
+        [player1Id]: {hero: 'warrior', maxHp: 2},  // Warrior (Double Attack + Reincarnation); 2 HP so the 2nd dragon loss triggers Reincarnation
         [player2Id]: {maxHp: 2}   // Lower HP to test stunning more easily
       }
     });
@@ -346,16 +348,19 @@ test.describe('Two Player Game', () => {
     
     console.log('Turn complete');
     
-    // === PLAYER 1 TURN 3: Victory Scenario ===
-    console.log('=== Player 1 Turn 3: Victory Scenario ===');
+    // === PLAYER 1 TURN 3: Double Attack - Victory after reroll ===
+    console.log('=== Player 1 Turn 3: Double Attack - Victory after reroll ===');
     await GameHelpers.setupPlayerSession(page, player1Id);
     await GameHelpers.waitForGameLoad(page);
-    
+
     await GameHelpers.placeTile(page, 0, 0);
-    
-    // Wait for battle modal to appear
+
+    // Wait for battle modal to appear - first roll 1 + 1 = 2 < rat 5, the Warrior may reroll
     await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.MODAL_WAIT });
-    console.log('Player 1: Battle modal appeared');
+    console.log('Player 1: Battle modal appeared (first roll loses)');
+    await GameHelpers.rerollBattle(page);
+    await expect(page.locator('[data-testid="first-roll"]')).toContainText('1 + 1');
+    console.log('Player 1: Double Attack reroll 4 + 3 = 7 > 5 - victory');
     await GameHelpers.continueBattle(page, 'pickup');
     
     // Wait for turn change from Turn 3 to Turn 4
@@ -699,10 +704,14 @@ test.describe('Two Player Game', () => {
     // Wait for battle modal - Dragon battle
     await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
     console.log('Dragon battle modal appeared - Player 1 loses');
-    
+
+    // The Warrior is offered Double Attack but declines it this time (rerolling is optional)
+    await expect(page.locator('[data-testid="reroll-battle"]')).toBeVisible({ timeout: TIMEOUTS.ELEMENT_WAIT });
+    console.log('Double Attack offered - Player 1 accepts the defeat instead');
+
     // Player loses to dragon - close modal
     await GameHelpers.continueBattle(page, 'close');
-    console.log('Player 1 lost to dragon (11 damage < 15 HP)');
+    console.log('Player 1 lost to dragon (11 damage < 15 HP), HP 2 -> 1');
     
     // Wait for battle modal to close
     await waitForBattleComplete();
@@ -760,8 +769,8 @@ test.describe('Two Player Game', () => {
     // Wait for turn change from 16 to 17
     await waitForTurnChange(16, 17);
     
-    // === PLAYER 1 TURN 17: Lose to Dragon Again ===
-    console.log('=== Player 1 Turn 17: Lose to Dragon Again ===');
+    // === PLAYER 1 TURN 17: Lose to Dragon Again - Double Attack fails, Reincarnation ===
+    console.log('=== Player 1 Turn 17: Lose to Dragon Again - Double Attack fails, Reincarnation ===');
     await GameHelpers.setupPlayerSession(page, player1Id);
     await GameHelpers.waitForGameLoad(page);
     
@@ -780,17 +789,36 @@ test.describe('Two Player Game', () => {
 
     await GameHelpers.movePlayer(page, dragonPos.x, dragonPos.y);
     
-    // Wait for battle modal
+    // Wait for battle modal - first roll 2 + 2 + 5 = 9 < 15
     await page.waitForSelector('.battle-report-modal', { state: 'visible', timeout: TIMEOUTS.BATTLE_MODAL });
-    console.log('Dragon battle modal appeared again - Player 1 loses');
-    
-    // Lose to dragon again
-    await GameHelpers.continueBattle(page, 'close');
-    console.log('Player 1 lost to dragon again (9 damage < 15 HP)');
-    
+    console.log('Dragon battle modal appeared again - Player 1 loses the first roll');
+
+    // Double Attack: reroll 1 + 2 + 5 = 8 < 15 - still a loss, and the second roll must be accepted
+    await GameHelpers.rerollBattle(page);
+    await expect(page.locator('[data-testid="first-roll"]')).toContainText('2 + 2');
+    await expect(page.locator('[data-testid="reroll-battle"]')).toHaveCount(0);
+    console.log('Double Attack reroll still loses (8 damage < 15 HP) - no second reroll offered');
+
+    // Accept the defeat explicitly (😵 Accept defeat) - this was the Warrior's last HP
+    const acceptDefeatButton = page.locator('.btn-defeat').first();
+    await acceptDefeatButton.waitFor({ state: 'visible', timeout: TIMEOUTS.ELEMENT_WAIT });
+    await acceptDefeatButton.click();
+    console.log('Player 1 lost to dragon again (8 damage < 15 HP) - last HP lost');
+
     await waitForBattleComplete();
-    
-    // Wait for turn change from 17 to 18
+
+    // Reincarnation: instead of being stunned, the Warrior chooses a healing fountain (starting tile 0,0)
+    await GameHelpers.chooseReincarnationFountain(page, 0, 0);
+
+    // Verify via API: full HP, no longer awaiting reincarnation
+    const afterReincarnation = await (await request.get(`${apiUrl}/api/game/${gameId}`)).json();
+    const reincarnatedPlayer = afterReincarnation.players.find((p: any) => p.id === player1Id);
+    expect(reincarnatedPlayer.hero).toBe('warrior');
+    expect(reincarnatedPlayer.awaitingReincarnation).toBe(false);
+    expect(reincarnatedPlayer.hp).toBeGreaterThan(0);
+    console.log(`Player 1 reincarnated at the starting fountain with ${reincarnatedPlayer.hp} HP`);
+
+    // The turn ends automatically after reincarnation
     await waitForTurnChange(17, 18);
     
     // === PLAYER 2 TURN 18: Teleportation Between Gates ===
@@ -840,7 +868,8 @@ test.describe('Two Player Game', () => {
     await waitForTurnChange(18, 19);
 
     // === PLAYER 1 TURN 19: 4th-Step Item Pickup Test ===
-    // Player bounces between (0,-4) and (0,-5), both have dropped daggers.
+    // After Reincarnation the Warrior starts at (0,0) and walks back down the corridor
+    // (0,-1) -> (0,-2) -> (0,-3) -> (0,-4); the dagger dropped on Turn 7 lies at (0,-4).
     // On the 4th move landing on an item tile, the deferTurnEnd fix ensures the dialog appears.
     console.log('=== Player 1 Turn 19: 4th-Step Item Pickup ===');
     printElapsedTime();
@@ -890,10 +919,10 @@ test.describe('Two Player Game', () => {
     });
     fs.writeFileSync('/app/test-results/turn19-pre-move1.json', JSON.stringify(markerState, null, 2));
 
-    await clickMoveAndHandleDialog('0,-4', 1);
-    await clickMoveAndHandleDialog('0,-5', 2);
-    await clickMoveAndHandleDialog('0,-4', 3);
-    await clickMoveAndHandleDialog('0,-5', 4);
+    await clickMoveAndHandleDialog('0,-1', 1);
+    await clickMoveAndHandleDialog('0,-2', 2);
+    await clickMoveAndHandleDialog('0,-3', 3);
+    await clickMoveAndHandleDialog('0,-4', 4);
     console.log('All 4 moves completed — turn should auto-end after last Leave It');
 
     // Wait for auto-end to process, then check if we need to manually end
@@ -947,9 +976,12 @@ test.describe('Two Player Game', () => {
     }) || { x: 0, y: 0 };
     console.log(`Dragon position: ${dragonPosFinal.x},${dragonPosFinal.y}`);
 
-    // Reset request lock before dragon move (may be stuck from Turn 19 bouncing)
+    // Reset request lock before dragon move (may be stuck from Turn 19)
     await page.evaluate(() => { if (window.__resetRequestLock) window.__resetRequestLock(); });
     await page.waitForTimeout(500);
+
+    // Player 1 is at (0,-4) after Turn 19: step to (0,-5) first (dagger there - leave it, the turn continues)
+    await GameHelpers.moveWithItemDialog(page, '0,-5', 1);
 
     // Move to dragon tile for final battle
     await GameHelpers.movePlayer(page, dragonPosFinal.x, dragonPosFinal.y);

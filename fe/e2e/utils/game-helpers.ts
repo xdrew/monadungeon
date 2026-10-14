@@ -791,6 +791,64 @@ export class GameHelpers {
   }
 
   /**
+   * Warrior "Double Attack": click the reroll button in the battle modal and wait for the second roll to land.
+   * The modal shows the discarded first roll once the new dice stop rolling.
+   */
+  static async rerollBattle(page: Page): Promise<void> {
+    const rerollButton = page.locator('[data-testid="reroll-battle"]').first();
+    await rerollButton.waitFor({ state: 'visible', timeout: TIMEOUTS.ELEMENT_WAIT });
+    await rerollButton.click();
+    console.log('Clicked Double Attack reroll button');
+
+    await page.locator('[data-testid="first-roll"]').first().waitFor({ state: 'visible', timeout: TIMEOUTS.ELEMENT_WAIT });
+    console.log('Second roll landed, first roll discarded');
+  }
+
+  /**
+   * Warrior "Reincarnation": wait for the fountain choice banner and click the healing fountain at (x, y).
+   * The backend ends the turn afterwards.
+   */
+  static async chooseReincarnationFountain(page: Page, x: number, y: number): Promise<void> {
+    await page.locator('[data-testid="reincarnation-banner"]').first().waitFor({ state: 'visible', timeout: TIMEOUTS.ELEMENT_WAIT });
+    console.log('Reincarnation banner appeared');
+
+    const target = page.locator(`[data-testid="reincarnation-target-${x},${y}"]`).first();
+    await target.waitFor({ state: 'attached', timeout: TIMEOUTS.ELEMENT_WAIT });
+    await target.click({ force: true });
+    console.log(`Chose healing fountain at ${x},${y} for reincarnation`);
+
+    await page.locator('[data-testid="reincarnation-banner"]').first().waitFor({ state: 'hidden', timeout: TIMEOUTS.ELEMENT_WAIT });
+  }
+
+  /**
+   * Click the move marker for a position and dismiss the item pickup dialog ("Leave It") if one appears.
+   * Leaving an item only ends the turn when it was the last move of the turn.
+   */
+  static async moveWithItemDialog(page: Page, targetPos: string, moveNum: number = 0): Promise<void> {
+    // Reset the fieldUtils request lock in case a previous move left it stuck
+    await page.evaluate(() => {
+      if ((window as any).__resetRequestLock) (window as any).__resetRequestLock();
+    });
+
+    // The marker may not be 'visible' per Playwright due to absolute positioning, so wait for 'attached'
+    const marker = page.locator(`.move-marker.clickable[title*="${targetPos}"]`).first();
+    await marker.waitFor({ state: 'attached', timeout: TIMEOUTS.ELEMENT_WAIT });
+    await marker.click({ force: true });
+    console.log(`Move ${moveNum}: clicked marker for ${targetPos}`);
+    await page.waitForTimeout(3000);
+
+    const dialog = await page.locator('.item-pickup-dialog').isVisible().catch(() => false);
+    if (dialog) {
+      console.log(`Move ${moveNum}: item dialog appeared — clicking Leave It`);
+      await page.getByRole('button', { name: /leave it/i }).click();
+      // Wait for skipItemAndEndTurn to process (loadGameData + possible auto-end)
+      await page.waitForTimeout(3000);
+      // Clear any stale picked tile state that loadGameData may have synced
+      await page.evaluate(() => localStorage.removeItem('pickedTileState'));
+    }
+  }
+
+  /**
    * Pick up an item after battle
    */
   static async pickupItem(page: Page): Promise<void> {

@@ -140,7 +140,7 @@ Authority: user request (verbatim Karak rulebook text) > `a4-karak-rulebook.pdf`
 
 ### Phase 5: Showcase e2e + docs
 
-- [ ] Task 13: Weave the warrior into the single showcase spec (depends on 3, 11, 12) — the agent edits the spec, the user runs `task fe:test:video`
+- [x] Task 13: Weave the warrior into the single showcase spec (depends on 3, 11, 12) — the agent edits the spec, the user runs `task fe:test:video`
   - `fe/e2e/utils/game-helpers.ts`: add `rerollBattle(page)` (clicks `[data-testid="reroll-battle"]`, waits for the dice animation), `chooseReincarnationFountain(page, x, y)` (waits for `[data-testid="reincarnation-banner"]`, clicks the highlighted tile `[data-position="x,y"]`, waits for the banner to disappear), and `moveWithItemDialog(page, 'x,y')` extracted from the inline `clickMoveAndHandleDialog` in Turn 19.
   - `fe/e2e/tests/two-player-game.spec.ts` — keep every Player 2 turn and all tile/item sequences unchanged; `playerConfigs[player1Id] = { hero: 'warrior', maxHp: 2 }`:
     - Turn 3 (rat 5): dice become `1, 1` (first roll 2 → LOSE, reroll button visible) then `4, 3` → click Double Attack → 7 > 5 WIN → pickup dagger as today. Assert the modal shows the struck-through first roll.
@@ -152,7 +152,7 @@ Authority: user request (verbatim Karak rulebook text) > `a4-karak-rulebook.pdf`
     - Geometry assumption to confirm on the first video run: Player 1's corridor is the straight line (0,-1)…(0,-5) with the dragon at (1,-5) (the spec already hardcodes `0,-4`/`0,-5` and the `{x:1,y:-5}` fallback). If a run shows a different layout, only the Turn 19/21 coordinates need adjusting.
   - Files: fe/e2e/utils/game-helpers.ts, fe/e2e/tests/two-player-game.spec.ts, CLAUDE.md (example block).
 
-- [ ] Task 14: Docs + quality pass (depends on 13)
+- [x] Task 14: Docs + quality pass (depends on 13)
   - `rules.md`: new "## Heroes" section (hero chosen in the lobby; Horan the Warrior — Double Attack, Reincarnation — with the exact rules above and the ✅ markers convention; note that AI players have no hero).
   - `README.md`: one bullet under gameplay features ("Hero skills — Warrior: Double Attack & Reincarnation").
   - Run `task csfix` and `task rectorfix` (no psalm — the user runs psalm themselves), `docker exec -it php_monadungeon php vendor/bin/phpunit`, `task fe-lint`.

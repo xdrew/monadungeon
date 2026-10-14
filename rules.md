@@ -102,6 +102,22 @@ When a player's HP reaches 0:
 2. Player remains on their current tile ✅
 3. Skip their next turn ✅
 4. Regenerate to 1 HP at the start of the skipped turn ✅
+5. Exception: a hero with Reincarnation (see Heroes) is not stunned ✅
+
+### Heroes ✅
+Each player may pick a hero before the game starts (lobby); a player without a hero has no special skills. AI players have no hero. ✅
+
+#### Horan, the Warrior ✅
+- **Double Attack** ✅
+  - In any combat, after the first roll (dice + weapons) the Warrior may reroll both dice once ✅
+  - The first roll is discarded and costs no HP, even if it was a loss ✅
+  - The second roll must be accepted; spells can still be used on top of it ✅
+  - Rerolling is optional; a winning first roll is final ✅
+- **Reincarnation** ✅
+  - When the Warrior loses his last HP he does not fall unconscious ✅
+  - Instead he chooses any discovered healing fountain tile (the starting tile always has one) and teleports there ✅
+  - All HP are replenished ✅
+  - The turn ends anyway ✅
 
 
 ### Healing Fountains ✅
