@@ -12,6 +12,7 @@ use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
 use App\Game\Item\ItemName;
 use App\Game\Item\ItemType;
+use App\Game\Testing\TestMode;
 use App\Game\Deck\DeckCreated;
 use App\Infrastructure\Uuid\Uuid;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
@@ -144,6 +145,48 @@ final class BagTest extends TestCase
         self::assertInstanceOf(Item::class, $item);
         self::assertInstanceOf(ItemType::class, $item->type);
         self::assertInstanceOf(ItemName::class, $item->name);
+    }
+
+    #[Test]
+    public function itCountsItemsAndReturnsOneAtTheEndInTestMode(): void
+    {
+        $first = Item::createGiantRat();
+        $second = Item::createMummy();
+        $third = Item::createTreasureChest();
+        $bag = new Bag($this->gameId, [$first, $second, $third]);
+        self::assertSame(3, $bag->count());
+
+        $drawn = $bag->getNextItem();
+        self::assertTrue($drawn->itemId->equals($first->itemId));
+        self::assertSame(2, $bag->count());
+
+        // Oracle "Fateweaver": in test mode the returned token is appended so fixed sequences stay predictable
+        TestMode::getInstance()->enable();
+        try {
+            $bag->returnItem($drawn);
+        } finally {
+            TestMode::getInstance()->disable();
+        }
+        self::assertSame(3, $bag->count());
+        self::assertTrue($bag->getNextItem()->itemId->equals($second->itemId));
+        self::assertTrue($bag->getNextItem()->itemId->equals($third->itemId));
+        self::assertTrue($bag->getNextItem()->itemId->equals($first->itemId));
+    }
+
+    #[Test]
+    public function itReturnsAnItemSomewhereIntoTheBag(): void
+    {
+        $returned = Item::createGiantRat();
+        $bag = new Bag($this->gameId, [Item::createMummy(), Item::createTreasureChest()]);
+
+        $bag->returnItem($returned);
+
+        self::assertSame(3, $bag->count());
+        $ids = [];
+        while ($bag->count() > 0) {
+            $ids[] = $bag->getNextItem()->itemId->toString();
+        }
+        self::assertContains($returned->itemId->toString(), $ids);
     }
 
     #[Test]

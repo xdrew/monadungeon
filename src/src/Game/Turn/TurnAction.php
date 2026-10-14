@@ -24,6 +24,9 @@ enum TurnAction: string
     // Warlock "Magic Swap": trade places with another hero, costs the whole turn's moves
     case MAGIC_SWAP = 'magic_swap';
 
+    // Oracle "Fateweaver": chose which of the two drawn tokens is placed on the new room (not a move)
+    case FATEWEAVER = 'fateweaver';
+
     // Item interactions
     case PICK_UP_EQUIPMENT = 'pick_up_equipment';
     case UNLOCK_CHEST = 'unlock_chest';
@@ -88,6 +91,11 @@ enum TurnAction: string
         // Warlock "Magic Swap" costs all 4 moves, so it can only open the turn
         if ($this === self::MAGIC_SWAP) {
             return $previousAction === null;
+        }
+
+        // Oracle "Fateweaver" settles the token of the room that was just placed
+        if ($this === self::FATEWEAVER) {
+            return $previousAction === self::PLACE_TILE;
         }
 
         // No previous action means it's the start of the turn

@@ -154,6 +154,12 @@ class Movement extends AggregateRoot
 
         // Check if destination has a monster
         $field = $context->dispatch(new GetField($this->gameId));
+
+        // Oracle "Fateweaver": the token of the new room must be chosen before anyone moves
+        if ($field->getPendingFateweaver() !== null) {
+            throw new InvalidMovementException('Choose the Fateweaver token first');
+        }
+
         $items = $field->getItems();
         $destinationKey = $command->toPosition->toString();
         $destinationHasMonster = false;

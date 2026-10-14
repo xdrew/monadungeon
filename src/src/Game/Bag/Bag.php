@@ -194,6 +194,26 @@ class Bag extends AggregateRoot
         return Item::fromAnything(array_shift($this->items));
     }
 
+    public function count(): int
+    {
+        return \count($this->items);
+    }
+
+    /**
+     * Oracle "Fateweaver": the token that was not chosen goes back into the bag.
+     * It lands at a random position; in test mode it is appended so fixed item sequences stay predictable.
+     */
+    public function returnItem(Item $item): void
+    {
+        if (TestMode::getInstance()->isEnabled()) {
+            $this->items[] = $item;
+
+            return;
+        }
+
+        array_splice($this->items, random_int(0, \count($this->items)), 0, [$item]);
+    }
+
     /**
      * Set items for test mode - replaces the current items with a predetermined sequence.
      * @param array<int, string> $itemNames

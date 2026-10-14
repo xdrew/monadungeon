@@ -102,6 +102,11 @@ class MovementAfterBattleTest extends TestCase
             {
                 return [];
             }
+
+            public function getPendingFateweaver(): ?array
+            {
+                return null;
+            }
         };
         
         // Create movement aggregate and initialize positions

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Game\Field;
 
+use App\Game\Bag\Bag;
 use App\Game\Bag\Error\NoItemsLeftInBag;
 use App\Game\Bag\GetBag;
 use App\Game\Battle\BattleCompleted;
@@ -185,6 +186,14 @@ class Field extends AggregateRoot
     #[Column(type: UnplacedTileType::class, columnDefinition: 'jsonb', nullable: true)]
     private ?array $unplacedTile = null;
 
+    /**
+     * Oracle "Fateweaver": the two tokens drawn for a new room, waiting for the player to choose one.
+     *
+     * @var array{fieldPlace: string, items: list<array<string, mixed>>}|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $pendingFateweaver = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -210,6 +219,17 @@ class Field extends AggregateRoot
         $field->healingFountainPositions[] = new FieldPlace(0, 0);
 
         return $field;
+    }
+
+    /**
+     * Oracle "Fateweaver": a token without a guard (chest / treasure) beats a monster, then the weaker monster wins.
+     */
+    private static function pickFateweaverToken(Item $first, Item $second): Item
+    {
+        $firstGuard = $first->guardDefeated ? 0 : $first->guardHP;
+        $secondGuard = $second->guardDefeated ? 0 : $second->guardHP;
+
+        return $secondGuard < $firstGuard ? $second : $first;
     }
 
     public function getGameId(): Uuid
@@ -675,8 +695,111 @@ class Field extends AggregateRoot
             return;
         }
         $bag = $messageContext->dispatch(new GetBag($event->gameId));
+
+        // Oracle "Fateweaver": two tokens are drawn, one is placed, the other goes back into the bag
+        $hero = null;
+        $isAi = false;
+
+        try {
+            $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($event->gameId));
+            if ($currentPlayerId !== null) {
+                $player = $messageContext->dispatch(new GetPlayer($currentPlayerId));
+                $hero = $player->getHero();
+                $isAi = $player->isAi();
+            }
+        } catch (\Throwable) {
+        }
+
+        if ($hero?->drawsTwoTokens() === true && $bag->count() >= 2) {
+            $drawn = [$bag->getNextItem(), $bag->getNextItem()];
+            if ($isAi) {
+                // A virtual Oracle never waits: it keeps the best token right away
+                $this->resolveFateweaver($event->fieldPlace, $drawn, self::pickFateweaverToken($drawn[0], $drawn[1]), $bag);
+
+                return;
+            }
+            $this->pendingFateweaver = [
+                'fieldPlace' => $event->fieldPlace->toString(),
+                'items' => [$drawn[0]->toArray(), $drawn[1]->toArray()],
+            ];
+
+            return;
+        }
+
         $item = $bag->getNextItem();
         $this->items[$event->fieldPlace->toString()] = $item;
+    }
+
+    /**
+     * Oracle "Fateweaver": the two drawn tokens waiting for a choice, if any.
+     *
+     * @return array{fieldPlace: string, items: list<Item>}|null
+     */
+    public function getPendingFateweaver(): ?array
+    {
+        if ($this->pendingFateweaver === null) {
+            return null;
+        }
+
+        return [
+            'fieldPlace' => $this->pendingFateweaver['fieldPlace'],
+            'items' => array_map(static fn(array $item): Item => Item::fromArray($item), $this->pendingFateweaver['items']),
+        ];
+    }
+
+    /**
+     * Oracle "Fateweaver": place the chosen token on the new room and return the other one to the bag.
+     *
+     * @throws GameAlreadyFinishedException
+     * @throws NotYourTurnException
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function chooseFateweaverItem(ChooseFateweaverItem $command, MessageContext $context): void
+    {
+        $game = $context->dispatch(new GetGame($command->gameId));
+        if ($game->getStatus()->isFinished()) {
+            throw new GameAlreadyFinishedException();
+        }
+
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
+        if ($currentPlayerId === null || !$command->playerId->equals($currentPlayerId)) {
+            throw new NotYourTurnException();
+        }
+
+        $pending = $this->getPendingFateweaver();
+        if ($pending === null) {
+            throw new \DomainException('No Fateweaver choice is pending');
+        }
+
+        $chosen = null;
+        $returned = null;
+        foreach ($pending['items'] as $item) {
+            if ($item->itemId->equals($command->itemId)) {
+                $chosen = $item;
+            } else {
+                $returned = $item;
+            }
+        }
+        if ($chosen === null || $returned === null) {
+            throw new \DomainException('Token is not one of the drawn ones');
+        }
+
+        $bag = $context->dispatch(new GetBag($command->gameId));
+        $this->resolveFateweaver(FieldPlace::fromString($pending['fieldPlace']), $pending['items'], $chosen, $bag);
+
+        $context->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::FATEWEAVER,
+            additionalData: [
+                'fieldPlace' => $pending['fieldPlace'],
+                'chosen' => ['name' => $chosen->name->value, 'type' => $chosen->type->value, 'hp' => $chosen->guardHP],
+                'returned' => ['name' => $returned->name->value, 'type' => $returned->type->value, 'hp' => $returned->guardHP],
+                'heroAbility' => 'fateweaver',
+            ],
+        ));
     }
 
     /**
@@ -1064,6 +1187,14 @@ class Field extends AggregateRoot
         $messageBus = $query->messageBus ?? null;
         if ($messageBus === null) {
             throw new \RuntimeException('MessageBus is required to query Movement context');
+        }
+
+        // Oracle "Fateweaver": nothing can be done until the token of the new room is chosen
+        if ($this->pendingFateweaver !== null) {
+            return [
+                'moveTo' => [],
+                'placeTile' => [],
+            ];
         }
 
         try {
@@ -1644,6 +1775,13 @@ class Field extends AggregateRoot
     #[Handler]
     public function onTurnEnded(TurnEnded $event, MessageContext $messageContext): void
     {
+        // Oracle "Fateweaver": a choice that was never made is settled with the first drawn token
+        $pending = $this->getPendingFateweaver();
+        if ($pending !== null) {
+            $bag = $messageContext->dispatch(new GetBag($event->gameId));
+            $this->resolveFateweaver(FieldPlace::fromString($pending['fieldPlace']), $pending['items'], $pending['items'][0], $bag);
+        }
+
         // Get the player's current position from Movement context
         try {
             $playerPosition = $messageContext->dispatch(new GetPlayerPosition($event->gameId, $event->playerId));
@@ -1970,6 +2108,20 @@ class Field extends AggregateRoot
         $this->tilesCache[$tileId->toString()] = $tile;
 
         return $tile;
+    }
+
+    /**
+     * @param list<Item> $drawn
+     */
+    private function resolveFateweaver(FieldPlace $fieldPlace, array $drawn, Item $chosen, Bag $bag): void
+    {
+        $this->items[$fieldPlace->toString()] = $chosen;
+        foreach ($drawn as $item) {
+            if (!$item->itemId->equals($chosen->itemId)) {
+                $bag->returnItem($item);
+            }
+        }
+        $this->pendingFateweaver = null;
     }
 
     /**

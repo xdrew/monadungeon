@@ -166,6 +166,7 @@ final readonly class Response
                 'lastBattleInfo' => $field?->getLastBattleInfo(),
                 'deck' => $deckInfo, // Add deck information to state
                 'unplacedTile' => $unplacedTile, // Add unplaced tile info
+                'fateweaverChoice' => $field?->getPendingFateweaver(), // Oracle "Fateweaver": two drawn tokens awaiting a choice
             ],
             players: self::formatGameLifecyclePlayers($game->getPlayers(), $playerData, $messageBus),
             settings: [], // Add any settings if available in GameLifecycleGame

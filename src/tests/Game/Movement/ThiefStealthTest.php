@@ -121,6 +121,16 @@ final class ThiefStealthTest extends TestCase
         self::assertArrayNotHasKey('sneakedPastMonster', $action->additionalData ?? []);
     }
 
+    #[Test]
+    public function movementWaitsForTheFateweaverChoice(): void
+    {
+        $tester = $this->createTester(HeroType::ORACLE, monsterAtDestination: false, fateweaverPending: true);
+
+        $this->expectException(InvalidMovementException::class);
+        $this->expectExceptionMessage('Fateweaver');
+        $tester->handle($this->movement->movePlayer(...), $this->move(ignoreMonster: false));
+    }
+
     private function move(bool $ignoreMonster): MovePlayer
     {
         return new MovePlayer(
@@ -133,13 +143,13 @@ final class ThiefStealthTest extends TestCase
         );
     }
 
-    private function createTester(?HeroType $hero, bool $monsterAtDestination = true): MessageBusTester
+    private function createTester(?HeroType $hero, bool $monsterAtDestination = true, bool $fateweaverPending = false): MessageBusTester
     {
-        $field = new class($monsterAtDestination) {
+        $field = new class($monsterAtDestination, $fateweaverPending) {
             /** @var array<string, Item> */
             private array $items = [];
 
-            public function __construct(bool $monsterAtDestination)
+            public function __construct(bool $monsterAtDestination, private readonly bool $fateweaverPending)
             {
                 if ($monsterAtDestination) {
                     $this->items['1,0'] = Item::createGiantRat();
@@ -167,6 +177,11 @@ final class ThiefStealthTest extends TestCase
             public function getTeleportationConnections(): array
             {
                 return [];
+            }
+
+            public function getPendingFateweaver(): ?array
+            {
+                return $this->fateweaverPending ? ['fieldPlace' => '1,0', 'items' => []] : null;
             }
         };
 

@@ -194,6 +194,11 @@ final class AstralWalkingTest extends TestCase
             {
                 return [];
             }
+
+            public function getPendingFateweaver(): ?array
+            {
+                return null;
+            }
         };
 
         $player = new class ($hero) {

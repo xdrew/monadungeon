@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Api\Game\PlaceTile;
 
 use App\Api\Error;
+use App\Game\Field\GetField;
 use App\Game\Field\GetTile;
 use App\Game\Field\PlaceTile;
 use App\Infrastructure\Uuid\Uuid;
@@ -26,10 +27,12 @@ final readonly class Action
                 $request->turnId,
             ));
             $tile = $messageBus->dispatch(new GetTile($request->tileId));
+            // Oracle "Fateweaver": the client must settle the token before moving onto the new room
+            $fateweaverChoice = $messageBus->dispatch(new GetField($request->gameId))->getPendingFateweaver();
         } catch (\Throwable $e) {
             return new Error(Uuid::v7(), 'Tile placement failed: ' . $e->getMessage());
         }
 
-        return new Response($tile);
+        return new Response($tile, $fateweaverChoice);
     }
 }
