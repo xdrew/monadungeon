@@ -548,14 +548,15 @@ export const gameApi = {
    * @param {Object|null} targetPosition - The target position for teleport spell (e.g., {x: 0, y: 0})
    * @returns {Promise<Object>} Promise with spell use result
    */
-  useSpell: async (gameId, playerId, turnId, spellId, targetPosition = null) => {
+  useSpell: async (gameId, playerId, turnId, spellId, targetPosition = null, targetPlayerId = null) => {
     try {
       const response = await apiClient.post('/game/use-spell', {
         gameId,
         playerId,
         turnId,
         spellId,
-        targetPosition
+        targetPosition,
+        targetPlayerId // Portal of Healing: who is carried to the fountain (the caster when null)
       });
       console.log('Spell used:', response.data);
       return response.data;
@@ -617,6 +618,26 @@ export const gameApi = {
   /**
    * Warlock "Magic Swap": trade places with another hero (costs all 4 moves, first action of the turn only)
    */
+  /**
+   * Curse of Karak: the mummy slayer places the curse token on another player (null target keeps it where it is)
+   * @param {Object} params
+   * @param {string} params.gameId
+   * @param {string} params.playerId
+   * @param {string} params.turnId
+   * @param {string|null} params.targetPlayerId
+   * @returns {Promise<Object>} { gameId, cursedPlayerId, kept, success }
+   */
+  curse: async ({ gameId, playerId, turnId, targetPlayerId = null }) => {
+    try {
+      const response = await apiClient.post('/game/curse', { gameId, playerId, turnId, targetPlayerId });
+      console.log('Curse placed:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error placing the curse:', error);
+      throw error;
+    }
+  },
+
   /**
    * Oracle "Fateweaver": choose which of the two drawn tokens is placed on the new room
    * @param {Object} params

@@ -218,6 +218,8 @@ const getActionIcon = (actionType) => {
     'use_hero_ability': '💀',
     'magic_swap': '🔮',
     'fateweaver': '🔮',
+    'curse': '☠️',
+    'use_spell': '🌀',
     'pick_item': '',
     'drop_item': '',
     'end_turn': '✅',
@@ -295,6 +297,23 @@ const formatActionText = (action) => {
     case 'magic_swap':
       // Warlock "Magic Swap": traded places with another hero (costs the whole turn)
       return `🔮 Magic Swap — traded places with another hero (${details?.from || '?'} → ${details?.to || '?'})`;
+
+    case 'curse': {
+      // Curse of Karak: the mummy slayer placed (or kept) the curse token
+      const shortId = (playerId) => (playerId ? `player ${String(playerId).slice(-4)}` : 'nobody');
+      return details?.kept
+        ? `☠️ Curse of Karak stays on ${shortId(details?.target)}`
+        : `☠️ Curse of Karak — cursed ${shortId(details?.target)}`;
+    }
+
+    case 'use_spell': {
+      if (details?.spell === 'teleport') {
+        // Portal of Healing: the caster or another player is carried to a fountain and healed
+        const target = details?.self ? 'teleported' : `sent player ${String(details?.target || '').slice(-4)}`;
+        return `🌀 Portal of Healing — ${target} to the fountain at ${details?.position || '?'}`;
+      }
+      return `✨ Used a spell`;
+    }
 
     case 'fateweaver': {
       // Oracle "Fateweaver": two tokens were drawn, one placed, the other returned to the bag

@@ -80,8 +80,7 @@ When entering an undiscovered zone:
 
 2. **Spells** (Consumable):
    - Fireball: +1 damage to next attack ✅
-   - Portal of Healing: Restore all HP ✅
-   - Teleport: Move to any healing fountain tile and end turn ✅
+   - Portal of Healing (teleport scroll): carry yourself or any other player to a revealed healing fountain, heal them fully and lift their curse; costs no move and does not end the turn ✅
 
 3. **Keys**: Required to unlock treasure chests ✅
 
@@ -96,6 +95,15 @@ When entering an undiscovered zone:
 
 ## Special Mechanics
 
+### The Curse of Karak ✅
+- Whoever defeats a mummy chooses another player to curse; a virtual player curses the first human ✅
+- There is a single curse token: cursing a new player lifts it from the previous holder ✅
+- When the token is already in play the slayer may leave it where it is ✅
+- A cursed hero has no skills: the Warrior cannot reroll or reincarnate, the Thief loses ties and cannot sneak, the Swordsman keeps his 1s and his turn ends after any fight, the Warlock cannot sacrifice HP or swap places, the Wizard's fireballs are consumed and he cannot walk through walls, the Oracle gets no +1 and draws a single token ✅
+- The curse is lifted by ending the turn on a healing fountain (together with the healing) or by a Portal of Healing ✅
+- The choice is made in the battle report before picking up the reward; a choice left unmade is settled when the turn ends ✅
+- Single-player games have no curse ✅
+
 ### Stunning/Defeat ✅
 When a player's HP reaches 0:
 1. Player is stunned/defeated ✅
@@ -105,6 +113,7 @@ When a player's HP reaches 0:
 5. Exception: a hero with Reincarnation (see Heroes) is not stunned ✅
 
 ### Heroes ✅
+All hero skills below are switched off while the hero carries the Curse of Karak (see above).
 Each player may pick a hero before the game starts (lobby); a player without a hero has no special skills. AI players have no hero. ✅
 
 #### Horan, the Warrior ✅

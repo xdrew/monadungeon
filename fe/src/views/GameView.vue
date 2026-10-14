@@ -401,10 +401,10 @@
                   <span
                     v-if="player.hero"
                     class="hero-badge"
-                    :class="{ 'awaiting-reincarnation': player.awaitingReincarnation }"
+                    :class="{ 'awaiting-reincarnation': player.awaitingReincarnation, cursed: player.cursed }"
                     :title="heroTooltip(player)"
                     data-testid="hero-badge"
-                  >{{ player.awaitingReincarnation ? '💀' : '⚔️' }} {{ heroShortName(player) }}</span>
+                  >{{ player.awaitingReincarnation ? '💀' : player.cursed ? '☠️' : '⚔️' }} {{ heroShortName(player) }}</span>
                   <span class="hp-indicator">
                     ❤️ {{ player.hp !== undefined ? player.hp : 5 }}/{{ player.maxHp ?? 5 }}
                   </span>
@@ -519,8 +519,21 @@
               v-if="isTeleportMode"
               class="sidebar-section teleport-controls"
             >
-              <h3>Teleport Mode</h3>
-              <p>Click a healing fountain (🌿) to teleport there</p>
+              <h3>🌀 Portal of Healing</h3>
+              <p>Pick who is carried to the fountain, then click a healing fountain (🌿). The portal costs no move and the turn goes on.</p>
+              <div class="portal-targets">
+                <button
+                  v-for="player in gameData?.players || []"
+                  :key="`portal-target-${player.id}`"
+                  type="button"
+                  class="portal-target"
+                  :class="{ selected: teleportTargetPlayerId === player.id }"
+                  :data-testid="`portal-target-${player.id}`"
+                  @click="teleportTargetPlayerId = player.id"
+                >
+                  {{ playerLabel(player) }}
+                </button>
+              </div>
               <button
                 class="cancel-teleport-btn btn--block"
                 @click="cancelTeleportMode"
@@ -537,6 +550,20 @@
             >
               <h3>💀 Reincarnation</h3>
               <p>The Warrior lost his last HP. Click a healing fountain (🌿) to return there with full HP. The turn ends afterwards.</p>
+            </div>
+
+            <!-- Curse of Karak: the choice is still open (for example after a page reload) -->
+            <div
+              v-if="curseChoicePendingForMe && !showBattleReportModal"
+              class="sidebar-section teleport-controls curse-controls"
+              data-testid="curse-banner"
+            >
+              <CurseChoicePanel
+                :players="curseChoice.players"
+                :cursed-player-id="curseChoice.cursedPlayerId"
+                :cursed-label="curseChoice.cursedLabel"
+                @choose="handleCurseChoice"
+              />
             </div>
 
             <!-- Warlock "Magic Swap" Controls -->
@@ -665,6 +692,8 @@
       :battle-info="battleInfo"
       :has-inventory-space="hasInventorySpaceForReward"
       :player-hp="getCurrentPlayerData?.hp ?? 5"
+      :curse-choice="curseChoice"
+      @curse="handleCurseChoice"
       @end-turn="closeBattleReportAndEndTurn"
       @pick-item-and-end-turn="handlePickItemAndEndTurn"
       @pick-item-with-replacement="handlePickItemWithReplacement"
@@ -800,6 +829,7 @@ import GameTile from '@/components/game/GameTile.vue';
 import AvailableMoveMarker from '@/components/game/AvailableMoveMarker.vue';
 import ItemPickupDialog from '@/components/game/ItemPickupDialog.vue';
 import FateweaverChoiceDialog from '@/components/game/FateweaverChoiceDialog.vue';
+import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import ActionLog from '@/components/ActionLog.vue';
 import MusicToggle from '@/components/game/MusicToggle.vue';
@@ -991,6 +1021,8 @@ const itemPickupTurnId = ref(null); // Store the turn ID when the dialog is show
 
 // Teleport spell state
 const isTeleportMode = ref(false);
+// Portal of Healing: who is carried to the fountain (defaults to the caster)
+const teleportTargetPlayerId = ref(null);
 const selectedTeleportSpell = ref(null);
 
 // Thief "Stealth": pending "fight or sneak past" prompt ({ position, monster, resolve })
@@ -1051,7 +1083,63 @@ const heroTooltip = (player) => {
   if (player.awaitingReincarnation) {
     lines.push('Fallen — choose a healing fountain to reincarnate');
   }
+  if (player.cursed) {
+    lines.push('Cursed — hero skills are disabled until healed at a fountain');
+  }
   return lines.join('\n');
+};
+
+// Who a player is, the way the player panel names them
+const playerLabel = (player) => {
+  if (!player) return 'Player';
+  if (isVirtualPlayer(player.id)) return 'AI';
+  if (isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })) return 'You';
+  return player.username || heroShortName(player) || 'Player';
+};
+
+// Curse of Karak: the other players (candidates) and the current holder of the token
+const curseChoice = computed(() => {
+  const all = gameData.value?.players || [];
+  const cursedPlayerId = gameData.value?.state?.curse?.cursedPlayerId ?? battleInfo.value?.cursedPlayerId ?? null;
+  const holder = all.find(p => p.id === cursedPlayerId);
+  return {
+    players: all.filter(p => p.id !== currentPlayerId.value).map(p => ({
+      id: p.id,
+      label: p.hero ? `${playerLabel(p)} (${heroShortName(p)})` : playerLabel(p)
+    })),
+    cursedPlayerId,
+    cursedLabel: holder ? playerLabel(holder) : ''
+  };
+});
+const curseChoicePendingForMe = computed(() => !!currentPlayerId.value && gameData.value?.state?.curse?.pendingBy === currentPlayerId.value);
+const handleCurseChoice = async (targetPlayerId) => {
+  try {
+    const result = await gameApi.curse({
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: gameData.value?.state?.currentTurnId,
+      targetPlayerId
+    });
+    const holder = (gameData.value?.players || []).find(p => p.id === result?.cursedPlayerId);
+    const label = holder ? playerLabel(holder) : 'nobody';
+    if (battleInfo.value) {
+      battleInfo.value = {
+        ...battleInfo.value,
+        curseChoiceRequired: false,
+        curseResolvedLabel: result?.kept ? `The curse stays on ${label}` : `${label} is cursed`
+      };
+    }
+    if (gameData.value?.state?.curse) {
+      gameData.value.state.curse.pendingBy = null;
+      gameData.value.state.curse.cursedPlayerId = result?.cursedPlayerId ?? null;
+    }
+    if (!showBattleReportModal.value) {
+      await loadGameData(false);
+    }
+  } catch (e) {
+    console.error('Failed to place the curse:', e);
+    error.value = `Failed to place the curse: ${e.message}`;
+  }
 };
 
 // Game turns for action log
@@ -4499,6 +4587,7 @@ const handleTeleportSpellSelection = async (spell) => {
     // Enter teleport mode
     isTeleportMode.value = true;
     selectedTeleportSpell.value = spell;
+    teleportTargetPlayerId.value = currentPlayerId.value;
   } else {
     error.value = 'No other healing fountain tiles available for teleportation';
   }
@@ -4527,7 +4616,8 @@ const handleTeleportClick = async (position) => {
       currentPlayerId.value,
       gameData.value.state.currentTurnId,
       selectedTeleportSpell.value.itemId,
-      targetPosition
+      targetPosition,
+      teleportTargetPlayerId.value || currentPlayerId.value
     );
     
     // Exit teleport mode
@@ -4553,6 +4643,7 @@ const handleTeleportClick = async (position) => {
 const cancelTeleportMode = () => {
   isTeleportMode.value = false;
   selectedTeleportSpell.value = null;
+  teleportTargetPlayerId.value = null;
 
 };
 
@@ -6108,5 +6199,33 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 @media (hover: none) {
   .kbd-hint { display: none; }
+}
+/* Curse of Karak */
+.hero-badge.cursed {
+  color: #a5e8a5;
+  border-color: rgba(120, 220, 120, 0.6);
+}
+
+/* Portal of Healing target */
+.portal-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.portal-target {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.portal-target.selected {
+  border-color: #66bb6a;
+  background: rgba(102, 187, 106, 0.25);
 }
 </style>

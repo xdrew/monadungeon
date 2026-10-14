@@ -208,6 +208,14 @@
           >
             👁️ Farseeing! +1 — fought on the first move of the turn
           </div>
+          <!-- Curse of Karak: the victim was chosen -->
+          <div
+            v-if="!isRolling && battleInfo.curseResolvedLabel"
+            class="first-roll-note"
+            data-testid="curse-note"
+          >
+            ☠️ {{ battleInfo.curseResolvedLabel }}
+          </div>
           <!-- Swordsman "Unstoppable": a 6 keeps the turn going -->
           <div
             v-if="!isRolling && turnContinues"
@@ -438,8 +446,18 @@
         </div>
       </div>
 
+      <!-- Curse of Karak: choose the victim before picking up the reward or ending the turn -->
+      <CurseChoicePanel
+        v-if="curseChoicePending"
+        :players="curseChoice?.players || []"
+        :cursed-player-id="curseChoice?.cursedPlayerId || null"
+        :cursed-label="curseChoice?.cursedLabel || ''"
+        :disabled="isProcessing"
+        @choose="(target) => emit('curse', target)"
+      />
+
       <!-- Footer -->
-      <div v-show="!isRolling" class="battle-footer" :class="{ 'footer-reveal': showResults }">
+      <div v-show="!isRolling" class="battle-footer" :class="{ 'footer-reveal': showResults, 'footer-locked': curseChoicePending }">
         <!-- Keys: player already has one -->
         <div v-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection && !battleFinalized">
           <button
@@ -576,11 +594,17 @@
 <script setup>
 import { defineProps, defineEmits, computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { getMonsterImage, getMonsterDisplayName } from '@/utils/monsterUtils';
+import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
 
 const props = defineProps({
   battleInfo: {
     type: Object,
     required: true
+  },
+  /** Curse of Karak: { players: [{ id, label }], cursedPlayerId, cursedLabel } for the choice after beating a mummy */
+  curseChoice: {
+    type: Object,
+    default: null
   },
   hasInventorySpace: {
     type: Boolean,
@@ -592,7 +616,10 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up', 'reroll-battle']);
+const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up', 'reroll-battle', 'curse']);
+
+// Curse of Karak: the slayer of a mummy picks the victim before any other button works
+const curseChoicePending = computed(() => !isRolling.value && props.battleInfo?.curseChoiceRequired === true);
 
 // Animation state
 const isRolling = ref(true);
@@ -1217,7 +1244,7 @@ const showFinalizeBattleInventoryFullSelection = (inventory) => {
 
 // Keyboard handler
 const onKeyDown = (e) => {
-  if (isRolling.value || isProcessing.value) return;
+  if (isRolling.value || isProcessing.value || curseChoicePending.value) return;
 
   if (e.key === 'Enter') {
     const bi = props.battleInfo;
@@ -2784,5 +2811,9 @@ const potentialRewardTip = computed(() => {
   .battle-footer {
     padding: 10px 12px;
   }
+}
+.battle-footer.footer-locked {
+  pointer-events: none;
+  opacity: 0.45;
 }
 </style>
