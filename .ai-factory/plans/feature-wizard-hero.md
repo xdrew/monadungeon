@@ -67,13 +67,13 @@ Authority: rulebook text (above) > existing implementation (`Battle.php`, `Field
   - Run `--filter 'AstralWalking|FieldTest'`; keep `ThiefStealthTest`, `MovementUnstoppableTest`, `MagicSwapTest`, `MovementAfterBattleTest` green.
 
 ### Phase 3: Frontend + docs
-- [ ] Task 6: Lobby, battle modal, inventory flow, action log (depends on 2, 4)
+- [x] Task 6: Lobby, battle modal, inventory flow, action log (depends on 2, 4)
   - `fe/src/views/HomeView.vue`: Wizard hero card after the Warlock (🪄, `data-testid="hero-wizard"`, "Argentus, the Wizard", two skill lines: Magical Affinity — fireballs are not consumed in combat; Astral Walking — may step onto any adjacent discovered tile, even through a wall); `readStoredHero` whitelist adds `'wizard'`.
   - `fe/src/views/GameView.vue`: `HERO_SHORT_NAMES.wizard = 'Wizard'`. In `handleFinalizeBattle` (around the `willHaveSpace` block, ~line 4037) and the replacement-candidate filter (~line 4088): when `getCurrentPlayerData.value?.heroFlags?.keepsSpellsInCombat` is true, treat the selected fireballs as still occupying their slots (skip the "consumed spells free a slot" shortcut and do not filter them out of the replacement list). No change for Astral Walking: markers come from `availablePlaces.moveTo` and clicks go through the existing `handlePlaceClick` → `movePlayer`.
   - `fe/src/components/game/BattleReportModal.vue`: in the "Used consumables" block the title becomes "Spells kept (Magical Affinity):" and the chips get class `consumable-kept` when `battleInfo.spellsKept`; add a note `data-testid="affinity-note"` "✨ Magical Affinity! The fireball stays in your inventory" shown when `!isRolling && battleInfo.spellsKept`, next to the sacrifice note.
   - `fe/src/components/ActionLog.vue`: fight entry prefix "✨ Magical Affinity (spells kept)" when `details.spellsKept` (same place as the Sacrifice prefix); move entry: when `details.throughWall` render "🌀 Astral Walking — walked through a wall to {to}" (find the `move` case near the `magic_swap` case).
   - Files: HomeView.vue, GameView.vue, BattleReportModal.vue, ActionLog.vue.
-- [ ] Task 7: Docs + quality (depends on 6)
+- [x] Task 7: Docs + quality (depends on 6)
   - `rules.md`: "#### Argentus, the Wizard ✅" under Heroes after the Warlock (Magical Affinity: fireballs used in a fight stay in the inventory and still give +1 each; the teleport scroll is consumed as usual; Astral Walking: as a normal move the Wizard may step onto any orthogonally adjacent discovered tile even without a door, 1 move each, a monster there is fought normally; new tiles are still placed only through a door). README "Hero Skills" bullet mentions the Wizard.
   - Quality: php-cs-fixer on `src` only, rector dry-run in the container, full PHPUnit (`docker exec php_monadungeon php vendor/bin/phpunit`), ESLint on the changed FE files (no new errors). Psalm and e2e are run by the user.
 

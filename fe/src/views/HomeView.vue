@@ -112,6 +112,20 @@
                 <strong>Magic Swap</strong> — trade places with any hero as the first action of the turn, for all 4 moves
               </span>
             </button>
+            <button
+              type="button"
+              class="hero-card"
+              :class="{ selected: selectedHero === 'wizard' }"
+              data-testid="hero-wizard"
+              @click="selectHero('wizard')"
+            >
+              <span class="hero-icon">🪄</span>
+              <span class="hero-name">Argentus, the Wizard</span>
+              <span class="hero-skills">
+                <strong>Magical Affinity</strong> — fireballs are not consumed in combat<br>
+                <strong>Astral Walking</strong> — may step onto any adjacent discovered tile, even through a wall
+              </span>
+            </button>
           </div>
         </div>
 
@@ -197,7 +211,7 @@ const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
 const readStoredHero = () => {
   try {
     const stored = localStorage.getItem('selectedHero');
-    return ['warrior', 'thief', 'swordsman', 'warlock'].includes(stored) ? stored : null;
+    return ['warrior', 'thief', 'swordsman', 'warlock', 'wizard'].includes(stored) ? stored : null;
   } catch (e) {
     return null;
   }

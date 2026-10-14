@@ -278,6 +278,10 @@ const formatActionText = (action) => {
       if (details?.sneakedPastMonster) {
         return `🥷 Sneaked past ${details?.monster?.name ? details.monster.name.replace(/_/g, ' ') : 'a monster'} (Stealth)`;
       }
+      // Wizard "Astral Walking": stepped onto a discovered tile through a wall
+      if (details?.throughWall) {
+        return `🌀 Astral Walking — walked through a wall to ${details?.to || '?'}`;
+      }
       const moveDirection = details?.direction || '';
       const moveStrategy = details?.strategy;
       if (moveStrategy === 'moving toward item') {
@@ -411,6 +415,11 @@ const formatActionText = (action) => {
       // Warlock "Sacrifice": 1 HP paid for +1 strength
       if (details?.hpSacrificed) {
         damageBreakdown = `🩸 Sacrifice! (−1 HP, +1) ${damageBreakdown}`;
+      }
+
+      // Wizard "Magical Affinity": the used fireballs stay in the inventory
+      if (details?.spellsKept) {
+        damageBreakdown = `✨ Magical Affinity (spells kept) ${damageBreakdown}`;
       }
 
       if (result === 'WIN') {

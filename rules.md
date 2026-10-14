@@ -149,6 +149,16 @@ Each player may pick a hero before the game starts (lobby); a player without a h
   - The ability of the new tile still applies: a reward lying there may be picked up (a chest still needs a key) and a healing fountain heals when the turn ends there ✅
   - Arriving by swap never starts a battle and nothing else about the swapped hero changes ✅
 
+#### Argentus, the Wizard ✅
+- **Magical Affinity** ✅
+  - Fireballs ("magic bolts") used in a fight stay in the inventory and still give +1 each ✅
+  - The teleport scroll ("portal of healing") is consumed as usual ✅
+  - A kept fireball does not free a spell slot: with full spell slots a spell reward still has to replace an item ✅
+- **Astral Walking** ✅
+  - As a normal move (1 of the 4 moves) the Wizard may step onto any orthogonally adjacent discovered tile, even when no door connects them ✅
+  - Only discovered tiles: new tiles are still placed only through a door, and nothing changes for diagonal or empty places ✅
+  - A monster on the tile behind the wall is fought normally; a reward lying there may be picked up ✅
+
 
 ### Healing Fountains ✅
 - Special tiles that restore all HP ✅

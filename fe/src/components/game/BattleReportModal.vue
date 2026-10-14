@@ -192,6 +192,14 @@
           >
             🩸 Sacrifice! 1 HP paid for +1 strength
           </div>
+          <!-- Wizard "Magical Affinity": the used fireballs stay in the inventory -->
+          <div
+            v-if="!isRolling && battleInfo.spellsKept"
+            class="first-roll-note"
+            data-testid="affinity-note"
+          >
+            ✨ Magical Affinity! The fireball stays in your inventory
+          </div>
           <!-- Swordsman "Unstoppable": a 6 keeps the turn going -->
           <div
             v-if="!isRolling && turnContinues"
@@ -371,12 +379,13 @@
           class="items-section"
           :class="{ 'section-reveal': showResults }"
         >
-          <div class="items-section-title">Used consumables:</div>
+          <div class="items-section-title">{{ battleInfo.spellsKept ? 'Spells kept (Magical Affinity):' : 'Used consumables:' }}</div>
           <div class="items-list">
             <div
               v-for="(item, index) in usedDamageConsumables"
               :key="`used-${index}`"
               class="item-chip consumable-used"
+              :class="{ 'consumable-kept': battleInfo.spellsKept }"
             >
               <span class="chip-emoji">{{ getUsedItemEmoji(item) }}</span>
               <span class="chip-name">{{ getCorrectItemName(item) }}</span>
@@ -2403,6 +2412,12 @@ const potentialRewardTip = computed(() => {
 .item-chip.consumable-used {
   background: linear-gradient(135deg, rgba(123, 63, 242, 0.2) 0%, rgba(99, 102, 241, 0.15) 100%);
   border-color: rgba(123, 63, 242, 0.4);
+}
+
+/* Wizard "Magical Affinity": the spell was used but not consumed */
+.item-chip.consumable-kept {
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border-color: rgba(250, 204, 21, 0.5);
 }
 
 .chip-emoji {

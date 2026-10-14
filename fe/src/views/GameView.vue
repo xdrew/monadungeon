@@ -1003,7 +1003,7 @@ const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend
 const isMagicSwapMode = ref(false);
 
 // Hero helpers for the player panel
-const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman', warlock: 'Warlock' };
+const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman', warlock: 'Warlock', wizard: 'Wizard' };
 // Swordsman "Unstoppable": the backend keeps the turn open after a battle with a 6, so the client must not end it
 const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
@@ -4033,8 +4033,11 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     // Calculate if inventory will have space after consuming the selected items
     let willHaveSpace = hasInventorySpaceForReward.value;
     
+    // Wizard "Magical Affinity": used fireballs stay in the inventory, so they never free a slot
+    const keepsSpellsInCombat = getCurrentPlayerData.value?.heroFlags?.keepsSpellsInCombat === true;
+
     // If consumables were used, check if removing them creates space
-    if (!hasInventorySpaceForReward.value && finalizeBattleData.selectedConsumableIds && finalizeBattleData.selectedConsumableIds.length > 0) {
+    if (!hasInventorySpaceForReward.value && !keepsSpellsInCombat && finalizeBattleData.selectedConsumableIds && finalizeBattleData.selectedConsumableIds.length > 0) {
       const rewardType = battleInfo.value?.reward?.type;
       
       // If the reward is a spell (fireball/teleport), check if we're freeing up spell slots
@@ -4085,7 +4088,8 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
         
         // Filter out consumables that were just used in the battle
         // They haven't been removed from inventory yet but shouldn't be shown as replacement options
-        if (finalizeBattleData.selectedConsumableIds && finalizeBattleData.selectedConsumableIds.length > 0) {
+        // (the Wizard keeps his fireballs, so for him they remain valid replacement candidates)
+        if (!keepsSpellsInCombat && finalizeBattleData.selectedConsumableIds && finalizeBattleData.selectedConsumableIds.length > 0) {
           inventoryForCategory = inventoryForCategory.filter(item => 
             !finalizeBattleData.selectedConsumableIds.includes(item.itemId)
           );
