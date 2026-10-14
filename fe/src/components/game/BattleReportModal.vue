@@ -1670,7 +1670,7 @@ const potentialRewardTip = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
+  padding: 10px 12px;
   margin-bottom: 4px;
   background: rgba(0, 0, 0, 0.25);
   border-radius: 10px;
@@ -1689,8 +1689,8 @@ const potentialRewardTip = computed(() => {
 
 .combatant-sprite-wrap {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 132px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1719,20 +1719,27 @@ const potentialRewardTip = computed(() => {
 }
 
 .combatant-sprite {
-  width: 52px;
-  height: 52px;
+  width: auto;
+  height: 128px;
+  max-width: 128px;
   object-fit: contain;
   position: relative;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
 }
 
 .monster-side .combatant-sprite {
-  filter: brightness(1.3) drop-shadow(0 2px 8px rgba(200, 180, 160, 0.4));
+  filter: brightness(1.15) drop-shadow(0 2px 8px rgba(200, 180, 160, 0.4));
+}
+
+/* the monster faces the hero: mirror the whole wrap so the sprite animations keep their own transforms */
+.monster-side .combatant-sprite-wrap {
+  transform: scaleX(-1);
 }
 
 .monster-emoji-large {
-  font-size: 3rem;
+  font-size: 5rem;
   position: relative;
+  transform: scaleX(-1); /* undo the wrap mirror for text */
 }
 
 /* Character entrance animations */
@@ -1937,7 +1944,7 @@ const potentialRewardTip = computed(() => {
 }
 
 .monster-name-label {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
