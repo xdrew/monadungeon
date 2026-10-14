@@ -23,6 +23,8 @@ final readonly class BattleCompleted implements Event
      * @param array<int>|null $firstDiceResults The discarded first roll when rerolled
      * @param int $onesRerolled Swordsman "Combat Training": how many dice showing 1 were rerolled
      * @param bool $unstoppable Swordsman "Unstoppable": the turn continues after this battle
+     * @param bool $canSacrificeHp Warlock "Sacrifice": the hero may still pay 1 HP for +1 strength
+     * @param bool $hpSacrificed Warlock "Sacrifice": 1 HP was paid for +1 strength in this battle
      */
     public function __construct(
         public Uuid $battleId,
@@ -44,6 +46,8 @@ final readonly class BattleCompleted implements Event
         public int $onesRerolled = 0,
         public bool $tieIsWin = false,
         public bool $unstoppable = false,
+        public bool $canSacrificeHp = false,
+        public bool $hpSacrificed = false,
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}
 }

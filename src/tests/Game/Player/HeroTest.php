@@ -175,7 +175,7 @@ final class HeroTest extends TestCase
     #[Test]
     public function warriorSkillsAreDescribed(): void
     {
-        self::assertSame(['warrior', 'thief', 'swordsman'], HeroType::values());
+        self::assertSame(['warrior', 'thief', 'swordsman', 'warlock'], HeroType::values());
         self::assertTrue(HeroType::WARRIOR->canRerollBattle());
         self::assertTrue(HeroType::WARRIOR->reincarnates());
         self::assertSame(['Double Attack', 'Reincarnation'], array_column(HeroType::WARRIOR->skills(), 'name'));
@@ -198,9 +198,31 @@ final class HeroTest extends TestCase
             self::assertFalse($other->continuesTurnOnSix(), $other->value);
         }
         self::assertSame(
-            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix'],
+            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix', 'sacrificesHp', 'canMagicSwap'],
             array_keys(HeroType::SWORDSMAN->flags()),
         );
+    }
+
+    #[Test]
+    public function warlockSkillsAreDescribed(): void
+    {
+        self::assertSame('Lord Xanros, the Warlock', HeroType::WARLOCK->label());
+        self::assertTrue(HeroType::WARLOCK->sacrificesHp());
+        self::assertTrue(HeroType::WARLOCK->canMagicSwap());
+        self::assertFalse(HeroType::WARLOCK->canRerollBattle());
+        self::assertFalse(HeroType::WARLOCK->reincarnates());
+        self::assertFalse(HeroType::WARLOCK->winsTies());
+        self::assertFalse(HeroType::WARLOCK->canSneakPastMonsters());
+        self::assertFalse(HeroType::WARLOCK->rerollsOnes());
+        self::assertFalse(HeroType::WARLOCK->continuesTurnOnSix());
+        self::assertSame(['Sacrifice', 'Magic Swap'], array_column(HeroType::WARLOCK->skills(), 'name'));
+
+        foreach ([HeroType::WARRIOR, HeroType::THIEF, HeroType::SWORDSMAN] as $other) {
+            self::assertFalse($other->sacrificesHp(), $other->value);
+            self::assertFalse($other->canMagicSwap(), $other->value);
+        }
+        self::assertTrue(HeroType::WARLOCK->flags()['sacrificesHp']);
+        self::assertTrue(HeroType::WARLOCK->flags()['canMagicSwap']);
     }
 
     private function createPlayer(?HeroType $hero, int $hp): Player

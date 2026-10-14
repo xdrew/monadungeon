@@ -12,6 +12,7 @@ enum HeroType: string
     case WARRIOR = 'warrior';
     case THIEF = 'thief';
     case SWORDSMAN = 'swordsman';
+    case WARLOCK = 'warlock';
 
     /**
      * @return list<string>
@@ -27,6 +28,7 @@ enum HeroType: string
             self::WARRIOR => 'Horan, the Warrior',
             self::THIEF => 'Aderyn, the Thief',
             self::SWORDSMAN => 'Victorius, the Swordsman',
+            self::WARLOCK => 'Lord Xanros, the Warlock',
         };
     }
 
@@ -79,9 +81,25 @@ enum HeroType: string
     }
 
     /**
+     * Sacrifice: after the dice are rolled the hero may pay 1 HP for +1 strength, once per combat.
+     */
+    public function sacrificesHp(): bool
+    {
+        return $this === self::WARLOCK;
+    }
+
+    /**
+     * Magic Swap: may trade places with any other hero at the beginning of the turn, for the cost of all 4 moves.
+     */
+    public function canMagicSwap(): bool
+    {
+        return $this === self::WARLOCK;
+    }
+
+    /**
      * Skill flags for API consumers (frontend decides which prompts/buttons to show).
      *
-     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool, rerollsOnes: bool, continuesTurnOnSix: bool}
+     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool, rerollsOnes: bool, continuesTurnOnSix: bool, sacrificesHp: bool, canMagicSwap: bool}
      */
     public function flags(): array
     {
@@ -92,6 +110,8 @@ enum HeroType: string
             'canSneakPastMonsters' => $this->canSneakPastMonsters(),
             'rerollsOnes' => $this->rerollsOnes(),
             'continuesTurnOnSix' => $this->continuesTurnOnSix(),
+            'sacrificesHp' => $this->sacrificesHp(),
+            'canMagicSwap' => $this->canMagicSwap(),
         ];
     }
 
@@ -129,6 +149,16 @@ enum HeroType: string
                 [
                     'name' => 'Unstoppable',
                     'description' => 'If at least one die shows a 6 during combat, the Swordsman continues his turn afterwards. He may even fight the same monster again after a tie or a loss.',
+                ],
+            ],
+            self::WARLOCK => [
+                [
+                    'name' => 'Sacrifice',
+                    'description' => 'The Warlock can sacrifice one HP to gain a bonus of +1 to his strength. He decides after rolling the dice and gains the bonus only once per combat. He can even sacrifice his last HP, but then falls unconscious for his next turn.',
+                ],
+                [
+                    'name' => 'Magic Swap',
+                    'description' => 'The Warlock can swap his position with any other hero. This costs 4 moves, so it is only possible at the beginning of his turn; he can still use the ability of the tile where he ended up (unlocking a chest, healing, etc.).',
                 ],
             ],
         };

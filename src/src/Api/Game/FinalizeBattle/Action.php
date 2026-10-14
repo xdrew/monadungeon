@@ -36,6 +36,7 @@ final readonly class Action
                 selectedConsumableIds: $request->selectedConsumableIds,
                 pickupItem: $pickupItem, // Already converted to boolean
                 replaceItemId: $request->replaceItemId,
+                sacrificeHp: filter_var($request->sacrificeHp, FILTER_VALIDATE_BOOLEAN),
             );
 
             // Dispatch the command

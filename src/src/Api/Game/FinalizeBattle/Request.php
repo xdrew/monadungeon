@@ -19,5 +19,6 @@ final class Request
         public array $selectedConsumableIds,
         public bool $pickupItem = false,
         public ?string $replaceItemId = null,
+        public bool $sacrificeHp = false,
     ) {}
 }

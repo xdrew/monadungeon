@@ -1146,6 +1146,9 @@ class Field extends AggregateRoot
             'tieIsWin' => $event->tieIsWin,
             // Hero skills (Swordsman "Unstoppable": the turn continues after this battle)
             'unstoppable' => $event->unstoppable,
+            // Warlock "Sacrifice"
+            'canSacrificeHp' => $event->canSacrificeHp,
+            'hpSacrificed' => $event->hpSacrificed,
         ];
 
         // Check if there are items at this position

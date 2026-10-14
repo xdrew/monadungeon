@@ -88,6 +88,12 @@ class Battle extends AggregateRoot
     #[Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $onesRerolled = 0;
 
+    /**
+     * Warlock "Sacrifice": 1 HP was paid for +1 strength in this battle (once per combat).
+     */
+    #[Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $hpSacrificed = false;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -258,6 +264,11 @@ class Battle extends AggregateRoot
             playerId: $command->playerId,
         ));
 
+        // Warlock "Sacrifice": the HP is paid before the result is resolved
+        if ($command->sacrificeHp) {
+            $this->sacrificeHp($command->turnId, $messageContext);
+        }
+
         // Get weapon items (always used)
         $weaponItems = $player->getWeaponItems();
 
@@ -274,11 +285,11 @@ class Battle extends AggregateRoot
 
         // Update battle data
         $this->usedItems = $finalUsedItems;
-        $this->totalDamage = array_sum($this->diceResults) + $totalItemDamage;
+        $this->totalDamage = array_sum($this->diceResults) + $totalItemDamage + $this->sacrificeBonus();
 
         // Calculate final damage breakdown for the event
         $diceRollDamage = array_sum($this->diceResults);
-        $itemDamage = $this->totalDamage - $diceRollDamage;
+        $itemDamage = $totalItemDamage;
 
         // Calculate the final result first (before any side effects)
         $monster = $this->getMonster();
@@ -329,6 +340,7 @@ class Battle extends AggregateRoot
                 onesRerolled: $this->onesRerolled,
                 tieIsWin: $this->playerWinsTies($messageContext),
                 unstoppable: $unstoppable,
+                hpSacrificed: $this->hpSacrificed,
             ));
 
             // NOW process the battle result (movement, HP changes, turn ending)
@@ -433,6 +445,42 @@ class Battle extends AggregateRoot
     }
 
     /**
+     * Warlock "Sacrifice": strength bonus bought with HP in this battle.
+     */
+    private function sacrificeBonus(): int
+    {
+        return $this->hpSacrificed ? 1 : 0;
+    }
+
+    /**
+     * Warlock "Sacrifice": pay 1 HP for +1 strength, once per combat. Paying the last HP knocks the hero out
+     * for his next turn (Player::reduceHP dispatches PlayerStunned).
+     *
+     * @throws \DomainException
+     */
+    private function sacrificeHp(Uuid $turnId, MessageContext $messageContext): void
+    {
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
+        if ($player->getHero()?->sacrificesHp() !== true) {
+            throw new \DomainException('Only the Warlock can sacrifice HP (Sacrifice)');
+        }
+        if ($this->hpSacrificed) {
+            throw new \DomainException('HP was already sacrificed in this battle');
+        }
+        if ($player->getHP() <= 0) {
+            throw new \DomainException('No HP left to sacrifice');
+        }
+
+        $messageContext->dispatch(new ReducePlayerHP(
+            playerId: $this->playerId,
+            gameId: $this->gameId,
+            amount: 1,
+            turnId: $turnId,
+        ));
+        $this->hpSacrificed = true;
+    }
+
+    /**
      * Swordsman "Unstoppable": the turn continues after this battle when the hero rolled a 6
      * and is not knocked out by the result.
      *
@@ -479,7 +527,7 @@ class Battle extends AggregateRoot
     ): void {
         // Calculate dice roll and item damage separately
         $diceRollDamage = array_sum($this->diceResults);
-        $itemDamage = $this->totalDamage - $diceRollDamage;
+        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus();
 
         // Check initial battle result (weapons only)
         $initialResult = $this->resolveResult($monster, $messageContext);
@@ -505,6 +553,7 @@ class Battle extends AggregateRoot
                 onesRerolled: $this->onesRerolled,
                 tieIsWin: $tieIsWin,
                 unstoppable: $unstoppable,
+                hpSacrificed: $this->hpSacrificed,
             ));
 
             // Process the battle result after BattleCompleted event
@@ -518,6 +567,8 @@ class Battle extends AggregateRoot
         $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
         $availableConsumables = $player->getConsumableItems();
         $canReroll = !$this->rerollUsed && $player->getHero()?->canRerollBattle() === true;
+        // Warlock "Sacrifice": offered once per combat while the hero still has HP to pay
+        $canSacrificeHp = !$this->hpSacrificed && $player->getHero()?->sacrificesHp() === true && $player->getHP() > 0;
 
         // Dispatch battle completed event with consumable selection data
         // The frontend will show the consumable selection interface
@@ -541,6 +592,8 @@ class Battle extends AggregateRoot
             onesRerolled: $this->onesRerolled,
             tieIsWin: $tieIsWin,
             unstoppable: $unstoppable,
+            canSacrificeHp: $canSacrificeHp,
+            hpSacrificed: $this->hpSacrificed,
         ));
     }
 
@@ -634,7 +687,7 @@ class Battle extends AggregateRoot
 
         // Calculate dice roll and item damage separately
         $diceRollDamage = array_sum($this->diceResults);
-        $itemDamage = $this->totalDamage - $diceRollDamage;
+        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus();
 
         // Record the FIGHT_MONSTER action FIRST (before any HP changes that might trigger stunning)
         // We use a standard format for the monster data to ensure compatibility
@@ -663,11 +716,13 @@ class Battle extends AggregateRoot
                 'onesRerolled' => $this->onesRerolled,
                 'backstab' => $backstab,
                 'unstoppable' => $unstoppable,
+                'hpSacrificed' => $this->hpSacrificed,
                 'heroAbility' => implode('+', array_filter([
                     $this->rerollUsed ? 'double_attack' : null,
                     $this->onesRerolled > 0 ? 'combat_training' : null,
                     $backstab ? 'backstab' : null,
                     $unstoppable ? 'unstoppable' : null,
+                    $this->hpSacrificed ? 'sacrifice' : null,
                 ])) ?: null,
             ],
             at: new \DateTimeImmutable(),

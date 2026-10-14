@@ -18,6 +18,7 @@ final readonly class FinalizeBattle implements Message
      * @param array<string> $selectedConsumableIds Array of item IDs for consumables to use
      * @param bool $pickupItem Whether to pick up the item after winning the battle
      * @param ?string $replaceItemId ID of the item to replace if inventory is full (optional)
+     * @param bool $sacrificeHp Warlock "Sacrifice": pay 1 HP for +1 strength in this battle
      */
     public function __construct(
         public Uuid $battleId,
@@ -27,6 +28,7 @@ final readonly class FinalizeBattle implements Message
         public array $selectedConsumableIds,
         public bool $pickupItem = false,
         public ?string $replaceItemId = null,
+        public bool $sacrificeHp = false,
     ) {
         // We can't modify readonly properties in the constructor
     }

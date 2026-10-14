@@ -1,0 +1,92 @@
+# Implementation Plan: Warlock Hero (Lord Xanros) — Sacrifice & Magic Swap
+
+Branch: feature/warlock-hero (created from feature/swordsman-hero @ b8e578e; heroes are merged to main together)
+Created: 2026-10-14
+
+## Original Request
+Warlock hero (Karak) — skills from a4-karak-rulebook.pdf, same approach as feature-swordsman-hero.md
+
+Follow-up answers: PHPUnit only (showcase untouched); logging standard; docs yes; Magic Swap target is chosen by clicking the other hero's figure on the field.
+
+Rulebook text (a4-karak-rulebook.pdf, "Lord Xanros, the Warlock"):
+> Sacrifice. The Warlock can sacrifice one HP to gain a bonus of +1 to his strength. He can decide to do that after rolling the dice but can gain the bonus only once per combat. He can also sacrifice his last HP but then falls unconscious for his next turn.
+> Magic Swap. The Warlock can swap his position with any other hero, meaning the Warlock moves to a tile occupied by another player and the respective player is moved to the tile where the Warlock stood. This action costs 4 moves so it can be performed only at the beginning of the Warlock's turn; however, the Warlock can use the ability of the tile where he ended his turn (unlocking a chest, healing, etc.).
+
+## Settings
+- Testing: yes (PHPUnit only; `fe/e2e/tests/two-player-game.spec.ts` is NOT changed — Player 1 stays Warrior, Player 2 stays Thief)
+- Logging: standard (message-bus middleware logs the new commands/events; no extra log statements)
+- Docs: yes (rules.md Heroes section, README bullet)
+
+## Requirements Reconciliation
+Authority: rulebook text (above) > existing implementation (`Battle.php`, `Movement.php`, `GameTurn.php`, `TurnAction.php`).
+
+| Decision / supported combination | Source | Verification |
+|---|---|---|
+| Sacrifice is a choice made in the consumable-confirmation phase (after the weapons-only roll was a DRAW/LOSE): `FinalizeBattle::$sacrificeHp`. A weapons-only WIN is final, no sacrifice is offered. | "decide after rolling the dice" + existing flow (`evaluateInitialRoll` auto-finalizes a WIN) | `WarlockSacrificeTest` (a), (f) |
+| The HP is paid **before** the result is resolved (`ReducePlayerHP(1)` first), then `totalDamage = dice + weapons + consumables + 1`. Paying the last HP dispatches `PlayerStunned` via the existing `Player::reduceHP`; the next `TurnStarted` (`Field::turnStarted`) resets HP and skips that turn = "falls unconscious for his next turn". | rulebook; code `Player::reduceHP`, `Field::turnStarted` | (a), (c) |
+| Once per combat: `Battle::$hpSacrificed` guard; offered (`canSacrificeHp`) only when hero `sacrificesHp()` && not yet sacrificed && player HP > 0. Non-Warlock → `DomainException('Only the Warlock can sacrifice HP (Sacrifice)')`. | rulebook | (b), (e) |
+| Sacrificed last HP + lost fight: the second `ReducePlayerHP` keeps HP at 0 (no second stun, `oldHp > 0` guard), the player is moved back, the turn ends. Sacrificed last HP + win: he may still pick up the reward (PICK_ITEM) but cannot move (`MovementValidator`: HP 0 blocks moves) — accepted, he is unconscious. | code | (c), (d) |
+| `itemDamage` in events/turn log stays "weapons + consumables"; the sacrifice bonus is reported separately as `hpSacrificed` (bonus is always 1). | keep FE breakdown meaningful | (a) |
+| Magic Swap is a Movement command: only the Warlock, only his turn, only when the current `GameTurn` has **no actions yet** (`GetTurn(turnId)->getActions() === []`), target is another player with a position. The two positions are swapped without movement validation; no `PlayerMoved` is emitted (so no battle/fountain side effects), a dedicated `PlayersSwapped` event is. | "costs 4 moves … only at the beginning of the turn" | `MagicSwapTest` (a)–(e) |
+| Cost = 4 moves: new `TurnAction::MAGIC_SWAP` with `moveCost() = 4` (`GameTurn::updateActionCounter` adds `moveCost()`), so the existing 4-action auto-end fires right after the swap — unless the destination tile has a pickable item, then `deferTurnEnd = true` → `pendingItemPickup` and only PICK_ITEM / END_TURN follow (same as a 4th MOVE onto an item tile). Healing happens automatically in `Field::onTurnEnded` when the turn ends on a fountain. That is "can use the ability of the tile where he ended his turn". | rulebook; code `GameTurn::performAction`, `Field::onTurnEnded` | `GameTurnTest` new cases, `MagicSwapTest` (b) |
+| `isAllowedAfter`: MAGIC_SWAP only when there is no previous action; after MAGIC_SWAP only PICK_ITEM / END_TURN. | rulebook | `GameTurnTest` |
+| A swapped-away player keeps everything else (HP, stun, inventory); the destination tile having an undefeated monster (only possible after a Thief sneaked past it) does not start a battle. Not covered by rules, documented as-is. | implementation note | — |
+| Backend owns the rules; frontend reads `canSacrificeHp` / `hpSacrificed` from `battleInfo` and `heroFlags.canMagicSwap` + current turn's `actions.length === 0` for the swap button. | keep rules in the domain | modal, GameView |
+
+## Commit Plan
+- **Commit 1** (tasks 1-3): "feat(hero): Warlock Sacrifice — pay 1 HP for +1 strength"
+- **Commit 2** (tasks 4-6): "feat(hero): Warlock Magic Swap — trade places for 4 moves"
+- **Commit 3** (tasks 7-8): "feat(fe): warlock in lobby, battle modal and field; docs"
+
+## Tasks
+
+### Phase 1: Sacrifice (backend)
+- [x] Task 1: Hero catalog
+  - `src/src/Game/Player/HeroType.php`: `case WARLOCK = 'warlock'`; `label()` "Lord Xanros, the Warlock"; new `sacrificesHp(): bool` (WARLOCK) and `canMagicSwap(): bool` (WARLOCK); existing flags stay false for WARLOCK; `flags()` gains `sacrificesHp`, `canMagicSwap` (update the array-shape docblock); `skills()` texts from the rulebook ("Sacrifice", "Magic Swap").
+  - `fe/e2e/utils/test-game-setup.ts`: `HeroType = 'warrior' | 'thief' | 'swordsman' | 'warlock'` (type only).
+  - `src/tests/Game/Player/HeroTest.php`: extend the enum test (values, flags, skill names `['Sacrifice', 'Magic Swap']`).
+  - Files: HeroType.php, test-game-setup.ts, HeroTest.php.
+- [x] Task 2: Sacrifice in the Battle aggregate (depends on 1)
+  - `src/src/Game/Battle/FinalizeBattle.php`: `public bool $sacrificeHp = false` (docblock: Warlock "Sacrifice"). `src/src/Api/Game/FinalizeBattle/Request.php` + `Action.php`: pass `sacrificeHp` (default false).
+  - `src/src/Game/Battle/Battle.php`: column `#[Column(type: Types::BOOLEAN, options: ['default' => false])] private bool $hpSacrificed = false;` + `private function sacrificeBonus(): int` (`$this->hpSacrificed ? 1 : 0`). In `finalizeBattle()` right after loading the player and before any damage math: if `$command->sacrificeHp` → require `$player->getHero()?->sacrificesHp() === true` (else `DomainException('Only the Warlock can sacrifice HP (Sacrifice)')`), `!$this->hpSacrificed` (else `DomainException('HP was already sacrificed in this battle')`), `$player->getHP() > 0` (else `DomainException('No HP left to sacrifice')`); then `ReducePlayerHP(amount: 1, turnId: $command->turnId)`, `$this->hpSacrificed = true`. `totalDamage = dice + totalItemDamage + sacrificeBonus()`; `itemDamage = totalDamage - dice - sacrificeBonus()` in `finalizeBattle`, `evaluateInitialRoll` and `processBattleResult`.
+  - `BattleCompleted`: add `public bool $canSacrificeHp = false` and `public bool $hpSacrificed = false`; `evaluateInitialRoll` non-WIN branch sets `canSacrificeHp = hero sacrificesHp && !hpSacrificed && player HP > 0`; every `BattleCompleted` passes `hpSacrificed: $this->hpSacrificed`. `Field::onBattleCompleted` copies both into `lastBattleInfo`.
+  - `processBattleResult` FIGHT_MONSTER `additionalData`: `'hpSacrificed' => $this->hpSacrificed`; `heroAbility` list gains `'sacrifice'`.
+  - Migration: generate in the php container with `php bin/console doctrine:migrations:diff` (never hand-written; strip the unrelated `unique_player_wallet` drift if it appears again), description "Warlock: battle hp_sacrificed flag"; `doctrine:migrations:migrate`, `task doctrine-validate`.
+  - Files: FinalizeBattle.php, Api/Game/FinalizeBattle/{Request,Action}.php, Battle.php, BattleCompleted.php, Field.php, new migration under `src/migrations/2026/10/`.
+- [x] Task 3: PHPUnit Sacrifice (depends on 2)
+  - `src/tests/Game/Battle/WarlockSacrificeTest.php` (harness copied from `SwordsmanUnstoppableTest`: `Field::create` + `setTestDiceRolls`, `createTester` with the `ReducePlayerHP` stub that calls `$player->loseHP()`, `createPlayer(HeroType, hp)`, `lastBattleCompleted`, `findMessage`, `finalize()` helper extended with `sacrificeHp`): (a) warlock HP 3, dice `[2, 3]` vs giant rat (5) → initial DRAW, `canSacrificeHp = true`, `needsConsumableConfirmation`; `finalize(sacrificeHp: true)` → `hpReductions = 1`, player HP 2, result WIN, `totalDamage = 6`, `itemDamage = 0`, `hpSacrificed = true`, `EndTurn` dispatched (a finalized fight ends the turn, the reward is picked up by the same command), FIGHT_MONSTER `hpSacrificed = true`, `heroAbility = 'sacrifice'`; (b) non-hero, same dice, `finalize(sacrificeHp: true)` → `DomainException` "Only the Warlock"; (c) warlock HP 1, `[2, 3]` vs rat, sacrifice → WIN with player HP 0 (unconscious next turn is `Player::reduceHP` + `Field::turnStarted` behaviour, already covered); (d) warlock HP 1, `[1, 1]` vs dragon (15), sacrifice → LOSE, `hpReductions = 2`, HP 0, `EndTurn` dispatched, `ResetPlayerPosition` to `fromPosition`; (e) warlock `[2, 3]` vs rat, `finalize(sacrificeHp: false)` → DRAW, `hpSacrificed = false`, `hpReductions = 0`, `heroAbility = null`; (f) warlock `[6, 6]` vs rat → weapons-only WIN, `canSacrificeHp = false`.
+  - Run `docker exec php_monadungeon php vendor/bin/phpunit --filter WarlockSacrifice`; keep `BattleTest`, `SwordsmanUnstoppableTest`, `ThiefBackstabTest` green.
+
+### Phase 2: Magic Swap (backend)
+- [ ] Task 4: Turn accounting for a 4-move action (depends on 1)
+  - `src/src/Game/Turn/TurnAction.php`: `case MAGIC_SWAP = 'magic_swap'` (Hero actions group); `consumesMove()` and `isIncreasesActionCounter()` include it; new `public function moveCost(): int` (4 for MAGIC_SWAP, 1 otherwise, docblock "Warlock Magic Swap costs the whole turn's moves"); `isAllowedAfter(null)` includes MAGIC_SWAP; `isAllowedAfter(MAGIC_SWAP)` → only PICK_ITEM or END_TURN.
+  - `src/src/Game/Turn/GameTurn.php::updateActionCounter`: `$this->performedActionsCount += $event->action->moveCost();` (replaces `++`). No other change: the existing auto-end / `deferTurnEnd` → `pendingItemPickup` logic in `performAction` already handles the 4-move cost.
+  - `src/tests/Game/Turn/GameTurnTest.php`: (a) MAGIC_SWAP as first action, `deferTurnEnd = false` → `TurnEnded` dispatched, turn ended; (b) MAGIC_SWAP with `deferTurnEnd = true` → no `TurnEnded`, a following PICK_ITEM is accepted; (c) MAGIC_SWAP after a MOVE → `InvalidTurnActionException`; (d) a MOVE still adds 1 (control).
+  - Files: TurnAction.php, GameTurn.php, GameTurnTest.php.
+- [ ] Task 5: Magic Swap in the Movement aggregate (depends on 4)
+  - `src/src/Game/Movement/Commands/MagicSwap.php` (`gameId`, `playerId`, `turnId`, `targetPlayerId`; `@implements Message<void>`, `@psalm-immutable`) and `src/src/Game/Movement/Events/PlayersSwapped.php` (`gameId`, `playerId`, `targetPlayerId`, `playerFrom`, `playerTo`, `swappedAt`), modelled on `TeleportPlayer` / `PlayerTeleported`.
+  - `src/src/Game/Movement/Movement.php`: `#[Handler] public function magicSwap(MagicSwap $command, MessageContext $context): void` — game not finished (`GameAlreadyFinishedException`); `GetCurrentPlayer` equals `playerId` (`NotYourTurnException`); `GetCurrentTurn` equals `turnId` (`InvalidMovementException('Invalid turn ID')`); hero `canMagicSwap()` (`DomainException('Only the Warlock can swap places (Magic Swap)')`); `targetPlayerId !== playerId` and both positions known (`InvalidMovementException`); `GetTurn($command->turnId)->getActions() === []` else `InvalidMovementException('Magic Swap costs 4 moves and is only possible at the beginning of the turn')`. Swap `$this->playerPositions[...]`, dispatch `PlayersSwapped`, then `PerformTurnAction(action: MAGIC_SWAP, additionalData: ['ability' => 'magic_swap', 'heroAbility' => 'magic_swap', 'targetPlayerId' => ..., 'from' => ..., 'to' => ...], deferTurnEnd: <destination has a pickable item — same check as in movePlayer>)` (extract that check into a private `hasPickableItemAt(array $items, string $key): bool` and reuse it in `movePlayer`).
+  - API: `src/src/Api/Game/MagicSwap/{Action,Request,Response}.php` mirroring `Api/Game/Reincarnate` — `#[Route('/game/magic-swap', methods: ['POST'])]`, request `gameId`, `playerId`, `turnId`, `targetPlayerId` (all `Assert\NotBlank` + `Assert\Uuid`), response `gameId`, `playerId`, `targetPlayerId`, `position` (new Warlock position), errors as `Error('Failed to swap places: …')`. Confirm `Api/Game/Get` reads positions from Movement (`GetAllPlayerPositions`) so the swapped positions show up without extra work.
+  - Files: MagicSwap.php, PlayersSwapped.php, Movement.php, Api/Game/MagicSwap/*.
+- [ ] Task 6: PHPUnit Magic Swap (depends on 5)
+  - `src/tests/Game/Movement/MagicSwapTest.php` (harness of `ThiefStealthTest`: anonymous field with `getItems/getDebugTransitions/getPlacedTiles/getTeleportationConnections`, player stub with `getHero/getHP`, plus `GetTurn` stub returning an object with `getActions(): array`; positions seeded via `initializeStartingPositions` + `ResetPlayerPosition`): (a) warlock at `0,0`, target at `1,0`, empty turn → `GetPlayerPosition` gives `1,0` / `0,0`, `PlayersSwapped` dispatched with both positions, `PerformTurnAction` MAGIC_SWAP with `deferTurnEnd = false` and `heroAbility = 'magic_swap'`; (b) item (defeated guard) at `1,0` → `deferTurnEnd = true`; (c) turn already has a MOVE → `InvalidMovementException`, positions unchanged; (d) thief → `DomainException` "Only the Warlock"; (e) `targetPlayerId === playerId` → `InvalidMovementException`.
+  - Run `--filter MagicSwap`; keep `ThiefStealthTest`, `MovementUnstoppableTest` green.
+
+### Phase 3: Frontend + docs
+- [ ] Task 7: Battle modal, field figures, lobby, action log (depends on 2, 5)
+  - `fe/src/services/api.js`: `finalizeBattle` accepts and sends `sacrificeHp` (default false); new `magicSwap({ gameId, playerId, turnId, targetPlayerId })` → POST `/game/magic-swap` (same shape as `reincarnate`).
+  - `fe/src/components/game/BattleReportModal.vue`: `sacrificeHp` ref (reset with `selectedConsumables`); in both consumable-selection blocks a toggle chip "🩸 Sacrifice 1 HP (+1)" (`data-testid="sacrifice-hp"`, class `selected` when on) shown when `battleInfo.canSacrificeHp && !battleFinalized`; `totalCalculatedDamage` adds `sacrificeHp ? 1 : 0`; `playerHpAfterBattle` subtracts 1 more when `sacrificeHp`; the win/draw/lose button conditions already use `totalCalculatedDamage`, make "finalize" buttons also appear when `selectedConsumables.length === 0 && sacrificeHp` (today they require a selected consumable); every `emit('finalize-battle' | 'finalize-battle-and-pick-up', …)` and the inventory-replacement path carry `sacrificeHp`; after finalization show "🩸 Sacrifice! −1 HP, +1 strength" (`data-testid="sacrifice-note"`) when `battleInfo.hpSacrificed`.
+  - `fe/src/views/GameView.vue`: `handleFinalizeBattle` / `handleFinalizeBattleAndPickUp` (and the replacement handler) pass `sacrificeHp` to `gameApi.finalizeBattle`, add 1 to the predicted damage and subtract 1 from the optimistic HP when set. Magic Swap: `isMagicSwapMode` ref; `canMagicSwapNow` computed = `isPlayerTurn && getCurrentPlayerData.heroFlags?.canMagicSwap && !pickedTileId && !isTeleportMode && !isReincarnationMode && currentTurnActions.length === 0 && otherPlayersWithPosition.length > 0` where `currentTurnActions` = actions of the `gameTurns` entry whose `turnId === gameData.state.currentTurnId`; sidebar button "🔮 Magic Swap" (`data-testid="magic-swap"`) toggles the mode; banner (like the Reincarnation one, `data-testid="magic-swap-banner"`) "Click another hero's figure to trade places. Costs all 4 moves; the turn ends on the new tile (chest / fountain still apply)" with a Cancel button; `handlePlayerFigureClick({ playerId })` → in swap mode call `gameApi.magicSwap(...)`, refresh game data, leave the mode; the normal end-turn / item pickup UI takes over (pending pickup is already handled by the existing flow). `HERO_SHORT_NAMES.warlock = 'Warlock'`.
+  - `fe/src/components/game/GameTile.vue`: `.player-emoji` gets `@click.stop="emit('player-click', { playerId: player.playerId, position })"`, `data-testid="player-figure-<playerId>"`, class `swap-target` (pointer cursor + glow) when a new `swapTargetable` prop is true; `defineEmits` adds `'player-click'`; GameView passes `:swap-targetable="isMagicSwapMode && !isPlayerPosition(tile.position)"` and `@player-click="handlePlayerFigureClick"`.
+  - `fe/src/views/HomeView.vue`: Warlock hero card (🧙, `data-testid="hero-warlock"`, two skill lines); `readStoredHero` whitelist adds `'warlock'`.
+  - `fe/src/components/ActionLog.vue`: fight entry suffix "🩸 Sacrifice (−1 HP, +1)" when `details.hpSacrificed`; new entry for action `magic_swap`: "🔮 Magic Swap — traded places with {player}".
+  - Files: api.js, BattleReportModal.vue, GameView.vue, GameTile.vue, HomeView.vue, ActionLog.vue.
+- [ ] Task 8: Docs + quality (depends on 7)
+  - `rules.md`: "#### Lord Xanros, the Warlock ✅" under Heroes (Sacrifice: after the roll, once per combat, paid before the result, last HP → unconscious next turn; Magic Swap: only as the first action, costs 4 moves, chest/fountain on the new tile still apply, no battle on arrival); README "Hero Skills" bullet mentions the Warlock.
+  - Quality: php-cs-fixer on `src` only, rector dry-run in the container, full PHPUnit (`docker exec php_monadungeon php vendor/bin/phpunit`), ESLint on changed FE files (no new errors). Psalm and e2e are run by the user.
+
+## Token accounting for this hero
+- Session started fresh after `/clear`; `/cost` baseline before planning: $0.66.
+- `/cost` after planning (before implementation): $5.49 → planning cost $4.83 (33.8k output, 3.2M cache read, 27 requests).
+- ai-factory instructions loaded for this hero: aif-plan SKILL.md; subagents: 0 (codebase read directly, ~16 Bash reads for the plan).
+- `/cost` after implementation: (fill in).
