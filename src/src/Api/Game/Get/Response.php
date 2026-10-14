@@ -167,6 +167,10 @@ final readonly class Response
                 'deck' => $deckInfo, // Add deck information to state
                 'unplacedTile' => $unplacedTile, // Add unplaced tile info
                 'fateweaverChoice' => $field?->getPendingFateweaver(), // Oracle "Fateweaver": two drawn tokens awaiting a choice
+                'curse' => [ // Curse of Karak: who carries the token and who still has to place it
+                    'cursedPlayerId' => $game->getCursedPlayerId()?->toString(),
+                    'pendingBy' => $game->getCurseChoicePendingBy()?->toString(),
+                ],
             ],
             players: self::formatGameLifecyclePlayers($game->getPlayers(), $playerData, $messageBus),
             settings: [], // Add any settings if available in GameLifecycleGame
@@ -219,7 +223,7 @@ final readonly class Response
                     $playerFormattedData['username'] = $playerData[$playerIdStr]['username'];
                 }
                 // Hero data (null hero is meaningful, so use array_key_exists)
-                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation'] as $heroKey) {
+                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation', 'cursed'] as $heroKey) {
                     if (\array_key_exists($heroKey, $playerData[$playerIdStr])) {
                         $playerFormattedData[$heroKey] = $playerData[$playerIdStr][$heroKey];
                     }
@@ -236,11 +240,13 @@ final readonly class Response
                     $playerFormattedData['externalId'] = $player->getExternalId();
                     $playerFormattedData['username'] = $player->getUsername();
                     $playerFormattedData['maxHp'] = Player::MAX_HP;
-                    $playerFormattedData['hero'] = $player->getHero()?->value;
-                    $playerFormattedData['heroLabel'] = $player->getHero()?->label();
-                    $playerFormattedData['heroSkills'] = $player->getHero()?->skills() ?? [];
+                    $playerFormattedData['hero'] = $player->getChosenHero()?->value;
+                    $playerFormattedData['heroLabel'] = $player->getChosenHero()?->label();
+                    $playerFormattedData['heroSkills'] = $player->getChosenHero()?->skills() ?? [];
+                    // Curse of Karak: no skill flags while cursed (getHero() is null then)
                     $playerFormattedData['heroFlags'] = $player->getHero()?->flags() ?? [];
                     $playerFormattedData['awaitingReincarnation'] = $player->isAwaitingReincarnation();
+                    $playerFormattedData['cursed'] = $player->isCursed();
                 } catch (\Throwable) {
                     // Unable to get player data, continue with what we have
                 }

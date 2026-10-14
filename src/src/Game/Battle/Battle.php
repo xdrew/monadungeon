@@ -11,10 +11,12 @@ use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\DoctrineDBAL\ItemArrayJsonType;
 use App\Game\Item\Item;
+use App\Game\Item\ItemName;
 use App\Game\Item\ItemType;
 use App\Game\Movement\Commands\ResetPlayerPosition;
 use App\Game\Movement\Events\PlayerMoved;
 use App\Game\Movement\GetPlayerPosition;
+use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\PickItem;
 use App\Game\Player\ReducePlayerHP;
@@ -331,6 +333,7 @@ class Battle extends AggregateRoot
             $finalResult = $this->resolveResult($monster, $messageContext);
             // HP is not reduced yet: a loss will cost 1 HP
             $unstoppable = $this->turnContinuesAfterBattle($finalResult, 1, $messageContext);
+            $curse = $this->curseInfo($finalResult, $monster, $messageContext);
 
             // Dispatch event to indicate battle was finalized
             $messageContext->dispatch(new BattleFinalized(
@@ -380,6 +383,8 @@ class Battle extends AggregateRoot
                 hpSacrificed: $this->hpSacrificed,
                 spellsKept: $this->spellsKept,
                 farseeing: $this->farseeing,
+                curseChoiceRequired: $curse['required'],
+                cursedPlayerId: $curse['holder'],
             ));
 
             // NOW process the battle result (movement, HP changes, turn ending)
@@ -492,6 +497,28 @@ class Battle extends AggregateRoot
     }
 
     /**
+     * Curse of Karak: after beating a mummy a human slayer in a game with other players has to pick the victim.
+     * The queries run only in that case, so ordinary fights do not touch the Game aggregate.
+     *
+     * @return array{required: bool, holder: ?string}
+     */
+    private function curseInfo(BattleResult $result, Item $monster, MessageContext $messageContext): array
+    {
+        if ($result !== BattleResult::WIN || $monster->name !== ItemName::MUMMY) {
+            return ['required' => false, 'holder' => null];
+        }
+
+        $players = $messageContext->dispatch(new GetActivePlayers($this->gameId));
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
+        $game = $messageContext->dispatch(new GetGame($this->gameId));
+
+        return [
+            'required' => \count($players) > 1 && !$player->isAi(),
+            'holder' => $game->getCursedPlayerId()?->toString(),
+        ];
+    }
+
+    /**
      * Oracle "Farseeing": +1 to the roll when the battle started on the first move of the turn.
      */
     private function farseeingBonus(): int
@@ -583,6 +610,7 @@ class Battle extends AggregateRoot
         $unstoppable = $this->turnContinuesAfterBattle($initialResult, 1, $messageContext);
         // If player wins with weapons only, that's the final result
         if ($initialResult === BattleResult::WIN) {
+            $curse = $this->curseInfo($initialResult, $monster, $messageContext);
             // Dispatch battle completed event BEFORE processing result to ensure correct event order
             $messageContext->dispatch(new BattleCompleted(
                 battleId: $this->battleId,
@@ -603,6 +631,8 @@ class Battle extends AggregateRoot
                 hpSacrificed: $this->hpSacrificed,
                 spellsKept: $this->spellsKept,
                 farseeing: $this->farseeing,
+                curseChoiceRequired: $curse['required'],
+                cursedPlayerId: $curse['holder'],
             ));
 
             // Process the battle result after BattleCompleted event
@@ -782,6 +812,15 @@ class Battle extends AggregateRoot
             ],
             at: new \DateTimeImmutable(),
         ));
+
+        // Curse of Karak: beating a mummy lets the slayer curse another player (the Game decides who and whether)
+        if ($result === BattleResult::WIN && $monster->name === ItemName::MUMMY) {
+            $messageContext->dispatch(new MummyDefeated(
+                gameId: $this->gameId,
+                playerId: $this->playerId,
+                turnId: $this->turnId,
+            ));
+        }
 
         // Handle player movement and HP changes based on battle result
         $awaitingReincarnation = false;

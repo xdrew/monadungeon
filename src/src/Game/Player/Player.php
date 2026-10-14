@@ -59,6 +59,12 @@ class Player extends AggregateRoot
     #[Column(type: BooleanType::class, options: ['default' => false])]
     private bool $awaitingReincarnation = false;
 
+    /**
+     * Curse of Karak: while the curse token lies on this player the hero's skills are switched off.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $cursed = false;
+
     #[Column(type: BooleanType::class)]
     private bool $ready = false;
 
@@ -182,8 +188,8 @@ class Player extends AggregateRoot
         $this->hp = max(0, $this->hp - $command->amount);
 
         if ($oldHp > 0 && $this->hp === 0) {
-            // Warrior "Reincarnation": instead of being stunned the hero chooses a healing fountain
-            if ($this->hero?->reincarnates() === true) {
+            // Warrior "Reincarnation": instead of being stunned the hero chooses a healing fountain (not while cursed)
+            if ($this->getHero()?->reincarnates() === true) {
                 $this->awaitingReincarnation = true;
 
                 $messageContext->dispatch(new ReincarnationRequired(
@@ -225,6 +231,24 @@ class Player extends AggregateRoot
             position: $command->position,
             reincarnatedAt: new \DateTimeImmutable(),
         ));
+    }
+
+    /**
+     * Curse of Karak: the token was placed on this player.
+     */
+    #[Handler]
+    public function onPlayerCursed(PlayerCursed $event): void
+    {
+        $this->cursed = true;
+    }
+
+    /**
+     * Curse of Karak: the token left this player.
+     */
+    #[Handler]
+    public function onCurseLifted(CurseLifted $event): void
+    {
+        $this->cursed = false;
     }
 
     #[Handler]
@@ -546,9 +570,26 @@ class Player extends AggregateRoot
         return $this->characterId;
     }
 
+    /**
+     * The hero whose skills apply right now: null while the player carries the Curse of Karak.
+     * Every skill check goes through this method, so a cursed hero loses all skills at once.
+     */
     public function getHero(): ?HeroType
     {
+        return $this->cursed ? null : $this->hero;
+    }
+
+    /**
+     * The hero picked in the lobby, for display even while cursed.
+     */
+    public function getChosenHero(): ?HeroType
+    {
         return $this->hero;
+    }
+
+    public function isCursed(): bool
+    {
+        return $this->cursed;
     }
 
     public function isAwaitingReincarnation(): bool
@@ -726,9 +767,10 @@ class Player extends AggregateRoot
             'hp' => $this->hp,
             'maxHp' => self::MAX_HP,
             'isStunned' => $this->isDefeated(),
-            'hero' => $this->hero?->value,
-            'heroLabel' => $this->hero?->label(),
+            'hero' => $this->getChosenHero()?->value,
+            'heroLabel' => $this->getChosenHero()?->label(),
             'awaitingReincarnation' => $this->awaitingReincarnation,
+            'cursed' => $this->cursed,
             'externalId' => $this->externalId,
             'username' => $this->username,
             'inventory' => [

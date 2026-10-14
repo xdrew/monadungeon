@@ -4,19 +4,25 @@ declare(strict_types=1);
 
 namespace App\Game\GameLifecycle;
 
+use App\Game\Battle\MummyDefeated;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyFullGame;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyPreparedGame;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
+use App\Game\Player\CurseLifted;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\ItemAddedToInventory;
 use App\Game\Player\Player;
+use App\Game\Player\PlayerCursed;
+use App\Game\Player\PlayerHealedAtFountain;
 use App\Game\Player\ResetPlayerHP;
 use App\Game\Testing\TestMode;
 use App\Game\Turn\EndTurn;
 use App\Game\Turn\GetCurrentTurn;
+use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\StartTurn;
+use App\Game\Turn\TurnAction;
 use App\Game\Turn\TurnEnded;
 use App\Infrastructure\Doctrine\AggregateRoot;
 use App\Infrastructure\Uuid\DoctrineDBAL\UuidArrayJsonType;
@@ -63,6 +69,24 @@ class Game extends AggregateRoot
 
     #[Column(type: UuidType::class, nullable: true)]
     private ?Uuid $winnerId = null;
+
+    /**
+     * Curse of Karak: the player carrying the single curse token.
+     */
+    #[Column(type: UuidType::class, nullable: true)]
+    private ?Uuid $cursedPlayerId = null;
+
+    /**
+     * Curse of Karak: the mummy slayer who still has to choose who gets the token.
+     */
+    #[Column(type: UuidType::class, nullable: true)]
+    private ?Uuid $curseChoicePendingBy = null;
+
+    /**
+     * Curse of Karak: the turn in which the last choice was offered (a re-processed win must not offer it twice).
+     */
+    #[Column(type: UuidType::class, nullable: true)]
+    private ?Uuid $curseChoiceTurnId = null;
 
     private function __construct(
         #[Id]
@@ -172,7 +196,114 @@ class Game extends AggregateRoot
     #[Handler]
     public function turnEnded(TurnEnded $event, MessageContext $messageContext): void
     {
+        // Curse of Karak: a choice that was never made is settled before the next player starts
+        if ($this->curseChoicePendingBy !== null) {
+            $target = $this->cursedPlayerId !== null ? null : $this->pickCurseTarget($this->curseChoicePendingBy, $messageContext);
+            $this->placeCurse($this->curseChoicePendingBy, $target, $messageContext);
+        }
+
         $messageContext->dispatch(new NextTurn($event->gameId));
+    }
+
+    /**
+     * Curse of Karak: a defeated mummy lets the slayer curse another player.
+     * A virtual slayer picks right away (the first other human); a human gets the choice.
+     */
+    #[Handler]
+    public function onMummyDefeated(MummyDefeated $event, MessageContext $messageContext): void
+    {
+        if (!$this->status->isInProgress() || \count($this->players) < 2) {
+            return;
+        }
+        // A won fight is processed again when it is finalized: the choice is offered once per turn
+        if ($this->curseChoiceTurnId?->equals($event->turnId) === true) {
+            return;
+        }
+        $this->curseChoiceTurnId = $event->turnId;
+
+        $slayer = $messageContext->dispatch(new GetPlayer($event->playerId));
+        if ($slayer->isAi()) {
+            $this->placeCurse($event->playerId, $this->pickCurseTarget($event->playerId, $messageContext), $messageContext);
+
+            return;
+        }
+
+        $this->curseChoicePendingBy = $event->playerId;
+    }
+
+    /**
+     * Curse of Karak: the slayer's choice. A null target leaves the token with its current holder.
+     *
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function cursePlayer(CursePlayer $command, MessageContext $messageContext): void
+    {
+        if (!$this->status->isInProgress()) {
+            throw new \DomainException('Game is not in progress');
+        }
+        if ($this->currentTurnId === null || !$this->currentTurnId->equals($command->turnId)) {
+            throw new \DomainException('Invalid turn ID');
+        }
+        if ($this->curseChoicePendingBy === null || !$this->curseChoicePendingBy->equals($command->playerId)) {
+            throw new \DomainException('No curse to place');
+        }
+
+        $target = $command->targetPlayerId;
+        if ($target === null) {
+            if ($this->cursedPlayerId === null) {
+                throw new \DomainException('The curse token is not in play yet, choose a player');
+            }
+        } else {
+            if ($target->equals($command->playerId)) {
+                throw new \DomainException('You cannot curse yourself');
+            }
+            if (!$this->hasPlayer($target)) {
+                throw new \DomainException('Unknown player');
+            }
+        }
+
+        $placed = $this->placeCurse($command->playerId, $target, $messageContext);
+
+        $messageContext->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $this->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::CURSE,
+            additionalData: [
+                'target' => $this->cursedPlayerId?->toString(),
+                'previous' => $placed['previous'],
+                'kept' => $placed['kept'],
+                'heroAbility' => null,
+            ],
+        ));
+    }
+
+    /**
+     * Curse of Karak: healing at a fountain lifts the curse.
+     */
+    #[Handler]
+    public function onPlayerHealedAtFountain(PlayerHealedAtFountain $event, MessageContext $messageContext): void
+    {
+        if ($this->cursedPlayerId === null || !$this->cursedPlayerId->equals($event->playerId)) {
+            return;
+        }
+
+        $this->cursedPlayerId = null;
+        $messageContext->dispatch(new CurseLifted(
+            gameId: $this->gameId,
+            playerId: $event->playerId,
+        ));
+    }
+
+    public function getCursedPlayerId(): ?Uuid
+    {
+        return $this->cursedPlayerId;
+    }
+
+    public function getCurseChoicePendingBy(): ?Uuid
+    {
+        return $this->curseChoicePendingBy;
     }
 
     #[Handler]
@@ -345,5 +476,67 @@ class Game extends AggregateRoot
             winnerId: $this->winnerId,
             scores: $scores,
         ));
+    }
+
+    /**
+     * Move the token (or keep it when the target is null) and tell the players involved.
+     *
+     * @return array{previous: ?string, kept: bool}
+     */
+    private function placeCurse(Uuid $byPlayerId, ?Uuid $targetPlayerId, MessageContext $messageContext): array
+    {
+        $previous = $this->cursedPlayerId;
+        $this->curseChoicePendingBy = null;
+
+        if ($targetPlayerId === null || ($previous !== null && $previous->equals($targetPlayerId))) {
+            return ['previous' => $previous?->toString(), 'kept' => true];
+        }
+
+        if ($previous !== null) {
+            $messageContext->dispatch(new CurseLifted(
+                gameId: $this->gameId,
+                playerId: $previous,
+            ));
+        }
+
+        $this->cursedPlayerId = $targetPlayerId;
+        $messageContext->dispatch(new PlayerCursed(
+            gameId: $this->gameId,
+            playerId: $targetPlayerId,
+            byPlayerId: $byPlayerId,
+        ));
+
+        return ['previous' => $previous?->toString(), 'kept' => false];
+    }
+
+    /**
+     * The automatic victim: the first other human player, otherwise the first other player.
+     */
+    private function pickCurseTarget(Uuid $byPlayerId, MessageContext $messageContext): ?Uuid
+    {
+        $fallback = null;
+        foreach ($this->players as $playerId) {
+            if ($playerId->equals($byPlayerId)) {
+                continue;
+            }
+            $fallback ??= $playerId;
+            $player = $messageContext->dispatch(new GetPlayer($playerId));
+            if (!$player->isAi()) {
+                return $playerId;
+            }
+        }
+
+        return $fallback;
+    }
+
+    private function hasPlayer(Uuid $playerId): bool
+    {
+        foreach ($this->players as $knownPlayerId) {
+            if ($knownPlayerId->equals($playerId)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

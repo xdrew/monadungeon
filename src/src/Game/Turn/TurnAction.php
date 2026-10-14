@@ -27,6 +27,9 @@ enum TurnAction: string
     // Oracle "Fateweaver": chose which of the two drawn tokens is placed on the new room (not a move)
     case FATEWEAVER = 'fateweaver';
 
+    // Curse of Karak: the mummy slayer placed (or kept) the curse token (not a move, the Game validates it)
+    case CURSE = 'curse';
+
     // Item interactions
     case PICK_UP_EQUIPMENT = 'pick_up_equipment';
     case UNLOCK_CHEST = 'unlock_chest';
@@ -91,6 +94,11 @@ enum TurnAction: string
         // Warlock "Magic Swap" costs all 4 moves, so it can only open the turn
         if ($this === self::MAGIC_SWAP) {
             return $previousAction === null;
+        }
+
+        // Curse of Karak: bookkeeping after a won fight, the Game aggregate checks that a choice is pending
+        if ($this === self::CURSE) {
+            return true;
         }
 
         // Oracle "Fateweaver" settles the token of the room that was just placed

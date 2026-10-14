@@ -112,6 +112,43 @@ final class GameTurnTest extends TestCase
     }
 
     #[Test]
+    public function theCurseIsBookkeepingAfterAFight(): void
+    {
+        $startTurn = new StartTurn(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            turnNumber: 1,
+            turnId: $this->turnId,
+            at: $this->fixedTime,
+        );
+        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        $tester = MessageBusTester::create();
+        $action = fn(TurnAction $action): PerformTurnAction => new PerformTurnAction(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: $action,
+            at: $this->fixedTime,
+        );
+
+        $tester->handle($gameTurn->performAction(...), $action(TurnAction::FIGHT_MONSTER));
+        // Curse of Karak: accepted after the fight, does not count as a move
+        $tester->handle($gameTurn->performAction(...), $action(TurnAction::CURSE));
+        self::assertSame(['fight_monster', 'curse'], array_column($gameTurn->getActions(), 'action'));
+        self::assertSame(0, $gameTurn->getPerformedActionsCount());
+        self::assertFalse($gameTurn->isEnded());
+
+        // The fight is still what happened last: moving on is rejected, ending the turn is fine
+        try {
+            $tester->handle($gameTurn->performAction(...), $action(TurnAction::MOVE));
+            self::fail('A move after a fight must be rejected');
+        } catch (InvalidTurnActionException) {
+        }
+        $tester->handle($gameTurn->performAction(...), $action(TurnAction::END_TURN));
+        self::assertTrue($gameTurn->isEnded());
+    }
+
+    #[Test]
     public function itPerformsValidMoveAction(): void
     {
         $startTurn = new StartTurn(

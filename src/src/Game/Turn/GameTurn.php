@@ -102,6 +102,16 @@ class GameTurn extends AggregateRoot
             && ($additionalData['unstoppable'] ?? false) === true;
     }
 
+    /**
+     * Actions that do not change what may follow: an Unstoppable fight and the Curse of Karak bookkeeping.
+     *
+     * @param array{action: string, tileId: ?string, additionalData: ?array, performedAt: string} $action
+     */
+    private static function isBookkeepingAction(array $action): bool
+    {
+        return self::isUnstoppableBattle($action) || $action['action'] === TurnAction::CURSE->value;
+    }
+
     #[Handler]
     public function performAction(PerformTurnAction $command, MessageContext $messageContext): void
     {
@@ -185,7 +195,7 @@ class GameTurn extends AggregateRoot
         }
 
         // If turn end was deferred for item pickup, only allow PICK_ITEM or END_TURN
-        if ($this->pendingItemPickup && $command->action !== TurnAction::PICK_ITEM && $command->action !== TurnAction::END_TURN) {
+        if ($this->pendingItemPickup && $command->action !== TurnAction::PICK_ITEM && $command->action !== TurnAction::END_TURN && $command->action !== TurnAction::CURSE) {
             // Player tried to do something else — auto-end the turn
             $this->endTurn($command->at);
             $messageContext->dispatch(new TurnEnded(
@@ -414,7 +424,7 @@ class GameTurn extends AggregateRoot
     {
         for ($index = \count($this->actions) - 1; $index >= 0; --$index) {
             $action = $this->actions[$index];
-            if (self::isUnstoppableBattle($action)) {
+            if (self::isBookkeepingAction($action)) {
                 continue;
             }
 

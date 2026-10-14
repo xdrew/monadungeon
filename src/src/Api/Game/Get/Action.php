@@ -64,11 +64,13 @@ final readonly class Action
                         'externalId' => $player->getExternalId(),
                         'username' => $player->getUsername(),
                         'maxHp' => Player::MAX_HP,
-                        'hero' => $player->getHero()?->value,
-                        'heroLabel' => $player->getHero()?->label(),
-                        'heroSkills' => $player->getHero()?->skills() ?? [],
+                        'hero' => $player->getChosenHero()?->value,
+                        'heroLabel' => $player->getChosenHero()?->label(),
+                        'heroSkills' => $player->getChosenHero()?->skills() ?? [],
+                        // Curse of Karak: no skill flags while cursed (getHero() is null then)
                         'heroFlags' => $player->getHero()?->flags() ?? [],
                         'awaitingReincarnation' => $player->isAwaitingReincarnation(),
+                        'cursed' => $player->isCursed(),
                         'inventory' => [
                             'keys' => $this->formatInventoryItems($inventory['key'] ?? []),
                             'weapons' => $this->formatInventoryItems($inventory['weapon'] ?? []),

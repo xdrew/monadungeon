@@ -1297,6 +1297,9 @@ class Field extends AggregateRoot
             'spellsKept' => $event->spellsKept,
             // Oracle "Farseeing"
             'farseeing' => $event->farseeing,
+            // Curse of Karak: the slayer of a mummy picks the victim before the turn ends
+            'curseChoiceRequired' => $event->curseChoiceRequired,
+            'cursedPlayerId' => $event->cursedPlayerId,
         ];
 
         // Check if there are items at this position
