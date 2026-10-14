@@ -617,6 +617,26 @@ export const gameApi = {
   /**
    * Warlock "Magic Swap": trade places with another hero (costs all 4 moves, first action of the turn only)
    */
+  /**
+   * Oracle "Fateweaver": choose which of the two drawn tokens is placed on the new room
+   * @param {Object} params
+   * @param {string} params.gameId
+   * @param {string} params.playerId
+   * @param {string} params.turnId
+   * @param {string} params.itemId - The chosen token's item ID
+   * @returns {Promise<Object>} { gameId, fieldPlace, item, success }
+   */
+  fateweaver: async ({ gameId, playerId, turnId, itemId }) => {
+    try {
+      const response = await apiClient.post('/game/fateweaver', { gameId, playerId, turnId, itemId });
+      console.log('Fateweaver token chosen:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error choosing the Fateweaver token:', error);
+      throw error;
+    }
+  },
+
   magicSwap: async ({ gameId, playerId, turnId, targetPlayerId }) => {
     try {
       const response = await apiClient.post('/game/magic-swap', { gameId, playerId, turnId, targetPlayerId });

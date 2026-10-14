@@ -159,6 +159,18 @@ Each player may pick a hero before the game starts (lobby); a player without a h
   - Only discovered tiles: new tiles are still placed only through a door, and nothing changes for diagonal or empty places ✅
   - A monster on the tile behind the wall is fought normally; a reward lying there may be picked up ✅
 
+#### Taia, the Oracle ✅
+- **Farseeing** ✅
+  - +1 to the roll when the battle starts before any of the turn's 4 moves was spent ✅
+  - Placing a tile does not spend a move, so opening a room and fighting its monster gets the +1 ✅
+  - Once a move, a teleport or a Magic Swap was spent, later fights in that turn get no bonus ✅
+- **Fateweaver** ✅
+  - When the Oracle opens a room, two tokens are drawn from the bag instead of one ✅
+  - She chooses which token is placed on the room; the other one goes back into the bag at a random position ✅
+  - The choice must be made before moving; a choice left unmade when the turn ends keeps the first drawn token ✅
+  - With a single token left in the bag it is a normal draw ✅
+  - A virtual Oracle chooses automatically: a chest or treasure first, otherwise the weakest monster ✅
+
 
 ### Healing Fountains ✅
 - Special tiles that restore all HP ✅

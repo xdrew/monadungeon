@@ -126,6 +126,20 @@
                 <strong>Astral Walking</strong> — may step onto any adjacent discovered tile, even through a wall
               </span>
             </button>
+            <button
+              type="button"
+              class="hero-card"
+              :class="{ selected: selectedHero === 'oracle' }"
+              data-testid="hero-oracle"
+              @click="selectHero('oracle')"
+            >
+              <span class="hero-icon">👁️</span>
+              <span class="hero-name">Taia, the Oracle</span>
+              <span class="hero-skills">
+                <strong>Farseeing</strong> — +1 to the roll when fighting on the first move of the turn<br>
+                <strong>Fateweaver</strong> — draws two tokens for a new room, places one and returns the other
+              </span>
+            </button>
           </div>
         </div>
 
@@ -211,7 +225,7 @@ const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
 const readStoredHero = () => {
   try {
     const stored = localStorage.getItem('selectedHero');
-    return ['warrior', 'thief', 'swordsman', 'warlock', 'wizard'].includes(stored) ? stored : null;
+    return ['warrior', 'thief', 'swordsman', 'warlock', 'wizard', 'oracle'].includes(stored) ? stored : null;
   } catch (e) {
     return null;
   }

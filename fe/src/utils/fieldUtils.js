@@ -517,7 +517,7 @@ const handlePlayerMovement = async (params) => {
 const handleTilePlacement = async (params) => {
   const {
     position, gameData, currentPlayerId, gameApi, gameId, currentTurnId,
-    tileState, battleState, updateGameDataSelectively, centerViewOnTile, tileUtils, confirmStealth
+    tileState, battleState, updateGameDataSelectively, centerViewOnTile, tileUtils, confirmStealth, chooseFateweaverItem
   } = params;
   
   const { pickedTileId, pickedTile, ghostTileOrientation } = tileState;
@@ -533,13 +533,22 @@ const handleTilePlacement = async (params) => {
   try {
     isRequestInProgress = true;
     
-    await gameApi.placeTile({
+    const placeResponse = await gameApi.placeTile({
       gameId,
       tileId: pickedTileId.value,
       fieldPlace: position,
       playerId: currentPlayerId.value,
       turnId: currentTurnId
     });
+
+    // Oracle "Fateweaver": two tokens were drawn for the new room, the player picks one before moving in
+    if (placeResponse?.fateweaverChoice && typeof chooseFateweaverItem === 'function') {
+      const itemId = await chooseFateweaverItem(placeResponse.fateweaverChoice);
+      const chosen = await gameApi.fateweaver({ gameId, playerId: currentPlayerId.value, turnId: currentTurnId, itemId });
+      if (chosen?.item) {
+        gameData.field.items = { ...(gameData.field.items || {}), [position]: chosen.item };
+      }
+    }
 
     const coords = parsePosition(position);
     if (!coords) return;

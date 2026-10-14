@@ -200,6 +200,14 @@
           >
             ✨ Magical Affinity! The fireball stays in your inventory
           </div>
+          <!-- Oracle "Farseeing": +1 for fighting on the first move of the turn -->
+          <div
+            v-if="!isRolling && battleInfo.farseeing"
+            class="first-roll-note"
+            data-testid="farseeing-note"
+          >
+            👁️ Farseeing! +1 — fought on the first move of the turn
+          </div>
           <!-- Swordsman "Unstoppable": a 6 keeps the turn going -->
           <div
             v-if="!isRolling && turnContinues"
@@ -878,8 +886,11 @@ const consumableDamageTotal = computed(() => {
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0) + sacrificeBonus.value;
 });
 
+// Oracle "Farseeing": the +1 belongs to the roll, the backend keeps it out of itemDamage
+const farseeingBonus = computed(() => (props.battleInfo.farseeing ? 1 : 0));
+
 const totalCalculatedDamage = computed(() => {
-  return (props.battleInfo.diceRollDamage || 0) + (props.battleInfo.itemDamage || 0) + consumableDamageTotal.value;
+  return (props.battleInfo.diceRollDamage || 0) + (props.battleInfo.itemDamage || 0) + consumableDamageTotal.value + farseeingBonus.value;
 });
 
 const playerHpAfterBattle = computed(() => {

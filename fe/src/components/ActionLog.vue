@@ -217,6 +217,7 @@ const getActionIcon = (actionType) => {
     'fight_monster': '⚔️',
     'use_hero_ability': '💀',
     'magic_swap': '🔮',
+    'fateweaver': '🔮',
     'pick_item': '',
     'drop_item': '',
     'end_turn': '✅',
@@ -294,6 +295,12 @@ const formatActionText = (action) => {
     case 'magic_swap':
       // Warlock "Magic Swap": traded places with another hero (costs the whole turn)
       return `🔮 Magic Swap — traded places with another hero (${details?.from || '?'} → ${details?.to || '?'})`;
+
+    case 'fateweaver': {
+      // Oracle "Fateweaver": two tokens were drawn, one placed, the other returned to the bag
+      const tokenLabel = (token) => (token?.name || token?.type || 'token').replace(/_/g, ' ');
+      return `🔮 Fateweaver — placed ${tokenLabel(details?.chosen)} on ${details?.fieldPlace || '?'}, ${tokenLabel(details?.returned)} went back into the bag`;
+    }
 
     case 'battle_started':
       // Skip this to avoid duplication - battle info will come from fight_monster
@@ -420,6 +427,11 @@ const formatActionText = (action) => {
       // Wizard "Magical Affinity": the used fireballs stay in the inventory
       if (details?.spellsKept) {
         damageBreakdown = `✨ Magical Affinity (spells kept) ${damageBreakdown}`;
+      }
+
+      // Oracle "Farseeing": +1 for fighting on the first move of the turn
+      if (details?.farseeing) {
+        damageBreakdown = `👁️ Farseeing (+1) ${damageBreakdown}`;
       }
 
       if (result === 'WIN') {

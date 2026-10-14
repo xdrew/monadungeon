@@ -76,6 +76,14 @@
         @choose="handleStealthChoice"
       />
 
+      <!-- Oracle "Fateweaver": pick which of the two drawn tokens is placed on the new room -->
+      <FateweaverChoiceDialog
+        v-if="fateweaverPrompt"
+        :show="!!fateweaverPrompt"
+        :choice="fateweaverPrompt.choice"
+        @choose="handleFateweaverChoice"
+      />
+
 
       <!-- Game layout -->
       <div class="game-layout">
@@ -791,6 +799,7 @@ import { useAiTurnPlayback } from '@/composables/useAiTurnPlayback';
 import GameTile from '@/components/game/GameTile.vue';
 import AvailableMoveMarker from '@/components/game/AvailableMoveMarker.vue';
 import ItemPickupDialog from '@/components/game/ItemPickupDialog.vue';
+import FateweaverChoiceDialog from '@/components/game/FateweaverChoiceDialog.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import ActionLog from '@/components/ActionLog.vue';
 import MusicToggle from '@/components/game/MusicToggle.vue';
@@ -995,6 +1004,32 @@ const handleStealthChoice = (sneak) => {
   prompt?.resolve(sneak === true);
 };
 
+// Oracle "Fateweaver": the player picks which of the two drawn tokens is placed on the new room
+const fateweaverPrompt = ref(null);
+const chooseFateweaverItem = (choice) => new Promise((resolve) => {
+  fateweaverPrompt.value = { choice, resolve };
+});
+const handleFateweaverChoice = (itemId) => {
+  const prompt = fateweaverPrompt.value;
+  fateweaverPrompt.value = null;
+  prompt?.resolve(itemId);
+};
+// A choice found in the game state (page reloaded mid-turn) is settled here, then the markers come back
+const resolvePendingFateweaver = async (choice) => {
+  const itemId = await chooseFateweaverItem(choice);
+  try {
+    await gameApi.fateweaver({
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: gameData.value?.state?.currentTurnId,
+      itemId
+    });
+  } catch (e) {
+    console.error('Failed to choose the Fateweaver token:', e);
+  }
+  await loadGameData(false);
+};
+
 // Warrior "Reincarnation": the fallen hero must pick a healing fountain before the turn ends
 const isReincarnationMode = ref(false);
 const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend, empty = all fountains
@@ -1003,7 +1038,7 @@ const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend
 const isMagicSwapMode = ref(false);
 
 // Hero helpers for the player panel
-const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman', warlock: 'Warlock', wizard: 'Wizard' };
+const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman', warlock: 'Warlock', wizard: 'Wizard', oracle: 'Oracle' };
 // Swordsman "Unstoppable": the backend keeps the turn open after a battle with a 6, so the client must not end it
 const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
@@ -1714,6 +1749,11 @@ const loadGameData = async (showLoading = true) => {
 
     // Update game turns from the fetched game data
     updateGameTurns(fetchedGameData);
+
+    // Oracle "Fateweaver": a pending two-token choice blocks the turn until it is settled
+    if (fetchedGameData.state?.fateweaverChoice && isPlayerTurn.value && !fateweaverPrompt.value) {
+      resolvePendingFateweaver(fetchedGameData.state.fateweaverChoice);
+    }
 
     // Check for unplaced tile from backend and sync with frontend state
     if (fetchedGameData.state?.unplacedTile) {
@@ -2998,6 +3038,7 @@ const handlePlaceClick = async (position) => {
     loadingState: { loading, loadingStatus, error },
     battleState: { battleInfo, showBattleReportModal },
     confirmStealth,
+    chooseFateweaverItem,
     updateGameDataSelectively,
     centerViewOnTile,
     tileState: { 
