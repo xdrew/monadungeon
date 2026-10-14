@@ -93,15 +93,15 @@
   ],
   "kinds": {
     "monster": {
-      "width": 100,
-      "height": 100,
+      "width": 256,
+      "height": 256,
       "aspect_ratio": "1:1",
       "image_size": "1K",
       "mirror": true
     },
     "hero": {
-      "width": 100,
-      "height": 150,
+      "width": 256,
+      "height": 384,
       "aspect_ratio": "2:3",
       "image_size": "1K"
     },
