@@ -91,4 +91,4 @@ Authority: rulebook text (above) > existing implementation (`Battle.php`, `Movem
 - ai-factory instructions loaded for this hero: aif-plan and aif-implement SKILL.md; subagents: 0 (codebase read directly, ~15 Bash reads for the plan, ~25 for the implementation).
 - Implementation notes: `doctrine:migrations:diff` also emitted a pre-existing drift (`DROP INDEX unique_player_wallet` on `game.leaderboard`) that was stripped from the migration, same as for the Warrior migration; `php-cs-fixer` is configured for `src` only, running it on `tests` reformats 32 unrelated files (reverted).
 - Showcase runs needed: 0 (no e2e changes).
-- User records `/cost` after the hero is finished; the difference is the Swordsman's cost.
+- `/cost` after implementation: $12.68 → implementation $7.81; whole hero $12.16 (88.1k output tokens, 13.7M cache read, 76 requests, 931 lines added).
