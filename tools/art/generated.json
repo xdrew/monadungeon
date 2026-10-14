@@ -38,9 +38,9 @@
       "interaction_id": "v1_Chd1ZHZQYXMtekJjMzVuc0VQbWZXbzBRdxIXdWR2UGFzLXpCYzM1bnNFUG1mV28wUXc",
       "post": {
         "bbox": [
-          30,
+          62,
           139,
-          962,
+          994,
           866
         ],
         "source_size": [
@@ -50,12 +50,13 @@
         "touches_border": false,
         "green_residue_pct": 0.0,
         "outline_removed_pct": 10.7,
+        "mirrored": true,
         "corner_alpha": [
           0,
           0
         ]
       },
-      "reprocessed_at": "2026-10-14T20:13:46+00:00"
+      "reprocessed_at": "2026-10-14T20:21:53+00:00"
     },
     "giant_spider": {
       "kind": "monster",
@@ -99,9 +100,9 @@
       "interaction_id": "v1_ChYwTnZQYXVMMkstZnBuc0VQOUxXYVNBEhYwTnZQYXVMMkstZnBuc0VQOUxXYVNB",
       "post": {
         "bbox": [
-          34,
+          33,
           180,
-          991,
+          990,
           892
         ],
         "source_size": [
@@ -111,12 +112,13 @@
         "touches_border": false,
         "green_residue_pct": 0.0,
         "outline_removed_pct": 20.12,
+        "mirrored": true,
         "corner_alpha": [
           0,
           0
         ]
       },
-      "reprocessed_at": "2026-10-14T20:13:46+00:00"
+      "reprocessed_at": "2026-10-14T20:21:54+00:00"
     },
     "mummy": {
       "kind": "monster",
@@ -164,9 +166,9 @@
       "interaction_id": "v1_Chc2dHZQYXFDdUF2UF9uc0VQX3J2RXFBOBIXNnR2UGFxQ3VBdlBfbnNFUF9ydkVxQTg",
       "post": {
         "bbox": [
-          158,
+          160,
           72,
-          864,
+          866,
           976
         ],
         "source_size": [
@@ -176,12 +178,13 @@
         "touches_border": false,
         "green_residue_pct": 0.0,
         "outline_removed_pct": 14.06,
+        "mirrored": true,
         "corner_alpha": [
           0,
           0
         ]
       },
-      "reprocessed_at": "2026-10-14T20:13:46+00:00"
+      "reprocessed_at": "2026-10-14T20:21:54+00:00"
     },
     "skeleton_turnkey": {
       "kind": "monster",
@@ -233,9 +236,9 @@
       "interaction_id": "v1_ChdFTnpQYXBhaExQR19uc0VQay1US2lRdxIXRU56UGFwYWhMUEdfbnNFUGstVEtpUXc",
       "post": {
         "bbox": [
-          94,
+          108,
           77,
-          916,
+          930,
           978
         ],
         "source_size": [
@@ -245,12 +248,13 @@
         "touches_border": false,
         "green_residue_pct": 0.06,
         "outline_removed_pct": 12.66,
+        "mirrored": true,
         "corner_alpha": [
           0,
           0
         ]
       },
-      "reprocessed_at": "2026-10-14T20:13:47+00:00"
+      "reprocessed_at": "2026-10-14T20:21:54+00:00"
     },
     "skeleton_warrior": {
       "kind": "monster",
@@ -306,9 +310,9 @@
       "interaction_id": "v1_ChZQZHpQYW8yc0pOV0w3TThQN2UyUmVBEhZQZHpQYW8yc0pOV0w3TThQN2UyUmVB",
       "post": {
         "bbox": [
-          134,
+          82,
           22,
-          942,
+          890,
           970
         ],
         "source_size": [
@@ -318,12 +322,13 @@
         "touches_border": false,
         "green_residue_pct": 0.0,
         "outline_removed_pct": 14.01,
+        "mirrored": true,
         "corner_alpha": [
           0,
           0
         ]
       },
-      "reprocessed_at": "2026-10-14T20:13:47+00:00"
+      "reprocessed_at": "2026-10-14T20:21:54+00:00"
     },
     "skeleton_king": {
       "kind": "monster",
@@ -383,9 +388,9 @@
       "interaction_id": "v1_ChdVTnpQYXRlQU42MkNrZFVQM2JldHdRNBIXVU56UGF0ZUFONjJDa2RVUDNiZXR3UTQ",
       "post": {
         "bbox": [
-          52,
+          58,
           80,
-          966,
+          972,
           974
         ],
         "source_size": [
@@ -395,12 +400,13 @@
         "touches_border": false,
         "green_residue_pct": 0.05,
         "outline_removed_pct": 8.73,
+        "mirrored": true,
         "corner_alpha": [
           0,
           0
         ]
       },
-      "reprocessed_at": "2026-10-14T20:13:47+00:00"
+      "reprocessed_at": "2026-10-14T20:21:55+00:00"
     },
     "fallen": {
       "kind": "monster",
@@ -460,9 +466,9 @@
       "interaction_id": "v1_ChZjOXpQYXZEa0RlbW1uc0VQcTZ5UFNBEhZjOXpQYXZEa0RlbW1uc0VQcTZ5UFNB",
       "post": {
         "bbox": [
-          86,
+          96,
           76,
-          928,
+          938,
           994
         ],
         "source_size": [
@@ -472,12 +478,13 @@
         "touches_border": false,
         "green_residue_pct": 0.22,
         "outline_removed_pct": 7.66,
+        "mirrored": true,
         "corner_alpha": [
           0,
           0
         ]
       },
-      "reprocessed_at": "2026-10-14T20:13:47+00:00"
+      "reprocessed_at": "2026-10-14T20:21:55+00:00"
     },
     "dragon": {
       "kind": "monster",
@@ -537,9 +544,9 @@
       "interaction_id": "v1_ChdtTnpQYXJ6UUY0bjZuc0VQaDlLWTZBcxIXbU56UGFyelFGNG42bnNFUGg5S1k2QXM",
       "post": {
         "bbox": [
-          49,
+          50,
           84,
-          974,
+          975,
           954
         ],
         "source_size": [
@@ -549,12 +556,13 @@
         "touches_border": false,
         "green_residue_pct": 0.02,
         "outline_removed_pct": 6.74,
+        "mirrored": true,
         "corner_alpha": [
           0,
           0
         ]
       },
-      "reprocessed_at": "2026-10-14T20:13:48+00:00"
+      "reprocessed_at": "2026-10-14T20:21:55+00:00"
     },
     "adventurer": {
       "kind": "hero",

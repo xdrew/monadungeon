@@ -96,7 +96,8 @@
       "width": 100,
       "height": 100,
       "aspect_ratio": "1:1",
-      "image_size": "1K"
+      "image_size": "1K",
+      "mirror": true
     },
     "hero": {
       "width": 100,

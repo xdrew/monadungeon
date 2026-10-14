@@ -1731,15 +1731,9 @@ const potentialRewardTip = computed(() => {
   filter: brightness(1.15) drop-shadow(0 2px 8px rgba(200, 180, 160, 0.4));
 }
 
-/* the monster faces the hero: mirror the whole wrap so the sprite animations keep their own transforms */
-.monster-side .combatant-sprite-wrap {
-  transform: scaleX(-1);
-}
-
 .monster-emoji-large {
   font-size: 5rem;
   position: relative;
-  transform: scaleX(-1); /* undo the wrap mirror for text */
 }
 
 /* Character entrance animations */

@@ -29,6 +29,7 @@ class KindSettings:
     image_size: str = "1K"
     model: str | None = None
     quality: int | None = None  # webp quality for opaque outputs
+    mirror: bool = False  # flip horizontally after keying (monsters face the hero)
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,7 @@ def load_style(path: Path = STYLE_FILE) -> Style:
         kinds[name] = KindSettings(
             width=int(cfg["width"]), height=int(cfg["height"]), aspect_ratio=cfg["aspect_ratio"],
             image_size=cfg.get("image_size", "1K"), model=cfg.get("model"), quality=cfg.get("quality"),
+            mirror=bool(cfg.get("mirror", False)),
         )
     for k in KINDS:
         if k not in kinds:

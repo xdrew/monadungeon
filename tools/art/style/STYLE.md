@@ -29,7 +29,7 @@ Karak: a dark stone dungeon lit by wall torches, treasure chests full of gold, u
 
 - One subject, centred, ~6 % padding after cropping; silhouette must read at 32 px.
 - Generated on flat chroma-key green `#00FF00` with a 2–3 px white outline; the tool removes the green and snaps alpha to 0/255. The subject must not contain pure green.
-- Monsters: 100×100, 3/4 front view, menacing. Heroes: 100×150, full body, standing.
+- Monsters: 100×100, 3/4 front view, menacing; the file is mirrored in post so monsters face left, towards the hero (`kinds.monster.mirror`). Heroes: 100×150, full body, standing.
 - No scene, no floor, no cast shadow on the background, no text.
 
 ## Consistency mechanics

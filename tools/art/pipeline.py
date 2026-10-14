@@ -96,7 +96,7 @@ def run(style: Style, assets: list[Asset], client: ImageClient | None, only: set
             image, post = postprocess.process_background(raw, settings.width, settings.height)
             postprocess.save_background(image, asset.out, settings.quality or 85)
         else:
-            image, post = postprocess.process_sprite(raw, settings.width, settings.height)
+            image, post = postprocess.process_sprite(raw, settings.width, settings.height, settings.mirror)
             postprocess.save_sprite(image, asset.out)
         LOG.info("done %s in %.1fs → %s %dx%d", asset.id, info["duration_s"], rel(asset.out), *image.size)
         recent.setdefault(asset.kind, []).append(asset.out)
@@ -136,7 +136,7 @@ def reprocess(style: Style, assets: list[Asset], only: set[str] | None) -> int:
             image, post = postprocess.process_background(raw, settings.width, settings.height)
             postprocess.save_background(image, asset.out, settings.quality or 85)
         else:
-            image, post = postprocess.process_sprite(raw, settings.width, settings.height)
+            image, post = postprocess.process_sprite(raw, settings.width, settings.height, settings.mirror)
             postprocess.save_sprite(image, asset.out)
         entry["post"] = post
         entry["reprocessed_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")

@@ -148,14 +148,17 @@ def trim_and_fit(img: Image.Image, width: int, height: int, padding: float = 0.0
     return fitted, info
 
 
-def process_sprite(raw: bytes, width: int, height: int) -> tuple[Image.Image, dict]:
+def process_sprite(raw: bytes, width: int, height: int, mirror: bool = False) -> tuple[Image.Image, dict]:
     img = load(raw)
     keyed = remove_chroma_key(img)
     keyed, outline_pct = strip_outline(keyed)
+    if mirror:
+        keyed = keyed.transpose(Image.FLIP_LEFT_RIGHT)
     fitted, info = trim_and_fit(keyed, width, height)
     residue = green_residue_pct(fitted)
     info["green_residue_pct"] = round(residue, 2)
     info["outline_removed_pct"] = round(outline_pct, 2)
+    info["mirrored"] = mirror
     if residue > 0.5:
         LOG.warning("green residue %.2f%% of opaque pixels — consider regenerating", residue)
     corners = [fitted.getpixel((0, 0))[3], fitted.getpixel((width - 1, height - 1))[3]]

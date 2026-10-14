@@ -897,7 +897,6 @@ const onItemClick = () => {
   width: 32px;
   height: 32px;
   object-fit: contain;
-  transform: scaleX(-1); /* monsters face the hero, who enters from the left */
 }
 
 .monster-emoji {

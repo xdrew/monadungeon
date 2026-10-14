@@ -64,7 +64,7 @@
 }
 
 .tile-items:hover .monster-image {
-  transform: scale(-1.1, 1.1); /* keep the mirror (monsters face left) while growing */
+  transform: scale(1.1);
 }
 
 .tile-items.has-guard .monster-hp {
