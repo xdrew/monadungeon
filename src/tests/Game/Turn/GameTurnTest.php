@@ -827,6 +827,81 @@ final class GameTurnTest extends TestCase
     /**
      * @param array<string, mixed>|null $additionalData
      */
+    #[Test]
+    public function aMagicSwapSpendsAllFourMovesAndEndsTheTurn(): void
+    {
+        [$gameTurn, ] = handle(GameTurn::start(...), $this->startTurn());
+        // Route TurnActionPerformed to the counter like the real bus does
+        $tester = MessageBusTester::create(static fn(TurnActionPerformed $event) => $gameTurn->updateActionCounter($event));
+
+        [, $messages] = $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MAGIC_SWAP, ['ability' => 'magic_swap']));
+
+        self::assertTrue($gameTurn->isEnded(), 'Magic Swap costs 4 moves: the turn ends right away');
+        self::assertCount(1, array_filter($messages, static fn(object $message): bool => $message instanceof TurnEnded));
+    }
+
+    #[Test]
+    public function aMagicSwapOntoAnItemTileLeavesTheRewardToPickUp(): void
+    {
+        [$gameTurn, ] = handle(GameTurn::start(...), $this->startTurn());
+        $tester = MessageBusTester::create(static fn(TurnActionPerformed $event) => $gameTurn->updateActionCounter($event));
+
+        [, $messages] = $tester->handle($gameTurn->performAction(...), new PerformTurnAction(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: TurnAction::MAGIC_SWAP,
+            additionalData: ['ability' => 'magic_swap'],
+            at: $this->fixedTime,
+            deferTurnEnd: true,
+        ));
+
+        self::assertFalse($gameTurn->isEnded(), 'The reward on the new tile may still be picked up');
+        self::assertCount(0, array_filter($messages, static fn(object $message): bool => $message instanceof TurnEnded));
+
+        // Picking the item is still allowed, nothing else is
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_ITEM));
+        self::assertSame(TurnAction::PICK_ITEM->value, $gameTurn->getActions()[1]['action']);
+    }
+
+    #[Test]
+    public function aMagicSwapIsOnlyAllowedAtTheBeginningOfTheTurn(): void
+    {
+        [$gameTurn, ] = handle(GameTurn::start(...), $this->startTurn());
+        $tester = MessageBusTester::create();
+
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+
+        $this->expectException(InvalidTurnActionException::class);
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MAGIC_SWAP, ['ability' => 'magic_swap']));
+    }
+
+    #[Test]
+    public function aRegularMoveStillCostsOneMove(): void
+    {
+        [$gameTurn, ] = handle(GameTurn::start(...), $this->startTurn());
+        $tester = MessageBusTester::create(static fn(TurnActionPerformed $event) => $gameTurn->updateActionCounter($event));
+
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        self::assertFalse($gameTurn->isEnded());
+
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        self::assertTrue($gameTurn->isEnded(), 'The 4th move ends the turn');
+    }
+
+    private function startTurn(): StartTurn
+    {
+        return new StartTurn(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            turnNumber: 1,
+            turnId: $this->turnId,
+            at: $this->fixedTime,
+        );
+    }
+
     private function action(TurnAction $action, ?array $additionalData = null): PerformTurnAction
     {
         return new PerformTurnAction(

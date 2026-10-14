@@ -21,6 +21,9 @@ enum TurnAction: string
     case USE_SPELL = 'use_spell';
     case USE_HERO_ABILITY = 'use_hero_ability';
 
+    // Warlock "Magic Swap": trade places with another hero, costs the whole turn's moves
+    case MAGIC_SWAP = 'magic_swap';
+
     // Item interactions
     case PICK_UP_EQUIPMENT = 'pick_up_equipment';
     case UNLOCK_CHEST = 'unlock_chest';
@@ -57,7 +60,16 @@ enum TurnAction: string
             self::MOVE,
             self::DISCOVER_TILE,
             self::USE_TELEPORT,
+            self::MAGIC_SWAP,
         ], true);
+    }
+
+    /**
+     * How many of the turn's moves the action spends (Warlock "Magic Swap" costs all 4).
+     */
+    public function moveCost(): int
+    {
+        return $this === self::MAGIC_SWAP ? 4 : 1;
     }
 
     public function isIncreasesActionCounter(): bool
@@ -65,6 +77,7 @@ enum TurnAction: string
         return \in_array($this, [
             self::MOVE,
             self::USE_TELEPORT,
+            self::MAGIC_SWAP,
             // Note: PICK_TILE, PLACE_TILE, ROTATE_TILE do NOT increase action counter as they are part of exploration
             // Note: Combat and item actions don't count - they end the turn instead
         ], true);
@@ -72,6 +85,11 @@ enum TurnAction: string
 
     public function isAllowedAfter(?self $previousAction): bool
     {
+        // Warlock "Magic Swap" costs all 4 moves, so it can only open the turn
+        if ($this === self::MAGIC_SWAP) {
+            return $previousAction === null;
+        }
+
         // No previous action means it's the start of the turn
         if ($previousAction === null) {
             // Only movement actions are allowed at start of turn
@@ -80,7 +98,13 @@ enum TurnAction: string
                 || $this === self::USE_TELEPORT
                 || $this === self::PICK_TILE
                 || $this === self::PICK_ITEM
-                || $this === self::HEAL_AT_FOUNTAIN; // Allow healing as first action (e.g., when placed on fountain)
+                || $this === self::HEAL_AT_FOUNTAIN // Allow healing as first action (e.g., when placed on fountain)
+                || $this === self::MAGIC_SWAP; // Warlock "Magic Swap": only at the beginning of the turn
+        }
+
+        // After a Magic Swap the moves are spent: only the reward on the new tile or ending the turn is left
+        if ($previousAction === self::MAGIC_SWAP) {
+            return $this === self::PICK_ITEM || $this === self::END_TURN;
         }
 
         // After combat, allow manual pickup, end turn, or a hero ability (Warrior "Reincarnation" after a lost fight)

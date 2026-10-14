@@ -269,7 +269,7 @@ class GameTurn extends AggregateRoot
         }
 
         if ($event->action->isIncreasesActionCounter()) {
-            ++$this->performedActionsCount;
+            $this->performedActionsCount += $event->action->moveCost();
         }
     }
 

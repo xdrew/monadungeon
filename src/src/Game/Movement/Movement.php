@@ -18,17 +18,20 @@ use App\Game\GameLifecycle\GameStarted;
 use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
+use App\Game\Movement\Commands\MagicSwap;
 use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Movement\Commands\ResetPlayerPosition;
 use App\Game\Movement\Commands\TeleportPlayer;
 use App\Game\Movement\DoctrineDBAL\PlayerPositionMapType;
 use App\Game\Movement\Events\PlayerMoved;
+use App\Game\Movement\Events\PlayersSwapped;
 use App\Game\Movement\Events\PlayerTeleported;
 use App\Game\Movement\Exception\InvalidMovementException;
 use App\Game\Movement\Exception\NotYourTurnException;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\PlayerStunned;
 use App\Game\Turn\GetCurrentTurn;
+use App\Game\Turn\GetTurn;
 use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\TurnAction;
 use App\Game\Turn\TurnStarted;
@@ -96,6 +99,21 @@ class Movement extends AggregateRoot
     public static function create(GameCreated $event): self
     {
         return new self($event->gameId);
+    }
+
+    /**
+     * Whether the tile holds an item that can be picked up (no guard, or a defeated one).
+     *
+     * @param array<string, mixed> $items
+     */
+    private static function hasPickableItemAt(array $items, string $positionKey): bool
+    {
+        if (!isset($items[$positionKey])) {
+            return false;
+        }
+        $item = Item::fromAnything($items[$positionKey]);
+
+        return $item->guardDefeated || $item->guardHP === 0;
     }
 
     #[Handler]
@@ -194,14 +212,7 @@ class Movement extends AggregateRoot
 
         // Record turn action if not moving to battle
         if (!$destinationHasMonster) {
-            // Check if destination has a pickable item (defeated guard or no guard)
-            $hasPickableItem = false;
-            if (isset($items[$destinationKey])) {
-                $destItem = Item::fromAnything($items[$destinationKey]);
-                if ($destItem->guardDefeated || $destItem->guardHP === 0) {
-                    $hasPickableItem = true;
-                }
-            }
+            $hasPickableItem = self::hasPickableItemAt($items, $destinationKey);
 
             $additionalData = [
                 'from' => $currentPosition->toString(),
@@ -252,6 +263,86 @@ class Movement extends AggregateRoot
                 toPosition: $command->toPosition,
             ));
         }
+    }
+
+    /**
+     * Warlock "Magic Swap": trade places with another hero. Costs all 4 moves, so only as the first action of the turn;
+     * the reward on the new tile may still be picked up and a fountain still heals when the turn ends there.
+     *
+     * @throws GameAlreadyFinishedException
+     * @throws NotYourTurnException
+     * @throws InvalidMovementException
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function magicSwap(MagicSwap $command, MessageContext $context): void
+    {
+        $game = $context->dispatch(new GetGame($command->gameId));
+        if ($game->getStatus()->isFinished()) {
+            throw new GameAlreadyFinishedException();
+        }
+
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
+        if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId)) {
+            throw new NotYourTurnException();
+        }
+
+        $currentTurnId = $context->dispatch(new GetCurrentTurn($command->gameId));
+        if ($currentTurnId === null || !$currentTurnId->equals($command->turnId)) {
+            throw new InvalidMovementException('Invalid turn ID');
+        }
+
+        $player = $context->dispatch(new GetPlayer($command->playerId));
+        if ($player->getHero()?->canMagicSwap() !== true) {
+            throw new \DomainException('Only the Warlock can swap places (Magic Swap)');
+        }
+
+        if ($command->targetPlayerId->equals($command->playerId)) {
+            throw new InvalidMovementException('Magic Swap needs another hero to swap places with');
+        }
+
+        $playerId = $command->playerId->toString();
+        $targetId = $command->targetPlayerId->toString();
+        $playerFrom = $this->playerPositions[$playerId] ?? null;
+        $playerTo = $this->playerPositions[$targetId] ?? null;
+        if ($playerFrom === null || $playerTo === null) {
+            throw new InvalidMovementException('Player position not found');
+        }
+
+        $turn = $context->dispatch(new GetTurn($command->turnId));
+        if ($turn === null || $turn->getActions() !== []) {
+            throw new InvalidMovementException('Magic Swap costs 4 moves and is only possible at the beginning of the turn');
+        }
+
+        $this->playerPositions[$playerId] = $playerTo;
+        $this->playerPositions[$targetId] = $playerFrom;
+
+        $context->dispatch(new PlayersSwapped(
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            targetPlayerId: $command->targetPlayerId,
+            playerFrom: $playerFrom,
+            playerTo: $playerTo,
+        ));
+
+        // The swap spends the whole turn; a pickable item on the new tile keeps the turn open for PICK_ITEM
+        $field = $context->dispatch(new GetField($this->gameId));
+        $context->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::MAGIC_SWAP,
+            tileId: null,
+            additionalData: [
+                'ability' => 'magic_swap',
+                'heroAbility' => 'magic_swap',
+                'targetPlayerId' => $targetId,
+                'from' => $playerFrom->toString(),
+                'to' => $playerTo->toString(),
+            ],
+            at: new \DateTimeImmutable(),
+            deferTurnEnd: self::hasPickableItemAt($field->getItems(), $playerTo->toString()),
+        ));
     }
 
     #[Handler]
