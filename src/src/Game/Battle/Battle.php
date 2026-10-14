@@ -11,6 +11,7 @@ use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\DoctrineDBAL\ItemArrayJsonType;
 use App\Game\Item\Item;
+use App\Game\Item\ItemType;
 use App\Game\Movement\Commands\ResetPlayerPosition;
 use App\Game\Movement\Events\PlayerMoved;
 use App\Game\Movement\GetPlayerPosition;
@@ -93,6 +94,12 @@ class Battle extends AggregateRoot
      */
     #[Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $hpSacrificed = false;
+
+    /**
+     * Wizard "Magical Affinity": fireballs used in this battle stayed in the inventory.
+     * Transient: set and consumed within the same finalizeBattle command, not persisted.
+     */
+    private bool $spellsKept = false;
 
     private function __construct(
         #[Id]
@@ -275,6 +282,18 @@ class Battle extends AggregateRoot
         // Get selected consumable items
         $selectedConsumables = $player->getItemsByIds($command->selectedConsumableIds);
 
+        // Wizard "Magical Affinity": fireballs still add their bonus but are not consumed
+        $keptConsumableIds = [];
+        if ($player->getHero()?->keepsSpellsInCombat() === true) {
+            foreach ($selectedConsumables as $selectedConsumable) {
+                $selectedConsumable = Item::fromAnything($selectedConsumable);
+                if ($selectedConsumable->type === ItemType::FIREBALL) {
+                    $keptConsumableIds[] = $selectedConsumable->itemId->toString();
+                }
+            }
+        }
+        $this->spellsKept = $keptConsumableIds !== [];
+
         // Combine weapons and selected consumables
         $finalUsedItems = array_merge($weaponItems, $selectedConsumables);
 
@@ -307,10 +326,14 @@ class Battle extends AggregateRoot
                 finalUsedItems: $finalUsedItems,
                 finalTotalDamage: $this->totalDamage,
                 selectedConsumableIds: $command->selectedConsumableIds,
+                keptConsumableIds: $keptConsumableIds,
             ));
 
-            // Consume the selected consumable items (remove them from player's inventory)
+            // Consume the selected consumable items (remove them from player's inventory), except the kept ones
             foreach ($command->selectedConsumableIds as $itemId) {
+                if (\in_array($itemId, $keptConsumableIds, true)) {
+                    continue;
+                }
                 $messageContext->dispatch(new RemoveItemFromInventory(
                     gameId: $command->gameId,
                     playerId: $command->playerId,
@@ -341,6 +364,7 @@ class Battle extends AggregateRoot
                 tieIsWin: $this->playerWinsTies($messageContext),
                 unstoppable: $unstoppable,
                 hpSacrificed: $this->hpSacrificed,
+                spellsKept: $this->spellsKept,
             ));
 
             // NOW process the battle result (movement, HP changes, turn ending)
@@ -554,6 +578,7 @@ class Battle extends AggregateRoot
                 tieIsWin: $tieIsWin,
                 unstoppable: $unstoppable,
                 hpSacrificed: $this->hpSacrificed,
+                spellsKept: $this->spellsKept,
             ));
 
             // Process the battle result after BattleCompleted event
@@ -594,6 +619,7 @@ class Battle extends AggregateRoot
             unstoppable: $unstoppable,
             canSacrificeHp: $canSacrificeHp,
             hpSacrificed: $this->hpSacrificed,
+                spellsKept: $this->spellsKept,
         ));
     }
 
@@ -717,12 +743,14 @@ class Battle extends AggregateRoot
                 'backstab' => $backstab,
                 'unstoppable' => $unstoppable,
                 'hpSacrificed' => $this->hpSacrificed,
+                'spellsKept' => $this->spellsKept,
                 'heroAbility' => implode('+', array_filter([
                     $this->rerollUsed ? 'double_attack' : null,
                     $this->onesRerolled > 0 ? 'combat_training' : null,
                     $backstab ? 'backstab' : null,
                     $unstoppable ? 'unstoppable' : null,
                     $this->hpSacrificed ? 'sacrifice' : null,
+                    $this->spellsKept ? 'magical_affinity' : null,
                 ])) ?: null,
             ],
             at: new \DateTimeImmutable(),

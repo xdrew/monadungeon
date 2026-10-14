@@ -175,7 +175,7 @@ final class HeroTest extends TestCase
     #[Test]
     public function warriorSkillsAreDescribed(): void
     {
-        self::assertSame(['warrior', 'thief', 'swordsman', 'warlock'], HeroType::values());
+        self::assertSame(['warrior', 'thief', 'swordsman', 'warlock', 'wizard'], HeroType::values());
         self::assertTrue(HeroType::WARRIOR->canRerollBattle());
         self::assertTrue(HeroType::WARRIOR->reincarnates());
         self::assertSame(['Double Attack', 'Reincarnation'], array_column(HeroType::WARRIOR->skills(), 'name'));
@@ -198,7 +198,7 @@ final class HeroTest extends TestCase
             self::assertFalse($other->continuesTurnOnSix(), $other->value);
         }
         self::assertSame(
-            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix', 'sacrificesHp', 'canMagicSwap'],
+            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix', 'sacrificesHp', 'canMagicSwap', 'keepsSpellsInCombat', 'walksThroughWalls'],
             array_keys(HeroType::SWORDSMAN->flags()),
         );
     }
@@ -223,6 +223,30 @@ final class HeroTest extends TestCase
         }
         self::assertTrue(HeroType::WARLOCK->flags()['sacrificesHp']);
         self::assertTrue(HeroType::WARLOCK->flags()['canMagicSwap']);
+    }
+
+    #[Test]
+    public function wizardSkillsAreDescribed(): void
+    {
+        self::assertSame('Argentus, the Wizard', HeroType::WIZARD->label());
+        self::assertTrue(HeroType::WIZARD->keepsSpellsInCombat());
+        self::assertTrue(HeroType::WIZARD->walksThroughWalls());
+        self::assertFalse(HeroType::WIZARD->canRerollBattle());
+        self::assertFalse(HeroType::WIZARD->reincarnates());
+        self::assertFalse(HeroType::WIZARD->winsTies());
+        self::assertFalse(HeroType::WIZARD->canSneakPastMonsters());
+        self::assertFalse(HeroType::WIZARD->rerollsOnes());
+        self::assertFalse(HeroType::WIZARD->continuesTurnOnSix());
+        self::assertFalse(HeroType::WIZARD->sacrificesHp());
+        self::assertFalse(HeroType::WIZARD->canMagicSwap());
+        self::assertSame(['Magical Affinity', 'Astral Walking'], array_column(HeroType::WIZARD->skills(), 'name'));
+
+        foreach ([HeroType::WARRIOR, HeroType::THIEF, HeroType::SWORDSMAN, HeroType::WARLOCK] as $other) {
+            self::assertFalse($other->keepsSpellsInCombat(), $other->value);
+            self::assertFalse($other->walksThroughWalls(), $other->value);
+        }
+        self::assertTrue(HeroType::WIZARD->flags()['keepsSpellsInCombat']);
+        self::assertTrue(HeroType::WIZARD->flags()['walksThroughWalls']);
     }
 
     private function createPlayer(?HeroType $hero, int $hp): Player

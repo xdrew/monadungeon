@@ -13,6 +13,7 @@ enum HeroType: string
     case THIEF = 'thief';
     case SWORDSMAN = 'swordsman';
     case WARLOCK = 'warlock';
+    case WIZARD = 'wizard';
 
     /**
      * @return list<string>
@@ -29,6 +30,7 @@ enum HeroType: string
             self::THIEF => 'Aderyn, the Thief',
             self::SWORDSMAN => 'Victorius, the Swordsman',
             self::WARLOCK => 'Lord Xanros, the Warlock',
+            self::WIZARD => 'Argentus, the Wizard',
         };
     }
 
@@ -97,9 +99,25 @@ enum HeroType: string
     }
 
     /**
+     * Magical Affinity: fireballs used in combat stay in the inventory (the teleport scroll is still consumed).
+     */
+    public function keepsSpellsInCombat(): bool
+    {
+        return $this === self::WIZARD;
+    }
+
+    /**
+     * Astral Walking: may move to an adjacent placed tile without a door, as a normal move.
+     */
+    public function walksThroughWalls(): bool
+    {
+        return $this === self::WIZARD;
+    }
+
+    /**
      * Skill flags for API consumers (frontend decides which prompts/buttons to show).
      *
-     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool, rerollsOnes: bool, continuesTurnOnSix: bool, sacrificesHp: bool, canMagicSwap: bool}
+     * @return array{canRerollBattle: bool, reincarnates: bool, winsTies: bool, canSneakPastMonsters: bool, rerollsOnes: bool, continuesTurnOnSix: bool, sacrificesHp: bool, canMagicSwap: bool, keepsSpellsInCombat: bool, walksThroughWalls: bool}
      */
     public function flags(): array
     {
@@ -112,6 +130,8 @@ enum HeroType: string
             'continuesTurnOnSix' => $this->continuesTurnOnSix(),
             'sacrificesHp' => $this->sacrificesHp(),
             'canMagicSwap' => $this->canMagicSwap(),
+            'keepsSpellsInCombat' => $this->keepsSpellsInCombat(),
+            'walksThroughWalls' => $this->walksThroughWalls(),
         ];
     }
 
@@ -159,6 +179,16 @@ enum HeroType: string
                 [
                     'name' => 'Magic Swap',
                     'description' => 'The Warlock can swap his position with any other hero. This costs 4 moves, so it is only possible at the beginning of his turn; he can still use the ability of the tile where he ended up (unlocking a chest, healing, etc.).',
+                ],
+            ],
+            self::WIZARD => [
+                [
+                    'name' => 'Magical Affinity',
+                    'description' => 'The Wizard knows how to use the magic bolts more effectively: his fireball scrolls are not consumed when used in combat. This does not apply to the portal of healing.',
+                ],
+                [
+                    'name' => 'Astral Walking',
+                    'description' => 'The Wizard can move through walls, so he does not have to respect the continuity of the dungeon. This can be used only while moving over the discovered tiles.',
                 ],
             ],
         };

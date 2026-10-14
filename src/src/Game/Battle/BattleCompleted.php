@@ -48,6 +48,7 @@ final readonly class BattleCompleted implements Event
         public bool $unstoppable = false,
         public bool $canSacrificeHp = false,
         public bool $hpSacrificed = false,
+        public bool $spellsKept = false,
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {}
 }

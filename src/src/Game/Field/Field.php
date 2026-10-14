@@ -1149,6 +1149,8 @@ class Field extends AggregateRoot
             // Warlock "Sacrifice"
             'canSacrificeHp' => $event->canSacrificeHp,
             'hpSacrificed' => $event->hpSacrificed,
+            // Wizard "Magical Affinity"
+            'spellsKept' => $event->spellsKept,
         ];
 
         // Check if there are items at this position
@@ -1282,7 +1284,11 @@ class Field extends AggregateRoot
     public function onBattleFinalized(BattleFinalized $event): void
     {
         // Track the consumed item IDs so they don't get placed on the field when removed from inventory
-        $this->consumedItemIds = array_merge($this->consumedItemIds, $event->selectedConsumableIds);
+        // Wizard "Magical Affinity": kept spells stay in the inventory and may still be dropped on the field later
+        $this->consumedItemIds = array_merge(
+            $this->consumedItemIds,
+            array_values(array_diff($event->selectedConsumableIds, $event->keptConsumableIds)),
+        );
 
         // Do NOT clear the last battle info here - it will be cleared after the final BattleCompleted event
         // This ensures the frontend receives the final battle results after finalization

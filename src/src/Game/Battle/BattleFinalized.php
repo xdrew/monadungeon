@@ -17,6 +17,7 @@ final readonly class BattleFinalized implements Event
     /**
      * @param array<Item> $finalUsedItems
      * @param array<string> $selectedConsumableIds
+     * @param array<string> $keptConsumableIds Wizard "Magical Affinity": selected spells that stay in the inventory
      */
     public function __construct(
         public Uuid $battleId,
@@ -25,5 +26,6 @@ final readonly class BattleFinalized implements Event
         public array $finalUsedItems,
         public int $finalTotalDamage,
         public array $selectedConsumableIds,
+        public array $keptConsumableIds = [],
     ) {}
 }
