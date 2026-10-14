@@ -1292,9 +1292,9 @@ const createNewGame = async () => {
 
 .hero-portrait {
   width: 40px;
-  height: 40px;
-  object-fit: cover;
-  border-radius: var(--radius-md, 4px);
+  height: 56px;
+  object-fit: contain;
+  object-position: top;
 }
 
 .hero-name {

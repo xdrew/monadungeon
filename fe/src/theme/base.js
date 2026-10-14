@@ -16,7 +16,7 @@ export default {
   manifest: '/themes/base/manifest.json',
   logo: null,
   /** Lobby background art (null = plain dark background) */
-  lobbyBackground: null,
+  lobbyBackground: '/themes/base/lobby-bg.webp',
   monadGamesId: false,
 
   /** Keyed by ItemName value from the backend. */

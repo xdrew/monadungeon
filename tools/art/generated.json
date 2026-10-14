@@ -1,0 +1,1084 @@
+{
+  "assets": {
+    "giant_rat": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "f03d576bed5bc16bdb40ab2d89896228d18400ad264519e28290c1e03b854b94",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        }
+      ],
+      "raw": "tools/art/out/raw/giant_rat.jpg",
+      "output": "fe/public/themes/base/monsters/giant_rat.webp",
+      "generated_at": "2026-10-14T19:45:20+00:00",
+      "duration_s": 25.9,
+      "interaction_id": "v1_Chd1ZHZQYXMtekJjMzVuc0VQbWZXbzBRdxIXdWR2UGFzLXpCYzM1bnNFUG1mV28wUXc",
+      "post": {
+        "bbox": [
+          30,
+          139,
+          963,
+          866
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "giant_spider": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "4759e4710497d2c2f1dd66de9bcd0ddf6809cd47e2cd7bac2fe8a2c39b7cc6fe",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_rat.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/giant_spider.jpg",
+      "output": "fe/public/themes/base/monsters/giant_spider.webp",
+      "generated_at": "2026-10-14T19:45:47+00:00",
+      "duration_s": 27.3,
+      "interaction_id": "v1_ChYwTnZQYXVMMkstZnBuc0VQOUxXYVNBEhYwTnZQYXVMMkstZnBuc0VQOUxXYVNB",
+      "post": {
+        "bbox": [
+          34,
+          179,
+          991,
+          892
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "mummy": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "bc01d8a2271180c6ee4829f9517239ab3efbdda30d49e8b20959857e81d83406",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_rat.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_spider.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/mummy.jpg",
+      "output": "fe/public/themes/base/monsters/mummy.webp",
+      "generated_at": "2026-10-14T19:46:24+00:00",
+      "duration_s": 41.6,
+      "interaction_id": "v1_Chc2dHZQYXFDdUF2UF9uc0VQX3J2RXFBOBIXNnR2UGFxQ3VBdlBfbnNFUF9ydkVxQTg",
+      "post": {
+        "bbox": [
+          157,
+          72,
+          867,
+          976
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "skeleton_turnkey": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "dfc78b1583b74c924a80404bc88adb744f61d3171ea70f279e1788c9ec0bb3f3",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_rat.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_spider.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/mummy.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/skeleton_turnkey.jpg",
+      "output": "fe/public/themes/base/monsters/skeleton_turnkey.webp",
+      "generated_at": "2026-10-14T19:46:50+00:00",
+      "duration_s": 28.1,
+      "interaction_id": "v1_ChdFTnpQYXBhaExQR19uc0VQay1US2lRdxIXRU56UGFwYWhMUEdfbnNFUGstVEtpUXc",
+      "post": {
+        "bbox": [
+          89,
+          77,
+          917,
+          978
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "skeleton_warrior": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "9543e714afd287e35e786e5e2f079b2c9314ac04b7531e8968709d61d183f868",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_rat.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_spider.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/mummy.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_turnkey.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/skeleton_warrior.jpg",
+      "output": "fe/public/themes/base/monsters/skeleton_warrior.webp",
+      "generated_at": "2026-10-14T19:47:30+00:00",
+      "duration_s": 21.6,
+      "interaction_id": "v1_ChZQZHpQYW8yc0pOV0w3TThQN2UyUmVBEhZQZHpQYW8yc0pOV0w3TThQN2UyUmVB",
+      "post": {
+        "bbox": [
+          134,
+          22,
+          942,
+          970
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "skeleton_king": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "47bee5ff8b4154d61211a2a4a320179a4e81add1cabb430cbc0c1bcd3b258e9c",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_rat.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_spider.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/mummy.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_turnkey.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_warrior.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/skeleton_king.jpg",
+      "output": "fe/public/themes/base/monsters/skeleton_king.webp",
+      "generated_at": "2026-10-14T19:48:04+00:00",
+      "duration_s": 36.9,
+      "interaction_id": "v1_ChdVTnpQYXRlQU42MkNrZFVQM2JldHdRNBIXVU56UGF0ZUFONjJDa2RVUDNiZXR3UTQ",
+      "post": {
+        "bbox": [
+          46,
+          74,
+          966,
+          974
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "fallen": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "c5167b77cf4aef0be23fb14a965b65430daa6b3ef5f59231f8d852177702395e",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_spider.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/mummy.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_turnkey.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_warrior.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_king.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/fallen.jpg",
+      "output": "fe/public/themes/base/monsters/fallen.webp",
+      "generated_at": "2026-10-14T19:48:40+00:00",
+      "duration_s": 40.2,
+      "interaction_id": "v1_ChZjOXpQYXZEa0RlbW1uc0VQcTZ5UFNBEhZjOXpQYXZEa0RlbW1uc0VQcTZ5UFNB",
+      "post": {
+        "bbox": [
+          86,
+          76,
+          928,
+          994
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.2,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "dragon": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "1da117b2f02295db4138b5a0c422c3047ee9b7b589cd9036b460e311ea394d8a",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/mummy.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_turnkey.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_warrior.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_king.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/fallen.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/dragon.jpg",
+      "output": "fe/public/themes/base/monsters/dragon.webp",
+      "generated_at": "2026-10-14T19:49:29+00:00",
+      "duration_s": 50.8,
+      "interaction_id": "v1_ChdtTnpQYXJ6UUY0bjZuc0VQaDlLWTZBcxIXbU56UGFyelFGNG42bnNFUGg5S1k2QXM",
+      "post": {
+        "bbox": [
+          49,
+          83,
+          975,
+          955
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.02,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "adventurer": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "da5f9bf67da45bbbfd3925d0dc4ffa5811b46e6c25662afd14144a7da908f7b1",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        }
+      ],
+      "raw": "tools/art/out/raw/adventurer.jpg",
+      "output": "fe/public/themes/base/heroes/adventurer.webp",
+      "generated_at": "2026-10-14T19:49:58+00:00",
+      "duration_s": 34.1,
+      "interaction_id": "v1_Chd4OXpQYXAyNkRibTluc0VQXy1IYzhBbxIXeDl6UGFwMjZEYm05bnNFUF8tSGM4QW8",
+      "post": {
+        "bbox": [
+          108,
+          116,
+          699,
+          1206
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.02,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "warrior": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "9e615bfe627428deec6b309f45bc720a7c3d44bb8fbc90dae47e1bcdcef13c6d",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/adventurer.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/warrior.jpg",
+      "output": "fe/public/themes/base/heroes/warrior.webp",
+      "generated_at": "2026-10-14T19:50:31+00:00",
+      "duration_s": 35.5,
+      "interaction_id": "v1_Chc1dHpQYW9iS040ZmtrZFVQXzhpTzRBWRIXNXR6UGFvYktONGZra2RVUF84aU80QVk",
+      "post": {
+        "bbox": [
+          44,
+          43,
+          809,
+          1216
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "thief": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "d61658a328a4e42b4b91ea9d843bb72206cbd27450ff1622b51b54fcc27fe8ae",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/adventurer.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warrior.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/thief.jpg",
+      "output": "fe/public/themes/base/heroes/thief.webp",
+      "generated_at": "2026-10-14T19:51:02+00:00",
+      "duration_s": 33.2,
+      "interaction_id": "v1_ChdCOTNQYXNTZE1iSGQ3TThQb0lTYS1RMBIXQjkzUGFzU2RNYkhkN004UG9JU2EtUTA",
+      "post": {
+        "bbox": [
+          92,
+          63,
+          758,
+          1208
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.02,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "swordsman": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "988fe0b5c51e4a8420a981af07d3af5f0d536ec64e8225ffb6c3d51c05e13601",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/adventurer.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warrior.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/thief.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/swordsman.jpg",
+      "output": "fe/public/themes/base/heroes/swordsman.webp",
+      "generated_at": "2026-10-14T19:51:34+00:00",
+      "duration_s": 33.3,
+      "interaction_id": "v1_ChdKdDNQYXZlSEpyRDRuc0VQc3Z2Y3FBcxIXSnQzUGF2ZUhKckQ0bnNFUHN2dmNxQXM",
+      "post": {
+        "bbox": [
+          190,
+          76,
+          665,
+          1200
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "warlock": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "8d0d50438dead5f38526c34a41ebf9186e42ebd77bf3533d07fd0100cf28a976",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/adventurer.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warrior.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/thief.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/swordsman.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/warlock.jpg",
+      "output": "fe/public/themes/base/heroes/warlock.webp",
+      "generated_at": "2026-10-14T19:52:01+00:00",
+      "duration_s": 29.1,
+      "interaction_id": "v1_ChdSZDNQYXAtcUk0RF9uc0VQeXVqcWtBSRIXUmQzUGFwLXFJNERfbnNFUHl1anFrQUk",
+      "post": {
+        "bbox": [
+          87,
+          67,
+          762,
+          1202
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "wizard": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "6ec82d84d52b402c5f567a03098e5998bad6e2d30d25223d2b0f8d94d1c6aacf",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/adventurer.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warrior.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/thief.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/swordsman.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warlock.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/wizard.jpg",
+      "output": "fe/public/themes/base/heroes/wizard.webp",
+      "generated_at": "2026-10-14T19:52:30+00:00",
+      "duration_s": 31.6,
+      "interaction_id": "v1_ChZZTjNQYXZueEhlR3drZFVQci0tYlNBEhZZTjNQYXZueEhlR3drZFVQci0tYlNB",
+      "post": {
+        "bbox": [
+          86,
+          64,
+          778,
+          1201
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "oracle": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 1,
+      "prompt_sha256": "0a240f3a0c80f8002b2e686e08292424803f67ef6997d88e2db944508495a2c0",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warrior.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/thief.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/swordsman.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warlock.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/wizard.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/oracle.jpg",
+      "output": "fe/public/themes/base/heroes/oracle.webp",
+      "generated_at": "2026-10-14T19:54:15+00:00",
+      "duration_s": 38.1,
+      "interaction_id": "v1_ChZ4TjNQYW9YUENaTzV2ZElQNTRiSE9REhZ4TjNQYW9YUENaTzV2ZElQNTRiSE9R",
+      "post": {
+        "bbox": [
+          138,
+          48,
+          802,
+          1220
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "lobby_bg": {
+      "kind": "background",
+      "model": "gemini-3-pro-image",
+      "style_version": 1,
+      "prompt_sha256": "d2ad3f983c6843b4557fb2d0af153e317cc546595f0067e40cbe8e2a33ea14ca",
+      "references": [
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/monad/lobby-bg.webp",
+          "role": "composition"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/dragon.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_king.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/mummy.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_spider.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_rat.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/lobby_bg.jpg",
+      "output": "fe/public/themes/base/lobby-bg.webp",
+      "generated_at": "2026-10-14T19:54:57+00:00",
+      "duration_s": 44.6,
+      "interaction_id": "v1_Chc2TjNQYXN5REJjS19rZFVQN2NlSTRRZxIXNk4zUGFzeURCY0tfa2RVUDdjZUk0UWc",
+      "post": {
+        "source_size": [
+          2528,
+          1696
+        ]
+      }
+    }
+  }
+}

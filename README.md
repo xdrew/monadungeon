@@ -71,7 +71,21 @@ cd fe && VITE_THEME=monad npm run build
 VITE_THEME=monad docker compose -f compose.prod.yml build frontend-builder
 ```
 
-Theme data lives in `fe/src/theme/` (`base.js`, `monad.js`); images in `fe/public/themes/<theme>/`. The base theme's webp files are not in the repo yet — until they are added, the UI shows emoji instead (see `fe/public/themes/base/README.md` for the 15 expected file names).
+Theme data lives in `fe/src/theme/` (`base.js`, `monad.js`); images in `fe/public/themes/<theme>/`. If a base-theme image is missing the UI falls back to an emoji (`ThemedImage.vue`).
+
+### Art generation
+
+The base-theme monsters, hero portraits and the lobby background are generated with Gemini by `tools/art` (Python, runs on the host):
+
+```bash
+python3 -m venv tools/art/.venv && tools/art/.venv/bin/pip install -r tools/art/requirements.txt
+cp tools/art/.env.example tools/art/.env        # put GEMINI_API_KEY there (gitignored; never into the root .env)
+tools/art/.venv/bin/python -m tools.art probe    # one test call
+tools/art/.venv/bin/python -m tools.art generate # missing assets → fe/public/themes/base/
+tools/art/.venv/bin/python -m tools.art generate --only dragon --force   # redo one
+```
+
+Style consistency comes from a committed style bible (`tools/art/style/style.json`, `STYLE.md`): every call sends the existing item icons/figures as style references plus the most recently generated sprites, and `tools/art/generated.json` records the model, prompt hash and references per asset. Details in `tools/art/README.md`.
 
 ## Quick Start
 
