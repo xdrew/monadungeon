@@ -15,7 +15,9 @@ use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
 use App\Game\Item\ItemType;
+use App\Game\Movement\GetAllPlayerPositions;
 use App\Game\Movement\GetPlayerPosition;
+use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
 use App\Game\Turn\GetCurrentTurn;
 use App\Infrastructure\Uuid\Uuid;
@@ -29,6 +31,7 @@ final class SmartVirtualPlayer
     private const int MAX_ACTIONS_PER_TURN = 30; // Safety limit to prevent infinite loops
     private const int MAX_TILES_PER_SEQUENCE = 5; // Max tiles in one placement sequence (corridors)
     private const int MAX_MOVES_PER_TURN = 4; // Maximum number of moves allowed in a single turn
+    private const int SPRINT_MOVES = 8; // Hanna "Sprint": up to 8 moves over discovered tiles
 
     private static array $unreachableTargets = [];  // Track targets that are unreachable (persists across turns)
 
@@ -73,6 +76,18 @@ final class SmartVirtualPlayer
 
     private int $moveCount = 0;  // Track number of moves in current turn
 
+    private int $maxMoves = self::MAX_MOVES_PER_TURN;  // Moves available this turn (8 after Hanna's Sprint)
+
+    private bool $battleKeepsTurn = false;  // Unstoppable / Tireless: the last battle did not end the turn
+
+    private bool $walksThroughWalls = false;
+
+    /**
+     * @var list<array{type: string, timestamp: string, details: array}> skill decisions taken where no action list
+     *                                                                   is at hand (Stealth), added to the turn's actions
+     */
+    private array $skillActions = [];  // Wizard "Astral Walking": path finding may cross walls between discovered tiles
+
     public function __construct(
         private readonly MessageBus $messageBus,
         private readonly VirtualPlayerStrategy $strategy,
@@ -85,6 +100,17 @@ final class SmartVirtualPlayer
      */
     public function executeTurn(Uuid $gameId, Uuid $playerId, string $strategyType = 'balanced'): array
     {
+        $this->skillActions = [];
+        $actions = $this->playTurn($gameId, $playerId, $strategyType);
+
+        return array_merge($actions, $this->skillActions);
+    }
+
+    /**
+     * The turn itself (executeTurn adds the skill decisions recorded along the way).
+     */
+    private function playTurn(Uuid $gameId, Uuid $playerId, string $strategyType): array
+    {
         $actions = [];
 
         // Add immediate debug to confirm this method is called
@@ -92,6 +118,8 @@ final class SmartVirtualPlayer
 
         // Reset move counter at the start of each turn
         $this->moveCount = 0;
+        $this->maxMoves = self::MAX_MOVES_PER_TURN;
+        $this->battleKeepsTurn = false;
 
         // Keep visited positions within the turn to prevent loops
         // But also track recent positions across turns for oscillation detection
@@ -195,6 +223,14 @@ final class SmartVirtualPlayer
 
                 return $actions;
             }
+
+            // Hero skills and spells used at the start of the turn (may use up the whole turn)
+            $this->walksThroughWalls = $player->getSkills()?->walksThroughWalls() === true;
+            if ($this->executeTurnStartSkills($gameId, $playerId, $currentTurnId, $actions)) {
+                return $actions;
+            }
+            $field = $this->messageBus->dispatch(new GetField($gameId));
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
 
             // Get current position and available actions
             $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
@@ -508,7 +544,7 @@ final class SmartVirtualPlayer
                     // Move directly to the healing fountain
                     [$toX, $toY] = explode(',', $healingFountainPosition);
                     [$fromX, $fromY] = explode(',', $currentPosition->toString());
-                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                    $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
                     $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
@@ -548,7 +584,7 @@ final class SmartVirtualPlayer
                             'distance_to_fountain' => $minDistance,
                         ]);
 
-                        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                        $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
                         $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
@@ -579,23 +615,17 @@ final class SmartVirtualPlayer
                 $dragonHP = $dragonInfo['hp'];
                 $playerStrength = $this->calculateEffectiveStrength($player);
 
-                // For dragon, also consider consumables we could use
-                $inventory = $player->getInventory();
-                $availableFireballs = 0;
-                foreach ($inventory['spell'] ?? [] as $spell) {
-                    if ($spell instanceof Item) {
-                        if ($spell->type->value === 'fireball') {
-                            ++$availableFireballs;
-                        }
-                    } elseif (\is_array($spell)) {
-                        if (($spell['type'] ?? '') === 'fireball' && ($spell['uses'] ?? 0) > 0) {
-                            $availableFireballs += $spell['uses'];
-                        }
-                    }
-                }
+                // For dragon, also consider consumables we could use (fireball +1, frost fist +2)
+                $availableFireballs = $this->countSpells($player, ItemType::FIREBALL) + 2 * $this->countSpells($player, ItemType::FROST_FIST);
 
-                // Calculate strength including consumables for dragon fight
-                $strengthWithConsumables = $playerStrength + $availableFireballs;
+                $dragonWinChance = $this->fightWinChance($player, (int) $dragonHP);
+                $maxPossibleDamage = BattleOdds::maxTotal(
+                    $player->calculateItemDamage(),
+                    $player->getSkills(),
+                    $player->getHP(),
+                    $this->countSpells($player, ItemType::FIREBALL),
+                    $this->countSpells($player, ItemType::FROST_FIST),
+                );
 
                 // Check if dragon is the only monster left on the field
                 $otherMonstersExist = false;
@@ -612,9 +642,8 @@ final class SmartVirtualPlayer
                 $shouldPursue = false; // Track if we should pursue even if we can't win
 
                 if (!$otherMonstersExist && $deck->isEmpty()) {
-                    // Maximum possible roll with 2d6 + weapons could still win
-                    $maxPossibleDamage = 12 + ($playerStrength - 7) + $availableFireballs; // 12 from dice + weapons + fireballs
-                    if ($maxPossibleDamage >= $dragonHP) {
+                    // Maximum possible roll with 2d6 + weapons + skills + spells could still win
+                    if ($dragonWinChance > 0.0) {
                         $shouldAttemptDragon = true;
                         $shouldPursue = true;
                         error_log('DEBUG AI: Dragon is the only monster and deck is empty. Will attempt even with low odds.');
@@ -625,7 +654,8 @@ final class SmartVirtualPlayer
                     }
                 } else {
                     // Normal case - only attempt if we have reasonable chance
-                    $shouldAttemptDragon = ($strengthWithConsumables >= $dragonHP);
+                    $shouldAttemptDragon = $dragonWinChance >= $this->getMinAcceptableBattleProbability();
+                    error_log(sprintf('DEBUG AI: dragon HP %d win chance %.2f (skills: %s)', $dragonHP, $dragonWinChance, $player->getSkills()?->label() ?? 'none'));
                     if ($shouldAttemptDragon) {
                         $shouldPursue = true;
                     }
@@ -660,7 +690,7 @@ final class SmartVirtualPlayer
 
                         if (\in_array($currentPosStr, $adjacentPositions, true)) {
                             // We're adjacent! Attack the dragon
-                            $attackReason = $strengthWithConsumables >= $dragonHP
+                            $attackReason = $dragonWinChance >= $this->getMinAcceptableBattleProbability()
                                 ? "Can defeat dragon (HP: {$dragonHP}, Strength: {$playerStrength}) for victory!"
                                 : "Last chance - attempting dragon (HP: {$dragonHP}, Strength: {$playerStrength}) as only option!";
 
@@ -677,7 +707,7 @@ final class SmartVirtualPlayer
                             // Move to dragon position to attack
                             [$toX, $toY] = explode(',', (string) $dragonPosition);
                             [$fromX, $fromY] = explode(',', $currentPosStr);
-                            $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                            $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                             $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
                             $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
@@ -739,7 +769,7 @@ final class SmartVirtualPlayer
                         }
 
                         if ($bestMoveTowardDragon !== null) {
-                            $moveReason = $strengthWithConsumables >= $dragonHP
+                            $moveReason = $dragonWinChance >= $this->getMinAcceptableBattleProbability()
                                 ? 'Moving closer to dragon to attack and win game'
                                 : 'Moving toward dragon - last chance as only monster remaining';
 
@@ -751,7 +781,7 @@ final class SmartVirtualPlayer
 
                             [$toX, $toY] = explode(',', (string) $bestMoveTowardDragon);
                             [$fromX, $fromY] = explode(',', $currentPosStr);
-                            $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                            $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                             $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
                             $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
@@ -764,8 +794,7 @@ final class SmartVirtualPlayer
                     $fireballInfo = $availableFireballs > 0 ? " (+{$availableFireballs} fireballs = " . ($playerStrength + $availableFireballs) . ' total)' : '';
 
                     // Check if it's impossible even with max rolls
-                    $maxPossibleDamage = 12 + ($playerStrength - 7) + $availableFireballs;
-                    $impossibleMessage = $maxPossibleDamage < $dragonHP
+                    $impossibleMessage = $dragonWinChance <= 0.0
                         ? " (impossible even with max rolls: {$maxPossibleDamage} < {$dragonHP})"
                         : '';
 
@@ -1557,7 +1586,7 @@ final class SmartVirtualPlayer
             [$toX, $toY] = explode(',', (string) $bestMove);
 
             // Check move limit
-            if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+            if ($this->moveCount >= $this->maxMoves) {
                 $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
                 $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                 $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
@@ -1570,7 +1599,7 @@ final class SmartVirtualPlayer
             ]);
 
             ++$this->moveCount;
-            $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+            $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
             $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
             if ($moveResult['success']) {
@@ -1616,7 +1645,8 @@ final class SmartVirtualPlayer
     }
 
     /**
-     * Calculate the probability of defeating a monster.
+     * Calculate the probability of defeating a monster, hero skills included (BattleOdds).
+     * Spells count when the strategy is ready to spend them (balanced or aggressive); the Wizard keeps them, so always.
      * @return float Probability from 0.0 to 1.0
      */
     private function calculateDefeatProbability($monsterHP, $player): float
@@ -1625,58 +1655,53 @@ final class SmartVirtualPlayer
             return 1.0; // Already defeated
         }
 
-        // Get base weapon damage
-        $weaponDamage = 0;
-        foreach ($player->getAllItems() as $playerItem) {
-            if ($playerItem->type->getCategory() === ItemCategory::WEAPON) {
-                $weaponDamage += $playerItem->type->getDamage();
+        $skills = $player->getSkills();
+        $useSpells = ($this->strategyConfig['riskTolerance'] ?? 0.5) >= 0.4 || $skills?->keepsSpellsInCombat() === true;
+        $winProbability = BattleOdds::winChance(
+            monsterHp: (int) $monsterHP,
+            itemDamage: $player->calculateItemDamage(),
+            skills: $skills,
+            hp: $player->getHP(),
+            fireballs: $useSpells ? $this->countSpells($player, ItemType::FIREBALL) : 0,
+            frostFists: $useSpells ? $this->countSpells($player, ItemType::FROST_FIST) : 0,
+            firstMove: $this->moveCount === 0,
+        );
+        if ($skills !== null) {
+            error_log(sprintf('DEBUG AI: battle odds vs HP %d with skills of %s: %.2f', $monsterHP, $skills->label(), $winProbability));
+        }
+
+        return $winProbability;
+    }
+
+    /**
+     * Win chance against a monster with every spell the AI holds (dragon and target choice).
+     */
+    private function fightWinChance($player, int $monsterHp): float
+    {
+        return BattleOdds::winChance(
+            monsterHp: $monsterHp,
+            itemDamage: $player->calculateItemDamage(),
+            skills: $player->getSkills(),
+            hp: $player->getHP(),
+            fireballs: $this->countSpells($player, ItemType::FIREBALL),
+            frostFists: $this->countSpells($player, ItemType::FROST_FIST),
+            firstMove: $this->moveCount === 0,
+        );
+    }
+
+    /**
+     * Number of spells of a type in the player's inventory.
+     */
+    private function countSpells($player, ItemType $type): int
+    {
+        $count = 0;
+        foreach ($player->getInventory()[ItemCategory::SPELL->value] ?? [] as $spell) {
+            if (Item::fromAnything($spell)->type === $type) {
+                ++$count;
             }
         }
 
-        // Check for consumables
-        $consumableDamage = 0;
-        foreach ($player->getAllItems() as $playerItem) {
-            if ($playerItem->type === ItemType::FIREBALL) {
-                $consumableDamage += $playerItem->type->getDamage();
-                break; // Only count one for probability calc
-            }
-        }
-
-        // 2d6 probabilities: roll -> ways to get it / 36
-        // 2: 1/36, 3: 2/36, 4: 3/36, 5: 4/36, 6: 5/36, 7: 6/36,
-        // 8: 5/36, 9: 4/36, 10: 3/36, 11: 2/36, 12: 1/36
-        $diceProbs = [
-            2 => 1 / 36, 3 => 2 / 36, 4 => 3 / 36, 5 => 4 / 36, 6 => 5 / 36, 7 => 6 / 36,
-            8 => 5 / 36, 9 => 4 / 36, 10 => 3 / 36, 11 => 2 / 36, 12 => 1 / 36,
-        ];
-
-        // Calculate win probability
-        $winProbability = 0.0;
-
-        // Calculate minimum dice roll needed to win (must exceed monster HP)
-        $minDiceNeeded = $monsterHP - $weaponDamage + 1;  // Need to deal MORE than monster HP
-        $minDiceWithConsumable = $monsterHP - $weaponDamage - $consumableDamage + 1;
-
-        // Sum probabilities for all winning dice rolls
-        foreach ($diceProbs as $roll => $prob) {
-            if ($roll >= $minDiceNeeded) {
-                // Can win without consumable
-                $winProbability += $prob;
-            } elseif ($consumableDamage > 0 && $roll >= $minDiceWithConsumable) {
-                // Can win only with consumable - use it if aggressive
-                $riskTolerance = $this->strategyConfig['riskTolerance'] ?? 0.5;
-                if ($riskTolerance >= 0.7) {
-                    // Aggressive: always use consumables to win
-                    $winProbability += $prob;
-                } elseif ($riskTolerance >= 0.4) {
-                    // Balanced: use consumable 50% of the time in this situation
-                    $winProbability += $prob * 0.5;
-                }
-                // Defensive: save consumables, don't count this as winnable
-            }
-        }
-
-        return min(1.0, $winProbability); // Cap at 1.0 in case calculations exceed it
+        return $count;
     }
 
     /**
@@ -1706,6 +1731,14 @@ final class SmartVirtualPlayer
         $monsterName = 'unknown';
         if ($item instanceof Item) {
             $monsterName = $item->name->value ?? 'unknown';
+        }
+
+        // Thief "Stealth": a monster he would rather not fight does not block the way (movePlayerSmart sneaks past)
+        if ($monsterName !== 'dragon'
+            && HeroTactics::shouldSneak($player->getSkills(), $winProbability, $this->getMinAcceptableBattleProbability())) {
+            error_log("DEBUG AI: {$monsterName} at {$position} can be sneaked past (Stealth)");
+
+            return true;
         }
 
         // If win probability is 0%, always skip
@@ -2099,7 +2132,7 @@ final class SmartVirtualPlayer
             [$toX, $toY] = explode(',', (string) $bestMove);
 
             // Check move limit
-            if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+            if ($this->moveCount >= $this->maxMoves) {
                 $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
                 $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                 $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
@@ -2112,7 +2145,7 @@ final class SmartVirtualPlayer
             ]);
 
             ++$this->moveCount;
-            $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+            $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
             $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
             if ($moveResult['success']) {
@@ -2206,7 +2239,7 @@ final class SmartVirtualPlayer
         [$toX, $toY] = explode(',', $targetPosition);
 
         // Check move limit
-        if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+        if ($this->moveCount >= $this->maxMoves) {
             $actions[] = $this->createAction('ai_info', ['message' => 'Reached move limit for turn, ending turn']);
             $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
             $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
@@ -2221,7 +2254,7 @@ final class SmartVirtualPlayer
         ]);
 
         ++$this->moveCount;
-        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+        $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
         if ($moveResult['success']) {
@@ -2327,6 +2360,14 @@ final class SmartVirtualPlayer
 
         // MANDATORY Step 2: Place tile
         $placeResult = $this->apiClient->placeTile($gameId, $tileId, $playerId, $currentTurnId, (int) $x, (int) $y);
+        // The token drawn for the new room, so the client can show the monster or chest before the fight is replayed
+        if ($placeResult['success']) {
+            $placedItems = $this->messageBus->dispatch(new GetField($gameId))->getItems();
+            $placedKey = "{$x},{$y}";
+            if (isset($placedItems[$placedKey])) {
+                $placeResult['item'] = Item::fromAnything($placedItems[$placedKey])->toArray();
+            }
+        }
         $actions[] = $this->createAction('place_tile', ['result' => $placeResult]);
 
         if (!$placeResult['success']) {
@@ -2340,9 +2381,14 @@ final class SmartVirtualPlayer
         // Check if the placed tile is a corridor (non-room) BEFORE moving
         $isRoom = $placeResult['response']['tile']['room'] ?? true;
 
+        // Lady Lorraine "Listening": explore the new room without entering it while weak or facing a bad fight
+        if ($isRoom && $this->tryListen($gameId, $playerId, $currentTurnId, (int) $x, (int) $y, $actions)) {
+            return;
+        }
+
         // MANDATORY Step 3: Move player
         ++$this->moveCount;
-        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $currentX, (int) $currentY, (int) $x, (int) $y, true);
+        $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $currentX, (int) $currentY, (int) $x, (int) $y, true);
         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
         if (!$moveResult['success']) {
@@ -2616,6 +2662,7 @@ final class SmartVirtualPlayer
             $battleResult = $battleInfo['result'] ?? 'unknown';
 
             error_log('DEBUG AI battle detected: ' . $battleResult);
+            $this->battleKeepsTurn = false;
             $actions[] = $this->createAction('battle_detected', [
                 'battleResult' => $battleResult,
                 'battleInfo' => $battleInfo,
@@ -2703,7 +2750,7 @@ final class SmartVirtualPlayer
             }
 
             // Check if we've reached the maximum move count
-            if ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+            if ($this->moveCount >= $this->maxMoves) {
                 $actions[] = $this->createAction('ai_info', ['message' => 'Reached maximum moves for this turn']);
                 $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
                 $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
@@ -2735,7 +2782,7 @@ final class SmartVirtualPlayer
                     // Attack dragon
                     [$toX, $toY] = explode(',', (string) $dragonPosition);
                     [$fromX, $fromY] = explode(',', $currentPosition->toString());
-                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                    $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
                     // This will handle the battle result
@@ -2798,7 +2845,7 @@ final class SmartVirtualPlayer
 
                             [$toX, $toY] = explode(',', $bestMove);
                             [$fromX, $fromY] = explode(',', $currentPosition->toString());
-                            $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                            $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                             $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
                             if ($moveResult['success']) {
@@ -2900,7 +2947,7 @@ final class SmartVirtualPlayer
             }
 
             // Continue pursuing valuable monsters even through visited positions
-            if (!empty($valuableMonsters) && !empty($moveToOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+            if (!empty($valuableMonsters) && !empty($moveToOptions) && $this->moveCount < $this->maxMoves) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $targetMonster = $this->chooseBestMonsterTarget($valuableMonsters, $player);
                 if ($targetMonster) {
@@ -2919,12 +2966,12 @@ final class SmartVirtualPlayer
 
             // Try to continue moving towards better weapons if they exist (but check move limit)
             error_log('DEBUG AI: Checking weapon pursuit - weapons: ' . json_encode($betterWeaponsOnField) . ', unvisited: ' . \count($unvisitedOptions) . ", moves: {$this->moveCount}");
-            if (!empty($betterWeaponsOnField) && !empty($unvisitedOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+            if (!empty($betterWeaponsOnField) && !empty($unvisitedOptions) && $this->moveCount < $this->maxMoves) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing to move towards better weapons']);
                 $this->executeMoveTowardsBetterWeapon($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $betterWeaponsOnField, $actions);
                 // Don't return here - executeMoveTowardsBetterWeapon will handle continuation if successful
-            } elseif (!empty($placeTileOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+            } elseif (!empty($placeTileOptions) && $this->moveCount < $this->maxMoves) {
                 // Place tiles to open new areas (but only if we haven't reached max moves)
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $actions[] = $this->createAction('ai_reasoning', ['message' => 'Placing tile to expand exploration area']);
@@ -2932,7 +2979,7 @@ final class SmartVirtualPlayer
 
                 // Note: executeTilePlacement handles its own continuation
                 return;
-            } elseif (!empty($unvisitedOptions) && $this->moveCount < self::MAX_MOVES_PER_TURN) {
+            } elseif (!empty($unvisitedOptions) && $this->moveCount < $this->maxMoves) {
                 // Continue exploring unvisited positions
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
                 $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing exploration of unvisited areas']);
@@ -2944,7 +2991,7 @@ final class SmartVirtualPlayer
                 // No unvisited positions, no tiles to place, or reached move limit
                 if (empty($unvisitedOptions)) {
                     $actions[] = $this->createAction('ai_info', ['message' => 'All reachable positions have been explored']);
-                } elseif ($this->moveCount >= self::MAX_MOVES_PER_TURN) {
+                } elseif ($this->moveCount >= $this->maxMoves) {
                     $actions[] = $this->createAction('ai_info', ['message' => 'Reached maximum moves for this turn']);
                 } else {
                     $actions[] = $this->createAction('ai_info', ['message' => 'No more actions available']);
@@ -2977,11 +3024,40 @@ final class SmartVirtualPlayer
             return;
         }
 
+        // Swordsman "Unstoppable": a 6 on the dice keeps the turn going after the fight
+        if (($battleInfo['unstoppable'] ?? false) === true) {
+            $this->battleKeepsTurn = true;
+            $actions[] = $this->createAction('ai_reasoning', [
+                'decision' => 'use_skill',
+                'skill' => 'unstoppable',
+                'reason' => 'Rolled a 6: the turn continues after the fight',
+            ]);
+        }
+
         // Check the reward type before trying to pick it up
         $reward = $battleInfo['reward'] ?? null;
         if ($reward) {
             $rewardType = $reward['type'] ?? '';
             $rewardName = $reward['name'] ?? '';
+
+            // Valduk "Tireless": loot he does not want stays, and he keeps moving
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            if (HeroTactics::useTireless($player->getSkills(), $this->wantsReward((string) $rewardType, $player), $this->maxMoves - $this->moveCount)) {
+                $tirelessResult = $this->apiClient->tireless($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('ai_reasoning', [
+                    'decision' => 'use_skill',
+                    'skill' => 'tireless',
+                    'reason' => "Leaving {$rewardType} and moving on",
+                    'result' => $tirelessResult,
+                ]);
+                error_log("DEBUG AI: skill tireless, leaving {$rewardType}");
+                if ($tirelessResult['success']) {
+                    $this->battleKeepsTurn = true;
+                    $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+
+                    return;
+                }
+            }
 
             // If it's a key and we already have one, skip pickup
             if ($rewardType === 'key') {
@@ -3154,8 +3230,8 @@ final class SmartVirtualPlayer
             return;
         }
 
-        // Check if battle occurred - if so, must end turn (can't move after battle)
-        if ($this->hasBattleOccurred($actions)) {
+        // Check if battle occurred - if so, must end turn (can't move after battle), unless a skill kept it open
+        if ($this->hasBattleOccurred($actions) && !$this->turnContinuesAfterBattle($gameId, $currentTurnId, $actions)) {
             $actions[] = $this->createAction('ai_info', ['message' => 'Battle occurred, ending turn']);
             $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
             $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
@@ -3223,7 +3299,7 @@ final class SmartVirtualPlayer
                 // Attack dragon
                 [$toX, $toY] = explode(',', (string) $dragonPosition);
                 [$fromX, $fromY] = explode(',', $currentPosition->toString());
-                $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                 $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
                 $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
@@ -3289,12 +3365,12 @@ final class SmartVirtualPlayer
 
                         [$toX, $toY] = explode(',', $bestMove);
                         [$fromX, $fromY] = explode(',', $currentPosition->toString());
-                        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                        $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
                         // IMPORTANT: Don't call handleMoveResult here to avoid infinite recursion
                         // Just check if we can continue moving
-                        if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                        if ($moveResult['success'] && $this->moveCount < $this->maxMoves - 1) {
                             // Mark the position as visited to prevent oscillation
                             $this->visitedPositions[$bestMove] = true;
 
@@ -3380,10 +3456,10 @@ final class SmartVirtualPlayer
 
                     [$toX, $toY] = explode(',', $bestMove);
                     [$fromX, $fromY] = explode(',', $currentPosition->toString());
-                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                    $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
-                    if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                    if ($moveResult['success'] && $this->moveCount < $this->maxMoves - 1) {
                         // Mark position as visited
                         $this->visitedPositions[$bestMove] = true;
                         ++$this->moveCount;
@@ -3495,10 +3571,10 @@ final class SmartVirtualPlayer
 
                     [$toX, $toY] = explode(',', $bestMove);
                     [$fromX, $fromY] = explode(',', $currentPosition->toString());
-                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                    $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
 
-                    if ($moveResult['success'] && $this->moveCount < self::MAX_MOVES_PER_TURN - 1) {
+                    if ($moveResult['success'] && $this->moveCount < $this->maxMoves - 1) {
                         ++$this->moveCount;
                         $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
                     } else {
@@ -3557,7 +3633,7 @@ final class SmartVirtualPlayer
 
         if (!$pickedUpItem) {
             $actions[] = $this->createAction('ai_reasoning', ['message' => 'No item info available for replacement decision']);
-            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
+            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
 
             return;
         }
@@ -3624,7 +3700,7 @@ final class SmartVirtualPlayer
         }
 
         // After handling inventory, continue playing (but remember battle ends turn)
-        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
+        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
     }
 
     /**
@@ -3670,7 +3746,7 @@ final class SmartVirtualPlayer
         $reward = $battleInfo['reward'] ?? null;
         if (!$reward) {
             $actions[] = $this->createAction('ai_reasoning', ['message' => 'No reward information available, continuing turn']);
-            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
+            $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
 
             return;
         }
@@ -3774,7 +3850,7 @@ final class SmartVirtualPlayer
         }
 
         // Continue playing regardless of pickup result
-        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions, $recursionDepth + 1);
+        $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
     }
 
     /**
@@ -3824,53 +3900,77 @@ final class SmartVirtualPlayer
     /**
      * Handle battle loss or draw - finalize with consumables if beneficial.
      */
-    private function handleBattleLossOrDraw(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array $battleInfo, array &$actions): void
+    private function handleBattleLossOrDraw(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array $battleInfo, array &$actions, bool $rerolled = false): void
     {
         $battleId = Uuid::fromString($battleInfo['battleId']);
         $needsConsumableConfirmation = $battleInfo['needsConsumableConfirmation'] ?? false;
         $availableConsumables = $battleInfo['availableConsumables'] ?? [];
         $battleResult = $battleInfo['result'] ?? 'unknown';
-        $monsterHP = $battleInfo['monster'] ?? 0;
-        $totalDamage = $battleInfo['totalDamage'] ?? 0;
+        $monsterHP = (int) ($battleInfo['monster'] ?? 0);
+        $totalDamage = (int) ($battleInfo['totalDamage'] ?? 0);
         $monsterType = $battleInfo['monsterType'] ?? 'unknown';
+        $tieIsWin = (bool) ($battleInfo['tieIsWin'] ?? false);
 
-        $selectedConsumableIds = [];
-        $pickupItem = false;
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
 
-        // Calculate how many consumables we need to win
-        $damageNeeded = $monsterHP - $totalDamage;
-        $fireballsNeeded = $damageNeeded; // Each fireball adds 1 damage
+        // Double Attack, then the cheapest spells (+ Sacrifice) that turn the fight into a victory
+        $decision = HeroTactics::afterRoll(
+            monsterHp: $monsterHP,
+            totalDamage: $totalDamage,
+            tieIsWin: $tieIsWin,
+            canReroll: !$rerolled && ($battleInfo['canReroll'] ?? false) === true,
+            canSacrificeHp: ($battleInfo['canSacrificeHp'] ?? false) === true,
+            hp: $player->getHP(),
+            consumables: array_values(array_filter($availableConsumables, 'is_array')),
+            keepsSpells: $player->getSkills()?->keepsSpellsInCombat() === true,
+        );
+        $actions[] = $this->createAction('ai_reasoning', [
+            'decision' => 'after_roll',
+            'reason' => $decision['reason'],
+            'monster' => $monsterType,
+            'monsterHP' => $monsterHP,
+            'totalDamage' => $totalDamage,
+        ]);
+        error_log("DEBUG AI: after roll vs {$monsterType} ({$totalDamage}/{$monsterHP}): {$decision['reason']}");
 
-        // Use consumables if we can turn a loss/draw into a win
-        if (($battleResult === 'draw' || $battleResult === 'lose') && !empty($availableConsumables) && $damageNeeded > 0) {
-            $fireballsUsed = 0;
+        if ($decision['reroll']) {
+            $rerollResult = $this->apiClient->rerollBattle($gameId, $playerId, $currentTurnId, $battleId);
+            $actions[] = $this->createAction('ai_reasoning', [
+                'decision' => 'use_skill',
+                'skill' => 'double_attack',
+                'reason' => $decision['reason'],
+                'result' => $rerollResult,
+            ]);
+            $newInfo = $rerollResult['response']['battleInfo'] ?? null;
+            if ($rerollResult['success'] && \is_array($newInfo)) {
+                if (($newInfo['result'] ?? null) === 'win') {
+                    $this->handleBattleWin($gameId, $playerId, $currentTurnId, ['battleInfo' => $newInfo], $actions);
 
-            // Use fireballs to win (each adds 1 damage)
-            foreach ($availableConsumables as $consumable) {
-                if ($consumable['type'] === 'fireball' && $fireballsUsed < $fireballsNeeded) {
-                    $selectedConsumableIds[] = Uuid::fromString($consumable['itemId']);
-                    ++$fireballsUsed;
-
-                    // Check if this is the dragon boss
-                    $reason = ($monsterType === 'dragon')
-                        ? 'To defeat dragon boss and win game!'
-                        : "To turn {$battleResult} into victory";
-
-                    $actions[] = $this->createAction('using_consumable', [
-                        'type' => 'fireball',
-                        'reason' => $reason,
-                        'damage_added' => 1,
-                        'total_after' => $totalDamage + $fireballsUsed,
-                    ]);
-
-                    // If we now have enough damage to win, we'll pick up the item
-                    if ($fireballsUsed >= $fireballsNeeded) {
-                        $pickupItem = true;
-                        break;
-                    }
+                    return;
                 }
+                $this->handleBattleLossOrDraw($gameId, $playerId, $currentTurnId, $newInfo, $actions, true);
+
+                return;
             }
         }
+
+        $selectedConsumableIds = array_map(static fn(string $id): Uuid => Uuid::fromString($id), $decision['consumableIds']);
+        foreach ($availableConsumables as $consumable) {
+            if (\in_array($consumable['itemId'] ?? null, $decision['consumableIds'], true)) {
+                $actions[] = $this->createAction('using_consumable', [
+                    'type' => $consumable['type'],
+                    'reason' => $monsterType === 'dragon' ? 'To defeat dragon boss and win game!' : "To turn {$battleResult} into victory",
+                ]);
+            }
+        }
+        if ($decision['sacrifice']) {
+            $actions[] = $this->createAction('ai_reasoning', [
+                'decision' => 'use_skill',
+                'skill' => 'sacrifice',
+                'reason' => 'Paying 1 HP for the +1 that wins the fight',
+            ]);
+        }
+        $pickupItem = $decision['wins'] && $this->wantsReward((string) ($battleInfo['reward']['type'] ?? ''), $player);
 
         // Finalize battle
         if ($needsConsumableConfirmation) {
@@ -3881,33 +3981,60 @@ final class SmartVirtualPlayer
                 $battleId,
                 $selectedConsumableIds,
                 $pickupItem,
+                null,
+                $decision['sacrifice'],
             );
             $actions[] = $this->createAction('finalize_battle', ['result' => $finalizeResult]);
 
-            // Check if we won with consumables
-            $finalBattleResult = $finalizeResult['response']['battleResult'] ?? $battleResult;
-            if ($finalBattleResult === 'win' && $pickupItem) {
-                // We won! Check if this was the dragon
-                if ($monsterType === 'dragon') {
-                    $actions[] = $this->createAction('game_won', [
-                        'message' => 'Defeated dragon boss with consumables! Game won!',
-                        'final_damage' => $totalDamage + \count($selectedConsumableIds),
-                    ]);
-                }
-            } elseif ($finalBattleResult === 'lose') {
-                // Still lost even with consumables - player was likely moved back
-                $actions[] = $this->createAction('ai_info', [
-                    'message' => 'Lost battle even with consumables, position may have changed',
+            $finalDamage = (int) ($finalizeResult['response']['finalTotalDamage'] ?? $totalDamage);
+            $won = $finalDamage > $monsterHP || ($tieIsWin && $finalDamage === $monsterHP);
+            if ($won && $monsterType === 'dragon') {
+                $actions[] = $this->createAction('game_won', [
+                    'message' => 'Defeated dragon boss with consumables! Game won!',
+                    'final_damage' => $finalDamage,
                 ]);
+            } elseif (!$won && $monsterType === 'dragon') {
+                $trackingKey = "{$gameId}_{$playerId}";
+                self::$pursuingDragon[$trackingKey] = false;
+                $actions[] = $this->createAction('ai_info', [
+                    'message' => 'Lost to dragon, but will try again with consumables on next turn',
+                ]);
+            }
 
-                // Clear dragon pursuit flag if we lost to the dragon
-                // But we'll re-evaluate on next turn if we have consumables
-                if ($monsterType === 'dragon') {
-                    $trackingKey = "{$gameId}_{$playerId}";
-                    self::$pursuingDragon[$trackingKey] = false;
-                    $actions[] = $this->createAction('ai_info', [
-                        'message' => 'Lost to dragon, but will try again with consumables on next turn',
-                    ]);
+            // Horan "Reincarnation": the last HP was lost, choose the fountain (this ends the turn)
+            if (($finalizeResult['response']['awaitingReincarnation'] ?? false) === true) {
+                $this->reincarnateAtBestFountain($gameId, $playerId, $currentTurnId, $finalizeResult['response']['healingFountainPositions'] ?? [], $actions);
+
+                return;
+            }
+
+            // Baron Markul: a Lightning Attack that was not won ends with a retreat
+            if (!$won) {
+                $this->retreatIfPending($gameId, $playerId, $currentTurnId, $actions);
+            }
+
+            // Swordsman "Unstoppable": a 6 keeps the turn going after the fight
+            if (($battleInfo['unstoppable'] ?? false) === true) {
+                $this->battleKeepsTurn = true;
+                $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+
+                return;
+            }
+
+            // Valduk "Tireless": a win whose loot stays keeps the turn open
+            if ($won && !$pickupItem && HeroTactics::useTireless($player->getSkills(), false, $this->maxMoves - $this->moveCount)) {
+                $tirelessResult = $this->apiClient->tireless($gameId, $playerId, $currentTurnId);
+                $actions[] = $this->createAction('ai_reasoning', [
+                    'decision' => 'use_skill',
+                    'skill' => 'tireless',
+                    'reason' => 'Leaving the loot and moving on',
+                    'result' => $tirelessResult,
+                ]);
+                if ($tirelessResult['success']) {
+                    $this->battleKeepsTurn = true;
+                    $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
+
+                    return;
                 }
             }
         }
@@ -3915,6 +4042,515 @@ final class SmartVirtualPlayer
         // End turn
         $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
         $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+    }
+
+    /**
+     * Hero skills and spells used before the regular priority chain, in this order: a pending Reincarnation,
+     * Valduk's heal limit, Dark Thorns, Portal of Healing, then the first-action skills (Magic Swap, Lightning
+     * Attack, Sprint).
+     *
+     * @return bool true when the turn was handled here (ended, or the skill used every move)
+     */
+    private function executeTurnStartSkills(Uuid $gameId, Uuid $playerId, Uuid $turnId, array &$actions): bool
+    {
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+        $skills = $player->getSkills();
+        $field = $this->messageBus->dispatch(new GetField($gameId));
+        $position = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId))->toString();
+        $fountains = $this->fountainPositions($field);
+
+        // Horan "Reincarnation" left pending (the fight was lost on a previous request)
+        if ($player->isAwaitingReincarnation()) {
+            $this->reincarnateAtBestFountain($gameId, $playerId, $turnId, $fountains, $actions);
+
+            return true;
+        }
+
+        // Valduk "Berserk": heal up to 4 HP only, once
+        $healLimit = HeroTactics::healLimit($skills, $player->getHealLimit());
+        if ($healLimit !== null) {
+            $result = $this->apiClient->setHealLimit($gameId, $playerId, $healLimit);
+            $actions[] = $this->createAction('ai_reasoning', [
+                'decision' => 'use_skill',
+                'skill' => 'heal_limit',
+                'reason' => "Healing up to {$healLimit} HP keeps the Berserk bonus",
+                'result' => $result,
+            ]);
+            error_log("DEBUG AI: skill heal_limit {$healLimit}");
+        }
+
+        // Dark Thorn: every thorn hits a rival now (no move spent)
+        $thorns = $this->spellItems($player, ItemType::DARK_THORN);
+        if ($thorns !== []) {
+            $targets = HeroTactics::darkThornTargets(\count($thorns), $this->rivalSummaries($gameId, $playerId));
+            foreach ($targets as $index => $targetId) {
+                $result = $this->apiClient->useSpell($gameId, $playerId, $turnId, $thorns[$index]->itemId, null, null, Uuid::fromString($targetId));
+                $actions[] = $this->createAction('ai_reasoning', [
+                    'decision' => 'use_spell',
+                    'spell' => 'dark_thorn',
+                    'reason' => "Dark Thorn on {$targetId}",
+                    'result' => $result,
+                ]);
+                error_log("DEBUG AI: spell dark_thorn on {$targetId}");
+            }
+        }
+
+        // Portal of Healing on itself: low HP or cursed → the nearest fountain, heals fully (no move spent)
+        $portals = $this->spellItems($player, ItemType::TELEPORT);
+        $portalTarget = HeroTactics::portalTarget($portals !== [], $player->getHP(), $player->isCursed(), $position, $fountains);
+        if ($portalTarget !== null) {
+            [$x, $y] = array_map('intval', explode(',', $portalTarget));
+            $result = $this->apiClient->useSpell($gameId, $playerId, $turnId, $portals[0]->itemId, $x, $y);
+            $actions[] = $this->createAction('ai_reasoning', [
+                'decision' => 'use_spell',
+                'spell' => 'teleport',
+                'reason' => "Portal of Healing to {$portalTarget} (HP {$player->getHP()})",
+                'result' => $result,
+            ]);
+            error_log("DEBUG AI: spell teleport to {$portalTarget}");
+            if ($result['success']) {
+                $position = $portalTarget;
+                $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+            }
+        }
+
+        if ($skills === null) {
+            return false;
+        }
+
+        // Warlock "Magic Swap" (all 4 moves)
+        $dragon = $this->findDragonBoss($field);
+        $dragonWorthIt = $dragon !== null && $this->fightWinChance($player, (int) $dragon['hp']) >= $this->getMinAcceptableBattleProbability();
+        $swapTarget = HeroTactics::magicSwapTarget(
+            skills: $skills,
+            hp: $player->getHP(),
+            position: $position,
+            rivals: $this->rivalPositions($gameId, $playerId),
+            fountains: $fountains,
+            fountainInReach: $this->nearestReachable($position, $fountains, $field, self::MAX_MOVES_PER_TURN) !== null,
+            dragonPosition: $dragon['position'] ?? null,
+            dragonWorthIt: $dragonWorthIt,
+            hasKey: $this->playerHasKey($player),
+            chests: $this->unopenedChests($field),
+        );
+        if ($swapTarget !== null) {
+            $result = $this->apiClient->magicSwap($gameId, $playerId, $turnId, Uuid::fromString($swapTarget));
+            $actions[] = $this->createAction('ai_reasoning', [
+                'decision' => 'use_skill',
+                'skill' => 'magic_swap',
+                'reason' => "Swapping places with {$swapTarget}",
+                'result' => $result,
+            ]);
+            error_log("DEBUG AI: skill magic_swap with {$swapTarget}");
+            if ($result['success']) {
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $turnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+
+                return true;
+            }
+        }
+
+        // Baron Markul "Lightning Attack" (all 4 moves)
+        $lightningTarget = HeroTactics::lightningTarget($skills, $this->lightningCandidates($gameId, $playerId, $player, $field, $dragon, $dragonWorthIt), $this->getMinAcceptableBattleProbability(), $player->getHP());
+        if ($lightningTarget !== null) {
+            [$x, $y] = array_map('intval', explode(',', $lightningTarget));
+            $result = $this->apiClient->lightningAttack($gameId, $playerId, $turnId, $x, $y);
+            $actions[] = $this->createAction('ai_reasoning', [
+                'decision' => 'use_skill',
+                'skill' => 'lightning_attack',
+                'reason' => "Striking the monster at {$lightningTarget}",
+                'result' => $result,
+            ]);
+            error_log("DEBUG AI: skill lightning_attack at {$lightningTarget}");
+            if ($result['success']) {
+                $this->moveCount = $this->maxMoves;
+                $battleInfo = $result['response']['battleInfo'] ?? null;
+                if (\is_array($battleInfo)) {
+                    $this->handleMoveResult($gameId, $playerId, $turnId, ['battleInfo' => $battleInfo], $actions);
+                } else {
+                    $endResult = $this->apiClient->endTurn($gameId, $playerId, $turnId);
+                    $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+                }
+
+                return true;
+            }
+        }
+
+        // Hanna "Sprint": a target 5-8 moves away over discovered tiles
+        if ($skills->sprints()) {
+            return $this->trySprint($gameId, $playerId, $turnId, $player, $field, $position, $fountains, $dragon, $dragonWorthIt, $actions);
+        }
+
+        return false;
+    }
+
+    /**
+     * Hanna "Sprint": declare it and run the path when the goal (fountain when low, a chest with the key in hand,
+     * the dragon worth fighting) is 5-8 moves away.
+     *
+     * @param list<string> $fountains
+     */
+    private function trySprint(Uuid $gameId, Uuid $playerId, Uuid $turnId, $player, $field, string $position, array $fountains, ?array $dragon, bool $dragonWorthIt, array &$actions): bool
+    {
+        $targets = [];
+        if ($player->getHP() <= HeroTactics::LOW_HP) {
+            $targets = $fountains;
+        } elseif ($this->playerHasKey($player)) {
+            $targets = $this->unopenedChests($field);
+        } elseif ($dragon !== null && $dragonWorthIt) {
+            $targets = [$dragon['position']];
+        }
+
+        $path = $this->nearestReachable($position, $targets, $field, self::SPRINT_MOVES);
+        $distance = $path !== null ? \count($path) - 1 : null;
+        if (!HeroTactics::shouldSprint($player->getSkills(), $distance)) {
+            return false;
+        }
+
+        $result = $this->apiClient->sprint($gameId, $playerId, $turnId);
+        $actions[] = $this->createAction('ai_reasoning', [
+            'decision' => 'use_skill',
+            'skill' => 'sprint',
+            'reason' => 'Sprinting ' . $distance . ' moves to ' . end($path),
+            'result' => $result,
+        ]);
+        error_log('DEBUG AI: skill sprint to ' . end($path));
+        if (!$result['success']) {
+            return false;
+        }
+        $this->maxMoves = self::SPRINT_MOVES;
+
+        $from = $position;
+        $moveResult = null;
+        foreach (\array_slice($path, 1) as $step) {
+            [$fx, $fy] = array_map('intval', explode(',', $from));
+            [$tx, $ty] = array_map('intval', explode(',', $step));
+            $moveResult = $this->movePlayerSmart($gameId, $playerId, $turnId, $fx, $fy, $tx, $ty);
+            $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
+            ++$this->moveCount;
+            $this->visitedPositions[$step] = true;
+            if (!$moveResult['success']) {
+                $endResult = $this->apiClient->endTurn($gameId, $playerId, $turnId);
+                $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+
+                return true;
+            }
+            if (isset($moveResult['response']['battleInfo']) || isset($moveResult['response']['itemInfo'])) {
+                break;
+            }
+            $from = $step;
+        }
+
+        $this->handleMoveResult($gameId, $playerId, $turnId, $moveResult['response'] ?? [], $actions);
+
+        return true;
+    }
+
+    /**
+     * Unopened chests on the field that no monster guards any more.
+     *
+     * @return list<string>
+     */
+    private function unopenedChests($field): array
+    {
+        $chests = [];
+        foreach ($field->getItems() as $itemPosition => $item) {
+            $item = Item::fromAnything($item);
+            if ($item->isLocked() && $item->treasureValue > 0 && ($item->guardHP <= 0 || $item->guardDefeated)) {
+                $chests[] = (string) $itemPosition;
+            }
+        }
+
+        return $chests;
+    }
+
+    /**
+     * Shortest path (BFS over the field's transitions) to the nearest of the targets within $maxDistance moves.
+     *
+     * @param list<string> $targets
+     *
+     * @return list<string>|null the path including the start, null when none is in reach
+     */
+    private function nearestReachable(string $from, array $targets, $field, int $maxDistance): ?array
+    {
+        $best = null;
+        foreach ($targets as $target) {
+            if ($target === $from) {
+                return [$from];
+            }
+            $path = $this->findPathToTarget($from, $target, $field->getPlacedTiles(), $field);
+            if ($path !== [] && \count($path) - 1 <= $maxDistance && ($best === null || \count($path) < \count($best))) {
+                $best = $path;
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * Spells of a type held by the player.
+     *
+     * @return list<Item>
+     */
+    private function spellItems($player, ItemType $type): array
+    {
+        $spells = [];
+        foreach ($player->getInventory()[ItemCategory::SPELL->value] ?? [] as $spell) {
+            $spell = Item::fromAnything($spell);
+            if ($spell->type === $type) {
+                $spells[] = $spell;
+            }
+        }
+
+        return $spells;
+    }
+
+    /**
+     * Rivals for Dark Thorn.
+     *
+     * @return list<array{playerId: string, hp: int, treasure: int, reincarnates: bool}>
+     */
+    private function rivalSummaries(Uuid $gameId, Uuid $playerId): array
+    {
+        $rivals = [];
+        foreach ($this->messageBus->dispatch(new GetGame($gameId))->getPlayers() as $rivalId) {
+            if ($rivalId->equals($playerId)) {
+                continue;
+            }
+            $rival = $this->messageBus->dispatch(new GetPlayer($rivalId));
+            $rivals[] = [
+                'playerId' => $rivalId->toString(),
+                'hp' => $rival->getHP(),
+                'treasure' => $this->calculateChestScore($rival),
+                'reincarnates' => $rival->getSkills()?->reincarnates() === true,
+            ];
+        }
+
+        return $rivals;
+    }
+
+    /**
+     * Rival positions for Magic Swap.
+     *
+     * @return list<array{playerId: string, position: string}>
+     */
+    private function rivalPositions(Uuid $gameId, Uuid $playerId): array
+    {
+        $rivals = [];
+        foreach ($this->messageBus->dispatch(new GetAllPlayerPositions($gameId)) as $rivalId => $place) {
+            if ((string) $rivalId === $playerId->toString()) {
+                continue;
+            }
+            $rivals[] = ['playerId' => (string) $rivalId, 'position' => FieldPlace::fromAnything($place)->toString()];
+        }
+
+        return $rivals;
+    }
+
+    /**
+     * Monsters worth a Lightning Attack: the dragon (10) when it is worth fighting, a chest guardian (3),
+     * a monster guarding wanted loot (2).
+     *
+     * @return list<array{position: string, winChance: float, value: int}>
+     */
+    private function lightningCandidates(Uuid $gameId, Uuid $playerId, $player, $field, ?array $dragon, bool $dragonWorthIt): array
+    {
+        $candidates = [];
+        foreach ($field->getItems() as $itemPosition => $item) {
+            $item = Item::fromAnything($item);
+            if ($item->guardHP <= 0 || $item->guardDefeated) {
+                continue;
+            }
+            $itemPosition = (string) $itemPosition;
+            if ($dragon !== null && $itemPosition === $dragon['position']) {
+                $value = $dragonWorthIt ? 10 : 0;
+            } elseif ($item->treasureValue > 0) {
+                $value = 3;
+            } else {
+                $value = $this->isItemWorthAttackingFor($item->type->value, $player) ? 2 : 0;
+            }
+            $candidates[] = [
+                'position' => $itemPosition,
+                'winChance' => $this->fightWinChance($player, $item->guardHP),
+                'value' => $value,
+            ];
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * Move like the frontend does; Thief "Stealth": a monster the hero would rather not fight is walked past
+     * (never the dragon).
+     */
+    private function movePlayerSmart(Uuid $gameId, Uuid $playerId, Uuid $turnId, int $fromX, int $fromY, int $toX, int $toY, bool $isTilePlacementMove = false, bool $allowSneak = true): array
+    {
+        $ignoreMonster = false;
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+        if ($allowSneak && $player->getSkills()?->canSneakPastMonsters() === true) {
+            $items = $this->messageBus->dispatch(new GetField($gameId))->getItems();
+            $key = "{$toX},{$toY}";
+            if (isset($items[$key])) {
+                $item = Item::fromAnything($items[$key]);
+                $isDragon = ($item->name->value ?? '') === 'dragon';
+                if (!$isDragon && $item->guardHP > 0 && !$item->guardDefeated
+                    && HeroTactics::shouldSneak($player->getSkills(), $this->calculateDefeatProbability($item->guardHP, $player), $this->getMinAcceptableBattleProbability())) {
+                    $ignoreMonster = true;
+                    error_log("DEBUG AI: skill stealth past the monster at {$key}");
+                    $this->skillActions[] = $this->createAction('ai_reasoning', [
+                        'decision' => 'use_skill',
+                        'skill' => 'stealth',
+                        'reason' => "Sneaking past the monster at {$key}",
+                    ]);
+                }
+            }
+        }
+
+        return $this->apiClient->movePlayer($gameId, $playerId, $turnId, $fromX, $fromY, $toX, $toY, $isTilePlacementMove, $ignoreMonster);
+    }
+
+    /**
+     * Lady Lorraine "Listening" on the room just placed next to her (one move); the turn then goes on.
+     */
+    private function tryListen(Uuid $gameId, Uuid $playerId, Uuid $turnId, int $x, int $y, array &$actions): bool
+    {
+        $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
+        if ($player->getSkills()?->listens() !== true) {
+            return false;
+        }
+
+        $key = "{$x},{$y}";
+        $winChance = null;
+        $items = $this->messageBus->dispatch(new GetField($gameId))->getItems();
+        if (isset($items[$key])) {
+            $item = Item::fromAnything($items[$key]);
+            if ($item->guardHP > 0 && !$item->guardDefeated) {
+                $winChance = $this->calculateDefeatProbability($item->guardHP, $player);
+            }
+        }
+        if (!HeroTactics::shouldListen($player->getSkills(), $player->getHP(), $winChance, $this->getMinAcceptableBattleProbability())) {
+            return false;
+        }
+
+        $result = $this->apiClient->listen($gameId, $playerId, $turnId, $x, $y);
+        $actions[] = $this->createAction('ai_reasoning', [
+            'decision' => 'use_skill',
+            'skill' => 'listening',
+            'reason' => "Listening at {$key} instead of entering (HP {$player->getHP()}"
+                . ($winChance !== null ? ', win chance ' . round($winChance * 100) . '%' : '') . ')',
+            'result' => $result,
+        ]);
+        error_log("DEBUG AI: skill listening at {$key}");
+        if (!$result['success']) {
+            return false;
+        }
+        ++$this->moveCount;
+        $this->continueAfterAction($gameId, $playerId, $turnId, $actions);
+
+        return true;
+    }
+
+    /**
+     * Whether the AI wants a fight's reward (Tireless leaves the rest on the tile).
+     */
+    private function wantsReward(string $rewardType, $player): bool
+    {
+        if ($rewardType === '') {
+            return false;
+        }
+        if ($rewardType === 'key') {
+            return !$this->playerHasKey($player);
+        }
+        if (\in_array($rewardType, ['dagger', 'sword', 'axe'], true)) {
+            return $this->isItemWorthAttackingFor($rewardType, $player);
+        }
+
+        return true;
+    }
+
+    /**
+     * A battle happened: the turn goes on only when a skill kept it open (Unstoppable, Tireless), moves remain
+     * and the server still has this turn running.
+     */
+    private function turnContinuesAfterBattle(Uuid $gameId, Uuid $currentTurnId, array &$actions): bool
+    {
+        if (!$this->battleKeepsTurn || $this->moveCount >= $this->maxMoves) {
+            return false;
+        }
+        $turnId = $this->messageBus->dispatch(new GetCurrentTurn($gameId));
+        if ($turnId === null || !$turnId->equals($currentTurnId)) {
+            return false;
+        }
+        $actions[] = $this->createAction('ai_info', ['message' => 'Hero skill keeps the turn going after the fight']);
+
+        return true;
+    }
+
+    /**
+     * Horan "Reincarnation": teleport to the fountain nearest to the current goal (else to the hero).
+     *
+     * @param list<string> $fountains
+     */
+    private function reincarnateAtBestFountain(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array $fountains, array &$actions): void
+    {
+        if ($fountains === []) {
+            $fountains = $this->fountainPositions($this->messageBus->dispatch(new GetField($gameId)));
+        }
+        $position = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId))->toString();
+        $trackingKey = "{$gameId}_{$playerId}";
+        $target = self::$persistentTargets[$trackingKey] ?? null;
+        $fountain = HeroTactics::pickFountain($fountains, $position, \is_string($target) ? $target : null) ?? '0,0';
+        [$x, $y] = array_map('intval', explode(',', $fountain));
+
+        $result = $this->apiClient->reincarnate($gameId, $playerId, $currentTurnId, $x, $y);
+        $actions[] = $this->createAction('ai_reasoning', [
+            'decision' => 'use_skill',
+            'skill' => 'reincarnation',
+            'reason' => "Reincarnating at the fountain {$fountain}",
+            'result' => $result,
+        ]);
+        error_log("DEBUG AI: skill reincarnation at {$fountain}");
+        if (!$result['success']) {
+            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
+            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
+        }
+    }
+
+    /**
+     * Baron Markul: after a Lightning Attack that was not won, retreat towards a fountain.
+     */
+    private function retreatIfPending(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array &$actions): void
+    {
+        $field = $this->messageBus->dispatch(new GetField($gameId));
+        $pending = $field->getPendingRetreat();
+        if ($pending === null || $pending['playerId'] !== $playerId->toString()) {
+            return;
+        }
+        $option = HeroTactics::pickRetreat($pending['options'], $this->fountainPositions($field));
+        if ($option === null) {
+            return;
+        }
+        [$x, $y] = array_map('intval', explode(',', $option));
+        $result = $this->apiClient->retreat($gameId, $playerId, $currentTurnId, $x, $y);
+        $actions[] = $this->createAction('ai_reasoning', [
+            'decision' => 'use_skill',
+            'skill' => 'lightning_retreat',
+            'reason' => "Retreating to {$option}",
+            'result' => $result,
+        ]);
+    }
+
+    /**
+     * Discovered healing fountains as "x,y".
+     *
+     * @return list<string>
+     */
+    private function fountainPositions($field): array
+    {
+        return array_values(array_unique(array_map(
+            static fn($place): string => FieldPlace::fromAnything($place)->toString(),
+            $field->getHealingFountainPositions(),
+        )));
     }
 
     /**
@@ -4504,7 +5140,7 @@ final class SmartVirtualPlayer
                     // Update previous position before moving
                     self::$previousPosition[$trackingKey] = $currentPosStr;
 
-                    $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                    $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                     $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                     $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
 
@@ -4555,7 +5191,7 @@ final class SmartVirtualPlayer
                         // Update previous position before moving
                         self::$previousPosition[$trackingKey] = $currentPosStr;
 
-                        $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                        $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                         $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
 
@@ -4619,7 +5255,7 @@ final class SmartVirtualPlayer
                 [$toX, $toY] = explode(',', $bestMove);
                 [$fromX, $fromY] = explode(',', $currentPosStr);
 
-                $moveResult = $this->apiClient->movePlayer($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
+                $moveResult = $this->movePlayerSmart($gameId, $playerId, $currentTurnId, (int) $fromX, (int) $fromY, (int) $toX, (int) $toY, false);
                 $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
                 $this->handleMoveResult($gameId, $playerId, $currentTurnId, $moveResult['response'], $actions);
 
@@ -4658,59 +5294,21 @@ final class SmartVirtualPlayer
     }
 
     /**
-     * Calculate effective combat strength based on strategy.
+     * Calculate effective combat strength based on strategy: the average roll with the hero's dice skills,
+     * weapons in hand (Sword Master, slot daggers), Berserk, and the spells when the strategy prefers battles.
      */
     private function calculateEffectiveStrength($player): int
     {
-        $baseHP = $player->getHP();
-        $inventory = $player->getInventory();
+        $skills = $player->getSkills();
+        $totalStrength = BattleOdds::expectedRoll($skills)
+            + $player->calculateItemDamage()
+            + BattleOdds::skillBonus($skills, $player->getHP(), false);
 
-        // Calculate expected damage from dice rolls
-        // Players always roll 2 d6 dice in combat
-        // Average per die = 3.5, so 2 dice average = 7
-        // For AI decision making, use the average expected value
-        $expectedDiceRoll = 7; // 2 dice * 3.5 average
-
-        // Start with expected dice damage
-        $totalStrength = $expectedDiceRoll;
-
-        // Add weapon bonuses - inventory structure is ['weapon' => [...], 'spell' => [...], etc]
-        foreach ($inventory['weapon'] ?? [] as $weapon) {
-            // Handle both array and Item object formats
-            if ($weapon instanceof Item) {
-                $weaponType = $weapon->type->value ?? '';
-            } else {
-                $weaponType = $weapon['type'] ?? '';
-            }
-
-            $damage = match ($weaponType) {
-                'dagger' => 1,
-                'sword' => 2,
-                'axe' => 3,
-                default => 0
-            };
-            $totalStrength += $damage;
+        if (($this->strategyConfig['preferBattles'] ?? false) || $skills?->keepsSpellsInCombat() === true) {
+            $totalStrength += $this->countSpells($player, ItemType::FIREBALL) + 2 * $this->countSpells($player, ItemType::FROST_FIST);
         }
 
-        // Add consumable spell bonuses if aggressive
-        if ($this->strategyConfig['preferBattles'] ?? false) {
-            foreach ($inventory['spell'] ?? [] as $spell) {
-                // Handle both array and Item object formats
-                if ($spell instanceof Item) {
-                    $spellType = $spell->type->value ?? '';
-                    // For Item objects, spells are always "active" (uses doesn't apply)
-                    if ($spellType === 'fireball') {
-                        ++$totalStrength;
-                    }
-                } else {
-                    if ($spell['type'] === 'fireball' && ($spell['uses'] ?? 0) > 0) {
-                        ++$totalStrength;
-                    }
-                }
-            }
-        }
-
-        return $totalStrength;
+        return (int) round($totalStrength);
     }
 
     /**
@@ -5126,7 +5724,7 @@ final class SmartVirtualPlayer
         ]);
 
         [$toX, $toY] = explode(',', (string) $nextStep);
-        $moveResult = $this->apiClient->movePlayer(
+        $moveResult = $this->movePlayerSmart(
             $gameId,
             $playerId,
             $currentTurnId,
@@ -5168,7 +5766,7 @@ final class SmartVirtualPlayer
         ]);
 
         // Move to the monster's position
-        $moveResult = $this->apiClient->movePlayer(
+        $moveResult = $this->movePlayerSmart(
             $gameId,
             $playerId,
             $currentTurnId,
@@ -5177,6 +5775,7 @@ final class SmartVirtualPlayer
             (int) explode(',', (string) $targetPos)[0],
             (int) explode(',', (string) $targetPos)[1],
             false,
+            false, // a deliberate attack: never sneak past it
         );
 
         $actions[] = $this->createAction('move_player', ['result' => $moveResult]);
@@ -5188,6 +5787,7 @@ final class SmartVirtualPlayer
         // Handle battle result if it occurred
         if ($moveResult['success'] && isset($moveResult['response']['battleInfo'])) {
             $battleInfo = $moveResult['response']['battleInfo'];
+            $this->battleKeepsTurn = false;
             $actions[] = $this->createAction('battle_detected', [
                 'battleResult' => $battleInfo['result'] ?? 'unknown',
                 'battleInfo' => $battleInfo,
@@ -5335,69 +5935,11 @@ final class SmartVirtualPlayer
     }
 
     /**
-     * Estimate chance of victory against a monster.
+     * Estimate chance of victory against a monster (exact odds with skills and every spell held).
      */
     private function estimateVictoryChance($player, int $monsterHp): float
     {
-        $playerHp = $player->getHP();
-        $inventory = $player->getInventory();
-
-        // Base damage estimate (average dice roll)
-        $avgDamage = 7; // Average of 2d6
-
-        // Add weapon bonuses
-        $weaponBonus = $this->getBestWeaponValue($inventory);
-        $totalDamage = $avgDamage + $weaponBonus;
-
-        // Check for fireballs
-        $fireballCount = 0;
-
-        // Handle both formats: categorized array or flat array of Item objects
-        if (isset($inventory['spell']) && \is_array($inventory['spell'])) {
-            // Categorized format
-            foreach ($inventory['spell'] as $item) {
-                $isFireball = false;
-                if (\is_array($item) && isset($item['type']) && $item['type'] === 'fireball') {
-                    $isFireball = true;
-                } elseif (\is_object($item) && property_exists($item, 'type') && ($item->type->value ?? '') === 'fireball') {
-                    $isFireball = true;
-                }
-                if ($isFireball) {
-                    ++$fireballCount;
-                }
-            }
-        } else {
-            // Flat array of Item objects
-            foreach ($inventory as $item) {
-                if (\is_object($item) && property_exists($item, 'type')) {
-                    $itemType = $item->type->value ?? '';
-                    if ($itemType === 'fireball') {
-                        ++$fireballCount;
-                    }
-                }
-            }
-        }
-
-        // Add fireball damage if available (each fireball adds 1 damage)
-        if ($fireballCount > 0) {
-            $totalDamage += $fireballCount * 1; // Each fireball adds 1 damage
-        }
-
-        // Calculate victory chance
-        if ($totalDamage >= $monsterHp) {
-            return 1.0; // Guaranteed victory
-        }
-        if ($totalDamage + 3 >= $monsterHp) {
-            return 0.7; // Good chance with slightly better roll
-        }
-        if ($totalDamage + 2 >= $monsterHp) {
-            return 0.5; // Decent chance with good roll
-        }
-        if ($fireballCount > 0 && $totalDamage >= $monsterHp - 2) {
-            return 0.3; // Small chance with consumables
-        }
-
-        return 0.1; // Very low chance
+        return $this->fightWinChance($player, $monsterHp);
     }
 
     /**
@@ -6125,6 +6667,15 @@ final class SmartVirtualPlayer
 
             if ($iterations <= 5) { // Log first few iterations
                 $transitionLog[$current] = $transitions;
+            }
+
+            // Wizard "Astral Walking": any orthogonally adjacent discovered tile is reachable, wall or not
+            if ($this->walksThroughWalls) {
+                foreach ($currentPlace->getAllSiblingsBySides() as $sibling) {
+                    if (isset($placedTiles[$sibling->toString()])) {
+                        $transitions[] = $sibling->toString();
+                    }
+                }
             }
 
             foreach ($transitions as $neighbor) {

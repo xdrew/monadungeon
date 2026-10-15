@@ -113,7 +113,7 @@ final readonly class VirtualPlayerApiClient
     /**
      * Move player to a new position (simulates frontend API call).
      */
-    public function movePlayer(Uuid $gameId, Uuid $playerId, Uuid $turnId, int $fromX, int $fromY, int $toX, int $toY, bool $isTilePlacementMove = false): array
+    public function movePlayer(Uuid $gameId, Uuid $playerId, Uuid $turnId, int $fromX, int $fromY, int $toX, int $toY, bool $isTilePlacementMove = false, bool $ignoreMonster = false): array
     {
         $request = Request::create(
             uri: '/api/game/move-player',
@@ -124,7 +124,7 @@ final readonly class VirtualPlayerApiClient
                 'turnId' => $turnId->toString(),
                 'fromPosition' => "{$fromX},{$fromY}",
                 'toPosition' => "{$toX},{$toY}",
-                'ignoreMonster' => false,
+                'ignoreMonster' => $ignoreMonster,
                 'isTilePlacementMove' => $isTilePlacementMove,
             ]),
         );
@@ -180,7 +180,7 @@ final readonly class VirtualPlayerApiClient
     /**
      * Finalize a battle with optional consumables (simulates frontend API call).
      */
-    public function finalizeBattle(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $battleId, array $selectedConsumableIds = [], bool $pickupItem = true, ?string $replaceItemId = null): array
+    public function finalizeBattle(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $battleId, array $selectedConsumableIds = [], bool $pickupItem = true, ?string $replaceItemId = null, bool $sacrificeHp = false): array
     {
         $request = Request::create(
             uri: '/api/game/finalize-battle',
@@ -193,6 +193,7 @@ final readonly class VirtualPlayerApiClient
                 'selectedConsumableIds' => array_map(static fn($id) => $id->toString(), $selectedConsumableIds),
                 'pickupItem' => $pickupItem,
                 'replaceItemId' => $replaceItemId,
+                'sacrificeHp' => $sacrificeHp,
             ], static fn($value) => $value !== null)),
         );
         $request->headers->set('Content-Type', 'application/json');
@@ -206,15 +207,17 @@ final readonly class VirtualPlayerApiClient
             'consumables' => $selectedConsumableIds,
             'pickupItem' => $pickupItem,
             'replaceItemId' => $replaceItemId,
+            'sacrificeHp' => $sacrificeHp,
             'statusCode' => $response->getStatusCode(),
             'response' => json_decode($response->getContent(), true),
         ];
     }
 
     /**
-     * Use a spell (simulates frontend API call).
+     * Use a spell (simulates frontend API call). Portal of Healing takes a fountain position (and optionally
+     * another hero), Dark Thorn takes the target hero.
      */
-    public function useSpell(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $spellId, ?int $targetX = null, ?int $targetY = null): array
+    public function useSpell(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $spellId, ?int $targetX = null, ?int $targetY = null, ?Uuid $targetPlayerId = null): array
     {
         $payload = [
             'gameId' => $gameId->toString(),
@@ -225,6 +228,9 @@ final readonly class VirtualPlayerApiClient
 
         if ($targetX !== null && $targetY !== null) {
             $payload['targetPosition'] = ['x' => $targetX, 'y' => $targetY];
+        }
+        if ($targetPlayerId !== null) {
+            $payload['targetPlayerId'] = $targetPlayerId->toString();
         }
 
         $request = Request::create(
@@ -241,6 +247,7 @@ final readonly class VirtualPlayerApiClient
             'action' => 'use_spell',
             'spellId' => $spellId->toString(),
             'target' => $targetX !== null && $targetY !== null ? "{$targetX},{$targetY}" : null,
+            'targetPlayerId' => $targetPlayerId?->toString(),
             'statusCode' => $response->getStatusCode(),
             'response' => json_decode($response->getContent(), true),
         ];
@@ -288,6 +295,94 @@ final readonly class VirtualPlayerApiClient
             'statusCode' => $response->getStatusCode(),
             'response' => json_decode($response->getContent(), true),
         ];
+    }
+
+    /**
+     * Horan "Double Attack": reroll both dice of the current battle once.
+     */
+    public function rerollBattle(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $battleId): array
+    {
+        return $this->post('/api/game/reroll-battle', 'reroll_battle', $this->turnPayload($gameId, $playerId, $turnId) + [
+            'battleId' => $battleId->toString(),
+        ]);
+    }
+
+    /**
+     * Horan "Reincarnation": teleport to a discovered healing fountain after losing the last HP.
+     */
+    public function reincarnate(Uuid $gameId, Uuid $playerId, Uuid $turnId, int $x, int $y): array
+    {
+        return $this->post('/api/game/reincarnate', 'reincarnate', $this->turnPayload($gameId, $playerId, $turnId) + [
+            'targetPosition' => ['x' => $x, 'y' => $y],
+        ]);
+    }
+
+    /**
+     * Lord Xanros "Magic Swap": trade places with another hero for all 4 moves.
+     */
+    public function magicSwap(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $targetPlayerId): array
+    {
+        return $this->post('/api/game/magic-swap', 'magic_swap', $this->turnPayload($gameId, $playerId, $turnId) + [
+            'targetPlayerId' => $targetPlayerId->toString(),
+        ]);
+    }
+
+    /**
+     * Baron Markul "Lightning Attack": for all 4 moves teleport onto a monster tile and fight.
+     */
+    public function lightningAttack(Uuid $gameId, Uuid $playerId, Uuid $turnId, int $x, int $y): array
+    {
+        return $this->post('/api/game/lightning-attack', 'lightning_attack', $this->turnPayload($gameId, $playerId, $turnId) + [
+            'targetPosition' => "{$x},{$y}",
+        ]);
+    }
+
+    /**
+     * Baron Markul: retreat after a Lightning Attack that was not won.
+     */
+    public function retreat(Uuid $gameId, Uuid $playerId, Uuid $turnId, int $x, int $y): array
+    {
+        return $this->post('/api/game/retreat', 'retreat', $this->turnPayload($gameId, $playerId, $turnId) + [
+            'position' => "{$x},{$y}",
+        ]);
+    }
+
+    /**
+     * Hanna "Sprint": up to 8 steps over discovered tiles this turn.
+     */
+    public function sprint(Uuid $gameId, Uuid $playerId, Uuid $turnId): array
+    {
+        return $this->post('/api/game/sprint', 'sprint', $this->turnPayload($gameId, $playerId, $turnId));
+    }
+
+    /**
+     * Lady Lorraine "Listening": explore an adjacent place without entering it.
+     */
+    public function listen(Uuid $gameId, Uuid $playerId, Uuid $turnId, int $x, int $y): array
+    {
+        return $this->post('/api/game/listen', 'listen', $this->turnPayload($gameId, $playerId, $turnId) + [
+            'position' => "{$x},{$y}",
+        ]);
+    }
+
+    /**
+     * Valduk "Tireless": keep moving after a victory whose loot was left.
+     */
+    public function tireless(Uuid $gameId, Uuid $playerId, Uuid $turnId): array
+    {
+        return $this->post('/api/game/tireless', 'tireless', $this->turnPayload($gameId, $playerId, $turnId));
+    }
+
+    /**
+     * Valduk "Berserk": heal at most up to $hp (null = fully).
+     */
+    public function setHealLimit(Uuid $gameId, Uuid $playerId, ?int $hp): array
+    {
+        return $this->post('/api/game/hero/heal-limit', 'heal_limit', [
+            'gameId' => $gameId->toString(),
+            'playerId' => $playerId->toString(),
+            'hp' => $hp,
+        ]);
     }
 
     /**
@@ -439,6 +534,40 @@ final readonly class VirtualPlayerApiClient
             'from' => "{$fromX},{$fromY}",
             'to' => "{$toX},{$toY}",
             'actions' => $actions,
+        ];
+    }
+
+    /**
+     * @return array{gameId: string, playerId: string, turnId: string}
+     */
+    private function turnPayload(Uuid $gameId, Uuid $playerId, Uuid $turnId): array
+    {
+        return [
+            'gameId' => $gameId->toString(),
+            'playerId' => $playerId->toString(),
+            'turnId' => $turnId->toString(),
+        ];
+    }
+
+    /**
+     * POST a JSON payload to an API action as a sub-request, like the frontend would.
+     */
+    private function post(string $uri, string $action, array $payload): array
+    {
+        $request = Request::create(uri: $uri, method: 'POST', content: json_encode($payload));
+        $request->headers->set('Content-Type', 'application/json');
+
+        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $success = \in_array($response->getStatusCode(), [200, 201], true);
+        if (!$success) {
+            error_log(sprintf('DEBUG AI: %s failed (%d): %s', $action, $response->getStatusCode(), (string) $response->getContent()));
+        }
+
+        return [
+            'success' => $success,
+            'action' => $action,
+            'statusCode' => $response->getStatusCode(),
+            'response' => json_decode((string) $response->getContent(), true),
         ];
     }
 
