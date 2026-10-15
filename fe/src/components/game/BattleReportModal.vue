@@ -860,7 +860,7 @@ const setSelectedItemForReplacement = (item) => {
   selectedItemForReplacement.value = item;
   try {
     console.log('[BattleReportModal] Selected item for replacement:', item?.itemId || item);
-  } catch (e) {}
+  } catch { /* logging must never break the fight */ }
 };
 const pendingPickupItem = ref(null);
 
@@ -887,7 +887,7 @@ const setShowConsumableSelection = (value, reason = '') => {
   try {
     const ts = new Date().toISOString();
     console.log(`[BattleReportModal] ${ts} showConsumableSelection ->`, value, reason ? `reason: ${reason}` : '');
-  } catch (e) {}
+  } catch { /* logging must never break the fight */ }
   showConsumableSelection.value = value;
 };
 
@@ -1064,7 +1064,7 @@ const isKeyReward = computed(() => {
 const isGuardChestReward = computed(() => {
   if (!props.battleInfo.reward) return false;
   const reward = props.battleInfo.reward;
-  if (reward.hasOwnProperty('autoCollected')) {
+  if (Object.prototype.hasOwnProperty.call(reward, 'autoCollected')) {
     return reward.autoCollected === true;
   }
   const isChestType = reward.type === 'chest' || reward.type === 'ruby_chest';
@@ -1368,7 +1368,7 @@ const showInventoryFullSelection = (inventory, item) => {
   pendingPickupItem.value = item;
   selectedItemForReplacement.value = null;
   setShowConsumableSelection(false, 'showInventoryFullSelection hides consumable selection');
-  try { console.log('[BattleReportModal] Inventory full selection opened.'); } catch (e) {}
+  try { console.log('[BattleReportModal] Inventory full selection opened.'); } catch { /* logging must never break the fight */ }
 };
 
 const showFinalizeBattleInventoryFullSelection = (inventory) => {
@@ -1379,7 +1379,7 @@ const showFinalizeBattleInventoryFullSelection = (inventory) => {
   selectedItemForReplacement.value = null;
   setShowConsumableSelection(false, 'showFinalizeBattleInventoryFullSelection hides consumable selection');
   console.log('Keeping selected consumables for later:', selectedConsumables.value);
-  try { console.log('[BattleReportModal] Finalize battle inventory selection opened.'); } catch (e) {}
+  try { console.log('[BattleReportModal] Finalize battle inventory selection opened.'); } catch { /* logging must never break the fight */ }
 };
 
 // Keyboard handler
