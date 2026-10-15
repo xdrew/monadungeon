@@ -123,6 +123,7 @@ export default {
     chronicle: 'Kronika',
     aiTurn: 'Tura SI',
     step: 'Krok {n} z {total}',
+    stepShort: '{n}/{total}',
     speed: 'Prędkość',
     slow: 'Wolno',
     normal: 'Normalnie',

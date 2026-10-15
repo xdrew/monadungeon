@@ -727,6 +727,53 @@ const onItemClick = () => {
   box-shadow: 0 0 14px rgba(var(--ember-rgb), 0.6);
 }
 
+/* Where the action is: the acting hero breathes a little, the ember ring under the feet pulses and sends out
+   a thin ripple every couple of seconds. Only transform and opacity are animated (smooth, on the compositor). */
+.hero-standee.is-acting img {
+  transform-origin: 50% 100%;
+  animation: heroBreath 2.6s ease-in-out infinite;
+}
+
+.hero-standee.is-acting::after {
+  animation: groundPulse 2.2s ease-in-out infinite;
+}
+
+.hero-standee.is-acting::before {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -4%;
+  height: 14%;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--ember-rgb), 0.8);
+  pointer-events: none;
+  animation: groundRipple 2.2s ease-out infinite;
+}
+
+@keyframes heroBreath {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-2px) scaleY(1.015); }
+}
+
+@keyframes groundPulse {
+  0%, 100% { transform: scale(1); opacity: 0.75; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes groundRipple {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-standee.is-acting img,
+  .hero-standee.is-acting::after,
+  .hero-standee.is-acting::before {
+    animation: none;
+  }
+}
+
 /* Magic Swap: the heroes you can trade places with */
 .hero-standee.swap-target {
   cursor: pointer;

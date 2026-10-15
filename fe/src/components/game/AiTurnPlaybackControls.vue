@@ -1,13 +1,13 @@
 <template>
-  <!-- The AI's turn played back step by step: a slim plaque under the turn banner -->
+  <!-- The AI's turn played back step by step: one slim line under the turn banner
+       (the banner already tells what the AI does, so the step's label is only read out to screen readers) -->
   <div
     class="ai-playback hud-plaque"
     role="status"
+    :aria-label="currentAction?.label || $t('hud.aiTurn')"
   >
-    <div class="hud-plaque__row">
-      <span class="hud-plaque__caption">{{ $t('hud.aiTurn') }}</span>
-      <span class="step-counter">{{ $t('hud.step', { n: currentStep, total: totalSteps }) }}</span>
-    </div>
+    <span class="hud-plaque__caption">{{ $t('common.ai') }}</span>
+    <span class="step-counter">{{ $t('hud.stepShort', { n: currentStep, total: totalSteps }) }}</span>
     <div
       class="progress-bar"
       aria-hidden="true"
@@ -17,38 +17,32 @@
         :style="{ width: `${totalSteps ? (currentStep / totalSteps) * 100 : 0}%` }"
       />
     </div>
-    <p
-      v-if="currentAction"
-      class="current-action"
+    <div
+      class="speed-controls"
+      role="group"
+      :aria-label="$t('hud.speed')"
     >
-      <span class="action-label">{{ currentAction.label }}</span>
-    </p>
-    <div class="hud-plaque__row">
-      <div
-        class="speed-controls"
-        role="group"
-        :aria-label="$t('hud.speed')"
-      >
-        <button
-          v-for="speed in SPEEDS"
-          :key="speed.value"
-          type="button"
-          class="speed-btn btn btn--ghost btn--sm"
-          :class="{ active: playbackSpeed === speed.value }"
-          :aria-pressed="playbackSpeed === speed.value"
-          @click="$emit('speed-change', speed.value)"
-        >
-          {{ $t(speed.labelKey) }}
-        </button>
-      </div>
       <button
+        v-for="speed in SPEEDS"
+        :key="speed.value"
         type="button"
-        class="skip-btn btn btn--ghost btn--sm"
-        @click="$emit('skip')"
+        class="speed-btn"
+        :class="{ active: playbackSpeed === speed.value }"
+        :aria-pressed="playbackSpeed === speed.value"
+        :title="$t(speed.labelKey)"
+        :aria-label="$t(speed.labelKey)"
+        @click="$emit('speed-change', speed.value)"
       >
-        {{ $t('common.skip') }}
+        {{ speed.mark }}
       </button>
     </div>
+    <button
+      type="button"
+      class="skip-btn"
+      @click="$emit('skip')"
+    >
+      {{ $t('common.skip') }}
+    </button>
   </div>
 </template>
 
@@ -74,36 +68,46 @@ defineProps({
 
 defineEmits(['speed-change', 'skip']);
 
+// the marks are numbers, the same in every language; the words are in the tooltips
 const SPEEDS = [
-  { value: 0.5, labelKey: 'hud.slow' },
-  { value: 1, labelKey: 'hud.normal' },
-  { value: 2, labelKey: 'hud.fast' }
+  { value: 0.5, labelKey: 'hud.slow', mark: '×½' },
+  { value: 1, labelKey: 'hud.normal', mark: '×1' },
+  { value: 2, labelKey: 'hud.fast', mark: '×2' }
 ];
 </script>
 
 <style scoped>
-.current-action {
-  margin: 0;
-  min-height: 1.4em;
-  font-style: italic;
-  font-size: 15px;
-  color: var(--text-primary);
-  text-align: center;
+/* one line: caption, step, progress, speed, skip */
+.ai-playback {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  max-width: calc(100vw - 32px);
+  padding: 5px 6px 5px 12px;
+}
+
+.ai-playback .progress-bar {
+  flex: 1 1 80px;
+  min-width: 60px;
 }
 
 .speed-controls {
   display: flex;
-  flex-wrap: wrap;
 }
 
-/* a segmented row: the buttons grow with their label (ru/pl labels are longer than en) */
-.speed-btn {
-  width: auto;
-  min-width: 0;
-  height: 36px;
-  padding: 0 12px;
+.speed-btn,
+.skip-btn {
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(234, 220, 192, 0.22);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
   font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .speed-btn + .speed-btn {
@@ -115,5 +119,14 @@ const SPEEDS = [
   border-color: var(--color-primary);
   background: rgba(var(--ember-rgb), 0.15);
   color: var(--text-heading);
+}
+
+.speed-btn:hover,
+.skip-btn:hover,
+.speed-btn:focus-visible,
+.skip-btn:focus-visible {
+  outline: none;
+  color: var(--text-heading);
+  border-color: rgba(234, 220, 192, 0.5);
 }
 </style>

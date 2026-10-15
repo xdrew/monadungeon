@@ -95,6 +95,21 @@ const haloStyle = computed(() => {
 
 .torchlight-halo {
   mix-blend-mode: screen;
+  /* a living flame: an uneven flicker of the acting hero's halo */
+  animation: torchFlicker 3.2s linear infinite;
+  will-change: opacity;
+}
+
+@keyframes torchFlicker {
+  0% { opacity: 0.92; }
+  12% { opacity: 1; }
+  20% { opacity: 0.86; }
+  34% { opacity: 0.97; }
+  47% { opacity: 0.9; }
+  58% { opacity: 1; }
+  71% { opacity: 0.84; }
+  83% { opacity: 0.95; }
+  100% { opacity: 0.92; }
 }
 
 /* Without mask compositing several holes would cancel each other out: fall back to an edge vignette */
@@ -109,6 +124,10 @@ const haloStyle = computed(() => {
 @media (prefers-reduced-motion: reduce) {
   .torchlight-dark {
     transition: none;
+  }
+
+  .torchlight-halo {
+    animation: none;
   }
 }
 </style>

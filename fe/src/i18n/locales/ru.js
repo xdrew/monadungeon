@@ -123,6 +123,7 @@ export default {
     chronicle: 'Хроника',
     aiTurn: 'Ход ИИ',
     step: 'Шаг {n} из {total}',
+    stepShort: '{n}/{total}',
     speed: 'Скорость',
     slow: 'Медленно',
     normal: 'Обычно',

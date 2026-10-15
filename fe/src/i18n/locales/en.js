@@ -124,6 +124,7 @@ export default {
     chronicle: 'Chronicle',
     aiTurn: 'AI turn',
     step: 'Step {n} of {total}',
+    stepShort: '{n}/{total}',
     speed: 'Playback speed',
     slow: 'Slow',
     normal: 'Normal',
