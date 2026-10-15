@@ -420,6 +420,7 @@
                 :src="displayItemImage"
                 :alt="formattedItemName"
                 class="reward-row__img"
+                :class="`reward-row__img--${battleInfo.reward.type}`"
               >
               <GameIcon
                 v-else
@@ -2144,15 +2145,31 @@ button.item-chip {
 
 .reward-row__icon {
   position: relative;
+  width: 80px;
+  height: 80px;
+  flex: none;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: #d9c08a;
+  /* torchlight behind the item, so dark iron reads on the dark plaque */
+  background: radial-gradient(circle, rgba(255, 170, 70, 0.28) 0%, rgba(var(--ember-rgb), 0.08) 45%, rgba(0, 0, 0, 0) 70%);
 }
 
 .reward-row__img {
-  width: 56px;
-  height: 56px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(var(--ember-rgb), 0.35)) drop-shadow(0 4px 4px #000);
+  filter: brightness(1.25) drop-shadow(0 0 10px rgba(var(--ember-rgb), 0.35)) drop-shadow(0 4px 4px #000);
+}
+
+/* the dagger and the axe fill only half of their art */
+.reward-row__img--dagger {
+  transform: scale(1.5);
+}
+
+.reward-row__img--axe {
+  transform: scale(1.2);
 }
 
 .reward-row__name {
