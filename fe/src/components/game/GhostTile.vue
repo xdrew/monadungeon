@@ -36,7 +36,7 @@
         class="ghost-tile-controls"
       >
         <button
-          class="ghost-rotate-btn"
+          class="ghost-rotate-btn btn btn--iron btn--sm"
           title="Rotate tile (R)"
           aria-label="Rotate tile"
           @click.stop="rotateGhostTile"
@@ -336,71 +336,50 @@ const placeTile = () => {
   /*background-color: #423426;*/
 }
 
-/* Ghost tile specific styles */
+/* Ghost tile: the tile about to be placed, framed in ember */
 .ghost-tile {
-  opacity: 0.85;
+  opacity: 0.88;
   animation: ghostPulse 2s infinite;
   pointer-events: auto;
   cursor: pointer;
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
-  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.4), inset 0 0 10px rgba(var(--accent-rgb), 0.1);
+  box-sizing: border-box;
+  border: 2px solid rgba(var(--ember-rgb), 0.75);
+  box-shadow: 0 0 18px rgba(var(--ember-rgb), 0.4), inset 0 0 18px rgba(var(--ember-rgb), 0.2);
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
 
-.ghost-tile.room {
-  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.4), inset 0 0 10px rgba(var(--accent-rgb), 0.1);
-}
-
 .ghost-tile:hover {
   opacity: 1;
-  border-color: rgba(var(--accent-rgb), 0.35);
-  box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.5), inset 0 0 10px rgba(var(--accent-rgb), 0.15);
+  border-color: var(--color-primary-hover);
+  box-shadow: 0 0 24px rgba(var(--ember-rgb), 0.55), inset 0 0 18px rgba(var(--ember-rgb), 0.28);
 }
 
 @keyframes ghostPulse {
-  0% { opacity: 0.7; }
+  0%, 100% { opacity: 0.75; }
   50% { opacity: 1; }
-  100% { opacity: 0.7; }
 }
 
-/* Ghost tile controls */
+@media (prefers-reduced-motion: reduce) {
+  .ghost-tile {
+    animation: none;
+  }
+}
+
+/* Ghost tile controls: a small iron ring under the tile (the ring itself is .btn--iron) */
 .ghost-tile-controls {
   position: absolute;
   z-index: 100;
   display: flex;
   pointer-events: auto;
-  bottom: -44px;
+  bottom: -54px;
   left: 50%;
   transform: translateX(-50%);
   justify-content: center;
 }
 
 .ghost-rotate-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid rgba(var(--accent-rgb), 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: var(--bg-secondary);
-  color: white;
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.35), 0 2px 8px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
-}
-
-.ghost-rotate-btn:hover {
-  transform: scale(1.15) rotate(90deg);
-  border-color: rgba(var(--accent-light-rgb), 0.8);
-  box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-.ghost-rotate-btn:active {
-  transform: scale(1.05) rotate(180deg);
 }
 </style> 

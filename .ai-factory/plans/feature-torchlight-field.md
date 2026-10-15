@@ -62,10 +62,10 @@ Authority: user answers > canvas boards > existing code. The e2e contract (`fe/e
   - Tiles edge to edge: no border/radius/hover lift; bone hover hairline; `.center-view-button` → `btn btn--iron btn--sm`.
 
 ### Phase 3: Marks and docs
-- [ ] Task 6: Move marks, ghost tile, fountain markers (depends on 2)
+- [x] Task 6: Move marks, ghost tile, fountain markers (depends on 2)
   - `AvailableMoveMarker.vue` per the table (arrows out, `GameIcon explore` in `.place-icon`), keeping classes, `title` and order.
   - `GhostTile.vue` ember frame, iron-ring rotate button.
   - `GameView.vue` `.healing-fountain-marker` styles (teleport + reincarnation) as ember frames.
   - Verify: `npm run build`; ESLint on touched files adds no errors; host Chrome (new tab, `http://127.0.0.1:18080`): own turn with placement and move marks, a tile placed, the AI turn (light follows the AI), two heroes on one tile if reachable.
-- [ ] Task 7: Docs (depends on 1-6)
+- [x] Task 7: Docs (depends on 1-6)
   - README "Theme": the field — 150px tiles, `TorchlightLayer` (darkness, torches, acting hero), tokens and standees, ember move marks; CLAUDE.md theme bullet gets one clause about `TorchlightLayer` / `TILE_SIZE`.

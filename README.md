@@ -57,6 +57,7 @@ The game has one look, **Torchlight**: a dark dungeon lit by torches, Pirata One
 - Fonts, palette, radii and shadows: `fe/src/styles/design-tokens.css` (`--font-display`, `--font-body`, `--bg-*`, `--text-*`, `--color-primary` ember, `--iron*`)
 - Buttons: `fe/src/styles/components/buttons.css` (`.btn` + `.btn--ember` / `.btn--ghost` / `.btn--blood` / `.btn--iron`)
 - Icons: `fe/src/components/ui/GameIcon.vue` (`<GameIcon name="heart" />`, set in `gameIcons.js`)
+- The field: 150px tiles (`TILE_SIZE` in `fe/src/utils/fieldUtils.js`, `--tile-size`, one tile of padding around the field); `TorchlightLayer.vue` dims the dungeon outside the heroes' torches (the acting hero carries the widest light and a warm halo, nothing is dimmed once the game is over); monsters and rewards are free tokens with an ember-lit HP number, heroes are standees (blue ground mark for you, ember for the acting hero); move marks are ember frames, unexplored doorways dark slots with the explore mark
 - Monster and hero names and images: `fe/src/theme/base.js`; images in `fe/public/themes/base/`. If an image is missing the UI falls back to an emoji (`ThemedImage.vue`).
 
 ### Art generation

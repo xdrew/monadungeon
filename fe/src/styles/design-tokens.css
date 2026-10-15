@@ -83,6 +83,6 @@
   
   /* Game Specific */
   --tile-size: 150px; /* TILE_SIZE in utils/fieldUtils.js */
-  --field-padding: 100px;
+  --field-padding: 150px; /* one tile: room for the marks and the ghost tile beyond the field edge */
   --sidebar-width: 350px;
 } 

@@ -2866,8 +2866,8 @@ const centerViewOnMiddle = () => {
   // For debugging
 
 
-  // Take into account the field's padding (100px on all sides)
-  const padding = 100;
+  // Take into account the field's padding (one tile on all sides, --field-padding)
+  const padding = TILE_SIZE;
 
   // Calculate maximum scroll boundaries with padding
   const maxScrollLeft = Math.max(0, fieldWidth + (padding * 2) - viewWidth);
@@ -6602,7 +6602,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 /* Reincarnation target markers pulse so the choice is obvious */
 .reincarnation-marker .healing-fountain-indicator {
-  box-shadow: 0 0 0 3px rgba(var(--accent-light-rgb), 0.6), 0 0 18px rgba(var(--accent-light-rgb), 0.8);
   animation: reincarnation-pulse 1.2s ease-in-out infinite;
 }
 
@@ -6815,11 +6814,28 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.5) 0%, rgba(var(--accent-rgb), 0.2) 70%);
-  animation: pulse 2s infinite;
-  border: 2px solid rgba(var(--accent-rgb), 0.8);
-  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.6);
-  border-radius: 8px;
+  box-sizing: border-box;
+  /* a fountain the hero can be carried to: an ember frame like the move marks, breathing */
+  border: 2px solid rgba(var(--ember-rgb), 0.75);
+  background: radial-gradient(circle, rgba(var(--ember-rgb), 0.18) 0%, rgba(var(--ember-rgb), 0) 70%);
+  box-shadow: inset 0 0 24px rgba(255, 120, 30, 0.35);
+  animation: fountainMarkerBreath 2s ease-in-out infinite;
+}
+
+.healing-fountain-marker:hover {
+  border-color: var(--color-primary-hover);
+  box-shadow: inset 0 0 30px rgba(255, 120, 30, 0.5), 0 0 16px rgba(var(--ember-rgb), 0.4);
+}
+
+@keyframes fountainMarkerBreath {
+  0%, 100% { box-shadow: inset 0 0 18px rgba(255, 120, 30, 0.3); }
+  50% { box-shadow: inset 0 0 32px rgba(255, 120, 30, 0.55), 0 0 12px rgba(var(--ember-rgb), 0.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .healing-fountain-marker {
+    animation: none;
+  }
 }
 
 .healing-fountain-indicator {

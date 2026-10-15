@@ -8,7 +8,8 @@ import { SPELL_TYPES } from './itemUtils';
 // Constants
 /** Size of one field tile in px (Torchlight: 150, as on the canvas boards) */
 export const TILE_SIZE = 150;
-const FIELD_PADDING = 100;
+// One tile of padding around the field (--field-padding): room for the marks beyond its edge
+const FIELD_PADDING = TILE_SIZE;
 const TILE_ANIMATION_DURATION = 1000;
 const FIELD_ELEMENT_SELECTOR = '.game-field';
 
