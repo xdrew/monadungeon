@@ -1,98 +1,122 @@
 <template>
-  <!-- A full pack: what goes to make room; shown in the decision plaque, `.inventory-full-overlay` is an e2e hook -->
-  <div class="inventory-full-overlay plaque-dialog">
-    <h4>{{ $t('dialogs.inventoryFull') }}</h4>
-    <div
-      class="plaque-dialog__item"
-      :class="itemCategoryClass(droppedItem)"
+  <!-- A full pack: what goes to make room for the find. A centred plaque over the dimmed field, like the fight's
+       choice plaque; `.inventory-full-overlay` and `.replace-item` are e2e hooks -->
+  <div class="inventory-full-overlay">
+    <section
+      class="inventory-full-card"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('dialogs.inventoryFull')"
     >
-      <img
-        v-if="getItemImage(droppedItem)"
-        :src="getItemImage(droppedItem)"
-        :alt="getDisplayName(droppedItem)"
-        class="plaque-dialog__img"
-      >
-      <GameIcon
-        v-else
-        name="treasure"
-        :size="40"
-        class="plaque-dialog__icon"
-      />
-      <span class="plaque-dialog__name">{{ getDisplayName(droppedItem) }}</span>
-      <span
-        v-if="getItemDamage(droppedItem) > 0"
-        class="plaque-dialog__stat"
-      ><GameIcon
-        name="sword"
-        :size="14"
-      /> +{{ getItemDamage(droppedItem) }}</span>
-      <span
-        v-if="droppedItem.treasureValue > 0"
-        class="plaque-dialog__stat plaque-dialog__stat--gold"
-      ><GameIcon
-        name="treasure"
-        :size="14"
-      /> {{ droppedItem.treasureValue }}</span>
-      <span
-        v-if="['fireball', 'frost_fist', 'dark_thorn'].includes(droppedItem.type)"
-        class="plaque-dialog__stat"
-      ><GameIcon
-        name="spells"
-        :size="14"
-      /> {{ $t('dialogs.consumable') }}</span>
-    </div>
+      <span class="inv-caption">{{ $t('dialogs.inventoryFull') }}</span>
 
-    <p>{{ replaceLabel(itemCategory) }}</p>
-    <div class="replace-items">
-      <button
-        v-for="item in inventoryForCategory"
-        :key="item.itemId"
-        type="button"
-        class="replace-item"
-        :class="{ selected: selectedItemToReplace && selectedItemToReplace.itemId === item.itemId }"
-        :aria-pressed="!!(selectedItemToReplace && selectedItemToReplace.itemId === item.itemId)"
-        @click="selectItemToReplace(item)"
+      <!-- the find -->
+      <div
+        class="inv-found"
+        :class="itemCategoryClass(droppedItem)"
       >
-        <img
-          v-if="getItemImage(item)"
-          :src="getItemImage(item)"
-          alt=""
-          class="replace-item-img"
+        <span class="inv-found__icon">
+          <img
+            v-if="getItemImage(droppedItem)"
+            :src="getItemImage(droppedItem)"
+            :alt="getDisplayName(droppedItem)"
+            class="inv-found__img"
+            :class="`inv-img--${droppedItem.type}`"
+          >
+          <GameIcon
+            v-else
+            name="treasure"
+            :size="44"
+          />
+        </span>
+        <span class="inv-found__text">
+          <span class="inv-found__name">{{ getDisplayName(droppedItem) }}</span>
+          <span class="inv-found__stats">
+            <span
+              v-if="getItemDamage(droppedItem) > 0"
+              class="inv-stat"
+            ><GameIcon
+              name="sword"
+              :size="15"
+            /> +{{ getItemDamage(droppedItem) }}</span>
+            <span
+              v-if="droppedItem.treasureValue > 0"
+              class="inv-stat inv-stat--gold"
+            ><GameIcon
+              name="treasure"
+              :size="15"
+            /> {{ droppedItem.treasureValue }}</span>
+            <span
+              v-if="['fireball', 'frost_fist', 'dark_thorn'].includes(droppedItem.type)"
+              class="inv-stat inv-stat--note"
+            ><GameIcon
+              name="spells"
+              :size="15"
+            /> {{ $t('dialogs.consumable') }}</span>
+          </span>
+        </span>
+      </div>
+
+      <!-- what goes -->
+      <p class="inv-prompt">
+        {{ replaceLabel(itemCategory) }}
+      </p>
+      <div class="replace-items">
+        <button
+          v-for="item in inventoryForCategory"
+          :key="item.itemId"
+          type="button"
+          class="replace-item"
+          :class="{ selected: selectedItemToReplace && selectedItemToReplace.itemId === item.itemId }"
+          :aria-pressed="!!(selectedItemToReplace && selectedItemToReplace.itemId === item.itemId)"
+          @click="selectItemToReplace(item)"
         >
-        <GameIcon
-          v-else
-          name="treasure"
-          :size="24"
-        />
-        <span class="replace-item-name">{{ getDisplayName(item) }}</span>
-        <span
-          v-if="getItemDamage(item) > 0"
-          class="replace-item-stat"
-        >+{{ getItemDamage(item) }}</span>
-        <span
-          v-if="item.treasureValue > 0"
-          class="replace-item-stat replace-item-stat--gold"
-        >{{ item.treasureValue }}</span>
-      </button>
-    </div>
+          <img
+            v-if="getItemImage(item)"
+            :src="getItemImage(item)"
+            alt=""
+            class="replace-item-img"
+            :class="`inv-img--${item.type}`"
+          >
+          <GameIcon
+            v-else
+            name="treasure"
+            :size="32"
+          />
+          <span class="replace-item-text">
+            <span class="replace-item-name">{{ getDisplayName(item) }}</span>
+            <span
+              v-if="getItemDamage(item) > 0"
+              class="replace-item-stat"
+            >+{{ getItemDamage(item) }}</span>
+            <span
+              v-else-if="item.treasureValue > 0"
+              class="replace-item-stat replace-item-stat--gold"
+            >{{ item.treasureValue }}</span>
+          </span>
+        </button>
+      </div>
 
-    <div class="plaque-dialog__actions">
-      <button
-        type="button"
-        class="btn btn--ghost btn-secondary"
-        @click="skipItem"
-      >
-        {{ $t('dialogs.leaveItem') }} <span class="kbd-hint">(Esc)</span>
-      </button>
-      <button
-        type="button"
-        class="btn btn--ember btn-primary"
-        :disabled="!selectedItemToReplace"
-        @click="replaceItem"
-      >
-        {{ $t('dialogs.replaceSelected') }} <span class="kbd-hint">(Enter)</span>
-      </button>
-    </div>
+      <div class="inv-actions">
+        <button
+          type="button"
+          class="inv-btn inv-btn--ghost btn-secondary"
+          @click="skipItem"
+        >
+          {{ $t('dialogs.leaveItem') }}
+          <span class="kbd-hint">Esc</span>
+        </button>
+        <button
+          type="button"
+          class="inv-btn inv-btn--ember btn-primary"
+          :disabled="!selectedItemToReplace"
+          @click="replaceItem"
+        >
+          {{ $t('dialogs.replaceSelected') }}
+          <span class="kbd-hint">Enter</span>
+        </button>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -151,9 +175,14 @@ const itemCategoryClass = (item) => {
   return '';
 };
 
-const replaceLabel = (category) => (['keys', 'weapons', 'spells', 'treasures'].includes(category)
-  ? t(`dialogs.replaceFrom.${category}`)
-  : t('dialogs.replaceFrom.other', { category }));
+// the backend names the category in the singular ("weapon"); the texts are keyed by the pack's groups
+const CATEGORY_GROUP = { key: 'keys', weapon: 'weapons', spell: 'spells', treasure: 'treasures' };
+const replaceLabel = (category) => {
+  const group = CATEGORY_GROUP[category] || category;
+  return ['keys', 'weapons', 'spells', 'treasures'].includes(group)
+    ? t(`dialogs.replaceFrom.${group}`)
+    : t('dialogs.replaceFrom.other', { category });
+};
 
 const selectItemToReplace = (item) => {
   selectedItemToReplace.value = item;
@@ -189,50 +218,301 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 </script>
 
 <style scoped>
+.inventory-full-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(5, 3, 2, 0.6);
+  animation: invFade 0.25s ease-out;
+}
+
+@keyframes invFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.inventory-full-card {
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 22px 26px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: linear-gradient(180deg, rgba(20, 12, 8, 0.97) 0%, rgba(12, 7, 5, 0.97) 100%);
+  border: 1px solid rgba(var(--ember-rgb), 0.45);
+  box-shadow: 0 0 40px rgba(var(--ember-rgb), 0.2), 0 14px 34px rgba(0, 0, 0, 0.85);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  animation: invRise 0.3s ease-out;
+}
+
+@keyframes invRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.inv-caption {
+  align-self: center;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
+/* the find, centred */
+.inv-found {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.inv-found__icon {
+  width: 80px;
+  height: 80px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d9c08a;
+  background: radial-gradient(circle, rgba(255, 170, 70, 0.28) 0%, rgba(var(--ember-rgb), 0.08) 45%, rgba(0, 0, 0, 0) 70%);
+}
+
+.inv-found__img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: brightness(1.2) drop-shadow(0 0 10px rgba(var(--ember-rgb), 0.35)) drop-shadow(0 4px 4px #000);
+}
+
+/* the dagger and the axe fill only half of their art */
+.inv-img--dagger {
+  transform: scale(1.5);
+}
+
+.inv-img--axe {
+  transform: scale(1.2);
+}
+
+.inv-found__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inv-found__name {
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1;
+  color: var(--text-heading);
+  text-shadow: 0 2px 6px #000;
+}
+
+.inv-found__stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.inv-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--text-heading);
+}
+
+.inv-stat :deep(svg) {
+  color: var(--text-accent);
+}
+
+.inv-stat--gold {
+  color: #d9c08a;
+}
+
+.inv-stat--note {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.inv-prompt {
+  margin: 4px 0 0;
+  font-style: italic;
+  font-size: 16px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* what goes: cards with the item, the chosen one in ember */
 .replace-items {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  justify-content: center;
+  gap: 12px;
 }
 
 .replace-item {
-  display: inline-flex;
+  flex: 0 1 180px;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 6px 12px;
+  gap: 12px;
+  min-height: 72px;
+  padding: 8px 14px 8px 8px;
+  box-sizing: border-box;
   border: 1px solid rgba(234, 220, 192, 0.2);
   background: rgba(0, 0, 0, 0.35);
   color: var(--text-primary);
   font: inherit;
-  font-size: 14px;
   cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .replace-item:hover,
 .replace-item:focus-visible {
   outline: none;
-  border-color: rgba(var(--ember-rgb), 0.6);
+  border-color: rgba(234, 220, 192, 0.5);
 }
 
 .replace-item.selected {
-  border-color: rgba(217, 69, 42, 0.85);
-  background: rgba(217, 69, 42, 0.15);
+  border-color: rgba(var(--ember-rgb), 0.85);
+  background: rgba(var(--ember-rgb), 0.14);
+  box-shadow: 0 0 16px rgba(var(--ember-rgb), 0.25);
 }
 
 .replace-item-img {
-  width: 28px;
-  height: 28px;
+  width: 56px;
+  height: 56px;
+  flex: none;
   object-fit: contain;
+  filter: brightness(1.15) drop-shadow(0 3px 3px #000);
+}
+
+.replace-item-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.replace-item-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-heading);
 }
 
 .replace-item-stat {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 20px;
+  line-height: 1;
   color: var(--text-heading);
 }
 
 .replace-item-stat--gold {
   color: #d9c08a;
+}
+
+/* the buttons, as in the fight: bone-rimmed "leave", an ember plate to replace, keycaps under them */
+.inv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px 12px;
+  padding: 6px 0 24px;
+}
+
+.inv-btn {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 200px;
+  min-height: 56px;
+  padding: 0 22px;
+  border-radius: 2px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-align: center;
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.inv-btn--ember {
+  border: 1px solid var(--color-primary);
+  background: linear-gradient(180deg, rgba(255, 130, 40, 0.38) 0%, rgba(150, 60, 10, 0.38) 100%);
+  color: #ffe2b8;
+  text-shadow: 0 1px 2px #000;
+  box-shadow: 0 0 26px rgba(var(--ember-rgb), 0.38), inset 0 1px 0 rgba(255, 220, 180, 0.3), inset 0 -2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.inv-btn--ember:hover:not(:disabled),
+.inv-btn--ember:focus-visible {
+  outline: none;
+  background: linear-gradient(180deg, rgba(255, 150, 60, 0.5) 0%, rgba(170, 70, 15, 0.5) 100%);
+}
+
+.inv-btn--ember:disabled {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+}
+
+.inv-btn--ghost {
+  border: 1px solid rgba(234, 220, 192, 0.35);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.inv-btn--ghost:hover,
+.inv-btn--ghost:focus-visible {
+  outline: none;
+  border-color: rgba(234, 220, 192, 0.7);
+  color: var(--text-heading);
+}
+
+.kbd-hint {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  color: var(--text-muted);
+  text-shadow: none;
+  pointer-events: none;
+}
+
+@media (max-width: 520px) {
+  .inventory-full-card {
+    padding: 18px 14px 12px;
+  }
+
+  .inv-found__name {
+    font-size: 24px;
+  }
+
+  .replace-item {
+    flex-basis: 100%;
+  }
 }
 </style>

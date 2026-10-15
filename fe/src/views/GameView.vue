@@ -220,17 +220,6 @@
           #plaque
         >
           <DecisionPlaque>
-            <!-- Inventory full dialog component -->
-            <InventoryFullDialog
-              v-if="showInventoryFullDialog"
-              :dropped-item="droppedItem"
-              :item-category="itemCategory"
-              :inventory-for-category="inventoryForCategory"
-              @select-item="selectItemToReplace"
-              @replace-item="replaceItem"
-              @skip-item="skipItem"
-            />
-
             <!-- Missing key dialog component -->
             <MissingKeyDialog
               v-if="showMissingKeyDialog"
@@ -500,6 +489,17 @@
           {{ t('game.viewLeaderboard') }}
         </button>
       </div>
+
+      <!-- Inventory full: a centred plaque over the field (a bigger choice than the plaque by the rings) -->
+      <InventoryFullDialog
+        v-if="showInventoryFullDialog"
+        :dropped-item="droppedItem"
+        :item-category="itemCategory"
+        :inventory-for-category="inventoryForCategory"
+        @select-item="selectItemToReplace"
+        @replace-item="replaceItem"
+        @skip-item="skipItem"
+      />
 
       <!-- Game layout -->
       <div class="game-layout">
@@ -1293,7 +1293,7 @@ const activeSpellItemId = computed(() => (isTeleportMode.value && selectedTelepo
 // A choice waits for the player: the decision plaque (bottom right, over the rings) shows it
 const hasDecision = computed(() => isTeleportMode.value || isDarkThornMode.value || isReincarnationMode.value
   || isMagicSwapMode.value || isLightningMode.value
-  || showInventoryFullDialog.value || showMissingKeyDialog.value || showItemPickupDialog.value
+  || showMissingKeyDialog.value || showItemPickupDialog.value
   || !!stealthPrompt.value || !!fateweaverPrompt.value
   || (!showBattleReportModal.value && !!(arenaChoiceForMe.value || visibleDuel.value || curseChoicePendingForMe.value || retreatChoiceForMe.value)));
 
