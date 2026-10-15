@@ -479,18 +479,19 @@ onUnmounted(() => {
 .replace-items {
   position: relative;
   display: flex;
-  flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
 }
 
 .replace-item {
-  flex: 0 1 220px;
+  /* one row whatever the count (the pack holds at most three of a kind): the item on top, the words under it */
+  flex: 0 1 190px;
+  min-width: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  min-height: 72px;
-  padding: 8px 14px 8px 8px;
+  gap: 6px;
+  padding: 12px 10px 10px;
   box-sizing: border-box;
   border: 1px solid rgba(234, 220, 192, 0.2);
   background: rgba(0, 0, 0, 0.35);
@@ -524,8 +525,9 @@ onUnmounted(() => {
 .replace-item-text {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 2px;
+  text-align: center;
 }
 
 .replace-item-name {
@@ -648,8 +650,12 @@ onUnmounted(() => {
     font-size: 24px;
   }
 
-  .replace-item {
-    flex-basis: 100%;
+  .replace-items {
+    gap: 8px;
+  }
+
+  .replace-item-hint {
+    white-space: normal;
   }
 }
 </style>
