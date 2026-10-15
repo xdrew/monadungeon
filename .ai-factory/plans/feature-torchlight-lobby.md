@@ -43,7 +43,7 @@ Authority: user answers > canvas board > existing code. e2e does not visit `/`, 
   - `fe/src/views/RulesView.vue`: section ids, contents nav with active section, emoji → `GameIcon`/images, book typography, phone layout; new keys (`rules.contents`, section short titles if the h2 texts are too long for the nav) in en/ru/pl.
 
 ### Phase 2: Leaderboard, 404, docs
-- [ ] Task 3: Leaderboard and 404 (independent of 1-2)
+- [x] Task 3: Leaderboard and 404 (independent of 1-2)
   - `fe/src/views/LeaderboardView.vue` restyle; `fe/src/views/NotFoundView.vue` restyle; delete `fe/src/views/NotFound.vue`.
-- [ ] Task 4: Verify and docs (depends on 1-3)
+- [x] Task 4: Verify and docs (depends on 1-3)
   - i18n check, builds, ESLint on touched files, Chrome pass (lobby en/ru/pl desktop and phone, start a game from the lobby, rules anchors, leaderboard, a 404 URL); CLAUDE.md Theme bullet, README, memory.

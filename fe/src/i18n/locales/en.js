@@ -641,8 +641,9 @@ export default {
     }
   },
   leaderboard: {
+    empty: 'No hero has made it to the hall yet. Descend and be the first.',
     back: 'Back to Home',
-    title: 'Leaderboard',
+    title: 'Hall of fame',
     loading: 'Loading leaderboard...',
     player: 'Player',
     wins: 'Wins',

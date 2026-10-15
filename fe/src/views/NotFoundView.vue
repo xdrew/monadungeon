@@ -1,19 +1,22 @@
 <template>
+  <!-- Lost in the dark: a 404 in the Torchlight look -->
   <div class="not-found">
     <h1>404</h1>
     <h2>{{ $t('notFound.title') }}</h2>
     <p>{{ $t('notFound.text') }}</p>
     <button
-      class="home-button"
+      type="button"
+      class="home-button btn btn--ember btn--lg"
       @click="goToHome"
     >
-      {{ $t('notFound.home') }}
+      <GameIcon name="home" :size="20" /> {{ $t('notFound.home') }}
     </button>
   </div>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router';
+import GameIcon from '@/components/ui/GameIcon.vue';
 
 const router = useRouter();
 
@@ -24,47 +27,47 @@ const goToHome = () => {
 
 <style scoped>
 .not-found {
+  min-height: 100vh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  gap: 8px;
+  padding: 24px 16px;
   text-align: center;
-  padding: 20px;
-  background-color: #222;
-  color: white;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background-color: var(--bg-field);
+  background-image: radial-gradient(circle at 50% 40%, rgba(var(--ember-rgb), 0.18) 0%, rgba(0, 0, 0, 0) 40%);
 }
 
 h1 {
-  font-size: 8rem;
   margin: 0;
-  color: #ff6b6b;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(110px, 20vw, 200px);
+  line-height: 0.9;
+  color: var(--color-primary);
+  text-shadow: 0 0 40px rgba(var(--ember-rgb), 0.55), 0 6px 18px #000;
 }
 
 h2 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  color: #f8f8f8;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 36px;
+  color: var(--text-heading);
 }
 
 p {
-  font-size: 1.1rem;
-  color: #ccc;
-  margin-bottom: 2rem;
+  max-width: 30em;
+  margin: 0 0 16px;
+  font-style: italic;
+  color: var(--text-secondary);
 }
 
 .home-button {
-  padding: 12px 24px;
-  background-color: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.home-button:hover {
-  background-color: var(--color-primary-hover);
+  gap: 8px;
 }
 </style>

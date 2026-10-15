@@ -640,8 +640,9 @@ export default {
     }
   },
   leaderboard: {
+    empty: 'W galerii sław nikogo jeszcze nie ma. Zejdź do lochów jako pierwszy.',
     back: 'Na stronę główną',
-    title: 'Ranking',
+    title: 'Galeria sław',
     loading: 'Wczytywanie rankingu...',
     player: 'Gracz',
     wins: 'Wygrane',

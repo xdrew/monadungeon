@@ -1,8 +1,16 @@
 <template>
   <div class="leaderboard-container">
     <div class="header-section">
-      <button @click="goBack" class="back-button">← {{ $t('leaderboard.back') }}</button>
-      <h2 class="leaderboard-title">{{ $t('leaderboard.title') }}</h2>
+      <button
+        type="button"
+        class="leaderboard-back btn btn--ghost"
+        @click="goBack"
+      >
+        <GameIcon name="home" :size="18" /> {{ $t('leaderboard.back') }}
+      </button>
+      <h1 class="leaderboard-title">
+        <GameIcon name="trophy" :size="40" /> {{ $t('leaderboard.title') }}
+      </h1>
     </div>
 
     <!-- Error state -->
@@ -19,16 +27,28 @@
           <tr>
             <th class="position">#</th>
             <th class="username">{{ $t('leaderboard.player') }}</th>
-            <th class="victories sortable" @click="toggleSort('victories')">
+            <th
+              class="victories sortable"
+              :aria-sort="sortBy === 'victories' ? (sortOrder === 'DESC' ? 'descending' : 'ascending') : 'none'"
+              tabindex="0"
+              @click="toggleSort('victories')"
+              @keydown.enter="toggleSort('victories')"
+            >
               {{ $t('leaderboard.wins') }}
               <span class="sort-indicator" v-if="sortBy === 'victories'">
-                {{ sortOrder === 'DESC' ? '▼' : '▲' }}
+                <span :class="sortOrder === 'DESC' ? 'sort-down' : 'sort-up'" aria-hidden="true" />
               </span>
             </th>
-            <th class="games sortable" @click="toggleSort('totalGames')">
+            <th
+              class="games sortable"
+              :aria-sort="sortBy === 'totalGames' ? (sortOrder === 'DESC' ? 'descending' : 'ascending') : 'none'"
+              tabindex="0"
+              @click="toggleSort('totalGames')"
+              @keydown.enter="toggleSort('totalGames')"
+            >
               {{ $t('leaderboard.games') }}
               <span class="sort-indicator" v-if="sortBy === 'totalGames'">
-                {{ sortOrder === 'DESC' ? '▼' : '▲' }}
+                <span :class="sortOrder === 'DESC' ? 'sort-down' : 'sort-up'" aria-hidden="true" />
               </span>
             </th>
             <th class="winrate">{{ $t('leaderboard.winRate') }}</th>
@@ -44,11 +64,21 @@
             </td>
           </tr>
           
+          <!-- Nobody has won yet -->
+          <tr
+            v-if="!loading && !entries.length"
+            class="empty-row"
+          >
+            <td colspan="5">
+              {{ $t('leaderboard.empty') }}
+            </td>
+          </tr>
+
           <!-- Table data rows -->
           <tr 
             v-for="entry in entries" 
             :key="entry.position"
-            :class="{ 'faded': loading }"
+            :class="{ 'faded': loading, [`rank-${entry.position}`]: entry.position <= 3 }"
           >
             <td class="position">{{ entry.position }}</td>
             <td class="username">
@@ -103,9 +133,11 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { gameApi } from '../services/api';
 import { t } from '@/i18n';
+import GameIcon from '@/components/ui/GameIcon.vue';
 
 export default {
   name: 'LeaderboardView',
+  components: { GameIcon },
   props: {
     autoRefresh: {
       type: Boolean,
@@ -245,273 +277,250 @@ export default {
 </script>
 
 <style scoped>
+/* The hall of fame: the dark, a title in the display face, a table of hairline rows */
 .leaderboard-container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 20px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 28px 24px 56px;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background-color: var(--bg-field);
+  background-image: radial-gradient(ellipse at 50% -10%, rgba(var(--ember-rgb), 0.16) 0%, rgba(0, 0, 0, 0) 45%);
 }
 
 .header-section {
-  text-align: center;
-  margin-bottom: 30px;
-  position: relative;
-  padding-top: 40px;
+  max-width: 860px;
+  margin: 0 auto 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 
-.back-button {
-  position: absolute;
-  left: 0;
-  top: 0;
-  background: linear-gradient(135deg, #2a1a4d 0%, #1a1030 100%);
-  color: #888;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-.back-button:hover {
-  background: linear-gradient(135deg, #35205e 0%, #251545 100%);
-  transform: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+.leaderboard-back {
+  align-self: flex-start;
+  gap: 8px;
+  min-height: 44px;
 }
 
 .leaderboard-title {
-  color: #b8950d;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   margin: 0;
-  font-size: 2.5em;
-  text-shadow: 2px 2px 4px #000;
-  font-weight: bold;
-  letter-spacing: 1px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 1;
+  color: var(--text-heading);
+  text-shadow: 0 0 24px rgba(var(--ember-rgb), 0.4), 0 4px 12px #000;
 }
 
-.loading, .error {
+.leaderboard-title :deep(svg) {
+  color: var(--color-primary);
+}
+
+.error,
+.loading {
+  max-width: 860px;
+  margin: 40px auto;
   text-align: center;
-  padding: 40px;
-  font-size: 1.1em;
-  color: #888;
+  font-style: italic;
+  color: var(--text-secondary);
 }
 
 .error {
-  color: #aa4444;
+  color: #f0b5a8;
 }
 
 .leaderboard-table-container {
-  background: #1a1a1a;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.7);
-  position: relative;
-  border: 1px solid #222;
-}
-
-.table-body-container {
-  position: relative;
-  min-height: 200px;
-}
-
-.loading-row {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  pointer-events: none;
-}
-
-.loading-row td {
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-
-.table-spinner {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.spinner-circle {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e9ecef;
-  border-top: 4px solid #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.faded {
-  opacity: 0.3;
-  transition: opacity 0.3s;
+  max-width: 860px;
+  margin: 0 auto;
+  overflow-x: auto;
 }
 
 .leaderboard-table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.leaderboard-table thead {
-  background: linear-gradient(135deg, #2a1a4d 0%, #1a1030 100%);
-  color: #888;
+  font-size: 16px;
 }
 
 .leaderboard-table th {
-  padding: 15px;
-  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(var(--ember-rgb), 0.45);
   font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  font-size: 0.9em;
-  letter-spacing: 0.5px;
-  position: relative;
+  text-align: left;
+  color: var(--text-accent);
+  white-space: nowrap;
 }
 
-.leaderboard-table th.sortable {
+.leaderboard-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(234, 220, 192, 0.1);
+}
+
+.leaderboard-table th.victories,
+.leaderboard-table th.games,
+.leaderboard-table th.winrate,
+.leaderboard-table td.victories,
+.leaderboard-table td.games,
+.leaderboard-table td.winrate {
+  text-align: right;
+}
+
+.sortable {
   cursor: pointer;
   user-select: none;
-  transition: background 0.2s;
 }
 
-.leaderboard-table th.sortable:hover {
-  background: rgba(255,255,255,0.1);
+.sortable:hover,
+.sortable:focus-visible {
+  outline: none;
+  color: var(--text-heading);
 }
 
 .sort-indicator {
   display: inline-block;
-  margin-left: 5px;
-  font-size: 0.8em;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
-.leaderboard-table tbody tr {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  transition: background 0.2s;
-  background: rgba(0, 0, 0, 0.2);
+.sort-down,
+.sort-up {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
 }
 
-.leaderboard-table tbody tr:hover {
-  background: rgba(118, 75, 162, 0.2);
+.sort-down {
+  border-top: 6px solid currentColor;
 }
 
-.leaderboard-table tbody tr:last-child {
-  border-bottom: none;
+.sort-up {
+  border-bottom: 6px solid currentColor;
 }
 
-.leaderboard-table td {
-  padding: 12px 15px;
-  color: #e0e0e0;
+td.position {
+  width: 56px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-muted);
 }
 
-.position {
-  width: 60px;
+td.username {
   font-weight: 600;
-  color: #a0a0a0;
+  color: var(--text-heading);
 }
 
-.username {
-  font-weight: 500;
-  color: #998833;
+.rank-1 td.position { color: var(--color-primary); font-size: 30px; text-shadow: 0 0 12px rgba(var(--ember-rgb), 0.6); }
+.rank-2 td.position { color: var(--text-heading); font-size: 28px; }
+.rank-3 td.position { color: #d9c08a; font-size: 26px; }
+
+.leaderboard-table tbody tr:hover td {
+  background: rgba(var(--ember-rgb), 0.06);
 }
 
-.victories, .games {
-  width: 100px;
+.faded {
+  opacity: 0.4;
+}
+
+.empty-row td {
+  padding: 32px 12px;
+  border-bottom: 0;
   text-align: center;
-  color: #e0e0e0;
+  font-style: italic;
+  color: var(--text-secondary);
 }
 
-.winrate {
-  width: 100px;
-  text-align: center;
-  font-weight: 500;
-  color: #e0e0e0;
+.loading-row td {
+  border-bottom: 0;
+}
+
+.table-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.spinner-circle {
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(var(--ember-rgb), 0.2);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .table-footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  background: rgba(0, 0, 0, 0.5);
-  border-top: 1px solid #222;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
 }
 
 .page-info {
-  color: #a0a0a0;
-  font-size: 0.9em;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-secondary);
 }
 
 .pagination {
   display: flex;
-  gap: 5px;
+  gap: 8px;
 }
 
-.pagination-btn, .page-btn {
-  padding: 6px 12px;
-  background: rgba(30, 30, 30, 0.5);
-  color: #888;
-  border: 1px solid #333;
-  border-radius: 4px;
+.pagination-btn,
+.page-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-primary);
+  background: radial-gradient(circle at 50% 35%, #2a201a 0%, #0d0907 80%);
+  box-shadow: 0 0 0 2px var(--iron-dark), 0 0 0 4px var(--iron-edge);
   cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 400;
-  font-size: 0.9em;
-  min-width: 32px;
-  text-align: center;
 }
 
-.pagination-btn:hover:not(:disabled), .page-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2a1a4d 0%, #1a1030 100%);
-  color: #aaa;
-  border-color: #444;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-.pagination-btn:disabled, .page-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  color: #444;
+.pagination-btn:hover:not(:disabled),
+.page-btn:hover:not(:disabled) {
+  box-shadow: 0 0 0 2px var(--color-secondary), 0 0 0 4px var(--iron-edge);
 }
 
 .page-btn.active {
-  background: linear-gradient(135deg, #2a1a4d 0%, #1a1030 100%);
-  color: #aaa;
-  border-color: #444;
+  color: var(--text-heading);
+  box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 4px var(--iron-edge), 0 0 12px rgba(var(--ember-rgb), 0.5);
+  cursor: default;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-  .leaderboard-container {
-    padding: 10px;
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 600px) {
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 10px 6px;
   }
-  
-  .leaderboard-table th, .leaderboard-table td {
-    padding: 8px;
-    font-size: 0.9em;
-  }
-  
-  .victories, .games, .winrate {
-    width: 70px;
-  }
-  
-  .table-footer {
-    flex-direction: column;
-    gap: 10px;
-    text-align: center;
-  }
-  
-  .back-button {
-    position: static;
-    margin-bottom: 15px;
-  }
-  
-  .header-section {
-    padding-top: 0;
+
+  .leaderboard-table th.games,
+  .leaderboard-table td.games {
+    display: none;
   }
 }
 </style>
