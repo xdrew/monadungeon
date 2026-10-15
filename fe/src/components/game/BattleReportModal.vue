@@ -1780,7 +1780,9 @@ if (import.meta.env.DEV) {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr minmax(320px, 520px) 1fr;
-  align-items: center;
+  /* anchored to the top: what appears after the roll (breakdown, notes, the plaque) grows downwards
+     and never shifts the dice or the fighters */
+  align-items: start;
   justify-items: center;
   gap: 16px;
   padding: 8px 0 16px;
@@ -1824,6 +1826,7 @@ if (import.meta.env.DEV) {
 
 .roll-centre {
   width: 100%;
+  padding-top: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2277,7 +2280,7 @@ button.item-chip {
 
   .hero-side { grid-area: hero; }
   .monster-side { grid-area: foe; }
-  .roll-centre { grid-area: roll; gap: 10px; }
+  .roll-centre { grid-area: roll; gap: 10px; padding-top: 0; }
 
   .combatant {
     --fighter-w: 100%;
