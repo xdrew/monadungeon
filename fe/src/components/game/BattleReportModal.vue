@@ -15,7 +15,7 @@
       <!-- Header -->
       <div class="battle-header">
         <div class="header-left">
-          <span class="header-label">Battle</span>
+          <span class="header-label">{{ duel ? '⚔️ Duel on the Battle Arena' : 'Battle' }}</span>
         </div>
         <h3
           :class="{
@@ -31,7 +31,7 @@
         </h3>
         <button
           class="close-btn"
-          @click="leaveItemAndEndTurn"
+          @click="duel ? duelPrimaryAction() : leaveItemAndEndTurn()"
         >
           &times;
         </button>
@@ -49,8 +49,10 @@
             />
             <div class="hp-bar-text">
               <span class="hp-dealt" :class="!isRolling ? 'dealt-' + dynamicResult : 'dealt-hidden'">⚔ {{ totalCalculatedDamage }}</span>
-              <span class="hp-separator" :class="{ 'dealt-hidden': isRolling }">vs</span>
-              <span class="hp-total">♥ {{ battleInfo.monster }}</span>
+              <template v-if="!isDuelChallenger">
+                <span class="hp-separator" :class="{ 'dealt-hidden': isRolling }">vs</span>
+                <span class="hp-total">{{ duel ? '⚔' : '♥' }} {{ battleInfo.monster }}</span>
+              </template>
             </div>
           </div>
         </div>
@@ -119,7 +121,18 @@
           </div>
 
           <div class="combatant monster-side">
-            <div class="combatant-sprite-wrap">
+            <!-- Karak: Regent — the rival hero instead of a monster -->
+            <div v-if="duel" class="combatant-sprite-wrap">
+              <div class="combatant-glow monster-glow" />
+              <img
+                :src="rivalSprite"
+                :alt="rivalLabel"
+                class="combatant-sprite"
+                data-testid="duel-rival"
+              />
+            </div>
+            <div v-if="duel" class="monster-name-label" data-testid="duel-rival-label">{{ duelRivalText }}</div>
+            <div v-if="!duel" class="combatant-sprite-wrap">
               <div class="combatant-glow monster-glow" />
               <ThemedImage
                 :src="displayMonsterImage"
@@ -135,7 +148,7 @@
                 :emoji-class="['monster-emoji-large', { 'monster-entrance': isAnimating }]"
               />
             </div>
-            <div class="monster-name-label">{{ formattedMonsterName }}</div>
+            <div v-if="!duel" class="monster-name-label">{{ formattedMonsterName }}</div>
           </div>
         </div>
 
@@ -196,7 +209,7 @@
             class="first-roll-note"
             data-testid="affinity-note"
           >
-            ✨ Magical Affinity! The fireball stays in your inventory
+            ✨ Magical Affinity! The spells stay in your inventory
           </div>
           <!-- Oracle "Farseeing": +1 for fighting on the first move of the turn -->
           <div
@@ -456,8 +469,28 @@
 
       <!-- Footer -->
       <div v-show="!isRolling" class="battle-footer" :class="{ 'footer-reveal': showResults, 'footer-locked': curseChoicePending }">
+        <!-- Karak: Regent — a duel side: lock in the strength (consumables / sacrifice / reroll as usual), then continue -->
+        <div v-if="duel" class="button-group">
+          <button
+            v-if="duelAwaitsDecision && battleInfo.canReroll"
+            class="btn-reroll"
+            :disabled="isProcessing"
+            data-testid="reroll-battle"
+            @click="rerollDice"
+          >
+            🎲 Double Attack — reroll <span class="kbd-hint">(R)</span>
+          </button>
+          <button
+            class="btn-primary"
+            :disabled="isProcessing"
+            :data-testid="duelAwaitsDecision ? 'finalize-battle' : 'duel-continue'"
+            @click="duelPrimaryAction"
+          >
+            {{ duelPrimaryLabel }} <span class="kbd-hint">(Enter)</span>
+          </button>
+        </div>
         <!-- Keys: player already has one -->
-        <div v-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection && !battleFinalized">
+        <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection && !battleFinalized">
           <button
             class="btn-primary"
             :disabled="isProcessing"
@@ -618,10 +651,46 @@ const props = defineProps({
   playerHp: {
     type: Number,
     default: 5
+  },
+  /** Karak: Regent — the other hero of a Battle Arena duel: { label, heroKey } */
+  duelRival: {
+    type: Object,
+    default: null
   }
 });
 
-const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up', 'reroll-battle', 'curse']);
+const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up', 'reroll-battle', 'curse', 'duel-continue']);
+
+// Karak: Regent — a Battle Arena duel side ({ duelId, role, opponentId, toBeat }); the challenger has nothing to beat yet
+const duel = computed(() => props.battleInfo?.duel || null);
+const isDuelChallenger = computed(() => duel.value?.role === 'challenger');
+const rivalLabel = computed(() => props.duelRival?.label || 'Rival');
+const rivalSprite = computed(() => (props.duelRival?.heroKey && getHero(props.duelRival.heroKey).image) || '/images/ai.webp');
+const duelRivalText = computed(() => (isDuelChallenger.value
+  ? `${rivalLabel.value} rolls next`
+  : `${rivalLabel.value} — strength to beat ${duel.value?.toBeat ?? props.battleInfo?.monster}`));
+// The side still waits for the roller's decision (the backend asked for consumables and nothing was sent yet)
+const duelAwaitsDecision = computed(() => !!duel.value && props.battleInfo?.needsConsumableConfirmation === true && !battleFinalized.value);
+const duelPrimaryLabel = computed(() => {
+  if (!duelAwaitsDecision.value) return 'Continue';
+  return isDuelChallenger.value ? '🔒 Lock in strength' : '⚔️ Fight';
+});
+const duelPrimaryAction = () => {
+  if (isProcessing.value) return;
+  if (!duelAwaitsDecision.value) {
+    isProcessing.value = true;
+    emit('duel-continue', { battleId: props.battleInfo?.battleId });
+    return;
+  }
+  isProcessing.value = true;
+  battleFinalized.value = true;
+  emit('finalize-battle', {
+    battleId: props.battleInfo.battleId,
+    selectedConsumableIds: selectedConsumables.value,
+    sacrificeHp: sacrificeHp.value
+  });
+  setShowConsumableSelection(false, 'duel side locked in');
+};
 
 // Curse of Karak: the slayer of a mummy picks the victim before any other button works
 const curseChoicePending = computed(() => !isRolling.value && props.battleInfo?.curseChoiceRequired === true);
@@ -787,6 +856,8 @@ const getItemTypeDamage = (itemType) => {
     'sword': 2,
     'axe': 3,
     'fireball': 1,
+    'frost_fist': 2,
+    'dark_thorn': 0,
     'teleport': 0,
     'key': 0,
     'chest': 0,
@@ -808,7 +879,7 @@ const retreatLabel = computed(() => {
 });
 
 const potentialVictoryWithConsumables = computed(() => {
-  if (!availableConsumables.value) return false;
+  if (!availableConsumables.value || duel.value) return false;
 
   const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
   const maxConsumableDamage = availableConsumables.value
@@ -862,6 +933,10 @@ const dynamicResultText = computed(() => {
     return 'Rolling...';
   }
 
+  if (isDuelChallenger.value) {
+    return `Your strength: ${totalCalculatedDamage.value}`;
+  }
+
   if (hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
@@ -879,14 +954,14 @@ const dynamicResultText = computed(() => {
 const usedDamageConsumables = computed(() => {
   if (!props.battleInfo.usedItems) return [];
   return props.battleInfo.usedItems.filter(item =>
-    item.type && item.type === 'fireball'
+    item.type && ['fireball', 'frost_fist'].includes(item.type)
   );
 });
 
 const usedConsumables = computed(() => {
   if (!props.battleInfo.usedItems) return [];
   return props.battleInfo.usedItems.filter(item =>
-    item.type && ['fireball', 'teleport'].includes(item.type)
+    item.type && ['fireball', 'teleport', 'frost_fist', 'dark_thorn'].includes(item.type)
   );
 });
 
@@ -907,7 +982,7 @@ const weaponDamageTotal = computed(() => {
 const usedConsumableDamageTotal = computed(() => {
   if (!props.battleInfo.usedItems) return 0;
   return props.battleInfo.usedItems
-    .filter(item => item.type === 'fireball')
+    .filter(item => ['fireball', 'frost_fist'].includes(item.type))
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
 });
 
@@ -974,7 +1049,7 @@ const rewardCategoryClass = computed(() => {
   const type = props.battleInfo.reward.type;
   if (['dagger', 'sword', 'axe'].includes(type)) return 'category-weapon';
   if (type === 'key') return 'category-key';
-  if (['fireball', 'teleport'].includes(type)) return 'category-spell';
+  if (['fireball', 'teleport', 'frost_fist', 'dark_thorn'].includes(type)) return 'category-spell';
   if (['chest', 'ruby_chest'].includes(type)) return 'category-treasure';
   return '';
 });
@@ -997,6 +1072,16 @@ const initializeConsumableSelection = () => {
   if (props.battleInfo.needsConsumableConfirmation && (props.battleInfo.availableConsumables || props.battleInfo.canSacrificeHp)) {
     const didNotWin = props.battleInfo.result !== 'win';
     console.log('Player did not win:', didNotWin, 'result:', props.battleInfo.result);
+
+    // Karak: Regent — the duel challenger decides on every damage spell he has (there is no total to beat yet)
+    if (isDuelChallenger.value) {
+      const consumablesWithDamage = (props.battleInfo.availableConsumables || []).filter(item => getItemTypeDamage(item.type) > 0);
+      const canBoost = consumablesWithDamage.length > 0 || props.battleInfo.canSacrificeHp;
+      setShowConsumableSelection(canBoost, 'duel challenger');
+      availableConsumables.value = consumablesWithDamage;
+      selectedConsumables.value = [];
+      return;
+    }
 
     if (didNotWin) {
       const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
@@ -1251,6 +1336,20 @@ const showFinalizeBattleInventoryFullSelection = (inventory) => {
 const onKeyDown = (e) => {
   if (isRolling.value || isProcessing.value || curseChoicePending.value) return;
 
+  // Karak: Regent — a duel side has one main action
+  if (duel.value) {
+    if (e.key === 'Enter') {
+      duelPrimaryAction();
+      e.preventDefault();
+      e.stopPropagation();
+    } else if ((e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') && duelAwaitsDecision.value && props.battleInfo?.canReroll) {
+      rerollDice();
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    return;
+  }
+
   if (e.key === 'Enter') {
     const bi = props.battleInfo;
     if (bi.result === 'win' && bi.reward && isKeyReward.value && !props.hasInventorySpace && !showInventorySelection.value && !showConsumableSelection.value && !battleFinalized.value) {
@@ -1341,6 +1440,8 @@ const displayItemEmoji = computed(() => {
     case 'axe': return '🪓';
     case 'fireball': return '🔥';
     case 'teleport': return '✨';
+    case 'frost_fist': return '🧊';
+    case 'dark_thorn': return '🌑';
     default: return '💰';
   }
 });
@@ -1353,6 +1454,8 @@ const displayItemImage = computed(() => {
   if (item.type === 'ruby_chest') return '/images/ruby-chest.webp';
   if (item.type === 'fireball') return '/images/fireball.webp';
   if (item.type === 'teleport') return '/images/hf-teleport.webp';
+  if (item.type === 'frost_fist') return '/images/frost-fist.webp';
+  if (item.type === 'dark_thorn') return '/images/dark-thorn.webp';
   if (item.type === 'dagger') return '/images/dagger.webp';
   if (item.type === 'sword') return '/images/sword.webp';
   if (item.type === 'axe') return '/images/axe.webp';
@@ -1368,6 +1471,8 @@ const getInventoryItemImage = (item) => {
     case 'ruby_chest': return '/images/ruby-chest.webp';
     case 'fireball': return '/images/fireball.webp';
     case 'teleport': return '/images/hf-teleport.webp';
+    case 'frost_fist': return '/images/frost-fist.webp';
+    case 'dark_thorn': return '/images/dark-thorn.webp';
     case 'dagger': return '/images/dagger.webp';
     case 'sword': return '/images/sword.webp';
     case 'axe': return '/images/axe.webp';
@@ -1387,6 +1492,8 @@ const getInventoryItemEmoji = (item) => {
     case 'axe': return '🪓';
     case 'fireball': return '🔥';
     case 'teleport': return '✨';
+    case 'frost_fist': return '🧊';
+    case 'dark_thorn': return '🌑';
     default: return '💰';
   }
 };
@@ -1430,6 +1537,8 @@ const getUsedItemEmoji = (item) => {
     case 'axe': return '🪓';
     case 'fireball': return '🔥';
     case 'teleport': return '✨';
+    case 'frost_fist': return '🧊';
+    case 'dark_thorn': return '🌑';
     default: return '🧪';
   }
 };
@@ -1459,10 +1568,12 @@ const getSpellDisplayName = (item) => {
     'dragon': 'fireball',
     'fallen': 'teleport',
     'skeleton_warrior': 'fireball',
-    'skeleton_turnkey': 'teleport'
+    'skeleton_turnkey': 'teleport',
+    'giant_bat': 'dark_thorn',
+    'skeleton_mage': 'frost_fist'
   };
 
-  if (item.type === 'fireball' || item.type === 'teleport') {
+  if (['fireball', 'teleport', 'frost_fist', 'dark_thorn'].includes(item.type)) {
     return formatItemName(item.type);
   }
   if (item.name && monsterToSpellType[item.name]) {
@@ -1475,7 +1586,7 @@ const getSpellDisplayName = (item) => {
 };
 
 const shouldShowReward = computed(() => {
-  if (!props.battleInfo.reward) return false;
+  if (!props.battleInfo.reward || duel.value) return false;
   if (props.battleInfo.result === 'win') return true;
   if (showConsumableSelection.value && totalCalculatedDamage.value > props.battleInfo.monster) return true;
   if (props.battleInfo.reward.isPotentialReward) return true;

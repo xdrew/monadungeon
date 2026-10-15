@@ -223,6 +223,10 @@ export const processTiles = (
       // Check if tile has teleportation gate
       const hasTeleportationGate = features.includes('teleportation_gate');
 
+      // Karak: Regent — Lord Karak rooms
+      const hasBattleArena = features.includes('battle_arena');
+      const hasCursedRoom = features.includes('cursed_room');
+
       return {
         ...tile,
         x,
@@ -238,7 +242,9 @@ export const processTiles = (
         allPlayerIds, // New field for multiple players
         features, // Include tile features
         hasHealingFountain, // Flag for healing fountain
-        hasTeleportationGate // Flag for teleportation gate
+        hasTeleportationGate, // Flag for teleportation gate
+        hasBattleArena, // Karak: Regent — Battle Arena
+        hasCursedRoom // Karak: Regent — Cursed Room
       };
     } catch (error) {
       console.error('Error processing tile:', tile, error);

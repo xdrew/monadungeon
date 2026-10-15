@@ -129,6 +129,24 @@
       >
         <img src="/images/portal.webp" alt="Portal" class="portal-image" />
       </div>
+      <!-- Karak: Regent — Lord Karak rooms -->
+      <div
+        v-if="hasBattleArena"
+        class="arena-indicator"
+        :class="{ 'arena-used': arenaUsed }"
+        :title="arenaUsed ? 'Battle Arena — already fought' : 'Battle Arena — the first hero to enter summons a rival to a duel'"
+        data-testid="arena-marker"
+      >
+        <img src="/images/arena.webp" alt="Battle Arena" class="arena-image" />
+      </div>
+      <div
+        v-if="hasCursedRoom"
+        class="cursed-room-indicator"
+        title="Cursed Room — roll 1–3 and the Curse of Karak falls on you"
+        data-testid="cursed-room-marker"
+      >
+        <img src="/images/cursed-room.webp" alt="Cursed Room" class="cursed-room-image" />
+      </div>
       <div
         v-if="isHighlighted"
         class="tile-coordinates"
@@ -315,6 +333,19 @@ const props = defineProps({
     default: false
   },
   hasTeleportationGate: {
+    type: Boolean,
+    default: false
+  },
+  // Karak: Regent — Lord Karak rooms
+  hasBattleArena: {
+    type: Boolean,
+    default: false
+  },
+  hasCursedRoom: {
+    type: Boolean,
+    default: false
+  },
+  arenaUsed: {
     type: Boolean,
     default: false
   }
@@ -954,6 +985,36 @@ const onItemClick = () => {
 }
 
 .portal-image {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+/* Karak: Regent — Lord Karak room markers */
+.arena-indicator,
+.cursed-room-indicator {
+  position: absolute;
+  top: 30px;
+  left: 33px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.arena-indicator {
+  filter: drop-shadow(0 0 4px rgba(224, 122, 42, 0.8));
+}
+
+.arena-indicator.arena-used {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+
+.cursed-room-indicator {
+  filter: drop-shadow(0 0 4px rgba(155, 89, 182, 0.9));
+}
+
+.arena-image,
+.cursed-room-image {
   width: 36px;
   height: 36px;
   object-fit: contain;

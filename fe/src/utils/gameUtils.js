@@ -32,6 +32,13 @@ export const updateGameDataSelectively = (gameData, updatedData) => {
         gameData.state.currentTurnId = updatedData.state.currentTurnId;
       }
 
+      // Karak: Regent — expansion flag, Cursed Room roll, Battle Arena choice and duel
+      for (const key of ['regent', 'roomEvent', 'arenaChoice', 'duel']) {
+        if (JSON.stringify(gameData.state[key]) !== JSON.stringify(updatedData.state[key])) {
+          gameData.state[key] = updatedData.state[key] ?? null;
+        }
+      }
+
       // Update available places without replacing the entire object
       if (updatedData.state.availablePlaces) {
         if (!gameData.state.availablePlaces) {
@@ -113,6 +120,11 @@ export const updateGameDataSelectively = (gameData, updatedData) => {
     // Update room field places
     if (updatedData.field.roomFieldPlaces && JSON.stringify(gameData.field.roomFieldPlaces) !== JSON.stringify(updatedData.field.roomFieldPlaces)) {
       gameData.field.roomFieldPlaces = updatedData.field.roomFieldPlaces;
+    }
+
+    // Karak: Regent — Battle Arenas already fought on
+    if (JSON.stringify(gameData.field.activatedArenas) !== JSON.stringify(updatedData.field.activatedArenas)) {
+      gameData.field.activatedArenas = updatedData.field.activatedArenas || [];
     }
 
     // Update items

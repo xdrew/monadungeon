@@ -1,4 +1,10 @@
 /**
+ * Every spell item type (inventory category "spells", max 3); Karak: Regent adds Frost Fist and Dark Thorn.
+ * Use this list instead of spelling out spell types, so a new spell is never treated as a treasure.
+ */
+export const SPELL_TYPES = ['fireball', 'teleport', 'frost_fist', 'dark_thorn'];
+
+/**
  * Gets the emoji representation of an item based on its type and name
  * @param {Object} item - The item object containing name, type, and other properties
  * @returns {string} The emoji representing the item
@@ -29,6 +35,10 @@ export const getItemEmoji = (item) => {
         return '🔥';
       case 'teleport':
         return '✨';
+      case 'frost_fist':
+        return '🧊';
+      case 'dark_thorn':
+        return '🌑';
       default:
         return '💰'; // Default treasure
     }
@@ -57,6 +67,10 @@ export const getItemEmoji = (item) => {
         return '🕷️';
       case 'mummy':
         return '🧟';
+      case 'giant_bat': // Karak: Regent
+        return '🦇';
+      case 'skeleton_mage': // Karak: Regent
+        return '🧊';
       case 'treasure_chest': // Special case - no guard but might appear as monster
         return '📦';
       case 'random':
@@ -130,7 +144,7 @@ export const getItemTooltip = (item) => {
   }
   
   // Add damage info for weapons and spells
-  if (['dagger', 'sword', 'axe', 'fireball'].includes(item.type)) {
+  if (['dagger', 'sword', 'axe', 'fireball', 'frost_fist'].includes(item.type)) {
     tooltip += `\nDamage: +${getItemDamage(item)}`;
   }
   
@@ -306,6 +320,10 @@ export const getInventoryItemEmoji = (item) => {
       return '🔥';
     case 'teleport':
       return '✨';
+    case 'frost_fist':
+      return '🧊';
+    case 'dark_thorn':
+      return '🌑';
     default:
       return '💰'; // Default treasure
   }
@@ -325,6 +343,8 @@ export const getItemDamage = (item) => {
     'sword': 2,
     'axe': 3,
     'fireball': 1,
+    'frost_fist': 2,
+    'dark_thorn': 0,
     'teleport': 0,
     'key': 0,
     'chest': 0,
@@ -355,6 +375,10 @@ export const getItemImage = (item) => {
       return '/images/fireball.webp';
     case 'teleport':
       return '/images/hf-teleport.webp';
+    case 'frost_fist':
+      return '/images/frost-fist.webp';
+    case 'dark_thorn':
+      return '/images/dark-thorn.webp';
     case 'chest':
       return '/images/chest-opened.webp';
     case 'ruby_chest':

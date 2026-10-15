@@ -76,7 +76,7 @@ const getDisplayName = (item) => {
   // List of monster names to hide
   const monsterNames = [
     'skeleton_king', 'skeleton_warrior', 'skeleton_turnkey', 'skeleton_mage',
-    'dragon', 'fallen', 'giant_rat', 'giant_spider', 'mummy'
+    'dragon', 'fallen', 'giant_rat', 'giant_spider', 'mummy', 'giant_bat'
   ];
   
   // Check if the name is a monster name
@@ -91,6 +91,8 @@ const getDisplayName = (item) => {
     if (item.type === 'sword') return 'Sword';
     if (item.type === 'axe') return 'Axe';
     if (item.type === 'fireball') return 'Fireball';
+    if (item.type === 'frost_fist') return 'Frost Fist';
+    if (item.type === 'dark_thorn') return 'Dark Thorn';
     if (item.type === 'chest') return 'Treasure Chest';
     if (item.type === 'ruby_chest') return 'Ruby Chest';
     return 'Treasure';
@@ -123,6 +125,10 @@ const itemImage = computed(() => {
       return '/images/fireball.webp';
     case 'teleport':
       return '/images/hf-teleport.webp';
+    case 'frost_fist':
+      return '/images/frost-fist.webp';
+    case 'dark_thorn':
+      return '/images/dark-thorn.webp';
     default:
       return null;
   }
@@ -139,6 +145,7 @@ const itemDamage = computed(() => {
     case 'sword': return 2;
     case 'axe': return 3;
     case 'fireball': return 1;
+    case 'frost_fist': return 2;
     default: return 0;
   }
 });
@@ -148,7 +155,7 @@ const itemCategoryClass = computed(() => {
   const type = props.item?.type;
   if (['dagger', 'sword', 'axe'].includes(type)) return 'category-weapon';
   if (type === 'key') return 'category-key';
-  if (['fireball', 'teleport'].includes(type)) return 'category-spell';
+  if (['fireball', 'teleport', 'frost_fist', 'dark_thorn'].includes(type)) return 'category-spell';
   if (['chest', 'ruby_chest'].includes(type)) return 'category-treasure';
   return '';
 });

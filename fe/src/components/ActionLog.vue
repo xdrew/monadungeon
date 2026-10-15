@@ -150,6 +150,8 @@ const getItemIcon = (itemType) => {
     'weapon': '⚔️',
     'fireball': '🔥',
     'teleport': '✨',
+    'frost_fist': '🧊',
+    'dark_thorn': '🌑',
     'spell': '✨',
     'key': '🗝️',
     'chest': '📦',
@@ -217,6 +219,10 @@ const getActionIcon = (actionType) => {
     'fateweaver': '🔮',
     'curse': '☠️',
     'use_spell': '🌀',
+    // Karak: Regent
+    'cursed_room': '☠️',
+    'duel': '⚔️',
+    'duel_loot': '🎒',
     'pick_item': '',
     'drop_item': '',
     'end_turn': '✅',
@@ -309,8 +315,44 @@ const formatActionText = (action) => {
         const target = details?.self ? 'teleported' : `sent player ${String(details?.target || '').slice(-4)}`;
         return `🌀 Portal of Healing — ${target} to the fountain at ${details?.position || '?'}`;
       }
+      if (details?.spell === 'dark_thorn') {
+        // Karak: Regent — Dark Thorn: another hero loses 1 HP
+        let text = `🌑 Dark Thorn — player ${String(details?.target || '').slice(-4)} loses 1 HP`;
+        if (details?.reincarnatedTo) {
+          text += ` and reincarnates at ${details.reincarnatedTo}`;
+        } else if (details?.stunned) {
+          text += ' and is stunned';
+        }
+        return text;
+      }
       return `✨ Used a spell`;
     }
+
+    // Karak: Regent — Cursed Room roll
+    case 'cursed_room': {
+      const who = `player ${String(details?.player || '').slice(-4)}`;
+      return details?.cursed
+        ? `☠️ Cursed Room: ${who} rolled ${details?.roll} — cursed`
+        : `🎲 Cursed Room: ${who} rolled ${details?.roll} — safe`;
+    }
+
+    // Karak: Regent — Battle Arena duel
+    case 'duel': {
+      const shortId = (playerId) => `player ${String(playerId || '').slice(-4)}`;
+      const totals = `${shortId(details?.challenger)} ${details?.challengerTotal ?? '?'} vs ${shortId(details?.opponent)} ${details?.opponentTotal ?? '?'}`;
+      if (details?.result === 'tie') {
+        return `⚔️ Duel: ${totals} — tie`;
+      }
+      const winner = details?.result === 'challenger' ? details?.challenger : details?.opponent;
+      let text = `⚔️ Duel: ${totals} — ${shortId(winner)} wins, ${shortId(details?.loser)} loses 1 HP`;
+      if (details?.loot?.type) {
+        text += `, takes ${details.loot.type.replace(/_/g, ' ')}`;
+      }
+      return text;
+    }
+
+    case 'duel_loot':
+      return `🎒 Took ${(details?.item || 'an item').replace(/_/g, ' ')} from player ${String(details?.from || '').slice(-4)}`;
 
     case 'fateweaver': {
       // Oracle "Fateweaver": two tokens were drawn, one placed, the other returned to the bag

@@ -81,6 +81,7 @@
                 :emoji-class="['monster-image', 'monster-emoji', { 'boss-image': monster.boss }]"
               />
               <span class="monster-name">{{ monster.name }}<template v-if="monster.boss"> (BOSS)</template></span>
+              <span v-if="monster.regent" class="regent-chip" title="Karak: Regent expansion">Regent</span>
             </div>
             <div class="monster-stats">
               <div class="stat">❤️ {{ monster.hp }} HP</div>
@@ -128,6 +129,16 @@
               <img class="item-image" src="/images/hf-teleport.webp" alt="Teleport" />
               <span class="item-name">Teleport</span>
               <span class="item-effect">Move to any healing fountain</span>
+            </div>
+            <div class="item">
+              <img class="item-image" src="/images/frost-fist.webp" alt="Frost Fist" />
+              <span class="item-name">Frost Fist <span class="regent-chip">Regent</span></span>
+              <span class="item-effect">+2 strength in a fight, after the roll; several per fight</span>
+            </div>
+            <div class="item">
+              <img class="item-image" src="/images/dark-thorn.webp" alt="Dark Thorn" />
+              <span class="item-name">Dark Thorn <span class="regent-chip">Regent</span></span>
+              <span class="item-effect">On your turn another hero loses 1 HP; costs no move</span>
             </div>
           </div>
         </div>
@@ -228,6 +239,34 @@
         </div>
       </section>
 
+      <!-- Karak: Regent expansion -->
+      <section class="rules-section" data-testid="rules-regent">
+        <h2>👑 Karak: Regent (expansion)</h2>
+        <p class="section-intro">
+          Switch it on in the lobby: 18 more tiles join the deck and 6 Giant Bats and 2 Skeleton Mages join the bag.
+        </p>
+
+        <div class="mechanic">
+          <h3><img class="item-image inline-marker" src="/images/arena.webp" alt="" /> Battle Arena</h3>
+          <ul>
+            <li>The first hero to enter it on their own turn chooses another hero; that hero's figure is moved onto the arena and the two fight a duel.</li>
+            <li>The challenger rolls and decides first (spells, skills); then the rival rolls against the challenger's total.</li>
+            <li>Higher strength wins. The loser loses 1 HP; the winner takes one item the winner has room for. A tie changes nothing.</li>
+            <li>All combat skills apply. The Oracle gets +1 when the arena is her first step, or when she is summoned.</li>
+            <li>Both figures stay on the arena; the challenger's turn goes on unless knocked out.</li>
+            <li>The arena activates only once; afterwards it is a normal corridor.</li>
+          </ul>
+        </div>
+
+        <div class="mechanic">
+          <h3><img class="item-image inline-marker" src="/images/cursed-room.webp" alt="" /> Cursed Room</h3>
+          <ul>
+            <li>Every hero entering it rolls a die: 1–3 brings the Curse of Karak, 4–6 is safe. A cursed hero does not roll.</li>
+            <li>Several heroes may be cursed at once. A healing fountain or the Portal of Healing lifts every curse.</li>
+          </ul>
+        </div>
+      </section>
+
       <!-- Turn Structure -->
       <section class="rules-section">
         <h2>🎯 Turn Structure</h2>
@@ -296,7 +335,10 @@ const MONSTER_RULES = [
   { key: 'skeleton_warrior', hp: 9, drop: '🗡️ Drops: Sword (+2 damage)' },
   { key: 'skeleton_king', hp: 10, drop: '🪓 Drops: Axe (+3 damage)' },
   { key: 'fallen', hp: 12, drop: '🎁 Drops: Treasure Chest (2 VP)' },
-  { key: 'dragon', hp: 15, drop: '💎 Drops: Ruby Chest (3 VP)', boss: true, extra: '🏁 Ends the game!' }
+  { key: 'dragon', hp: 15, drop: '💎 Drops: Ruby Chest (3 VP)', boss: true, extra: '🏁 Ends the game!' },
+  // Karak: Regent expansion
+  { key: 'giant_bat', hp: 6, drop: '🌑 Drops: Dark Thorn', regent: true },
+  { key: 'skeleton_mage', hp: 11, drop: '🧊 Drops: Frost Fist (+2)', regent: true }
 ];
 
 const monsterCards = MONSTER_RULES.map((rule) => ({ ...rule, ...getMonster(rule.key) }));
@@ -466,6 +508,24 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
   margin-top: 20px;
+}
+
+.regent-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ffe9c7;
+  background: rgba(181, 84, 28, 0.55);
+  vertical-align: middle;
+}
+
+.inline-marker {
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
 }
 
 .monster-card {

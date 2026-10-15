@@ -30,11 +30,14 @@ export const gameApi = {
   /**
    * Create a new game
    * @param {string} [gameId] - Optional game ID, will generate a random ID if not provided
+   * @param {Object} [options]
+   * @param {boolean} [options.regent] - Karak: Regent expansion (Lord Karak rooms, Giant Bats, Skeleton Mages)
    * @returns {Promise<GameResponse>} Promise with game response data
    */
-  createGame: async (gameId = null) => {
+  createGame: async (gameId = null, { regent = false } = {}) => {
     const payload = {
-      gameId: gameId || generateRandomId()
+      gameId: gameId || generateRandomId(),
+      regent
     };
     
     try {
@@ -556,7 +559,7 @@ export const gameApi = {
         turnId,
         spellId,
         targetPosition,
-        targetPlayerId // Portal of Healing: who is carried to the fountain (the caster when null)
+        targetPlayerId // Portal of Healing: who is carried to the fountain (the caster when null); Dark Thorn: the hero who loses 1 HP
       });
       console.log('Spell used:', response.data);
       return response.data;
@@ -654,6 +657,36 @@ export const gameApi = {
       return response.data;
     } catch (error) {
       console.error('Error choosing the Fateweaver token:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Karak: Regent — the hero who first entered a Battle Arena summons a rival to a duel
+   * @returns {Promise<Object>} { gameId, battleInfo (the challenger's roll), duel, success }
+   */
+  chooseDuelOpponent: async ({ gameId, playerId, turnId, opponentId }) => {
+    try {
+      const response = await apiClient.post('/game/duel/choose-opponent', { gameId, playerId, turnId, opponentId });
+      console.log('Duel opponent chosen:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error choosing the duel opponent:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Karak: Regent — the human challenger who won the duel takes one item from the loser
+   * @returns {Promise<Object>} { gameId, duel, success }
+   */
+  takeDuelLoot: async ({ gameId, playerId, turnId, duelId, itemId }) => {
+    try {
+      const response = await apiClient.post('/game/duel/loot', { gameId, playerId, turnId, duelId, itemId });
+      console.log('Duel loot taken:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error taking the duel loot:', error);
       throw error;
     }
   },

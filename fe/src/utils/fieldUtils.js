@@ -3,6 +3,7 @@
  */
 
 import { parseOrientationString } from './tileUtils';
+import { SPELL_TYPES } from './itemUtils';
 
 // Constants
 const FIELD_PADDING = 100;
@@ -947,12 +948,14 @@ export const isItemWorthPickingUp = (item, playerInventory) => {
     return true;
   }
   
-  // Handle spells
-  if (['fireball', 'teleport'].includes(itemType)) {
+  // Handle spells (Karak: Regent spells included)
+  if (SPELL_TYPES.includes(itemType)) {
     // If player has 3 or more spells, only prompt if this one is better than what they have
     if (playerInventory.spells?.length >= 3) {
       // For simplicity, we'll just check if they have this exact spell type already
-      return !playerInventory.spells.some(spell => spell.type === itemType);
+      const worth = !playerInventory.spells.some(spell => spell.type === itemType);
+      if (import.meta.env?.DEV) console.debug('[FIX] isItemWorthPickingUp spell with full slots', { itemType, worth });
+      return worth;
     }
     
     // If player has fewer than 3 spells, always prompt

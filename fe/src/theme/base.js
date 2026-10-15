@@ -28,7 +28,10 @@ export default {
     skeleton_warrior: { name: 'Skeleton Warrior', emoji: '🛡️', image: `${MONSTER_IMAGES}/skeleton_warrior.webp` },
     skeleton_king: { name: 'Skeleton King', emoji: '👑', image: `${MONSTER_IMAGES}/skeleton_king.webp` },
     fallen: { name: 'Fallen', emoji: '👻', image: `${MONSTER_IMAGES}/fallen.webp` },
-    dragon: { name: 'Dragon', emoji: '🐉', image: `${MONSTER_IMAGES}/dragon.webp` }
+    dragon: { name: 'Dragon', emoji: '🐉', image: `${MONSTER_IMAGES}/dragon.webp` },
+    // Karak: Regent
+    giant_bat: { name: 'Giant Bat', emoji: '🦇', image: `${MONSTER_IMAGES}/giant_bat.webp` },
+    skeleton_mage: { name: 'Skeleton Mage', emoji: '🧊', image: `${MONSTER_IMAGES}/skeleton_mage.webp` }
   },
 
   /** Unknown monster key → pick a look by HP (first matching entry wins). */

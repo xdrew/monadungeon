@@ -31,7 +31,10 @@ export default {
     skeleton_warrior: { name: 'Taekwonnad', emoji: '🛡️', image: `${MONSTER_IMAGES}/skeleton_warrior.webp` },
     skeleton_king: { name: 'Molandak', emoji: '👑', image: `${MONSTER_IMAGES}/skeleton_king.webp` },
     fallen: { name: 'Bee', emoji: '👻', image: `${MONSTER_IMAGES}/fallen.webp` },
-    dragon: { name: 'Bullish', emoji: '🐉', image: `${MONSTER_IMAGES}/dragon.webp` }
+    dragon: { name: 'Bullish', emoji: '🐉', image: `${MONSTER_IMAGES}/dragon.webp` },
+    // Karak: Regent — no Monad art yet: Karak names, emoji fallback
+    giant_bat: { name: 'Giant Bat', emoji: '🦇', image: null },
+    skeleton_mage: { name: 'Skeleton Mage', emoji: '🧊', image: null }
   },
 
   monsterFallbackByHp: base.monsterFallbackByHp,

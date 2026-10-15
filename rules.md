@@ -81,6 +81,8 @@ When entering an undiscovered zone:
 2. **Spells** (Consumable):
    - Fireball: +1 damage to next attack ✅
    - Portal of Healing (teleport scroll): carry yourself or any other player to a revealed healing fountain, heal them fully and lift their curse; costs no move and does not end the turn ✅
+   - Frost Fist (Karak: Regent): +2 in a fight, chosen after the roll, several per fight, combinable; the Wizard keeps it ✅
+   - Dark Thorn (Karak: Regent): on your turn another hero loses 1 HP; costs no move, several per turn ✅
 
 3. **Keys**: Required to unlock treasure chests ✅
 
@@ -103,6 +105,23 @@ When entering an undiscovered zone:
 - The curse is lifted by ending the turn on a healing fountain (together with the healing) or by a Portal of Healing ✅
 - The choice is made in the battle report before picking up the reward; a choice left unmade is settled when the turn ends ✅
 - Single-player games have no curse ✅
+
+### Karak: Regent (expansion) ✅
+- **Switch in the lobby** ("Karak: Regent expansion"): the deck gets 18 more tiles (6 Battle Arenas, 4 Cursed Rooms, 8 rooms) and the bag 6 Giant Bats and 2 Skeleton Mages. The Regent heroes and the Lord Karak variant come later ✅
+- **Battle Arena** (a corridor) ✅
+  - The first hero to enter it on their own turn chooses another hero; that hero's figure is moved onto the arena and they fight a duel
+  - The challenger rolls and decides first (spells, Sacrifice, Double Attack); then the summoned hero rolls; the strength to beat is the other hero's total
+  - All combat skills apply, a cursed hero has none; the Oracle gets +1 when the arena is her first step or when she is summoned
+  - Higher total wins (a hero who wins ties wins an equal total; both or neither → tie). The winner takes one item they have room for; the loser loses 1 HP; a tie changes nothing
+  - Both figures stay on the arena; the challenger's turn goes on unless knocked out
+  - A virtual challenger picks the rival with the most treasures; a human summoned during a virtual player's turn is rolled automatically (spells only when they turn the result)
+  - A choice left unmade when the turn ends means no duel; an unfinished duel is settled at the turn end (no consumables, best loot automatically)
+  - The arena activates once; later entries are a normal corridor
+- **Cursed Room** (a corridor) ✅
+  - Every hero entering it rolls a die: 1–3 → Curse of Karak, 4–6 → safe; an already cursed hero does not roll; being pushed back onto it after a lost fight rolls again
+  - Several heroes may be cursed at once; the mummy token is still single. A healing fountain or the Portal of Healing lifts every curse of that hero
+- **Monsters**: Giant Bat (6 HP) drops Dark Thorn; Skeleton Mage (11 HP) drops Frost Fist ✅
+- **Spells**: a Warrior losing his last HP to a Dark Thorn or in a duel reincarnates at the nearest discovered fountain automatically ✅
 
 ### Stunning/Defeat ✅
 When a player's HP reaches 0:

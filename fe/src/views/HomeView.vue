@@ -100,6 +100,15 @@
               </div>
             </div>
           </transition>
+
+          <!-- Karak: Regent expansion: mixes the Lord Karak rooms and the new monsters into the game -->
+          <label class="regent-toggle" data-testid="regent-toggle">
+            <input v-model="regentExpansion" type="checkbox" data-testid="regent-toggle-input">
+            <span class="regent-toggle-text">
+              <strong>Karak: Regent expansion</strong>
+              <span>Lord Karak rooms, Giant Bats and Skeleton Mages</span>
+            </span>
+          </label>
         </div>
 
         <button
@@ -161,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { gameApi } from '@/services/api';
 import { privyService } from '@/services/privy';
@@ -210,12 +219,31 @@ const HERO_SKILLS = [
     { name: 'Fateweaver', text: 'draws two tokens for a new room, places one and returns the other' }
   ] }
 ];
-const heroCards = HERO_SKILLS.map((card) => {
+const allHeroCards = HERO_SKILLS.map((card) => {
   const hero = getHero(card.key);
   // "Horan, the Warrior" → short name "Horan", role "Warrior"; the Adventurer has no role
   const [firstName, role] = hero.name.includes(', the ') ? hero.name.split(', the ') : [hero.name, 'No hero'];
   return { ...card, ...hero, key: card.key, shortName: card.shortName || firstName, role };
 });
+
+// Karak: Regent expansion switch, remembered per browser ('1' / '0')
+const readStoredRegent = () => {
+  try {
+    return localStorage.getItem('regentExpansion') === '1';
+  } catch (e) {
+    return false;
+  }
+};
+const regentExpansion = ref(readStoredRegent());
+watch(regentExpansion, (enabled) => {
+  try {
+    localStorage.setItem('regentExpansion', enabled ? '1' : '0');
+  } catch (e) {
+    // localStorage unavailable (private mode) - the switch still works for this page
+  }
+});
+// Hero cards marked `regent: true` come with the expansion (none yet: the Regent heroes are part 2)
+const heroCards = computed(() => allHeroCards.filter((card) => !card.regent || regentExpansion.value));
 
 // Lobby background art comes from the theme (none in the base theme)
 const lobbyStyle = { '--lobby-bg': theme.lobbyBackground ? `url('${theme.lobbyBackground}')` : 'none' };
@@ -230,7 +258,7 @@ const readStoredHero = () => {
   }
 };
 const selectedHero = ref(readStoredHero());
-const selectedCard = computed(() => heroCards.find((card) => card.key === selectedHero.value) || heroCards[0]);
+const selectedCard = computed(() => heroCards.value.find((card) => card.key === selectedHero.value) || heroCards.value[0]);
 const selectHero = (hero) => {
   selectedHero.value = hero;
   try {
@@ -1012,7 +1040,7 @@ const createNewGame = async () => {
     loadingMessage.value = 'Creating your adventure...';
 
     // Call the API to create a new game
-    const response = await gameApi.createGame();
+    const response = await gameApi.createGame(null, { regent: regentExpansion.value });
     console.log('Game created with ID:', response.gameId);
 
     // Generate a player ID for the current user
@@ -1451,6 +1479,38 @@ const createNewGame = async () => {
   margin: 0;
   font-size: 13px;
   color: #b7afd0;
+}
+
+/* Karak: Regent expansion switch */
+.regent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(183, 175, 208, 0.25);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.regent-toggle input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-secondary-hover);
+  cursor: pointer;
+}
+
+.regent-toggle-text {
+  display: flex;
+  flex-direction: column;
+  color: #b7afd0;
+}
+
+.regent-toggle-text strong {
+  color: #ece8ff;
 }
 
 /* Card swap: the figure steps in from the roster */

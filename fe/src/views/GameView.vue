@@ -267,6 +267,9 @@
                     }"
                     :has-healing-fountain="tile.hasHealingFountain"
                     :has-teleportation-gate="tile.hasTeleportationGate"
+                    :has-battle-arena="tile.hasBattleArena"
+                    :has-cursed-room="tile.hasCursedRoom"
+                    :arena-used="(gameData.field.activatedArenas || []).includes(tile.position)"
                     @highlight="highlightTile"
                     @unhighlight="unhighlightTile"
                     @center-view="centerViewOnTile"
@@ -361,6 +364,12 @@
             <h3 v-if="gameData?.state?.turn">
               Turn: {{ gameData.state.turn }}
             </h3>
+            <span
+              v-if="gameData?.state?.regent"
+              class="regent-badge"
+              data-testid="regent-badge"
+              title="Karak: Regent expansion — Lord Karak rooms, Giant Bats and Skeleton Mages"
+            >👑 Regent</span>
             <h3 v-else>
               Game Setup
             </h3>
@@ -479,11 +488,12 @@
                     :key="item.itemId" 
                     class="inventory-item spell-item compact"
                     :class="{ 
-                      'clickable': item.type === 'teleport' && isPlayerTurn && player.id === currentPlayerId,
-                      'teleport-active': isTeleportMode && selectedTeleportSpell?.itemId === item.itemId
+                      'clickable': isCastableSpell(item) && isPlayerTurn && player.id === currentPlayerId,
+                      'teleport-active': (isTeleportMode && selectedTeleportSpell?.itemId === item.itemId) || (isDarkThornMode && selectedDarkThornSpell?.itemId === item.itemId)
                     }"
                     :title="getItemTooltip(item)"
-                    @click="item.type === 'teleport' && isPlayerTurn && player.id === currentPlayerId && handleTeleportSpellSelection(item)"
+                    :data-testid="item.type === 'dark_thorn' ? `dark-thorn-${item.itemId}` : undefined"
+                    @click="isCastableSpell(item) && isPlayerTurn && player.id === currentPlayerId && handleSpellClick(item)"
                   >
                     <div class="item-icon">
                       <img
@@ -556,6 +566,71 @@
               </button>
             </div>
 
+            <!-- Karak: Regent — Dark Thorn: pick the hero who loses 1 HP -->
+            <div
+              v-if="isDarkThornMode"
+              class="sidebar-section teleport-controls dark-thorn-controls"
+              data-testid="dark-thorn-banner"
+            >
+              <h3>🌑 Dark Thorn</h3>
+              <p>Choose another hero: they lose 1 HP. The spell costs no move and the turn goes on.</p>
+              <div class="portal-targets">
+                <button
+                  v-for="player in darkThornTargets"
+                  :key="`dark-thorn-target-${player.id}`"
+                  type="button"
+                  class="portal-target"
+                  :class="{ selected: darkThornTargetId === player.id }"
+                  :data-testid="`dark-thorn-target-${player.id}`"
+                  @click="darkThornTargetId = player.id"
+                >
+                  {{ playerLabel(player) }} ❤️ {{ player.hp }}
+                </button>
+              </div>
+              <button
+                class="end-turn-btn btn--block"
+                data-testid="dark-thorn-confirm"
+                :disabled="!darkThornTargetId || loading || isRequestInProgress"
+                @click="castDarkThorn"
+              >
+                🌑 Cast Dark Thorn
+              </button>
+              <button
+                class="cancel-teleport-btn btn--block"
+                @click="cancelDarkThornMode"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <!-- Karak: Regent — Battle Arena: choose the rival -->
+            <div
+              v-if="arenaChoiceForMe && !showBattleReportModal"
+              class="sidebar-section teleport-controls arena-controls"
+              data-testid="arena-banner"
+            >
+              <DuelOpponentPanel
+                :players="duelOpponentCandidates"
+                :disabled="loading || isRequestInProgress"
+                @choose="handleChooseDuelOpponent"
+              />
+            </div>
+
+            <!-- Karak: Regent — the current (or last) duel -->
+            <div
+              v-if="visibleDuel && !showBattleReportModal"
+              class="sidebar-section duel-section"
+            >
+              <DuelResultPanel
+                :duel="visibleDuel"
+                :players="duelPanelPlayers"
+                :current-player-id="currentPlayerId"
+                :disabled="loading || isRequestInProgress"
+                @loot="handleTakeDuelLoot"
+                @dismiss="dismissDuel"
+              />
+            </div>
+
             <!-- Warrior "Reincarnation" Controls -->
             <div
               v-if="isReincarnationMode"
@@ -614,14 +689,14 @@
 
             <!-- End Turn Button -->
             <div
-              v-if="isPlayerTurn && (gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode"
+              v-if="isPlayerTurn && (gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isDarkThornMode"
               class="sidebar-section end-turn-section"
             >
               <button
                 class="end-turn-btn btn--block"
                 @click="handleManualEndTurn"
-                :disabled="loading || isRequestInProgress || !!pickedTileId"
-                :title="pickedTileId ? 'You must place the picked tile before ending your turn' : ''"
+                :disabled="loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn"
+                :title="pickedTileId ? 'You must place the picked tile before ending your turn' : (duelBlocksEndTurn ? 'Finish the Battle Arena duel first' : '')"
               >
                 {{ pickedTileId ? 'Place Tile First' : 'End Turn' }}
               </button>
@@ -704,11 +779,13 @@
       v-if="showBattleReportModal"
       ref="battleReportModalRef"
       :battle-info="battleInfo"
-      :hero-key="getCurrentPlayerData?.hero ?? null"
+      :hero-key="battleRoller?.hero ?? null"
       :has-inventory-space="hasInventorySpaceForReward"
-      :player-hp="getCurrentPlayerData?.hp ?? 5"
+      :player-hp="battleRoller?.hp ?? 5"
       :curse-choice="curseChoice"
+      :duel-rival="duelRival"
       @curse="handleCurseChoice"
+      @duel-continue="handleDuelContinue"
       @end-turn="closeBattleReportAndEndTurn"
       @pick-item-and-end-turn="handlePickItemAndEndTurn"
       @pick-item-with-replacement="handlePickItemWithReplacement"
@@ -847,13 +924,15 @@ import AvailableMoveMarker from '@/components/game/AvailableMoveMarker.vue';
 import ItemPickupDialog from '@/components/game/ItemPickupDialog.vue';
 import FateweaverChoiceDialog from '@/components/game/FateweaverChoiceDialog.vue';
 import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
+import DuelOpponentPanel from '@/components/game/DuelOpponentPanel.vue';
+import DuelResultPanel from '@/components/game/DuelResultPanel.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import ActionLog from '@/components/ActionLog.vue';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';
-import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage } from '@/utils/itemUtils';
+import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES } from '@/utils/itemUtils';
 
 // Import field utility functions
 import { playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
@@ -896,7 +975,10 @@ const getItemDamage = (item) => {
       return 3;
     case 'fireball':
       return 1;
+    case 'frost_fist':
+      return 2;
     case 'teleport':
+    case 'dark_thorn':
       return 0;
     default:
       // Check if item has a direct damage property
@@ -1158,6 +1240,217 @@ const curseChoice = computed(() => {
   };
 });
 const curseChoicePendingForMe = computed(() => !!currentPlayerId.value && gameData.value?.state?.curse?.pendingBy === currentPlayerId.value);
+
+// ===== Karak: Regent =====
+
+const playerById = (playerId) => (gameData.value?.players || []).find((p) => p.id === playerId) || null;
+const playerChoiceLabel = (player) => (player?.hero ? `${playerLabel(player)} (${heroShortName(player)})` : playerLabel(player));
+
+// The hero rolling in the battle modal: the summoned rival rolls in this browser during a duel
+const battleRoller = computed(() => playerById(battleInfo.value?.player) || getCurrentPlayerData.value);
+const duelRival = computed(() => {
+  const rival = playerById(battleInfo.value?.duel?.opponentId);
+  return rival ? { label: playerChoiceLabel(rival), heroKey: rival.hero || null } : null;
+});
+
+// Battle Arena: the first entry asks this player to choose a rival
+const arenaChoiceForMe = computed(() => {
+  const choice = gameData.value?.state?.arenaChoice;
+  return choice && choice.playerId === currentPlayerId.value ? choice : null;
+});
+const duelOpponentCandidates = computed(() => (arenaChoiceForMe.value?.candidates || [])
+  .map((playerId) => playerById(playerId))
+  .filter(Boolean)
+  .map((player) => ({
+    id: player.id,
+    label: playerChoiceLabel(player),
+    treasures: (player.inventory?.treasures || []).length
+  })));
+const duelPanelPlayers = computed(() => (gameData.value?.players || []).map((p) => ({ id: p.id, label: playerChoiceLabel(p) })));
+
+// The duel result stays in the sidebar until dismissed (remembered per game and duel)
+const dismissedDuelId = ref(null);
+const dismissedDuelKey = () => `dismissedDuel:${id.value}`;
+try {
+  dismissedDuelId.value = localStorage.getItem(`dismissedDuel:${route.params.id}`);
+} catch (e) {
+  dismissedDuelId.value = null;
+}
+const visibleDuel = computed(() => {
+  const duel = gameData.value?.state?.duel;
+  return duel && duel.duelId !== dismissedDuelId.value ? duel : null;
+});
+const dismissDuel = () => {
+  dismissedDuelId.value = gameData.value?.state?.duel?.duelId || null;
+  try {
+    localStorage.setItem(dismissedDuelKey(), dismissedDuelId.value || '');
+  } catch (e) {
+    // localStorage unavailable - the panel is hidden for this page only
+  }
+};
+
+// The challenger cannot end the turn while the arena choice or his duel is open
+const duelBlocksEndTurn = computed(() => {
+  if (arenaChoiceForMe.value) return true;
+  const duel = gameData.value?.state?.duel;
+  return !!duel && duel.challengerId === currentPlayerId.value && ['challenger_roll', 'opponent_roll', 'loot'].includes(duel.phase);
+});
+
+const handleChooseDuelOpponent = async (opponentId) => {
+  try {
+    loading.value = true;
+    loadingStatus.value = 'Summoning the rival...';
+    const response = await gameApi.chooseDuelOpponent({
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: gameData.value?.state?.currentTurnId,
+      opponentId
+    });
+    if (response?.success === false) {
+      showActionNotice(response.message || 'The duel could not start');
+    } else if (response?.battleInfo) {
+      battleInfo.value = response.battleInfo;
+      showBattleReportModal.value = true;
+    }
+  } catch (err) {
+    showActionNotice(`The duel could not start: ${apiErrorMessage(err)}`);
+  } finally {
+    loading.value = false;
+    loadingStatus.value = '';
+  }
+  await loadGameData(false);
+};
+
+// A human rival summoned by a human challenger rolls in this browser once the challenger locked in
+const showPendingDuelRoll = (fetched) => {
+  const duel = fetched?.state?.duel;
+  const pending = fetched?.state?.lastBattleInfo;
+  if (!duel || duel.phase !== 'opponent_roll' || showBattleReportModal.value) return;
+  if (!pending?.duel || pending.duel.role !== 'opponent' || pending.player !== duel.opponentId) return;
+  if (pending.battleId === lastProcessedBattleId.value) return;
+  if (playerById(duel.opponentId)?.isAi) return;
+  battleInfo.value = pending;
+  showBattleReportModal.value = true;
+};
+
+// A duel side is locked in for the roller (the challenger, or the summoned rival in this browser); the duel never ends the turn
+const handleFinalizeDuelSide = async (finalizeBattleData) => {
+  const roller = battleInfo.value?.player || currentPlayerId.value;
+  lastProcessedBattleId.value = finalizeBattleData.battleId;
+  try {
+    loading.value = true;
+    loadingStatus.value = 'Locking in strength...';
+    await gameApi.finalizeBattle({
+      battleId: finalizeBattleData.battleId,
+      gameId: id.value,
+      playerId: roller,
+      turnId: gameData.value?.state?.currentTurnId,
+      selectedConsumableIds: finalizeBattleData.selectedConsumableIds || [],
+      pickupItem: false,
+      sacrificeHp: finalizeBattleData.sacrificeHp === true
+    });
+  } catch (err) {
+    showActionNotice(`The duel roll failed: ${apiErrorMessage(err)}`);
+  } finally {
+    showBattleReportModal.value = false;
+    battleInfo.value = null;
+    loading.value = false;
+    loadingStatus.value = '';
+    resetRequestLock();
+  }
+  await loadGameData(false);
+};
+
+// The side was already decided (the rival beat the total with weapons alone): just close the modal
+const handleDuelContinue = async ({ battleId } = {}) => {
+  if (battleId) lastProcessedBattleId.value = battleId;
+  showBattleReportModal.value = false;
+  battleInfo.value = null;
+  await loadGameData(false);
+};
+
+const handleTakeDuelLoot = async (itemId) => {
+  const duel = gameData.value?.state?.duel;
+  if (!duel) return;
+  try {
+    const response = await gameApi.takeDuelLoot({
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: gameData.value?.state?.currentTurnId,
+      duelId: duel.duelId,
+      itemId
+    });
+    if (response?.success === false) {
+      showActionNotice(response.message || 'The loot could not be taken');
+    }
+  } catch (err) {
+    showActionNotice(`The loot could not be taken: ${apiErrorMessage(err)}`);
+  }
+  await loadGameData(false);
+};
+
+// Dark Thorn: a sidebar spell aimed at another hero; Frost Fist is used in fights only
+const isDarkThornMode = ref(false);
+const selectedDarkThornSpell = ref(null);
+const darkThornTargetId = ref(null);
+const darkThornTargets = computed(() => (gameData.value?.players || []).filter((p) => p.id !== currentPlayerId.value));
+const isCastableSpell = (item) => item?.type === 'teleport' || item?.type === 'dark_thorn';
+const cancelDarkThornMode = () => {
+  isDarkThornMode.value = false;
+  selectedDarkThornSpell.value = null;
+  darkThornTargetId.value = null;
+};
+const handleSpellClick = (item) => {
+  if (item.type === 'teleport') {
+    cancelDarkThornMode();
+    handleTeleportSpellSelection(item);
+    return;
+  }
+  if (isDarkThornMode.value && selectedDarkThornSpell.value?.itemId === item.itemId) {
+    cancelDarkThornMode();
+    return;
+  }
+  isDarkThornMode.value = true;
+  selectedDarkThornSpell.value = item;
+  darkThornTargetId.value = darkThornTargets.value.length === 1 ? darkThornTargets.value[0].id : null;
+};
+const castDarkThorn = async () => {
+  if (!selectedDarkThornSpell.value || !darkThornTargetId.value) return;
+  const target = playerById(darkThornTargetId.value);
+  try {
+    loading.value = true;
+    loadingStatus.value = 'Casting Dark Thorn...';
+    await gameApi.useSpell(
+      id.value,
+      currentPlayerId.value,
+      gameData.value?.state?.currentTurnId,
+      selectedDarkThornSpell.value.itemId,
+      null,
+      darkThornTargetId.value
+    );
+    showActionNotice(`🌑 Dark Thorn — ${playerLabel(target)} loses 1 HP`);
+  } catch (err) {
+    showActionNotice(`Dark Thorn failed: ${apiErrorMessage(err)}`);
+  } finally {
+    cancelDarkThornMode();
+    loading.value = false;
+    loadingStatus.value = '';
+  }
+  await loadGameData(false);
+};
+
+// Cursed Room: one notice per roll (turn + hero)
+const shownRoomEventKey = ref(null);
+watch(() => gameData.value?.state?.roomEvent, (event) => {
+  if (!event) return;
+  const key = `${event.turnId}:${event.playerId}:${event.position}`;
+  if (key === shownRoomEventKey.value) return;
+  shownRoomEventKey.value = key;
+  const who = playerLabel(playerById(event.playerId));
+  showActionNotice(event.cursed
+    ? `☠️ Cursed Room — ${who} rolled ${event.roll}: cursed!`
+    : `🎲 Cursed Room — ${who} rolled ${event.roll}: safe`);
+});
 const handleCurseChoice = async (targetPlayerId) => {
   try {
     const result = await gameApi.curse({
@@ -2013,6 +2306,9 @@ const loadGameData = async (showLoading = true) => {
     } else {
 
     }
+
+    // Karak: Regent — the summoned rival rolls in this browser
+    showPendingDuelRoll(fetchedGameData);
 
     // Check if we need to update our current player
     if (fetchedGameData.state && fetchedGameData.state.currentPlayerId) {
@@ -3714,6 +4010,8 @@ const hasInventorySpaceForReward = computed(() => {
     'axe': 2,
     'fireball': 3,
     'teleport': 3,
+    'frost_fist': 3,
+    'dark_thorn': 3,
     'chest': Infinity, // No limit for treasures
     'ruby_chest': Infinity
   };
@@ -3726,6 +4024,8 @@ const hasInventorySpaceForReward = computed(() => {
     'axe': 'weapons', 
     'fireball': 'spells',
     'teleport': 'spells',
+    'frost_fist': 'spells',
+    'dark_thorn': 'spells',
     'chest': 'treasures',
     'ruby_chest': 'treasures'
   };
@@ -4215,17 +4515,18 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     if (!hasInventorySpaceForReward.value && !keepsSpellsInCombat && finalizeBattleData.selectedConsumableIds && finalizeBattleData.selectedConsumableIds.length > 0) {
       const rewardType = battleInfo.value?.reward?.type;
       
-      // If the reward is a spell (fireball/teleport), check if we're freeing up spell slots
-      if (rewardType === 'fireball' || rewardType === 'teleport') {
+      // If the reward is a spell (Karak: Regent spells included), check if we're freeing up spell slots
+      if (SPELL_TYPES.includes(rewardType)) {
         const currentSpells = getCurrentPlayerData.value?.inventory?.spells || [];
         const consumedSpellCount = finalizeBattleData.selectedConsumableIds.filter(id => 
           currentSpells.some(spell => spell.itemId === id)
         ).length;
         
         const spellsAfterConsumption = currentSpells.length - consumedSpellCount;
-        const spellLimit = rewardType === 'fireball' ? 3 : 3;
+        const spellLimit = 3;
         
         willHaveSpace = spellsAfterConsumption < spellLimit;
+        console.log('[FIX] spell reward slot check after consumables', { rewardType, spellsAfterConsumption, spellLimit, willHaveSpace });
         
 
       }
@@ -4253,7 +4554,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
         let inventoryCategory = 'treasures';
         if (['dagger', 'sword', 'axe'].includes(rewardType)) {
           inventoryCategory = 'weapons';
-        } else if (['fireball', 'teleport'].includes(rewardType)) {
+        } else if (SPELL_TYPES.includes(rewardType)) {
           inventoryCategory = 'spells';
         } else if (rewardType === 'key') {
           inventoryCategory = 'keys';
@@ -4336,6 +4637,12 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
 
 // Function to handle finalize battle
 const handleFinalizeBattle = async (finalizeBattleData) => {
+  // Karak: Regent — a duel side has its own flow (no monster, no turn end)
+  if (battleInfo.value?.duel) {
+    await handleFinalizeDuelSide(finalizeBattleData);
+    return;
+  }
+
   // Mark this battle as processed to prevent re-showing
   if (finalizeBattleData.battleId) {
     lastProcessedBattleId.value = finalizeBattleData.battleId;
@@ -4708,7 +5015,7 @@ const handleRerollBattle = async ({ battleId }) => {
     const response = await gameApi.rerollBattle({
       battleId,
       gameId: id.value,
-      playerId: currentPlayerId.value,
+      playerId: battleInfo.value?.player || currentPlayerId.value, // a summoned duel rival rolls during the challenger's turn
       turnId: currentTurnId
     });
 
@@ -6221,6 +6528,20 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 /* Active teleport spell indicator */
+/* Karak: Regent */
+.regent-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffe9c7;
+  background: rgba(181, 84, 28, 0.55);
+  border: 1px solid rgba(224, 122, 42, 0.6);
+  vertical-align: middle;
+}
+
 .inventory-item.spell-item.teleport-active {
   animation: pulse-glow 1.5s ease-in-out infinite;
   box-shadow: 0 0 15px rgba(138, 43, 226, 0.8), inset 0 0 0 2px #8a2be2;
