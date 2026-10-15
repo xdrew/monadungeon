@@ -1,6 +1,6 @@
 <template>
   <div class="duel-result" data-testid="duel-result">
-    <div class="duel-result-header"><GameIcon name="sword" :size="18" /> Duel on the Battle Arena</div>
+    <div class="duel-result-header"><GameIcon name="sword" :size="18" /> {{ $t('battle.duelHeader') }}</div>
 
     <p v-if="phaseText" class="duel-phase">{{ phaseText }}</p>
 
@@ -19,7 +19,7 @@
             <span v-if="side.bonuses.length"> · {{ side.bonuses.join(', ') }}</span>
           </div>
         </template>
-        <div v-else class="duel-side-detail">rolling…</div>
+        <div v-else class="duel-side-detail">{{ $t('dialogs.duel.rolling') }}</div>
       </div>
     </div>
 
@@ -27,7 +27,7 @@
 
     <!-- The human challenger who won picks the loot -->
     <div v-if="canPickLoot" class="duel-loot" data-testid="duel-loot-choice">
-      <div class="duel-loot-title">Take one item from {{ loserLabel }}:</div>
+      <div class="duel-loot-title">{{ $t('dialogs.duel.lootFrom', { who: loserLabel }) }}</div>
       <div class="duel-loot-items">
         <button
           v-for="item in duel.lootCandidates"
@@ -52,7 +52,7 @@
       data-testid="duel-dismiss"
       @click="emit('dismiss')"
     >
-      Dismiss
+      {{ $t('dialogs.duel.dismiss') }}
     </button>
   </div>
 </template>
@@ -61,6 +61,8 @@
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed } from 'vue';
 import { getItemImage } from '@/utils/itemUtils';
+import { t } from '@/i18n';
+import { itemName as localizedItemName } from '@/i18n/names';
 
 const props = defineProps({
   /** state.duel from the backend */
@@ -73,7 +75,7 @@ const props = defineProps({
 
 const emit = defineEmits(['loot', 'dismiss']);
 
-const labelOf = (playerId) => props.players.find((p) => p.id === playerId)?.label || 'Player';
+const labelOf = (playerId) => props.players.find((p) => p.id === playerId)?.label || t('common.player');
 const challengerLabel = computed(() => labelOf(props.duel.challengerId));
 const opponentLabel = computed(() => labelOf(props.duel.opponentId));
 const loserLabel = computed(() => labelOf(props.duel.loser));
@@ -83,11 +85,12 @@ const winnerId = computed(() => {
   return null;
 });
 
-const BONUS_LABELS = {
-  farseeing: 'Farseeing',
-  hpSacrificed: 'Sacrifice',
-  rerolled: 'Double Attack',
-  spellsKept: 'Magical Affinity'
+// Duel detail flag → the skill that gave the bonus
+const BONUS_SKILLS = {
+  farseeing: 'farseeing',
+  hpSacrificed: 'sacrifice',
+  rerolled: 'double_attack',
+  spellsKept: 'magical_affinity'
 };
 
 const sideOf = (role) => {
@@ -99,7 +102,7 @@ const sideOf = (role) => {
     total: props.duel[`${role}Total`] ?? null,
     dice: (details?.dice || []).join(' + '),
     itemDamage: details?.itemDamage || 0,
-    bonuses: Object.entries(BONUS_LABELS).filter(([key]) => details?.[key]).map(([, label]) => label),
+    bonuses: Object.entries(BONUS_SKILLS).filter(([key]) => details?.[key]).map(([, skill]) => t(`skills.${skill}.name`)),
     isWinner: !!winnerId.value && winnerId.value === playerId,
     isLoser: !!props.duel.loser && props.duel.loser === playerId
   };
@@ -108,24 +111,23 @@ const sides = computed(() => [sideOf('challenger'), sideOf('opponent')]);
 
 const phaseText = computed(() => {
   switch (props.duel.phase) {
-    case 'challenger_roll': return `${challengerLabel.value} rolls…`;
-    case 'opponent_roll': return `${opponentLabel.value} rolls against ${props.duel.challengerTotal}…`;
+    case 'challenger_roll': return t('dialogs.duel.challengerRolls', { who: challengerLabel.value });
+    case 'opponent_roll': return t('dialogs.duel.opponentRolls', { who: opponentLabel.value, n: props.duel.challengerTotal });
     default: return '';
   }
 });
 
 const resultText = computed(() => {
   if (!props.duel.result) return '';
-  if (props.duel.result === 'tie') return 'Tie — nothing happens';
+  if (props.duel.result === 'tie') return t('dialogs.duel.tie');
   const winner = props.duel.result === 'challenger' ? challengerLabel.value : opponentLabel.value;
-  let text = `${winner} wins the duel; ${loserLabel.value} loses 1 HP`;
   if (props.duel.reincarnatedTo) {
-    text += ` and reincarnates at ${props.duel.reincarnatedTo}`;
+    return t('dialogs.duel.winsReincarnates', { winner, loser: loserLabel.value, place: props.duel.reincarnatedTo });
   }
-  return text;
+  return t('dialogs.duel.wins', { winner, loser: loserLabel.value });
 });
 
-const itemName = (item) => (item?.type || 'item').split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+const itemName = (item, form = 'nom') => localizedItemName(item?.type || null, form);
 
 const canPickLoot = computed(() => props.duel.phase === 'loot'
   && winnerId.value === props.currentPlayerId
@@ -133,8 +135,8 @@ const canPickLoot = computed(() => props.duel.phase === 'loot'
 
 const lootText = computed(() => {
   if (!props.duel.result || props.duel.result === 'tie') return '';
-  if (props.duel.loot) return `${labelOf(winnerId.value)} takes the ${itemName(props.duel.loot)}`;
-  if (props.duel.phase === 'done') return 'Nothing to take';
+  if (props.duel.loot) return t('dialogs.duel.takes', { who: labelOf(winnerId.value), item: itemName(props.duel.loot, 'acc') });
+  if (props.duel.phase === 'done') return t('dialogs.duel.nothing');
   return '';
 });
 

@@ -1,13 +1,13 @@
 <template>
   <div class="not-found">
     <h1>404</h1>
-    <h2>Page Not Found</h2>
-    <p>The page you are looking for doesn't exist or has been moved.</p>
+    <h2>{{ $t('notFound.title') }}</h2>
+    <p>{{ $t('notFound.text') }}</p>
     <button
       class="home-button"
       @click="goToHome"
     >
-      Return to Home
+      {{ $t('notFound.home') }}
     </button>
   </div>
 </template>

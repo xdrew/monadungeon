@@ -3,67 +3,66 @@
     <MusicToggle />
     <div class="rules-content">
       <div class="rules-header">
-        <h1 class="rules-title">📜 {{ theme.appName }} RULES</h1>
+        <h1 class="rules-title">📜 {{ t('rules.title', { app: t('common.appName') }) }}</h1>
         <button class="back-button" @click="$router.push('/')">
-          ← Back to Lobby
+          ← {{ t('rules.back') }}
         </button>
       </div>
 
       <!-- Game Overview -->
       <section class="rules-section">
-        <h2>🎮 Game Overview</h2>
+        <h2>🎮 {{ t('rules.overview.title') }}</h2>
         <p>
-          {{ theme.appName }} is a dungeon-crawling adventure where players explore a labyrinth,
-          fight monsters, collect treasures, and race to defeat the {{ dragonName }} to claim victory!
+          {{ t('rules.overview.text', { app: t('common.appName'), dragon: dragonAcc }) }}
         </p>
         <div class="overview-grid">
           <div class="overview-item">
             <span class="overview-icon">👥</span>
-            <span>1-4 Players</span>
+            <span>{{ t('rules.overview.players') }}</span>
           </div>
           <div class="overview-item">
             <span class="overview-icon">❤️</span>
-            <span>5 Starting HP</span>
+            <span>{{ t('rules.overview.hp') }}</span>
           </div>
           <div class="overview-item">
             <span class="overview-icon">👟</span>
-            <span>4 Moves per Turn</span>
+            <span>{{ t('rules.overview.moves') }}</span>
           </div>
           <div class="overview-item">
             <span class="overview-icon">🏆</span>
-            <span>Most VP Wins</span>
+            <span>{{ t('rules.overview.vp') }}</span>
           </div>
         </div>
       </section>
 
       <!-- Victory Conditions -->
       <section class="rules-section">
-        <h2>🏆 How to Win</h2>
+        <h2>🏆 {{ t('rules.win.title') }}</h2>
         <div class="win-conditions">
           <div class="win-step">
             <span class="step-number">1</span>
-            <p>Defeat the {{ dragonName }} to end the game</p>
+            <p>{{ t('rules.win.step1', { dragon: dragonAcc }) }}</p>
           </div>
           <div class="win-step">
             <span class="step-number">2</span>
-            <p>Player with most Victory Points (VP) wins</p>
+            <p>{{ t('rules.win.step2') }}</p>
           </div>
         </div>
         <div class="vp-sources">
-          <h3>Victory Points Sources:</h3>
+          <h3>{{ t('rules.win.sources') }}</h3>
           <ul>
-            <li>🎁 Regular Treasure Chest: <strong>2 VP</strong></li>
-            <li>💎 Ruby Chest ({{ dragonName }}'s reward): <strong>3 VP</strong></li>
-            <li>☠️ {{ fallenName }}'s Treasure: <strong>2 VP</strong></li>
+            <li>🎁 {{ t('rules.win.chest') }} <strong>{{ t('dialogs.vp', { n: 2 }) }}</strong></li>
+            <li>💎 {{ t('rules.win.ruby', { dragon: dragonAcc }) }} <strong>{{ t('dialogs.vp', { n: 3 }) }}</strong></li>
+            <li>☠️ {{ t('rules.win.fallen', { fallen: monsterName('fallen', 'acc') }) }} <strong>{{ t('dialogs.vp', { n: 2 }) }}</strong></li>
           </ul>
         </div>
       </section>
 
       <!-- Monsters -->
       <section class="rules-section">
-        <h2>👹 Monsters & Rewards</h2>
+        <h2>👹 {{ t('rules.monsters.title') }}</h2>
         <p class="section-intro">
-          Battle monsters by rolling 2 dice. Win if your total damage exceeds their HP!
+          {{ t('rules.monsters.intro') }}
         </p>
         <div class="monsters-grid">
           <div
@@ -80,11 +79,11 @@
                 :img-class="['monster-image', { 'boss-image': monster.boss }]"
                 :emoji-class="['monster-image', 'monster-emoji', { 'boss-image': monster.boss }]"
               />
-              <span class="monster-name">{{ monster.name }}<template v-if="monster.boss"> (BOSS)</template></span>
-              <span v-if="monster.regent" class="regent-chip" title="Karak: Regent expansion">Regent</span>
+              <span class="monster-name">{{ monster.name }}<template v-if="monster.boss"> ({{ t('rules.monsters.boss') }})</template></span>
+              <span v-if="monster.regent" class="regent-chip" :title="t('lobby.regent')">{{ t('hud.regent') }}</span>
             </div>
             <div class="monster-stats">
-              <div class="stat">❤️ {{ monster.hp }} HP</div>
+              <div class="stat">❤️ {{ t('common.hpCount', monster.hp) }}</div>
               <div class="stat">{{ monster.drop }}</div>
               <div v-if="monster.extra" class="stat">{{ monster.extra }}</div>
             </div>
@@ -94,253 +93,243 @@
 
       <!-- Items & Consumables -->
       <section class="rules-section">
-        <h2>🎒 Items & Equipment</h2>
+        <h2>🎒 {{ t('rules.items.title') }}</h2>
         
         <div class="items-category">
-          <h3>⚔️ Weapons (Permanent Damage Bonus)</h3>
+          <h3>⚔️ {{ t('rules.items.weapons') }}</h3>
           <div class="items-list">
             <div class="item">
-              <img class="item-image" src="/images/dagger.webp" alt="Dagger" />
-              <span class="item-name">Dagger</span>
-              <span class="item-effect">+1 damage to all attacks</span>
+              <img class="item-image" src="/images/dagger.webp" :alt="itemName('dagger')" />
+              <span class="item-name">{{ itemName('dagger') }}</span>
+              <span class="item-effect">{{ t('rules.items.dagger') }}</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/sword.webp" alt="Sword" />
-              <span class="item-name">Sword</span>
-              <span class="item-effect">+2 damage to all attacks</span>
+              <img class="item-image" src="/images/sword.webp" :alt="itemName('sword')" />
+              <span class="item-name">{{ itemName('sword') }}</span>
+              <span class="item-effect">{{ t('rules.items.sword') }}</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/axe.webp" alt="Axe" />
-              <span class="item-name">Axe</span>
-              <span class="item-effect">+3 damage to all attacks</span>
+              <img class="item-image" src="/images/axe.webp" :alt="itemName('axe')" />
+              <span class="item-name">{{ itemName('axe') }}</span>
+              <span class="item-effect">{{ t('rules.items.axe') }}</span>
             </div>
           </div>
         </div>
 
         <div class="items-category">
-          <h3>🪄 Spells (One-Time Use)</h3>
+          <h3>🪄 {{ t('rules.items.spells') }}</h3>
           <div class="items-list">
             <div class="item">
-              <img class="item-image" src="/images/fireball.webp" alt="Fireball" />
-              <span class="item-name">Fireball</span>
-              <span class="item-effect">+1 damage to next attack</span>
+              <img class="item-image" src="/images/fireball.webp" :alt="itemName('fireball')" />
+              <span class="item-name">{{ itemName('fireball') }}</span>
+              <span class="item-effect">{{ t('rules.items.fireball') }}</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/hf-teleport.webp" alt="Teleport" />
-              <span class="item-name">Teleport</span>
-              <span class="item-effect">Move to any healing fountain</span>
+              <img class="item-image" src="/images/hf-teleport.webp" :alt="itemName('teleport')" />
+              <span class="item-name">{{ itemName('teleport') }}</span>
+              <span class="item-effect">{{ t('rules.items.teleport') }}</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/frost-fist.webp" alt="Frost Fist" />
-              <span class="item-name">Frost Fist <span class="regent-chip">Regent</span></span>
-              <span class="item-effect">+2 strength in a fight, after the roll; several per fight</span>
+              <img class="item-image" src="/images/frost-fist.webp" :alt="itemName('frost_fist')" />
+              <span class="item-name">{{ itemName('frost_fist') }} <span class="regent-chip">{{ t('hud.regent') }}</span></span>
+              <span class="item-effect">{{ t('rules.items.frostFist') }}</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/dark-thorn.webp" alt="Dark Thorn" />
-              <span class="item-name">Dark Thorn <span class="regent-chip">Regent</span></span>
-              <span class="item-effect">On your turn another hero loses 1 HP; costs no move</span>
+              <img class="item-image" src="/images/dark-thorn.webp" :alt="itemName('dark_thorn')" />
+              <span class="item-name">{{ itemName('dark_thorn') }} <span class="regent-chip">{{ t('hud.regent') }}</span></span>
+              <span class="item-effect">{{ t('rules.items.darkThorn') }}</span>
             </div>
           </div>
         </div>
 
         <div class="items-category">
-          <h3>🗝️ Keys & Treasures</h3>
+          <h3>🗝️ {{ t('rules.items.keys') }}</h3>
           <div class="items-list">
             <div class="item">
-              <img class="item-image" src="/images/key.webp" alt="Key" />
-              <span class="item-name">Key</span>
-              <span class="item-effect">Unlocks treasure chests</span>
+              <img class="item-image" src="/images/key.webp" :alt="itemName('key')" />
+              <span class="item-name">{{ itemName('key') }}</span>
+              <span class="item-effect">{{ t('rules.items.key') }}</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/chest-opened.webp" alt="Treasure Chest" />
-              <span class="item-name">Treasure Chest</span>
-              <span class="item-effect">2 Victory Points</span>
+              <img class="item-image" src="/images/chest-opened.webp" :alt="itemName('chest')" />
+              <span class="item-name">{{ itemName('chest') }}</span>
+              <span class="item-effect">{{ t('rules.items.victoryPoints', { n: 2 }, 2) }}</span>
             </div>
             <div class="item">
-              <img class="item-image" src="/images/ruby-chest.webp" alt="Ruby Chest" />
-              <span class="item-name">Ruby Chest</span>
-              <span class="item-effect">3 Victory Points</span>
+              <img class="item-image" src="/images/ruby-chest.webp" :alt="itemName('ruby_chest')" />
+              <span class="item-name">{{ itemName('ruby_chest') }}</span>
+              <span class="item-effect">{{ t('rules.items.victoryPoints', { n: 3 }, 3) }}</span>
             </div>
           </div>
         </div>
 
         <div class="inventory-limits">
-          <h3>📦 Inventory Limits</h3>
+          <h3>📦 {{ t('rules.items.limits') }}</h3>
           <ul>
-            <li>🗝️ Keys: Maximum 1</li>
-            <li>⚔️ Weapons: Maximum 2</li>
-            <li>🪄 Spells: Maximum 3</li>
-            <li>🎁 Treasures: Unlimited</li>
+            <li>🗝️ {{ t('rules.items.limitKeys') }}</li>
+            <li>⚔️ {{ t('rules.items.limitWeapons') }}</li>
+            <li>🪄 {{ t('rules.items.limitSpells') }}</li>
+            <li>🎁 {{ t('rules.items.limitTreasures') }}</li>
           </ul>
         </div>
       </section>
 
       <!-- Battle System -->
       <section class="rules-section">
-        <h2>⚔️ Battle System</h2>
+        <h2>⚔️ {{ t('rules.battle.title') }}</h2>
         <div class="battle-flow">
           <div class="battle-step">
             <span class="step-icon">🎲</span>
-            <h3>Roll Dice</h3>
-            <p>Roll 2 six-sided dice</p>
+            <h3>{{ t('rules.battle.roll') }}</h3>
+            <p>{{ t('rules.battle.rollText') }}</p>
           </div>
           <div class="battle-step">
             <span class="step-icon">➕</span>
-            <h3>Add Bonuses</h3>
-            <p>Add weapon damage + spell bonus</p>
+            <h3>{{ t('rules.battle.bonuses') }}</h3>
+            <p>{{ t('rules.battle.bonusesText') }}</p>
           </div>
           <div class="battle-step">
             <span class="step-icon">⚖️</span>
-            <h3>Compare</h3>
-            <p>Total damage vs Monster HP</p>
+            <h3>{{ t('rules.battle.compare') }}</h3>
+            <p>{{ t('rules.battle.compareText') }}</p>
           </div>
         </div>
 
         <div class="battle-outcomes">
-          <h3>Battle Outcomes:</h3>
+          <h3>{{ t('rules.battle.outcomes') }}</h3>
           <div class="outcome win">
-            <strong>WIN (damage > HP):</strong> Defeat monster, collect loot
+            <strong>{{ t('rules.battle.win') }}</strong> {{ t('rules.battle.winText') }}
           </div>
           <div class="outcome draw">
-            <strong>DRAW (damage = HP):</strong> No damage, monster remains
+            <strong>{{ t('rules.battle.draw') }}</strong> {{ t('rules.battle.drawText') }}
           </div>
           <div class="outcome lose">
-            <strong>LOSE (damage < HP):</strong> Lose 1 HP, move back
+            <strong>{{ t('rules.battle.lose') }}</strong> {{ t('rules.battle.loseText') }}
           </div>
         </div>
       </section>
 
       <!-- Special Mechanics -->
       <section class="rules-section">
-        <h2>✨ Special Mechanics</h2>
+        <h2>✨ {{ t('rules.mechanics.title') }}</h2>
         
         <div class="mechanic">
-          <h3>💀 Defeated/Stunned</h3>
-          <p>When HP reaches 0:</p>
+          <h3>💀 {{ t('rules.mechanics.stunned') }}</h3>
+          <p>{{ t('rules.mechanics.stunnedIntro') }}</p>
           <ul>
-            <li>Player is stunned on current tile</li>
-            <li>Skip next turn</li>
-            <li>Regenerate to 1 HP when turn is skipped</li>
+            <li v-for="n in 3" :key="`stunned-${n}`">{{ t(`rules.mechanics.stunned${n}`) }}</li>
           </ul>
         </div>
 
         <div class="mechanic">
-          <h3>⛲ Healing Fountains</h3>
-          <p>Special tiles that:</p>
+          <h3>⛲ {{ t('rules.mechanics.fountains') }}</h3>
+          <p>{{ t('rules.mechanics.fountainsIntro') }}</p>
           <ul>
-            <li>Restore all HP instantly</li>
-            <li>End your turn immediately</li>
+            <li v-for="n in 2" :key="`fountain-${n}`">{{ t(`rules.mechanics.fountain${n}`) }}</li>
           </ul>
         </div>
 
         <div class="mechanic">
-          <h3>🌀 Teleportation Gates</h3>
-          <p>Allow instant travel between discovered gates (costs 1 movement)</p>
+          <h3>🌀 {{ t('rules.mechanics.gates') }}</h3>
+          <p>{{ t('rules.mechanics.gatesText') }}</p>
         </div>
       </section>
 
       <!-- Karak: Regent expansion -->
       <section class="rules-section" data-testid="rules-regent">
-        <h2>👑 Karak: Regent (expansion)</h2>
+        <h2>👑 {{ t('rules.regent.title') }}</h2>
         <p class="section-intro">
-          Switch it on in the lobby: 18 more tiles join the deck and 6 Giant Bats and 2 Skeleton Mages join the bag.
+          {{ t('rules.regent.intro') }}
         </p>
 
         <div class="mechanic">
-          <h3><img class="item-image inline-marker" src="/images/arena.webp" alt="" /> Battle Arena</h3>
+          <h3><img class="item-image inline-marker" src="/images/arena.webp" alt="" /> {{ t('field.arena') }}</h3>
           <ul>
-            <li>The first hero to enter it on their own turn chooses another hero; that hero's figure is moved onto the arena and the two fight a duel.</li>
-            <li>The challenger rolls and decides first (spells, skills); then the rival rolls against the challenger's total.</li>
-            <li>Higher strength wins. The loser loses 1 HP; the winner takes one item the winner has room for. A tie changes nothing.</li>
-            <li>All combat skills apply. The Oracle gets +1 when the arena is her first step, or when she is summoned.</li>
-            <li>Both figures stay on the arena; the challenger's turn goes on unless knocked out.</li>
-            <li>The arena activates only once; afterwards it is a normal corridor.</li>
+            <li v-for="n in 6" :key="`arena-${n}`">{{ t(`rules.regent.arena${n}`) }}</li>
           </ul>
         </div>
 
         <div class="mechanic">
-          <h3><img class="item-image inline-marker" src="/images/cursed-room.webp" alt="" /> Cursed Room</h3>
+          <h3><img class="item-image inline-marker" src="/images/cursed-room.webp" alt="" /> {{ t('field.cursedRoom') }}</h3>
           <ul>
-            <li>Every hero entering it rolls a die: 1–3 brings the Curse of Karak, 4–6 is safe. A cursed hero does not roll.</li>
-            <li>Several heroes may be cursed at once. A healing fountain or the Portal of Healing lifts every curse.</li>
+            <li v-for="n in 2" :key="`cursed-${n}`">{{ t(`rules.regent.cursed${n}`) }}</li>
           </ul>
         </div>
 
         <div class="mechanic" data-testid="rules-hero-dealing">
-          <h3>🎲 Dealing heroes</h3>
+          <h3>🎲 {{ t('rules.regent.dealing') }}</h3>
           <ul>
-            <li>Heroes are dealt at random, as in the board game: with the lobby switch <strong>Random heroes</strong> on (the default) you and the AI each get a different hero; Regent heroes only with the expansion.</li>
-            <li>Switch it off to pick your hero yourself; the AI is then dealt one of the others.</li>
-            <li>The AI plays its hero: its fight odds include the hero's skills, and it uses Double Attack, Sacrifice, Reincarnation, Stealth, Astral Walking, Tireless, Lightning Attack, Magic Swap, Sprint, Listening, Valduk's heal limit, Dark Thorn and the Portal of Healing on its own. A virtual Lord Karak uses every ability he took over.</li>
+            <I18nT scope="global" keypath="rules.regent.dealing1" tag="li">
+              <template #toggle><strong>{{ t('lobby.randomHeroes') }}</strong></template>
+            </I18nT>
+            <li>{{ t('rules.regent.dealing2') }}</li>
+            <li>{{ t('rules.regent.dealing3') }}</li>
           </ul>
         </div>
 
         <div class="mechanic" data-testid="rules-regent-heroes">
-          <h3>🦸 Regent heroes <span class="regent-chip">Regent</span></h3>
+          <h3>🦸 {{ t('rules.regent.heroes') }} <span class="regent-chip">{{ t('hud.regent') }}</span></h3>
           <ul>
-            <li><strong>Valduk, the Barbarian</strong> — <em>Berserk</em>: +1 strength at 3–4 HP, +2 at 1–2 HP; he sets with the <em>Heal limit</em> ring how many HP a heal restores at most. <em>Tireless</em>: after a won fight he may leave the loot on the tile and keep moving (the step into the fight counts as a move).</li>
-            <li><strong>Baron Markul, the Battle Mage</strong> — <em>Sword Master</em>: a sword has strength 3. <em>Lightning Attack</em>: as the first action, for all 4 moves, teleport onto any monster and fight it; if he does not win he retreats onto an opened neighbouring tile with a door (or back where he came from), then the turn ends.</li>
-            <li><strong>Hanna, the Acrobat</strong> — <em>Dagger Throwing</em>: once her weapon slots are full, daggers go into free spell slots; each adds +1 and is never used up (not while cursed). <em>Sprint</em>: as the first action, up to 8 moves over discovered tiles, no exploring.</li>
-            <li><strong>Lady Lorraine, the Ranger</strong> — <em>Bear Attack</em>: a die showing 1 counts as 6. <em>Listening</em>: place an adjacent tile without entering it, for one move (its token is drawn; an arena or a cursed room there is not triggered).</li>
+            <li v-for="hero in REGENT_HEROES" :key="hero.key">
+              <I18nT scope="global" :keypath="`rules.regent.${hero.key}`" tag="span">
+                <template #hero><strong>{{ heroName(hero.key) }}</strong></template>
+                <template #skill1><em>{{ t(`skills.${hero.skills[0]}.name`) }}</em></template>
+                <template #skill2><em>{{ t(`skills.${hero.skills[1]}.name`) }}</em></template>
+                <template #healLimit><em>{{ t('hud.ring.healLimit') }}</em></template>
+              </I18nT>
+            </li>
           </ul>
         </div>
 
         <div class="mechanic" data-testid="rules-lord-karak">
-          <h3>👑 Lord Karak variant <span class="regent-chip">Regent</span></h3>
-          <p>An optional switch in the lobby. When the <strong>fifth Lord Karak room</strong> (Battle Arena or Cursed Room) is placed, the weakest hero becomes Lord Karak — before anyone enters that room.</p>
+          <h3>👑 {{ t('lobby.lordKarak') }} <span class="regent-chip">{{ t('hud.regent') }}</span></h3>
+          <I18nT scope="global" keypath="rules.regent.lordKarakText" tag="p">
+            <template #room><strong>{{ t('rules.regent.fifthRoom') }}</strong></template>
+          </I18nT>
           <ul>
-            <li>The weakest hero: the fewest treasures (by value); tie → the weakest weapons (token strength, no hero bonus); tie → the fewest keys and spells; tie → the lowest die, rerolled until one is lowest. Virtual players can be chosen too.</li>
-            <li>Lord Karak is fully healed (even from 0 HP, whatever Valduk's heal limit), the curse is removed, he loses his own abilities and gains those of every other hero in the game. With two players he keeps his own abilities as well.</li>
-            <li>Otherwise nothing changes: 4 moves, he can be cursed again, he collects treasure and the game still ends with the dragon. There is only one Lord Karak per game.</li>
+            <li v-for="n in 3" :key="`lk-${n}`">{{ t(`rules.regent.lk${n}`) }}</li>
           </ul>
         </div>
       </section>
 
       <!-- Turn Structure -->
       <section class="rules-section">
-        <h2>🎯 Turn Structure</h2>
+        <h2>🎯 {{ t('rules.turn.title') }}</h2>
         <div class="turn-info">
-          <p>Each player has <strong>4 movement actions</strong> per turn.</p>
-          <h3>Actions you can take:</h3>
+          <I18nT scope="global" keypath="rules.turn.moves" tag="p">
+            <template #actions><strong>{{ t('rules.turn.actions') }}</strong></template>
+          </I18nT>
+          <h3>{{ t('rules.turn.canTake') }}</h3>
           <ul>
-            <li>Move to adjacent tile (1 action)</li>
-            <li>Discover new areas</li>
-            <li>Use teleportation gates</li>
-            <li>Pick up items</li>
-            <li>Use consumable spells</li>
-            <li>End turn early</li>
+            <li v-for="n in 6" :key="`action-${n}`">{{ t(`rules.turn.a${n}`) }}</li>
           </ul>
           
-          <h3>Turn ends when:</h3>
+          <h3>{{ t('rules.turn.endsWhen') }}</h3>
           <ul>
-            <li>All 4 actions used</li>
-            <li>Battle occurs</li>
-            <li>Chest unlocked</li>
-            <li>Healing fountain used</li>
-            <li>Player chooses to end</li>
+            <li v-for="n in 5" :key="`end-${n}`">{{ t(`rules.turn.e${n}`) }}</li>
           </ul>
         </div>
       </section>
 
       <!-- Quick Tips -->
       <section class="rules-section">
-        <h2>💡 Strategy Tips</h2>
+        <h2>💡 {{ t('rules.tips.title') }}</h2>
         <div class="tips-grid">
           <div class="tip">
-            <span class="tip-icon"><img class="item-tip-image" src="/images/key.webp" alt="Key" /></span>
-            <p>Always keep a key - chests give victory points!</p>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/key.webp" :alt="itemName('key')" /></span>
+            <p>{{ t('rules.tips.key') }}</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><img class="item-tip-image" src="/images/axe.webp" alt="Axe" /></span>
-            <p>Prioritize getting better weapons early</p>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/axe.webp" :alt="itemName('axe')" /></span>
+            <p>{{ t('rules.tips.weapons') }}</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><img class="item-tip-image" src="/images/hf-teleport.webp" alt="Healing" /></span>
-            <p>Save healing spells for emergencies</p>
+            <span class="tip-icon"><img class="item-tip-image" src="/images/hf-teleport.webp" :alt="itemName('teleport')" /></span>
+            <p>{{ t('rules.tips.healing') }}</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><ThemedImage :src="dragon.image" :emoji="dragon.emoji" :alt="dragon.name" img-class="monster-image" emoji-class="monster-image monster-emoji" /></span>
-            <p>Prepare well before fighting the {{ dragonName }}!</p>
+            <span class="tip-icon"><ThemedImage :src="dragon.image" :emoji="dragon.emoji" :alt="monsterName('dragon')" img-class="monster-image" emoji-class="monster-image monster-emoji" /></span>
+            <p>{{ t('rules.tips.dragon', { dragon: dragonAcc }) }}</p>
           </div>
         </div>
       </section>
@@ -349,32 +338,48 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount } from 'vue';
+import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { I18nT, useI18n } from 'vue-i18n';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import ThemedImage from '@/components/ThemedImage.vue';
 import { musicService } from '@/services/musicService';
-import { theme, getMonster } from '@/theme';
+import { getMonster } from '@/theme';
+import { monsterName, itemName, heroName } from '@/i18n/names';
 
-// Monster stats from the rulebook; names and images come from the active theme
+const { t } = useI18n();
+
+// Monster stats from the rulebook; images come from the active theme, names and drops from the locale
 const MONSTER_RULES = [
-  { key: 'giant_rat', hp: 5, drop: '🗡️ Drops: Dagger (+1 damage)' },
-  { key: 'giant_spider', hp: 6, drop: '✨ Drops: Teleport Spell' },
-  { key: 'mummy', hp: 7, drop: '🔥 Drops: Fireball (+1 damage)' },
-  { key: 'skeleton_turnkey', hp: 8, drop: '🗝️ Drops: Key (unlocks chests)' },
-  { key: 'skeleton_warrior', hp: 9, drop: '🗡️ Drops: Sword (+2 damage)' },
-  { key: 'skeleton_king', hp: 10, drop: '🪓 Drops: Axe (+3 damage)' },
-  { key: 'fallen', hp: 12, drop: '🎁 Drops: Treasure Chest (2 VP)' },
-  { key: 'dragon', hp: 15, drop: '💎 Drops: Ruby Chest (3 VP)', boss: true, extra: '🏁 Ends the game!' },
+  { key: 'giant_rat', hp: 5, icon: '🗡️' },
+  { key: 'giant_spider', hp: 6, icon: '✨' },
+  { key: 'mummy', hp: 7, icon: '🔥' },
+  { key: 'skeleton_turnkey', hp: 8, icon: '🗝️' },
+  { key: 'skeleton_warrior', hp: 9, icon: '🗡️' },
+  { key: 'skeleton_king', hp: 10, icon: '🪓' },
+  { key: 'fallen', hp: 12, icon: '🎁' },
+  { key: 'dragon', hp: 15, icon: '💎', boss: true },
   // Karak: Regent expansion
-  { key: 'giant_bat', hp: 6, drop: '🌑 Drops: Dark Thorn', regent: true },
-  { key: 'skeleton_mage', hp: 11, drop: '🧊 Drops: Frost Fist (+2)', regent: true }
+  { key: 'giant_bat', hp: 6, icon: '🌑', regent: true },
+  { key: 'skeleton_mage', hp: 11, icon: '🧊', regent: true }
 ];
 
-const monsterCards = MONSTER_RULES.map((rule) => ({ ...rule, ...getMonster(rule.key) }));
+// Karak: Regent heroes and their two skills, in the order of the rules list
+const REGENT_HEROES = [
+  { key: 'barbarian', skills: ['berserk', 'tireless'] },
+  { key: 'battle_mage', skills: ['sword_master', 'lightning_attack'] },
+  { key: 'acrobat', skills: ['dagger_throwing', 'sprint'] },
+  { key: 'ranger', skills: ['bear_attack', 'listening'] }
+];
+
+const monsterCards = computed(() => MONSTER_RULES.map((rule) => ({
+  ...rule,
+  ...getMonster(rule.key),
+  name: monsterName(rule.key),
+  drop: `${rule.icon} ${t(`rules.monsters.drops.${rule.key}`)}`,
+  extra: rule.boss ? `🏁 ${t('rules.monsters.endsGame')}` : null
+})));
 const dragon = getMonster('dragon');
-const fallen = getMonster('fallen');
-const dragonName = dragon.name;
-const fallenName = fallen.name;
+const dragonAcc = computed(() => monsterName('dragon', 'acc'));
 
 onMounted(() => {
   // Initialize music service with placeholder URL

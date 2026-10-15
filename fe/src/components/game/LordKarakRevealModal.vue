@@ -1,27 +1,27 @@
 <template>
   <div class="lord-karak-overlay" @click.self="emit('close')">
     <div class="lord-karak-modal" data-testid="lord-karak-modal" role="dialog" aria-modal="true">
-      <div class="lord-karak-header"><GameIcon name="crown" :size="20" /> Lord Karak rises</div>
+      <div class="lord-karak-header"><GameIcon name="crown" :size="20" /> {{ $t('dialogs.lordKarak.rises') }}</div>
 
       <div class="lord-karak-body">
-        <img v-if="portrait" :src="portrait" alt="Lord Karak" class="lord-karak-portrait">
+        <img v-if="portrait" :src="portrait" :alt="heroName('lord_karak')" class="lord-karak-portrait">
         <div class="lord-karak-text">
-          <p class="lord-karak-who" data-testid="lord-karak-who">
-            <strong>{{ labelOf(reveal.playerId) }}</strong> becomes Lord Karak
-          </p>
+          <I18nT scope="global" keypath="dialogs.lordKarak.becomes" tag="p" class="lord-karak-who" data-testid="lord-karak-who">
+            <template #who><strong>{{ labelOf(reveal.playerId) }}</strong></template>
+          </I18nT>
           <p class="lord-karak-why">{{ criterionText }}</p>
-          <p class="lord-karak-effects">Fully healed, any curse removed.</p>
+          <p class="lord-karak-effects">{{ $t('dialogs.lordKarak.effects') }}</p>
         </div>
       </div>
 
       <table class="lord-karak-standings">
         <thead>
           <tr>
-            <th>Hero</th>
-            <th title="Treasure value"><GameIcon name="treasure" :size="16" title="Treasure value" /></th>
-            <th title="Weapon strength"><GameIcon name="sword" :size="16" title="Weapon strength" /></th>
-            <th title="Keys and spells"><GameIcon name="key" :size="16" title="Keys and spells" /></th>
-            <th v-if="hasRolls" title="Tie-break dice"><GameIcon name="dice" :size="16" title="Tie-break dice" /></th>
+            <th>{{ $t('dialogs.lordKarak.hero') }}</th>
+            <th :title="$t('dialogs.lordKarak.treasure')"><GameIcon name="treasure" :size="16" :title="$t('dialogs.lordKarak.treasure')" /></th>
+            <th :title="$t('dialogs.lordKarak.weapons')"><GameIcon name="sword" :size="16" :title="$t('dialogs.lordKarak.weapons')" /></th>
+            <th :title="$t('dialogs.lordKarak.items')"><GameIcon name="key" :size="16" :title="$t('dialogs.lordKarak.items')" /></th>
+            <th v-if="hasRolls" :title="$t('dialogs.lordKarak.rolls')"><GameIcon name="dice" :size="16" :title="$t('dialogs.lordKarak.rolls')" /></th>
           </tr>
         </thead>
         <tbody>
@@ -44,11 +44,11 @@
         <ul v-if="reveal.heroes.length">
           <li v-for="hero in reveal.heroes" :key="hero">{{ heroName(hero) }}</li>
         </ul>
-        <p v-else class="lord-karak-none">No other hero is in play: Lord Karak has no abilities.</p>
+        <p v-else class="lord-karak-none">{{ $t('dialogs.lordKarak.none') }}</p>
       </div>
 
       <button type="button" class="lord-karak-close" data-testid="lord-karak-close" @click="emit('close')">
-        Continue
+        {{ $t('dialogs.lordKarak.continue') }}
       </button>
     </div>
   </div>
@@ -58,6 +58,9 @@
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed } from 'vue';
 import { getHero } from '@/theme';
+import { I18nT } from 'vue-i18n';
+import { t } from '@/i18n';
+import { heroName } from '@/i18n/names';
 
 const props = defineProps({
   /** state.lordKarak from the backend */
@@ -68,21 +71,15 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const CRITERIA = {
-  treasure: 'The fewest treasures.',
-  weapons: 'Tied on treasures — the weakest weapons.',
-  items: 'Tied on treasures and weapons — the fewest items.',
-  roll: 'Tied on everything — the lowest die roll.'
-};
+const CRITERIA = ['treasure', 'weapons', 'items', 'roll'];
 
-const labelOf = (playerId) => props.players.find((p) => p.id === playerId)?.label || 'Player';
-const heroName = (key) => getHero(key)?.name || key;
+const labelOf = (playerId) => props.players.find((p) => p.id === playerId)?.label || t('common.player');
 const portrait = computed(() => getHero('lord_karak')?.image || null);
-const criterionText = computed(() => CRITERIA[props.reveal.criterion] || '');
+const criterionText = computed(() => (CRITERIA.includes(props.reveal.criterion) ? t(`dialogs.lordKarak.criteria.${props.reveal.criterion}`) : ''));
 const hasRolls = computed(() => (props.reveal.standings || []).some((row) => row.rolls?.length));
 const skillsTitle = computed(() => (props.reveal.keepsOwn
-  ? 'Abilities (two players: he keeps his own):'
-  : 'Abilities of the other heroes:'));
+  ? t('dialogs.lordKarak.keepsOwn')
+  : t('dialogs.lordKarak.others')));
 </script>
 
 <style scoped>

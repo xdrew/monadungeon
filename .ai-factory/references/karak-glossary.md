@@ -17,7 +17,7 @@ Forms for monsters and items: `nom` / `acc` (direct object: "defeats X") / `ins`
 |---|---|---|---|
 | game | Karak | Карак (off; edition title «Приключения в замке Карак») | Karak (off) |
 | HP | HP | ОЗ, «очки здоровья» (ours; the edition says «жетон здоровья») | PW, «punkty wytrzymałości» (off) |
-| victory points | victory points | очки победы (ours) | PZ, «punkty zwycięstwa» (off) |
+| victory points | victory points | очки победы, ОП (ours) | PZ, «punkty zwycięstwa» (off) |
 | healing fountain | healing fountain | целебный фонтан (off) | uzdrowicielska fontanna (off) |
 | teleport gate | teleport gate | портал (off) | brama teleportacji (off) |
 | chest | chest | сундук (off) | skrzynia (off) |

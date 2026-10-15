@@ -2,7 +2,7 @@
   <div class="inventory-full-overlay">
     <div class="inventory-full-card">
       <div class="card-header">
-        <span class="header-label">Inventory Full</span>
+        <span class="header-label">{{ $t('dialogs.inventoryFull') }}</span>
       </div>
 
       <!-- Found item -->
@@ -31,7 +31,7 @@
               <span
                 v-if="['fireball', 'frost_fist', 'dark_thorn'].includes(droppedItem.type)"
                 class="stat-badge badge-spell"
-              ><GameIcon name="spells" :size="13" /> Consumable</span>
+              ><GameIcon name="spells" :size="13" /> {{ $t('dialogs.consumable') }}</span>
             </div>
           </div>
         </div>
@@ -39,7 +39,7 @@
 
       <!-- Replace from inventory -->
       <div class="replace-section">
-        <div class="replace-label">Replace from your {{ formatItemCategory(itemCategory) }}:</div>
+        <div class="replace-label">{{ replaceLabel(itemCategory) }}</div>
         <div class="replace-items">
           <div
             v-for="item in inventoryForCategory"
@@ -78,13 +78,13 @@
           :disabled="!selectedItemToReplace"
           @click="replaceItem"
         >
-          Replace Selected Item <span class="kbd-hint">(Enter)</span>
+          {{ $t('dialogs.replaceSelected') }} <span class="kbd-hint">(Enter)</span>
         </button>
         <button
           class="btn-secondary"
           @click="skipItem"
         >
-          Leave Item <span class="kbd-hint">(Esc)</span>
+          {{ $t('dialogs.leaveItem') }} <span class="kbd-hint">(Esc)</span>
         </button>
       </div>
     </div>
@@ -95,6 +95,8 @@
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { defineProps, defineEmits, ref, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, formatItemName, getItemDamage } from '@/utils/itemUtils';
+import { t } from '@/i18n';
+import { itemName as localizedItemName } from '@/i18n/names';
 
 const props = defineProps({
   droppedItem: {
@@ -133,7 +135,7 @@ const getItemImage = (item) => {
 };
 
 const getDisplayName = (item) => {
-  if (!item || !item.name) return 'Unknown Item';
+  if (!item || !item.name) return t('items.tooltip.unknown');
   const monsterNames = [
     'skeleton_king', 'skeleton_warrior', 'skeleton_turnkey', 'skeleton_mage',
     'dragon', 'fallen', 'giant_rat', 'giant_spider', 'mummy', 'giant_bat'
@@ -142,17 +144,8 @@ const getDisplayName = (item) => {
     item.name.toLowerCase().includes(monster)
   );
   if (isMonster) {
-    if (item.type === 'key') return 'Key';
-    if (item.type === 'dagger') return 'Dagger';
-    if (item.type === 'sword') return 'Sword';
-    if (item.type === 'axe') return 'Axe';
-    if (item.type === 'fireball') return 'Fireball';
-    if (item.type === 'frost_fist') return 'Frost Fist';
-    if (item.type === 'dark_thorn') return 'Dark Thorn';
-    if (item.type === 'teleport') return 'Teleport';
-    if (item.type === 'chest') return 'Treasure Chest';
-    if (item.type === 'ruby_chest') return 'Ruby Chest';
-    return 'Treasure';
+    if (['key', 'dagger', 'sword', 'axe', 'fireball', 'frost_fist', 'dark_thorn', 'teleport', 'chest', 'ruby_chest'].includes(item.type)) return localizedItemName(item.type);
+    return localizedItemName('treasure');
   }
   return formatItemName(item.name);
 };
@@ -167,15 +160,9 @@ const itemCategoryClass = (item) => {
   return '';
 };
 
-const formatItemCategory = (category) => {
-  const categoryMap = {
-    'keys': 'Keys',
-    'weapons': 'Weapons',
-    'spells': 'Spells',
-    'treasures': 'Treasures'
-  };
-  return categoryMap[category] || category;
-};
+const replaceLabel = (category) => (['keys', 'weapons', 'spells', 'treasures'].includes(category)
+  ? t(`dialogs.replaceFrom.${category}`)
+  : t('dialogs.replaceFrom.other', { category }));
 
 const selectItemToReplace = (item) => {
   selectedItemToReplace.value = item;

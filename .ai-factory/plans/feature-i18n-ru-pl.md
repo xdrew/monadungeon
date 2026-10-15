@@ -66,11 +66,11 @@ Authority: user answers > e2e contract > existing code.
   - `utils/chronicle.js`: every sentence → `t('chronicle.<key>', params)` with monster/item forms; `withArticle`/`humanize` go (en articles live in the en sentences). `composables/useAiTurnPlayback.js` labels → keys. The chronicle recomputes on locale change (computed reads the locale).
 
 ### Phase 3: Battle, dialogs, pages, docs
-- [ ] Task 7: Battle and dialogs (depends on 2)
+- [x] Task 7: Battle and dialogs (depends on 2)
   - `BattleReportModal.vue` (all texts incl. plurals "A 1 counted / N ones counted", Berserk, Sacrifice, the e2e button texts kept verbatim in en), `ItemPickupDialog`, `InventoryFullDialog`, `MissingKeyDialog`, `StealthChoiceDialog`, `FateweaverChoiceDialog`, `LordKarakRevealModal`, `CurseChoicePanel`, `DuelOpponentPanel`, `DuelResultPanel`, `HealingNotification`, the finished banner and the leaderboard overlay in GameView.
-- [ ] Task 8: Pages (depends on 2)
+- [x] Task 8: Pages (depends on 2)
   - `RulesView.vue` (prose as keys per section/paragraph; HTML emphasis via `<i18n-t>` slots, no `v-html`), `LeaderboardView.vue`, `NotFound*.vue`, router titles.
-- [ ] Task 9: Verify and docs (depends on 1-8)
+- [x] Task 9: Verify and docs (depends on 1-8)
   - `npm run i18n:check` passes; `npm run build` (and `NODE_ENV=production`); ESLint on touched files adds no errors; PHPUnit filter from task 4.
   - Host Chrome, new tab, `http://127.0.0.1:18080`: lobby and a game turn (banner, rail, rings, chronicle after a fight, battle report, item pickup) in en, ru, pl; `document.documentElement.lang`; no `[i18n] missing key` warnings in the console; en texts of the e2e table unchanged (grep).
   - README "Localization" (how to add a key, the forms convention, the glossary, the check script), CLAUDE.md bullet (vue-i18n, `fe/src/i18n/`, keep en texts the e2e matches, run `npm run i18n:check`).

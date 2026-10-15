@@ -5,7 +5,7 @@
   >
     <div :class="['dialog-card', itemCategoryClass]">
       <div class="card-header">
-        <span class="header-label">Item Found</span>
+        <span class="header-label">{{ $t('dialogs.itemFound') }}</span>
       </div>
 
       <div class="item-showcase">
@@ -28,24 +28,24 @@
           <GameIcon name="sword" :size="14" /> +{{ itemDamage }}
         </span>
         <span v-if="itemValue > 0" class="badge badge-value">
-          <GameIcon name="treasure" :size="14" /> {{ itemValue }} VP
+          <GameIcon name="treasure" :size="14" /> {{ $t('dialogs.vp', { n: itemValue }) }}
         </span>
       </div>
 
-      <p class="pickup-prompt">Pick up this item?</p>
+      <p class="pickup-prompt">{{ $t('dialogs.pickUpPrompt') }}</p>
 
       <div class="dialog-actions">
         <button
           class="btn-pickup"
           @click="pickupItem"
         >
-          Pick Up <span class="kbd-hint">(Enter)</span>
+          {{ $t('dialogs.pickUp') }} <span class="kbd-hint">(Enter)</span>
         </button>
         <button
           class="btn-leave"
           @click="skipItem"
         >
-          Leave It <span class="kbd-hint">(Esc)</span>
+          {{ $t('dialogs.leaveIt') }} <span class="kbd-hint">(Esc)</span>
         </button>
       </div>
     </div>
@@ -56,6 +56,8 @@
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, formatItemName } from '@/utils/itemUtils';
+import { t } from '@/i18n';
+import { itemName as localizedItemName } from '@/i18n/names';
 
 const props = defineProps({
   show: {
@@ -72,7 +74,7 @@ const emit = defineEmits(['pickup', 'skip']);
 
 // Helper function to get display name (hide monster names)
 const getDisplayName = (item) => {
-  if (!item || !item.name) return 'Unknown Item';
+  if (!item || !item.name) return t('items.tooltip.unknown');
   
   // List of monster names to hide
   const monsterNames = [
@@ -87,16 +89,8 @@ const getDisplayName = (item) => {
   
   if (isMonster) {
     // Return generic name based on item type
-    if (item.type === 'key') return 'Key';
-    if (item.type === 'dagger') return 'Dagger';
-    if (item.type === 'sword') return 'Sword';
-    if (item.type === 'axe') return 'Axe';
-    if (item.type === 'fireball') return 'Fireball';
-    if (item.type === 'frost_fist') return 'Frost Fist';
-    if (item.type === 'dark_thorn') return 'Dark Thorn';
-    if (item.type === 'chest') return 'Treasure Chest';
-    if (item.type === 'ruby_chest') return 'Ruby Chest';
-    return 'Treasure';
+    if (['key', 'dagger', 'sword', 'axe', 'fireball', 'frost_fist', 'dark_thorn', 'chest', 'ruby_chest'].includes(item.type)) return localizedItemName(item.type);
+    return localizedItemName('treasure');
   }
   
   // For non-monster items, show the actual name

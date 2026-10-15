@@ -15,7 +15,7 @@
       <!-- Header -->
       <div class="battle-header">
         <div class="header-left">
-          <span class="header-label">{{ duel ? '⚔️ Duel on the Battle Arena' : 'Battle' }}</span>
+          <span class="header-label">{{ duel ? '⚔️ ' + $t('battle.duelHeader') : $t('battle.header') }}</span>
         </div>
         <h3
           :class="{
@@ -64,7 +64,7 @@
               <div class="combatant-glow hero-glow" />
               <img
                 :src="heroSprite"
-                alt="Hero"
+                :alt="$t('battle.heroAlt')"
                 class="combatant-sprite"
                 @error="onHeroSpriteError"
                 :class="{
@@ -90,7 +90,7 @@
                 <img
                   v-if="getWeaponImage(weapon)"
                   :src="getWeaponImage(weapon)"
-                  :alt="weapon.type"
+                  :alt="itemName(weapon)"
                   class="bonus-chip-img"
                 />
                 <span v-else>{{ getUsedItemEmoji(weapon) }}</span>
@@ -177,7 +177,7 @@
             class="first-roll-note"
             data-testid="first-roll"
           >
-            ⚔️ Double Attack! First roll <s>{{ battleInfo.firstDiceResults.join(' + ') }}</s> discarded — the second roll stands
+            ⚔️ <I18nT scope="global" keypath="battle.notes.doubleAttack" tag="span"><template #skill>{{ $t('skills.double_attack.name') }}</template><template #roll><s>{{ battleInfo.firstDiceResults.join(' + ') }}</s></template></I18nT>
           </div>
           <!-- Thief "Backstab": a tie counts as a victory -->
           <div
@@ -185,7 +185,7 @@
             class="first-roll-note"
             data-testid="backstab-note"
           >
-            🗡️ Backstab! A tie counts as a victory for the Thief
+            🗡️ {{ $t('battle.notes.backstab', { skill: $t('skills.backstab.name') }) }}
           </div>
           <!-- Swordsman "Combat Training": dice showing 1 were rerolled -->
           <div
@@ -193,7 +193,7 @@
             class="first-roll-note"
             data-testid="combat-training-note"
           >
-            🎯 Combat Training! Rerolled a 1 ×{{ battleInfo.onesRerolled }}
+            🎯 {{ $t('battle.notes.combatTraining', { skill: $t('skills.combat_training.name'), n: battleInfo.onesRerolled }) }}
           </div>
           <!-- Warlock "Sacrifice": 1 HP was paid for +1 strength -->
           <div
@@ -201,7 +201,7 @@
             class="first-roll-note"
             data-testid="sacrifice-note"
           >
-            🩸 Sacrifice! 1 HP paid for +1 strength
+            🩸 {{ $t('battle.notes.sacrifice', { skill: $t('skills.sacrifice.name') }) }}
           </div>
           <!-- Wizard "Magical Affinity": the used fireballs stay in the inventory -->
           <div
@@ -209,7 +209,7 @@
             class="first-roll-note"
             data-testid="affinity-note"
           >
-            ✨ Magical Affinity! The spells stay in your inventory
+            ✨ {{ $t('battle.notes.affinity', { skill: $t('skills.magical_affinity.name') }) }}
           </div>
           <!-- Oracle "Farseeing": +1 for fighting on the first move of the turn -->
           <div
@@ -217,7 +217,7 @@
             class="first-roll-note"
             data-testid="farseeing-note"
           >
-            👁️ Farseeing! +1 — fought on the first move of the turn
+            👁️ {{ $t('battle.notes.farseeing', { skill: $t('skills.farseeing.name') }) }}
           </div>
           <!-- Valduk "Berserk": the lower his HP, the harder he hits -->
           <div
@@ -225,7 +225,7 @@
             class="first-roll-note"
             data-testid="berserk-note"
           >
-            🪓 Berserk! +{{ battleInfo.berserk }} — fighting on {{ battleInfo.berserk === 2 ? '1–2' : '3–4' }} HP
+            🪓 {{ $t('battle.notes.berserk', { skill: $t('skills.berserk.name'), bonus: battleInfo.berserk, range: battleInfo.berserk === 2 ? '1–2' : '3–4' }) }}
           </div>
           <!-- Lady Lorraine "Bear Attack": a die showing 1 counts as 6 -->
           <div
@@ -233,7 +233,7 @@
             class="first-roll-note"
             data-testid="bear-attack-note"
           >
-            🐻 Bear Attack! {{ battleInfo.onesAsSixes === 1 ? 'A 1 counted' : `${battleInfo.onesAsSixes} ones counted` }} as 6
+            🐻 {{ $t('battle.notes.bearAttack', { skill: $t('skills.bear_attack.name'), n: battleInfo.onesAsSixes }, battleInfo.onesAsSixes) }}
           </div>
           <!-- Baron Markul "Lightning Attack": a fight that is not won ends in a retreat he chooses -->
           <div
@@ -241,7 +241,7 @@
             class="first-roll-note"
             data-testid="lightning-retreat-note"
           >
-            ⚡ Lightning Attack — choose where to retreat on the panel by the action rings
+            ⚡ {{ $t('battle.notes.lightningRetreat', { skill: $t('skills.lightning_attack.name') }) }}
           </div>
           <!-- Curse of Karak: the victim was chosen -->
           <div
@@ -257,7 +257,7 @@
             class="first-roll-note"
             data-testid="unstoppable-note"
           >
-            ⚡ Unstoppable! A 6 was rolled — the turn goes on
+            ⚡ {{ $t('battle.notes.unstoppable', { skill: $t('skills.unstoppable.name') }) }}
           </div>
         </div>
 
@@ -297,13 +297,13 @@
             </div>
             <div v-else class="reward-compact-inner">
               <ThemedImage :src="displayMonsterImage" :emoji="displayMonsterEmoji" :alt="formattedMonsterName" img-class="reward-img-sm" emoji-class="reward-img-sm" />
-              <span class="reward-compact-name">Treasure</span>
+              <span class="reward-compact-name">{{ itemName('treasure') }}</span>
             </div>
           </div>
 
           <!-- Consumable selection (compact) -->
           <div class="consumable-compact">
-            <div class="consumable-compact-label">Use:</div>
+            <div class="consumable-compact-label">{{ $t('battle.use') }}</div>
             <div class="consumable-compact-list">
               <div
                 v-for="(item, index) in availableDamageConsumables"
@@ -327,7 +327,7 @@
                 class="item-chip selectable sacrifice-chip"
                 :class="{ 'selected': sacrificeHp }"
                 data-testid="sacrifice-hp"
-                title="Sacrifice: pay 1 HP for +1 strength (once per combat)"
+                :title="$t('battle.sacrificeTitle', { skill: $t('skills.sacrifice.name') })"
                 @click="toggleSacrifice"
               >
                 <span class="chip-emoji">🩸</span>
@@ -373,12 +373,12 @@
                   >💰 {{ battleInfo.reward.treasureValue }}</span>
                 </div>
                 <div v-if="isGuardChestReward" class="reward-note success">
-                  Chest auto-opened!
+                  {{ $t('battle.chestAutoOpened') }}
                 </div>
               </div>
             </div>
             <div v-else class="no-reward">
-              Monster defeated! No treasure found.
+              {{ $t('battle.noTreasure') }}
             </div>
           </div>
         </div>
@@ -389,7 +389,7 @@
           class="items-section"
           :class="{ 'section-reveal': showResults }"
         >
-          <div class="items-section-title">{{ availableDamageConsumables.length > 0 ? 'Select consumables to use:' : 'Sacrifice 1 HP for +1 strength?' }}</div>
+          <div class="items-section-title">{{ availableDamageConsumables.length > 0 ? $t('battle.selectConsumables') : $t('battle.sacrificePrompt') }}</div>
           <div class="items-list">
             <div
               v-for="(item, index) in availableDamageConsumables"
@@ -414,11 +414,11 @@
               class="item-chip selectable sacrifice-chip"
               :class="{ 'selected': sacrificeHp }"
               data-testid="sacrifice-hp"
-              title="Sacrifice: pay 1 HP for +1 strength (once per combat)"
+              :title="$t('battle.sacrificeTitle', { skill: $t('skills.sacrifice.name') })"
               @click="toggleSacrifice"
             >
               <span class="chip-emoji">🩸</span>
-              <span class="chip-name">Sacrifice 1 HP</span>
+              <span class="chip-name">{{ $t('battle.sacrificeChip') }}</span>
               <span class="chip-damage">+1</span>
             </div>
           </div>
@@ -430,7 +430,7 @@
           class="items-section"
           :class="{ 'section-reveal': showResults }"
         >
-          <div class="items-section-title">{{ battleInfo.spellsKept ? 'Spells kept (Magical Affinity):' : 'Used consumables:' }}</div>
+          <div class="items-section-title">{{ battleInfo.spellsKept ? $t('battle.spellsKept', { skill: $t('skills.magical_affinity.name') }) : $t('battle.usedConsumables') }}</div>
           <div class="items-list">
             <div
               v-for="(item, index) in usedDamageConsumables"
@@ -451,7 +451,7 @@
           class="items-section"
           :class="{ 'section-reveal': showResults }"
         >
-          <div class="items-section-title">Choose an item to replace:</div>
+          <div class="items-section-title">{{ $t('battle.chooseReplace') }}</div>
           <div class="items-list">
             <div
               v-for="(item, index) in inventoryForSelection"
@@ -502,7 +502,7 @@
             data-testid="reroll-battle"
             @click="rerollDice"
           >
-            🎲 Double Attack — reroll <span class="kbd-hint">(R)</span>
+            🎲 {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
           </button>
           <button
             class="btn-primary"
@@ -520,7 +520,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            {{ turnContinues ? 'Continue turn' : 'End Turn' }} (All keys are the same) <span class="kbd-hint">(Enter)</span>
+            {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.allKeysSame') }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Guard chest: auto-collected -->
@@ -530,7 +530,7 @@
             :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
-            {{ turnContinues ? 'Continue turn' : 'End Turn' }} (Treasure collected automatically) <span class="kbd-hint">(Enter)</span>
+            {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.treasureAuto') }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
         <!-- Normal victory with reward -->
@@ -540,7 +540,7 @@
             :disabled="isProcessing"
             @click="pickUpAndEndTurn"
           >
-            🎒 {{ turnContinues ? 'Pick up and continue' : 'Pick up and end turn' }} <span class="kbd-hint">(Enter)</span>
+            🎒 {{ turnContinues ? $t('battle.pickUpContinue') : $t('battle.pickUpEndTurn') }} <span class="kbd-hint">(Enter)</span>
           </button>
           <button
             v-if="!hasInventorySpace && !isKeyReward && !isGuardChestReward"
@@ -548,7 +548,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            {{ turnContinues ? 'Leave item and continue' : 'Leave item and end turn' }} <span class="kbd-hint">(Esc)</span>
+            {{ turnContinues ? $t('battle.leaveContinue') : $t('battle.leaveEndTurn') }} <span class="kbd-hint">(Esc)</span>
           </button>
           <!-- Valduk "Tireless": leave the loot on the tile and keep moving -->
           <button
@@ -558,7 +558,7 @@
             data-testid="tireless-continue"
             @click="continueTireless"
           >
-            🪓 Leave it and keep moving (Tireless)
+            🪓 {{ $t('battle.tirelessLeave', { skill: $t('skills.tireless.name') }) }}
           </button>
         </div>
         <!-- Consumable selection buttons -->
@@ -570,7 +570,7 @@
             data-testid="reroll-battle"
             @click="rerollDice"
           >
-            🎲 Double Attack — reroll <span class="kbd-hint">(R)</span>
+            🎲 {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
           </button>
           <button
             v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
@@ -578,7 +578,7 @@
             :disabled="isProcessing"
             @click="finalizeBattleAndPickUp"
           >
-            🎒 Fight, win, and pick up reward
+            🎒 {{ $t('battle.fightWinPickUp') }}
           </button>
           <button
             v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
@@ -586,7 +586,7 @@
             :disabled="isProcessing"
             @click="finalizeBattleAndLeaveItem"
           >
-            Leave reward after victory
+            {{ $t('battle.leaveAfterVictory') }}
           </button>
           <!-- Valduk "Tireless": win, leave the loot and keep moving -->
           <button
@@ -596,7 +596,7 @@
             data-testid="tireless-continue"
             @click="finalizeBattleAndContinueTireless"
           >
-            🪓 Win, leave it and keep moving (Tireless)
+            🪓 {{ $t('battle.tirelessWin', { skill: $t('skills.tireless.name') }) }}
           </button>
           <button
             v-else-if="hasBoost && totalCalculatedDamage === battleInfo.monster && !battleInfo.tieIsWin"
@@ -604,7 +604,7 @@
             :disabled="isProcessing"
             @click="finalizeBattleWithConsumables"
           >
-            ⚔️ Fight for a draw
+            ⚔️ {{ $t('battle.fightForDraw') }}
           </button>
           <button
             v-else
@@ -624,7 +624,7 @@
             data-testid="reroll-battle"
             @click="rerollDice"
           >
-            🎲 Double Attack — reroll <span class="kbd-hint">(R)</span>
+            🎲 {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
           </button>
           <button
             class="btn-defeat"
@@ -641,14 +641,14 @@
             :class="potentialVictoryWithConsumables ? 'btn-primary' : 'btn-primary'"
             @click="confirmReplacement"
           >
-            {{ potentialVictoryWithConsumables ? '✅ Replace & Pick Up Reward' : (turnContinues ? '✅ Replace and continue' : '✅ Replace and end turn') }}
+            ✅ {{ potentialVictoryWithConsumables ? $t('battle.replacePickUp') : (turnContinues ? $t('battle.replaceContinue') : $t('battle.replaceEndTurn')) }}
           </button>
           <button
             class="btn-danger"
             :disabled="isProcessing"
             @click="cancelReplacement"
           >
-            ❌ Cancel
+            ❌ {{ $t('common.cancel') }}
           </button>
         </div>
         <!-- Fallback end turn -->
@@ -658,7 +658,7 @@
             :disabled="isProcessing"
             @click="leaveItemAndEndTurn"
           >
-            {{ turnContinues ? 'Continue turn' : 'End Turn' }} <span class="kbd-hint">(Enter)</span>
+            {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} <span class="kbd-hint">(Enter)</span>
           </button>
         </div>
       </div>
@@ -668,7 +668,10 @@
 
 <script setup>
 import { defineProps, defineEmits, computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
-import { getMonsterImage, getMonsterDisplayName, getMonsterEmoji } from '@/utils/monsterUtils';
+import { I18nT, useI18n } from 'vue-i18n';
+import { getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
+import { formatItemName } from '@/utils/itemUtils';
+import { itemName, monsterName } from '@/i18n/names';
 import ThemedImage from '@/components/ThemedImage.vue';
 import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
 import { getHero } from '@/theme';
@@ -708,21 +711,23 @@ const props = defineProps({
   }
 });
 
+const { t } = useI18n();
+
 const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up', 'reroll-battle', 'curse', 'duel-continue', 'tireless']);
 
 // Karak: Regent — a Battle Arena duel side ({ duelId, role, opponentId, toBeat }); the challenger has nothing to beat yet
 const duel = computed(() => props.battleInfo?.duel || null);
 const isDuelChallenger = computed(() => duel.value?.role === 'challenger');
-const rivalLabel = computed(() => props.duelRival?.label || 'Rival');
+const rivalLabel = computed(() => props.duelRival?.label || t('battle.rival'));
 const rivalSprite = computed(() => (props.duelRival?.heroKey && getHero(props.duelRival.heroKey).image) || '/images/ai.webp');
 const duelRivalText = computed(() => (isDuelChallenger.value
-  ? `${rivalLabel.value} rolls next`
-  : `${rivalLabel.value} — strength to beat ${duel.value?.toBeat ?? props.battleInfo?.monster}`));
+  ? t('battle.rivalRollsNext', { name: rivalLabel.value })
+  : t('battle.rivalToBeat', { name: rivalLabel.value, n: duel.value?.toBeat ?? props.battleInfo?.monster })));
 // The side still waits for the roller's decision (the backend asked for consumables and nothing was sent yet)
 const duelAwaitsDecision = computed(() => !!duel.value && props.battleInfo?.needsConsumableConfirmation === true && !battleFinalized.value);
 const duelPrimaryLabel = computed(() => {
-  if (!duelAwaitsDecision.value) return 'Continue';
-  return isDuelChallenger.value ? '🔒 Lock in strength' : '⚔️ Fight';
+  if (!duelAwaitsDecision.value) return t('battle.continue');
+  return isDuelChallenger.value ? `🔒 ${t('battle.lockIn')}` : `⚔️ ${t('battle.fight')}`;
 });
 const duelPrimaryAction = () => {
   if (isProcessing.value) return;
@@ -922,9 +927,9 @@ const beatsMonster = (damage) => (props.battleInfo?.tieIsWin ? damage >= props.b
 const turnContinues = computed(() => props.battleInfo?.unstoppable === true);
 const retreatLabel = computed(() => {
   if (props.battleInfo?.result === 'draw') {
-    return turnContinues.value ? '⬅️ Retreat and continue' : '⬅️ Retreat';
+    return `⬅️ ${turnContinues.value ? t('battle.retreatContinue') : t('battle.retreat')}`;
   }
-  return turnContinues.value ? '😵 Take the hit and continue' : '😵 Accept defeat';
+  return `😵 ${turnContinues.value ? t('battle.takeHitContinue') : t('battle.acceptDefeat')}`;
 });
 
 const potentialVictoryWithConsumables = computed(() => {
@@ -979,25 +984,25 @@ const dynamicResult = computed(() => {
 
 const dynamicResultText = computed(() => {
   if (isRolling.value) {
-    return 'Rolling...';
+    return t('battle.rolling');
   }
 
   if (isDuelChallenger.value) {
-    return `Your strength: ${totalCalculatedDamage.value}`;
+    return t('battle.yourStrength', { n: totalCalculatedDamage.value });
   }
 
   if (hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
 
-    if (totalDamage > monsterHP) return 'Victory!';
-    if (totalDamage === monsterHP) return 'Draw';
-    return 'Defeat';
+    if (totalDamage > monsterHP) return t('battle.victory');
+    if (totalDamage === monsterHP) return t('battle.draw');
+    return t('battle.defeat');
   }
 
-  if (props.battleInfo.result === 'win') return 'Victory!';
-  if (props.battleInfo.result === 'draw') return 'Draw';
-  return 'Defeat';
+  if (props.battleInfo.result === 'win') return t('battle.victory');
+  if (props.battleInfo.result === 'draw') return t('battle.draw');
+  return t('battle.defeat');
 });
 
 const usedDamageConsumables = computed(() => {
@@ -1481,20 +1486,10 @@ watch(() => showInventorySelection.value, (now) => {
   }
 });
 
-// Helper functions
-const formatItemName = (name) => {
-  if (!name) return 'Unknown';
-  return name.split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
+// Helper functions (names come from formatItemName in @/utils/itemUtils, localized)
 const getCorrectItemName = (item) => {
-  if (!item) return 'Unknown';
-  const itemName = item.type || item.name || 'Unknown';
-  return itemName.split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  if (!item) return t('common.unknown');
+  return formatItemName(item.type || item.name);
 };
 
 const formattedItemName = computed(() => {
@@ -1633,12 +1628,12 @@ const getWeaponImage = (item) => {
 };
 
 const formattedMonsterName = computed(() => {
-  if (!props.battleInfo.monsterType) return 'Monster';
-  return getMonsterDisplayName(props.battleInfo.monsterType);
+  if (!props.battleInfo.monsterType) return t('battle.monster');
+  return monsterName(props.battleInfo.monsterType, 'name', props.battleInfo.monster || 0);
 });
 
 const getSpellDisplayName = (item) => {
-  if (!item) return 'Unknown';
+  if (!item) return t('common.unknown');
   const monsterToSpellType = {
     'mummy': 'fireball',
     'giant_spider': 'teleport',
@@ -1661,7 +1656,7 @@ const getSpellDisplayName = (item) => {
   if (item.type && ['dagger', 'sword', 'axe'].includes(item.type)) {
     return formatItemName(item.type);
   }
-  return formatItemName(item.type || item.name || 'Unknown');
+  return formatItemName(item.type || item.name);
 };
 
 const shouldShowReward = computed(() => {
@@ -1679,15 +1674,15 @@ const isPotentialReward = computed(() => {
 });
 
 const victoryText = computed(() => {
-  if (isPotentialReward.value) return '🎉 Potential Victory Reward!';
-  return '🎉 Victory Reward!';
+  if (isPotentialReward.value) return `🎉 ${t('battle.potentialReward')}`;
+  return `🎉 ${t('battle.victoryReward')}`;
 });
 
 const potentialRewardTip = computed(() => {
   if (!isPotentialReward.value) return '';
   const missingDamage = props.battleInfo.monster - (props.battleInfo.diceRollDamage + weaponDamageTotal.value);
   const selectedDamage = consumableDamageTotal.value;
-  return `You need ${missingDamage} more damage to win. Your selected consumables provide +${selectedDamage} damage.`;
+  return t('battle.rewardTip', { missing: missingDamage, selected: selectedDamage });
 });
 </script>
 

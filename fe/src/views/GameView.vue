@@ -1603,12 +1603,12 @@ const handleCurseChoice = async (targetPlayerId) => {
       targetPlayerId
     });
     const holder = (gameData.value?.players || []).find(p => p.id === result?.cursedPlayerId);
-    const label = holder ? playerLabel(holder) : 'nobody';
+    const label = holder ? playerLabel(holder) : t('game.notice.nobody');
     if (battleInfo.value) {
       battleInfo.value = {
         ...battleInfo.value,
         curseChoiceRequired: false,
-        curseResolvedLabel: result?.kept ? `The curse stays on ${label}` : `${label} is cursed`
+        curseResolvedLabel: t(result?.kept ? 'game.notice.curseStays' : 'game.notice.curseOn', { who: label })
       };
     }
     if (gameData.value?.state?.curse) {
@@ -3120,7 +3120,7 @@ const startReplay = async () => {
 
 const finishReplay = () => {
   // Ask for confirmation before ending replay
-  if (isReplaying.value && !confirm('Are you sure you want to stop the replay?')) {
+  if (isReplaying.value && !confirm(t('hud.confirmStopReplay'))) {
     return;
   }
 

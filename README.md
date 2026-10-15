@@ -75,6 +75,19 @@ tools/art/.venv/bin/python -m tools.art generate --only dragon --force   # redo 
 
 Style consistency comes from a committed style bible (`tools/art/style/style.json`, `STYLE.md`): every call sends the existing item icons/figures as style references plus the most recently generated sprites, and `tools/art/generated.json` records the model, prompt hash and references per asset. Details in `tools/art/README.md`.
 
+## Localization
+
+The UI speaks English, Russian and Polish (vue-i18n 9, `fe/src/i18n/`). The language comes from `localStorage.locale`, else the browser (`ru*` → ru, `pl*` → pl, else en); the EN/RU/PL ring in the lobby and in the HUD switches it and remembers the choice. `<html lang>` and the page title follow it.
+
+- Messages: `fe/src/i18n/locales/{en,ru,pl}.js`, one nested object per area (`lobby`, `hud`, `game`, `battle`, `chronicle`, `rules`, …). en is the source; plurals are `one | other` in en and `one | few | many` in ru/pl.
+- Names: `fe/src/i18n/names.js` — `monsterName(key, form)`, `heroName(hero, 'name'|'short'|'role')`, `itemName(type, form)`, `skillText(skill)`. Monsters and items have grammatical forms for sentences (`nom`, `acc`, `ins`); a sentence picks the form it needs instead of gluing words together.
+- Terms: `.ai-factory/references/karak-glossary.md` (official Albi Polska and «Звезда» rulebook names, our translations marked). New names go there first.
+- Hero skills carry a stable `key` from the backend (`HeroType::skills()`); the UI translates `skills.<key>.*`. Server error texts stay English inside a translated frame.
+- The e2e runs in English (`locale: 'en-US'` in the Playwright configs) and matches English button texts: keep those en strings verbatim. Loading statuses stay English as the `data-loading-status` hook; `LoadingOverlay` shows them translated.
+- Cyrillic headings: Pirata One has no Cyrillic, so `--font-display` falls back to Ruslan Display for it.
+- Inline markup inside a sentence: `<I18nT scope="global" keypath="…">` imported from `vue-i18n` with named slots (the kebab `<i18n-t>` tag is treated as a custom element by `vite.config.js`); no `v-html`.
+- Check: `npm run i18n:check` (in the frontend container) compares ru/pl keys, `{placeholders}` and plural forms with en.
+
 ## Quick Start
 
 ### Prerequisites

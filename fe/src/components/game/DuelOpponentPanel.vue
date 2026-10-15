@@ -1,9 +1,9 @@
 <template>
   <div class="duel-panel" data-testid="duel-opponent-choice">
-    <div class="duel-header"><GameIcon name="sword" :size="18" /> Battle Arena</div>
+    <div class="duel-header"><GameIcon name="sword" :size="18" /> {{ $t('field.arena') }}</div>
     <p class="duel-prompt">
-      You are the first hero in this arena. Choose your opponent — their figure is moved here and the duel begins.
-      You roll first; the loser loses 1 HP and the winner takes one item.
+      {{ $t('dialogs.duel.prompt') }}
+      {{ $t('dialogs.duel.promptRules') }}
     </p>
     <div class="duel-targets">
       <button

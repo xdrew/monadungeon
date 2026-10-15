@@ -6,7 +6,7 @@
   >
     <div class="stealth-card">
       <div class="stealth-header">
-        <span class="stealth-label"><GameIcon name="eye" :size="16" /> Stealth</span>
+        <span class="stealth-label"><GameIcon name="eye" :size="16" /> {{ $t('skills.stealth.name') }}</span>
       </div>
 
       <div class="stealth-monster">
@@ -21,7 +21,7 @@
         <div v-if="monsterHp" class="stealth-monster-hp"><GameIcon name="heart" :size="14" /> {{ monsterHp }}</div>
       </div>
 
-      <p class="stealth-prompt">The Thief can slip past this monster without a fight. What will she do?</p>
+      <p class="stealth-prompt">{{ $t('dialogs.stealth.prompt') }}</p>
 
       <div class="stealth-actions">
         <button
@@ -29,14 +29,14 @@
           data-testid="stealth-fight"
           @click="choose(false)"
         >
-          <GameIcon name="sword" :size="16" /> Fight <span class="kbd-hint">(Enter)</span>
+          <GameIcon name="sword" :size="16" /> {{ $t('dialogs.stealth.fight') }} <span class="kbd-hint">(Enter)</span>
         </button>
         <button
           class="btn-sneak"
           data-testid="stealth-sneak"
           @click="choose(true)"
         >
-          <GameIcon name="eye" :size="16" /> Sneak past <span class="kbd-hint">(S)</span>
+          <GameIcon name="eye" :size="16" /> {{ $t('dialogs.stealth.sneak') }} <span class="kbd-hint">(S)</span>
         </button>
       </div>
     </div>
@@ -46,7 +46,8 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
-import { getMonsterDisplayName, getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
+import { getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
+import { monsterName as localizedMonsterName } from '@/i18n/names';
 import ThemedImage from '@/components/ThemedImage.vue';
 
 const props = defineProps({
@@ -58,7 +59,7 @@ const props = defineProps({
 const emit = defineEmits(['choose']);
 
 const monsterKey = computed(() => props.monster?.name || props.monster?.type || '');
-const monsterName = computed(() => getMonsterDisplayName(monsterKey.value) || monsterKey.value || 'Monster');
+const monsterName = computed(() => localizedMonsterName(monsterKey.value, 'name', props.monster?.guardHP || 0));
 const monsterImage = computed(() => getMonsterImage({ monster_name: monsterKey.value, monster: props.monster?.guardHP || 0 }));
 const monsterEmoji = computed(() => getMonsterEmoji({ monster_name: monsterKey.value, monster: props.monster?.guardHP || 0 }));
 const monsterHp = computed(() => props.monster?.guardHP || 0);

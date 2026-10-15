@@ -6,11 +6,11 @@
   >
     <div class="fateweaver-card">
       <div class="fateweaver-header">
-        <span class="fateweaver-label"><GameIcon name="eye" :size="16" /> Fateweaver</span>
+        <span class="fateweaver-label"><GameIcon name="eye" :size="16" /> {{ $t('skills.fateweaver.name') }}</span>
       </div>
 
       <p class="fateweaver-prompt">
-        Two tokens were drawn for the new room. Choose the one to place — the other goes back into the bag.
+        {{ $t('dialogs.fateweaver.prompt') }}
       </p>
 
       <div class="fateweaver-tokens">
@@ -29,15 +29,15 @@
           />
           <div class="fateweaver-token-name">{{ token.label }}</div>
           <div class="fateweaver-token-badges">
-            <span v-if="token.isMonster" class="badge badge-hp"><GameIcon name="heart" :size="13" /> HP {{ token.hp }}</span>
-            <span v-if="token.value > 0" class="badge badge-value"><GameIcon name="treasure" :size="13" /> {{ token.value }} VP</span>
+            <span v-if="token.isMonster" class="badge badge-hp"><GameIcon name="heart" :size="13" /> {{ $t('dialogs.fateweaver.hp', { n: token.hp }) }}</span>
+            <span v-if="token.value > 0" class="badge badge-value"><GameIcon name="treasure" :size="13" /> {{ $t('dialogs.vp', { n: token.value }) }}</span>
           </div>
           <button
             class="btn-place"
             :data-testid="`fateweaver-item-${index}`"
             @click="choose(token.itemId)"
           >
-            Place <span class="kbd-hint">({{ index + 1 }})</span>
+            {{ $t('dialogs.fateweaver.place') }} <span class="kbd-hint">({{ index + 1 }})</span>
           </button>
         </div>
       </div>
@@ -49,7 +49,8 @@
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, getItemImage, formatItemName } from '@/utils/itemUtils';
-import { getMonsterDisplayName, getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
+import { getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
+import { monsterName } from '@/i18n/names';
 import ThemedImage from '@/components/ThemedImage.vue';
 
 const props = defineProps({
@@ -68,7 +69,7 @@ const tokens = computed(() => (props.choice?.items || []).map((item) => {
     hp: item.guardHP || 0,
     value: item.treasureValue || 0,
     label: isMonster
-      ? (getMonsterDisplayName(item.name) || formatItemName(item.name))
+      ? monsterName(item.name, 'name', item.guardHP || 0)
       : formatItemName(item.name),
     image: isMonster ? getMonsterImage({ monster_name: item.name, monster: item.guardHP || 0 }) : getItemImage(item),
     emoji: isMonster ? getMonsterEmoji({ monster_name: item.name, monster: item.guardHP || 0 }) : getItemEmoji(item)

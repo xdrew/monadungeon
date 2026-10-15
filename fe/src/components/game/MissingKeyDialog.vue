@@ -2,7 +2,7 @@
   <div class="dialog-overlay">
     <div class="dialog-content missing-key-dialog">
       <div class="dialog-header">
-        <h2>Missing Key</h2>
+        <h2>{{ $t('dialogs.missingKey.title') }}</h2>
       </div>
       
       <div class="dialog-body">
@@ -10,20 +10,20 @@
           <img
             v-if="chestType === 'ruby_chest'"
             src="/images/ruby-chest.webp"
-            alt="Ruby Chest"
+            :alt="itemName('ruby_chest')"
             class="chest-icon"
           />
           <img
             v-else
             src="/images/chest-closed.webp"
-            alt="Treasure Chest"
+            :alt="itemName('chest')"
             class="chest-icon"
           />
-          <span class="key-missing" aria-label="No key"><GameIcon name="key" :size="30" /><GameIcon name="close" :size="16" class="key-missing-cross" /></span>
+          <span class="key-missing" :aria-label="$t('dialogs.missingKey.noKey')"><GameIcon name="key" :size="30" /><GameIcon name="close" :size="16" class="key-missing-cross" /></span>
         </div>
         
-        <p>You cannot open this {{ formatChestType }} without a key!</p>
-        <p>Find a key first before attempting to open this chest.</p>
+        <p>{{ chestText }}</p>
+        <p>{{ $t('dialogs.missingKey.hint') }}</p>
       </div>
       
       <div class="dialog-footer">
@@ -31,7 +31,7 @@
           class="close-button"
           @click="close"
         >
-          Close <span class="kbd-hint">(Enter)</span>
+          {{ $t('common.close') }} <span class="kbd-hint">(Enter)</span>
         </button>
       </div>
     </div>
@@ -41,6 +41,8 @@
 <script setup>
 import { defineProps, defineEmits, computed, onMounted, onUnmounted } from 'vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
+import { t } from '@/i18n';
+import { itemName } from '@/i18n/names';
 
 const props = defineProps({
   chestType: {
@@ -51,13 +53,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-// Format the chest type for display
-const formatChestType = computed(() => {
-  if (props.chestType === 'ruby_chest') {
-    return 'Ruby Chest';
-  }
-  return 'Treasure Chest';
-});
+// The message for the chest type
+const chestText = computed(() => t(props.chestType === 'ruby_chest' ? 'dialogs.missingKey.ruby' : 'dialogs.missingKey.chest'));
 
 // Close the dialog
 const close = () => {

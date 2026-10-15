@@ -1,15 +1,15 @@
 <template>
   <div class="leaderboard-container">
     <div class="header-section">
-      <button @click="goBack" class="back-button">← Back to Home</button>
-      <h2 class="leaderboard-title">Leaderboard</h2>
+      <button @click="goBack" class="back-button">← {{ $t('leaderboard.back') }}</button>
+      <h2 class="leaderboard-title">{{ $t('leaderboard.title') }}</h2>
     </div>
 
     <!-- Error state -->
     <div v-if="error" class="error">{{ error }}</div>
 
     <!-- Initial loading state -->
-    <div v-else-if="loading && !entries.length" class="loading">Loading leaderboard...</div>
+    <div v-else-if="loading && !entries.length" class="loading">{{ $t('leaderboard.loading') }}</div>
 
     <!-- Leaderboard table -->
     <div v-else class="leaderboard-table-container">
@@ -18,20 +18,20 @@
         <thead>
           <tr>
             <th class="position">#</th>
-            <th class="username">Player</th>
+            <th class="username">{{ $t('leaderboard.player') }}</th>
             <th class="victories sortable" @click="toggleSort('victories')">
-              Wins
+              {{ $t('leaderboard.wins') }}
               <span class="sort-indicator" v-if="sortBy === 'victories'">
                 {{ sortOrder === 'DESC' ? '▼' : '▲' }}
               </span>
             </th>
             <th class="games sortable" @click="toggleSort('totalGames')">
-              Games
+              {{ $t('leaderboard.games') }}
               <span class="sort-indicator" v-if="sortBy === 'totalGames'">
                 {{ sortOrder === 'DESC' ? '▼' : '▲' }}
               </span>
             </th>
-            <th class="winrate">Win Rate</th>
+            <th class="winrate">{{ $t('leaderboard.winRate') }}</th>
           </tr>
         </thead>
         <tbody class="table-body-container">
@@ -64,7 +64,7 @@
       <!-- Pagination controls at bottom -->
       <div class="table-footer" v-if="totalPages > 1">
         <div class="page-info">
-          Showing {{ (currentPage - 1) * limit + 1 }}-{{ Math.min(currentPage * limit, totalCount) }} of {{ totalCount }}
+          {{ $t('leaderboard.showing', { from: (currentPage - 1) * limit + 1, to: Math.min(currentPage * limit, totalCount), total: totalCount }) }}
         </div>
         <div class="pagination">
           <button 
@@ -102,6 +102,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { gameApi } from '../services/api';
+import { t } from '@/i18n';
 
 export default {
   name: 'LeaderboardView',
@@ -164,7 +165,7 @@ export default {
         
       } catch (err) {
         console.error('Failed to fetch leaderboard:', err);
-        error.value = 'Failed to load leaderboard. Please try again.';
+        error.value = t('leaderboard.loadFailed');
       } finally {
         loading.value = false;
       }

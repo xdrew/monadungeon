@@ -1,8 +1,8 @@
 <template>
   <div class="curse-panel" data-testid="curse-choice">
-    <div class="curse-header"><GameIcon name="skull" :size="18" /> Curse of Karak</div>
+    <div class="curse-header"><GameIcon name="skull" :size="18" /> {{ $t('dialogs.curse.title') }}</div>
     <p class="curse-prompt">
-      You defeated a mummy. Choose who carries the curse — their hero loses all skills until healed at a fountain.
+      {{ $t('dialogs.curse.prompt') }}
     </p>
     <div class="curse-targets">
       <button
@@ -15,7 +15,7 @@
         :data-testid="`curse-player-${player.id}`"
         @click="emit('choose', player.id)"
       >
-        <GameIcon name="skull" :size="16" /> {{ player.label }}<span v-if="player.id === cursedPlayerId" class="holder-hint"> (already cursed)</span>
+        <GameIcon name="skull" :size="16" /> {{ player.label }}<span v-if="player.id === cursedPlayerId" class="holder-hint"> ({{ $t('dialogs.curse.alreadyCursed') }})</span>
       </button>
       <button
         v-if="cursedPlayerId"
@@ -25,7 +25,7 @@
         data-testid="curse-keep"
         @click="emit('choose', null)"
       >
-        Keep it on {{ cursedLabel || 'the current holder' }}
+        {{ $t('dialogs.curse.keepOn', { who: cursedLabel || $t('dialogs.curse.currentHolder') }) }}
       </button>
     </div>
   </div>
