@@ -29,6 +29,7 @@
 </template>
 
 <script setup>
+import { TILE_SIZE } from '@/utils/fieldUtils';
 import { defineProps, defineEmits, computed } from 'vue';
 
 const props = defineProps({
@@ -70,7 +71,7 @@ const props = defineProps({
   },
   tileSize: {
     type: Number,
-    default: 100
+    default: TILE_SIZE
   },
   canClick: {
     type: Boolean,
@@ -111,8 +112,8 @@ const handleClick = () => {
 <style scoped>
 .available-place {
   position: absolute;
-  width: var(--tile-size, 100px);
-  height: var(--tile-size, 100px);
+  width: var(--tile-size, 150px);
+  height: var(--tile-size, 150px);
   display: flex;
   justify-content: center;
   align-items: center;

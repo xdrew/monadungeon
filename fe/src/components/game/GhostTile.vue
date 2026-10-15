@@ -72,6 +72,7 @@
 </template>
 
 <script setup>
+import { TILE_SIZE } from '@/utils/fieldUtils';
 import { defineProps, defineEmits, computed, watch, ref, onMounted, onUpdated } from 'vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { getTileImageWithRotation } from '@/config/tileImageConfig';
@@ -111,7 +112,7 @@ const props = defineProps({
   },
   tileSize: {
     type: Number,
-    default: 100
+    default: TILE_SIZE
   },
   openings: {
     type: Object,
@@ -216,8 +217,8 @@ const placeTile = () => {
 <style scoped>
 .tile {
   position: absolute;
-  width: 100px;
-  height: 100px;
+  width: var(--tile-size);
+  height: var(--tile-size);
   transition: transform 0.3s, box-shadow 0.3s;
   background-color: var(--bg-modal);
   color: white;

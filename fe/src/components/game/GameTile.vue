@@ -190,6 +190,7 @@
 </template>
 
 <script setup>
+import { TILE_SIZE } from '@/utils/fieldUtils';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { defineProps, defineEmits, computed, ref, onMounted } from 'vue';
 import { getPlayerEmoji } from '@/utils/playerUtils';
@@ -308,7 +309,7 @@ const props = defineProps({
   },
   tileSize: {
     type: Number,
-    default: 100
+    default: TILE_SIZE
   },
   animationStartX: {
     type: Number,
@@ -559,8 +560,8 @@ const onItemClick = () => {
 <style scoped>
 .tile {
   position: absolute;
-  width: 100px;
-  height: 100px;
+  width: var(--tile-size);
+  height: var(--tile-size);
   transition: transform 0.3s, box-shadow 0.3s;
   background-color: var(--bg-modal);
   color: white;

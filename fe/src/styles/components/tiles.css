@@ -17,14 +17,13 @@
 /* Base Tile */
 .tile {
   position: absolute;
-  width: 100px;
-  height: 100px;
+  width: var(--tile-size);
+  height: var(--tile-size);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   transition: transform var(--transition-normal) ease, box-shadow var(--transition-normal) ease;
-  --tile-size: var(--tile-size);
   --field-min-x: 0;
   --field-min-y: 0;
   --tile-x: attr(data-x number);

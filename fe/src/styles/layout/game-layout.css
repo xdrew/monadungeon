@@ -96,27 +96,13 @@
   touch-action: pan-x pan-y pinch-zoom;
 }
 
-/* Fog of War */
+/* Fog of War — the same warm black as the field, no shimmer (torchlight does the mood) */
 .fog-cell {
   position: absolute;
   z-index: 3;
   pointer-events: none;
   background: var(--bg-field);
   filter: blur(6px);
-}
-
-.fog-cell::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.07) 0%, transparent 70%);
-  animation: fogShimmer 5s ease-in-out infinite;
-  animation-delay: var(--shimmer-delay, 0s);
-}
-
-@keyframes fogShimmer {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
 }
 
 .fog-cell.fog-dissolve {
@@ -147,19 +133,19 @@
 }
 
 .fog-fringe-top {
-  background: linear-gradient(to bottom, rgba(12, 11, 24, 0.8) 0%, rgba(12, 11, 24, 0.3) 30%, transparent 60%);
+  background: linear-gradient(to bottom, rgba(5, 3, 2, 0.85) 0%, rgba(5, 3, 2, 0.35) 30%, transparent 60%);
 }
 
 .fog-fringe-bottom {
-  background: linear-gradient(to top, rgba(12, 11, 24, 0.8) 0%, rgba(12, 11, 24, 0.3) 30%, transparent 60%);
+  background: linear-gradient(to top, rgba(5, 3, 2, 0.85) 0%, rgba(5, 3, 2, 0.35) 30%, transparent 60%);
 }
 
 .fog-fringe-left {
-  background: linear-gradient(to right, rgba(12, 11, 24, 0.8) 0%, rgba(12, 11, 24, 0.3) 30%, transparent 60%);
+  background: linear-gradient(to right, rgba(5, 3, 2, 0.85) 0%, rgba(5, 3, 2, 0.35) 30%, transparent 60%);
 }
 
 .fog-fringe-right {
-  background: linear-gradient(to left, rgba(12, 11, 24, 0.8) 0%, rgba(12, 11, 24, 0.3) 30%, transparent 60%);
+  background: linear-gradient(to left, rgba(5, 3, 2, 0.85) 0%, rgba(5, 3, 2, 0.35) 30%, transparent 60%);
 }
 
 /* Drag Navigation States */

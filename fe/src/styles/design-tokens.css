@@ -82,7 +82,7 @@
   --z-dropdown: 50;
   
   /* Game Specific */
-  --tile-size: 100px;
+  --tile-size: 150px; /* TILE_SIZE in utils/fieldUtils.js */
   --field-padding: 100px;
   --sidebar-width: 350px;
 } 

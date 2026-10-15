@@ -278,6 +278,17 @@
                     @player-click="handlePlayerFigureClick"
                   />
 
+                  <!-- Torchlight: darkness outside the heroes' torches (visual only, under the move marks) -->
+                  <TorchlightLayer
+                    :lights="torchLights"
+                    :min-x="gameData.field.size?.minX || 0"
+                    :min-y="gameData.field.size?.minY || 0"
+                    :cols="fieldCols"
+                    :rows="fieldRows"
+                    :tile-size="tileSize"
+                    :active="torchlightActive"
+                  />
+
                   <!-- AI Battle Overlay - floating damage numbers on the field -->
                   <div
                     v-if="aiBattleOverlay"
@@ -319,7 +330,6 @@
                       top: `${(fog.y - (gameData.field.size.minY || 0)) * tileSize - 4}px`,
                       width: `${tileSize + 8}px`,
                       height: `${tileSize + 8}px`,
-                      '--shimmer-delay': `${((fog.x * 7 + fog.y * 13) % 50) / 10}s`,
                     }"
                   />
 
@@ -1068,6 +1078,7 @@ import ReplayControls from '@/components/game/ReplayControls.vue';
 import AiTurnPlaybackControls from '@/components/game/AiTurnPlaybackControls.vue';
 import { useAiTurnPlayback } from '@/composables/useAiTurnPlayback';
 import GameTile from '@/components/game/GameTile.vue';
+import TorchlightLayer from '@/components/game/TorchlightLayer.vue';
 import AvailableMoveMarker from '@/components/game/AvailableMoveMarker.vue';
 import ItemPickupDialog from '@/components/game/ItemPickupDialog.vue';
 import FateweaverChoiceDialog from '@/components/game/FateweaverChoiceDialog.vue';
@@ -1084,7 +1095,7 @@ import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondP
 import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES, hasRoomForItem, getItemStrength } from '@/utils/itemUtils';
 
 // Import field utility functions
-import { playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
+import { TILE_SIZE, playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
 import { updateGameDataSelectively as doUpdateGameDataSelectively, initGame as doInitGame, joinGame as doJoinGame, startGame as doStartGame } from '@/utils/gameUtils';
 
 // Import notification utility functions
@@ -1257,7 +1268,7 @@ const restorePickedTileState = () => {
 };
 const isMoveMode = ref(false);
 const isPlaceMode = ref(false);
-const tileSize = ref(100);
+const tileSize = ref(TILE_SIZE);
 const playerSwitched = ref(false);
 const notificationTimeout = ref(null);
 const healingNotification = ref(null);
@@ -1715,8 +1726,8 @@ const canStartGame = computed(() => {
 const fieldStyles = computed(() => {
   if (!gameData.value || !gameData.value.field) return {};
 
-  // Fixed tile size at 100px
-  tileSize.value = 100;
+  // Fixed tile size (TILE_SIZE)
+  tileSize.value = TILE_SIZE;
 
   // Get field dimensions based on tile positions
   let fieldWidth, fieldHeight;
@@ -1835,6 +1846,34 @@ const isPlayerTurn = computed(() => {
 
 // Fog of war: cells for all positions in the field bounds that don't have a tile
 const dissolvingFogPositions = ref(new Set());
+
+// Torchlight: one light per hero at the position its figure is drawn at
+// (AI playback moves gameData.field.playerPositions step by step, so the light follows)
+const fieldCols = computed(() => {
+  const size = gameData.value?.field?.size;
+  return size && 'maxX' in size ? size.maxX - size.minX + 1 : 1;
+});
+const fieldRows = computed(() => {
+  const size = gameData.value?.field?.size;
+  return size && 'maxY' in size ? size.maxY - size.minY + 1 : 1;
+});
+const torchlightActingId = computed(() => (isAiPlayingBack.value
+  ? (aiPlayback.currentAction.value?.playerId || virtualPlayerIdStored.value)
+  : gameData.value?.state?.currentPlayerId) || null);
+const torchLights = computed(() => {
+  const positions = gameData.value?.field?.playerPositions || {};
+  return Object.entries(positions)
+    .filter(([, position]) => typeof position === 'string' && position.includes(','))
+    .map(([playerId, position]) => {
+      const [x, y] = position.split(',').map(Number);
+      return { x, y, acting: playerId === torchlightActingId.value };
+    })
+    .filter((light) => Number.isFinite(light.x) && Number.isFinite(light.y));
+});
+const torchlightActive = computed(() => gameData.value?.state?.status !== 'finished' && torchLights.value.length > 0);
+watch(() => torchLights.value.map((light) => `${light.x},${light.y}${light.acting ? '*' : ''}`).join(' '), (lit) => {
+  console.debug('[torchlight] lights', lit || 'none', 'acting', torchlightActingId.value);
+});
 
 const fogCells = computed(() => {
   if (!gameData.value?.field?.size) return [];

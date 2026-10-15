@@ -6,6 +6,8 @@ import { parseOrientationString } from './tileUtils';
 import { SPELL_TYPES } from './itemUtils';
 
 // Constants
+/** Size of one field tile in px (Torchlight: 150, as on the canvas boards) */
+export const TILE_SIZE = 150;
 const FIELD_PADDING = 100;
 const TILE_ANIMATION_DURATION = 1000;
 const FIELD_ELEMENT_SELECTOR = '.game-field';
