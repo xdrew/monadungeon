@@ -3,17 +3,20 @@
        `.dice-face` and `data-value` are e2e hooks. -->
   <div
     class="dice-face"
-    :class="{ 'rolling-dice': rolling, 'dice-landed': landed }"
+    :class="{ 'rolling-dice': rolling, 'dice-landed': landed, 'die-rested': rested || !rolling }"
     :data-value="value"
     :style="dieStyle"
   >
     <div class="die-hop">
-      <div class="die-cube">
+      <div
+        class="die-cube"
+        @animationend="onThrowEnd"
+      >
         <div
           v-for="face in FACES"
           :key="face.n"
           class="die-side"
-          :class="`die-side--${face.side}`"
+          :class="[`die-side--${face.side}`, { 'die-side--value': face.n === value }]"
           aria-hidden="true"
         >
           <span
@@ -33,7 +36,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   value: { type: Number, default: 1 },
@@ -77,6 +80,14 @@ const SHOW = {
   4: [0, 90],
   5: [-90, 0],
   6: [0, 180]
+};
+
+// Once the throw has stopped only the face that came up is drawn: the faces turned edge-on
+// would otherwise show as a dark sliver under the die
+const rested = ref(false);
+watch(() => props.rolling, (now) => { if (now) rested.value = false; });
+const onThrowEnd = (e) => {
+  if (String(e.animationName).startsWith('dieThrowSpin')) rested.value = true;
 };
 
 // The value is known from the start: the throw ends on it. `throwFrom` varies the path per die
@@ -149,6 +160,10 @@ const dieStyle = computed(() => {
   height: 16%;
   border-radius: 50%;
   background: radial-gradient(ellipse, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 70%);
+}
+
+.die-rested .die-side:not(.die-side--value) {
+  visibility: hidden;
 }
 
 /* The throw: one motion, not a loop — the die flies in from the side, hits the table, bounces twice
