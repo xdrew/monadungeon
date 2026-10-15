@@ -93,3 +93,4 @@ Constraints carried over: every skill check reads `Player::getHero()` (null whil
 - Subagents: 0 (codebase read directly). 1 Gemini image call (`lord_karak`) billed separately by Google.
 - Output: 4 commits (b6cfaf8..051cea4), 409 PHPUnit green (+25), one migration, 1 portrait. Verify drove five Cursed Rooms through the real API in the php container and found three bugs PHPUnit had missed (event order, TestMode dice not surviving between requests, the GET player-field whitelist); patch 2026-10-15-12.40.
 - Cheapest part of the Regent series: part 1 $38.05, part 2 $22.67, part 3 $10.81 — the variant reuses the Regent rooms, the hero flags and the established test harnesses.
+- Follow-up in the same session: Curse of Karak token art (`curse_token`, 2 Gemini calls, badge icon; ff7243d): $10.81 → $11.99 = **$1.18**.
