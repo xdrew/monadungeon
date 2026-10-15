@@ -83,6 +83,7 @@ export default {
       fights: '{who} walczy',
       movesOn: '{who} idzie dalej',
       seeksPath: '{who} szuka drogi',
+      noMovesLeft: 'Brak ruchów — zakończ turę',
       rests: '{who} odpoczywa',
       ponders: '{who} rozmyśla',
       loot: '{who} zbiera łupy'

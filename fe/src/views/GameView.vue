@@ -1361,6 +1361,9 @@ const bannerHeadline = computed(() => {
   if (showBattleReportModal.value && battleInfo.value?.monsterType) {
     return faces(battleInfo.value.monsterType);
   }
+  // every step of the turn spent: say so, the only thing left is to end it
+  const places = gameData.value?.state?.availablePlaces;
+  if (acting.isYou && places && !places.moveTo?.length && !places.placeTile?.length) return t('hud.headline.noMovesLeft');
   if (acting.isYou || !isVirtualPlayer(acting.player.id)) return t('hud.headline.seeksPath', { who });
   return t('hud.headline.ponders', { who });
 });

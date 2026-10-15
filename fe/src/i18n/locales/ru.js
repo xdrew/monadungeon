@@ -83,6 +83,7 @@ export default {
       fights: '{who} сражается',
       movesOn: '{who} идёт дальше',
       seeksPath: '{who} ищет путь',
+      noMovesLeft: 'Шагов больше нет — завершите ход',
       rests: '{who} отдыхает',
       ponders: '{who} размышляет',
       loot: '{who} собирает добычу'

@@ -84,6 +84,7 @@ export default {
       fights: '{who} fights',
       movesOn: '{who} moves on',
       seeksPath: '{who} seeks a path',
+      noMovesLeft: 'No moves left — end your turn',
       rests: '{who} rests',
       ponders: '{who} ponders',
       loot: '{who} gathers the loot'
