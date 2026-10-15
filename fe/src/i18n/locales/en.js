@@ -28,7 +28,8 @@ export default {
     notFound: '404 Not Found'
   },
   lobby: {
-    description: 'Embark on an epic journey through dangerous dungeons filled with monsters, treasures, and ancient secrets.',
+    prepare: 'Prepare the descent',
+    description: 'Into the dungeon under the mountain — for treasure, and the Dragon\'s hoard.',
     heroesRandom: 'Heroes are dealt at random',
     chooseHero: 'Choose your hero',
     randomHeroes: 'Random heroes',
@@ -44,9 +45,9 @@ export default {
     regentHint: 'Lord Karak rooms, Giant Bats and Skeleton Mages',
     lordKarak: 'Lord Karak variant',
     lordKarakHint: 'At the fifth Lord Karak room the weakest hero becomes Lord Karak',
-    playAi: 'Play Against AI',
-    leaderboard: 'View Leaderboard',
-    rules: 'How to Play',
+    playAi: 'Descend against the AI',
+    leaderboard: 'Hall of fame',
+    rules: 'How to play',
     build: 'Build: {version}',
     creating: 'Creating your adventure...',
     createFailed: 'Failed to create game. Please try again.'
@@ -499,6 +500,7 @@ export default {
     }
   },
   rules: {
+    contents: 'Contents',
     title: '{app} RULES',
     back: 'Back to Lobby',
     overview: {

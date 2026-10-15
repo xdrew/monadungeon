@@ -1,51 +1,70 @@
 <template>
-  <div class="home-container" :style="lobbyStyle">
+  <!-- The lobby: the dungeon full-bleed, the title on the left, preparing the descent on the right -->
+  <div
+    class="home-container"
+    :style="lobbyStyle"
+  >
+    <div
+      class="lobby-shade"
+      aria-hidden="true"
+    />
+
     <!-- Corner tools: language and music -->
     <div class="lobby-tools">
       <LanguageSwitch />
       <MusicToggle />
     </div>
-    
-    <div class="main-content">
-      <!-- Game Options Panel -->
-      <div class="game-panel">
-        <ThemeLogo />
-        <h1 class="title">
-          {{ t('common.appName') }}
-        </h1>
-        <p class="description">
-          {{ t('lobby.description') }}
-        </p>
 
-      <div class="actions">
-        <!-- Hero selection (hero skills from the Karak board game) -->
-        <div class="hero-picker" data-testid="hero-picker">
-          <p class="hero-picker-title">{{ randomHeroes ? t('lobby.heroesRandom') : t('lobby.chooseHero') }}</p>
+    <header class="lobby-title">
+      <ThemeLogo />
+      <h1 class="title">
+        {{ t('common.appName') }}
+      </h1>
+      <p class="description">
+        {{ t('lobby.description') }}
+      </p>
+    </header>
 
-          <!-- Random heroes (the board game rule): you and the AI are dealt different heroes when the game is created -->
-          <label class="regent-toggle random-heroes-toggle" data-testid="random-heroes-toggle">
-            <input v-model="randomHeroes" type="checkbox" data-testid="random-heroes-toggle-input">
-            <span class="regent-toggle-text">
-              <strong>{{ t('lobby.randomHeroes') }}</strong>
-              <span>{{ t('lobby.randomHeroesHint') }}</span>
-            </span>
-          </label>
+    <main class="game-panel">
+      <span class="lobby-caption">{{ t('lobby.prepare') }}</span>
 
-          <div v-if="randomHeroes" class="hero-card hero-card-random" data-testid="hero-card-random">
-            <div class="hero-card-figure">
-              <span class="hero-card-emoji"><GameIcon name="dice" :size="44" /></span>
-            </div>
-            <div class="hero-card-body">
-              <span class="hero-card-role">{{ t('lobby.dealtAtStart') }}</span>
-              <h3 class="hero-card-name">{{ t('lobby.heroAwaits') }}</h3>
-              <p class="hero-skills-none">
-                {{ regentExpansion ? t('lobby.eachGetsHeroRegent') : t('lobby.eachGetsHero') }}
-              </p>
-            </div>
+      <!-- Hero selection (hero skills from the Karak board game) -->
+      <div
+        class="hero-picker"
+        data-testid="hero-picker"
+      >
+        <!-- Random heroes (the board game rule): you and the AI are dealt different heroes when the game is created -->
+        <div
+          v-if="randomHeroes"
+          class="hero-card hero-card-random"
+          data-testid="hero-card-random"
+        >
+          <span class="hero-medallion">
+            <GameIcon
+              name="dice"
+              :size="40"
+            />
+          </span>
+          <div class="hero-card-body">
+            <h3 class="hero-card-name">
+              {{ t('lobby.heroAwaits') }}
+            </h3>
+            <p class="hero-skills-none">
+              {{ regentExpansion ? t('lobby.eachGetsHeroRegent') : t('lobby.eachGetsHero') }}
+            </p>
           </div>
+        </div>
 
-          <!-- roster: one portrait tile per hero; the skills live in the card below -->
-          <div v-if="!randomHeroes" class="hero-roster" :aria-label="t('lobby.heroGroup')" role="radiogroup">
+        <template v-else>
+          <p class="hero-picker-title">
+            {{ t('lobby.chooseHero') }}
+          </p>
+          <!-- roster: one medallion per hero; the skills live in the card below -->
+          <div
+            class="hero-roster"
+            :aria-label="t('lobby.heroGroup')"
+            role="radiogroup"
+          >
             <button
               v-for="card in heroCards"
               :key="card.testid"
@@ -59,115 +78,173 @@
               @click="selectHero(card.key)"
             >
               <span class="hero-tile-figure">
-                <ThemedImage
+                <img
                   :src="card.image"
-                  :emoji="card.emoji"
                   :alt="card.name"
-                  img-class="hero-tile-image"
-                  emoji-class="hero-tile-emoji"
-                />
+                  class="hero-tile-image"
+                >
               </span>
               <span class="hero-tile-name">{{ card.shortName }}</span>
             </button>
           </div>
 
           <!-- the selected hero's card, laid out like a rulebook entry -->
-          <transition v-if="!randomHeroes" name="hero-card" mode="out-in">
+          <transition
+            name="hero-card"
+            mode="out-in"
+          >
             <div
               :key="selectedCard.testid"
               class="hero-card"
               data-testid="hero-card"
             >
-              <div class="hero-card-figure">
-                <ThemedImage
+              <span class="hero-medallion hero-medallion--portrait">
+                <img
                   :src="selectedCard.image"
-                  :emoji="selectedCard.emoji"
                   :alt="selectedCard.name"
-                  img-class="hero-card-image"
-                  emoji-class="hero-card-emoji"
-                />
-              </div>
+                  class="hero-card-image"
+                >
+              </span>
               <div class="hero-card-body">
                 <span class="hero-card-role">{{ selectedCard.role }}</span>
-                <h3 class="hero-card-name">{{ selectedCard.shortName }}</h3>
-                <ul v-if="selectedCard.skills.length" class="hero-skills">
-                  <li v-for="skill in selectedCard.skills" :key="skill.key" class="hero-skill">
+                <h3 class="hero-card-name">
+                  {{ selectedCard.shortName }}
+                </h3>
+                <ul
+                  v-if="selectedCard.skills.length"
+                  class="hero-skills"
+                >
+                  <li
+                    v-for="skill in selectedCard.skills"
+                    :key="skill.key"
+                    class="hero-skill"
+                  >
                     <span class="hero-skill-name">{{ skill.name }}</span>
                     <span class="hero-skill-text">{{ skill.text }}</span>
                   </li>
                 </ul>
-                <p v-else class="hero-skills-none">{{ t('lobby.noSkills') }}</p>
+                <p
+                  v-else
+                  class="hero-skills-none"
+                >
+                  {{ t('lobby.noSkills') }}
+                </p>
               </div>
             </div>
           </transition>
+        </template>
 
+        <!-- The options, one row each -->
+        <div class="lobby-options">
+          <label
+            class="regent-toggle random-heroes-toggle"
+            data-testid="random-heroes-toggle"
+          >
+            <input
+              v-model="randomHeroes"
+              type="checkbox"
+              data-testid="random-heroes-toggle-input"
+            >
+            <span class="regent-toggle-text">
+              <strong>{{ t('lobby.randomHeroes') }}</strong>
+              <span>{{ t('lobby.randomHeroesHint') }}</span>
+            </span>
+          </label>
           <!-- Karak: Regent expansion: mixes the Lord Karak rooms and the new monsters into the game -->
-          <label class="regent-toggle" data-testid="regent-toggle">
-            <input v-model="regentExpansion" type="checkbox" data-testid="regent-toggle-input">
+          <label
+            class="regent-toggle"
+            data-testid="regent-toggle"
+          >
+            <input
+              v-model="regentExpansion"
+              type="checkbox"
+              data-testid="regent-toggle-input"
+            >
             <span class="regent-toggle-text">
               <strong>{{ t('lobby.regent') }}</strong>
               <span>{{ t('lobby.regentHint') }}</span>
             </span>
           </label>
-          <!-- Lord Karak variant: the weakest hero becomes Lord Karak when the fifth Lord Karak room is discovered -->
-          <label v-if="regentExpansion" class="regent-toggle lord-karak-toggle" data-testid="lord-karak-toggle">
-            <input v-model="lordKarakVariant" type="checkbox" data-testid="lord-karak-toggle-input">
+          <!-- Lord Karak variant (needs Regent): the weakest hero becomes Lord Karak at the fifth Lord Karak room -->
+          <label
+            class="regent-toggle lord-karak-toggle"
+            :class="{ 'regent-toggle--off': !regentExpansion }"
+            data-testid="lord-karak-toggle"
+          >
+            <input
+              v-model="lordKarakVariant"
+              type="checkbox"
+              :disabled="!regentExpansion"
+              data-testid="lord-karak-toggle-input"
+            >
             <span class="regent-toggle-text">
               <strong>{{ t('lobby.lordKarak') }}</strong>
               <span>{{ t('lobby.lordKarakHint') }}</span>
             </span>
           </label>
         </div>
+      </div>
 
+      <button
+        type="button"
+        class="primary-button btn btn--ember btn--lg"
+        :disabled="loading"
+        @click="createNewGame"
+      >
+        {{ t('lobby.playAi') }}
+      </button>
+
+      <div class="lobby-links">
         <button
-            class="primary-button btn btn--ember btn--lg"
-            @click="createNewGame"
-            :disabled="loading"
-        >
-          {{ t('lobby.playAi') }}
-        </button>
-        
-        <button 
-          class="secondary-button leaderboard-button btn btn--ghost btn--lg"
-          @click="viewLeaderboard"
-        >
-          <GameIcon name="trophy" />
-          {{ t('lobby.leaderboard') }}
-        </button>
-        
-        <button 
-          class="secondary-button rules-button btn btn--ghost btn--lg"
+          type="button"
+          class="secondary-button rules-button btn btn--ghost"
           @click="viewRules"
         >
-          <GameIcon name="journal" />
+          <GameIcon
+            name="journal"
+            :size="18"
+          />
           {{ t('lobby.rules') }}
         </button>
-        <div v-if="isDev" class="version-info">
-          {{ t('lobby.build', { version: buildVersion }) }}
-        </div>
+        <button
+          type="button"
+          class="secondary-button leaderboard-button btn btn--ghost"
+          @click="viewLeaderboard"
+        >
+          <GameIcon
+            name="trophy"
+            :size="18"
+          />
+          {{ t('lobby.leaderboard') }}
+        </button>
       </div>
 
-        <div
-            v-if="errorMessage"
-            class="error-message"
-        >
-          {{ errorMessage }}
+      <div
+        v-if="errorMessage"
+        class="error-message"
+        role="alert"
+      >
+        {{ errorMessage }}
+      </div>
+      <div
+        v-if="loading"
+        class="loading-indicator"
+      >
+        <div class="spinner">
+          <div class="spinner-inner" />
         </div>
-        <div
-            v-if="loading"
-            class="loading-indicator"
-        >
-          <div class="spinner">
-            <div class="spinner-inner" />
-          </div>
-          <div class="loading-text">
-            {{ loadingMessage }}
-          </div>
+        <div class="loading-text">
+          {{ loadingMessage }}
         </div>
       </div>
-    </div>
+      <div
+        v-if="isDev"
+        class="version-info"
+      >
+        {{ t('lobby.build', { version: buildVersion }) }}
+      </div>
+    </main>
   </div>
-
 </template>
 
 <script setup>
@@ -177,7 +254,6 @@ import { gameApi } from '@/services/api';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import ThemeLogo from '@/components/ThemeLogo.vue';
-import ThemedImage from '@/components/ThemedImage.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { musicService } from '@/services/musicService';
 import { useI18n } from 'vue-i18n';
@@ -215,7 +291,6 @@ const allHeroCards = computed(() => HERO_CARDS.map((card) => {
   return {
     ...card,
     image: hero.image,
-    emoji: hero.emoji,
     name: card.key ? heroName(card.key) : t('lobby.noHero'),
     shortName: card.key ? heroName(card.key, 'short') : t('lobby.noHero'),
     role: card.key ? heroName(card.key, 'role') : t('lobby.noHero'),
@@ -396,490 +471,438 @@ const createNewGame = async () => {
 </script>
 
 <style scoped>
+/* ===== The dungeon behind everything ===== */
+.home-container {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 440px);
+  grid-template-areas: "title panel";
+  align-items: start;
+  column-gap: 48px;
+  padding: 70px 96px 48px;
+  overflow-x: hidden;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background-color: var(--bg-field);
+  background-image: var(--lobby-bg);
+  background-size: cover;
+  background-position: center;
+}
+
+.lobby-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 36% 60%, rgba(var(--ember-rgb), 0.16) 0%, rgba(var(--ember-rgb), 0) 30%),
+    radial-gradient(circle at 36% 58%, rgba(5, 3, 2, 0) 0%, rgba(5, 3, 2, 0.25) 26%, rgba(5, 3, 2, 0.9) 62%),
+    linear-gradient(90deg, rgba(5, 3, 2, 0) 45%, rgba(5, 3, 2, 0.92) 72%);
+}
+
 .lobby-tools {
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 10;
+  z-index: 3;
   display: flex;
   gap: 10px;
 }
 
-.home-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: #0a0a0a;
-  padding: 20px;
+/* ===== Title over the dungeon ===== */
+.lobby-title {
+  grid-area: title;
   position: relative;
-  overflow: hidden;
-}
-
-/* Background image with feathered edges */
-.home-container::before {
-  content: '';
-  position: fixed;
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%);
-  width: 60%;
-  height: 80%;
-  background-image: var(--lobby-bg, none);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: 0.4;
-  mask-image: radial-gradient(ellipse at left center, black 40%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse at left center, black 40%, transparent 70%);
   z-index: 1;
-  pointer-events: none;
-  will-change: auto;
-}
-
-.main-content {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  max-width: 1400px;
-  width: 100%;
-  position: relative;
-  z-index: 2;
-  padding-right: 60px;
-}
-
-/* Game Panel */
-.game-panel {
-  background: transparent;
-  padding: 40px;
-  text-align: center;
-  color: white;
-  width: 100%;
-  max-width: 500px;
+  text-shadow: 0 4px 14px #000;
 }
 
 .title {
-  color: var(--text-accent);
-  margin-bottom: 10px;
-  font-size: 48px;
-  text-shadow: 2px 2px 4px #000;
-  font-weight: bold;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.subtitle {
-  color: #888;
-  margin-bottom: 15px;
-  font-style: italic;
-  font-size: 16px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(72px, 10.5vw, 150px);
+  line-height: 0.85;
+  color: var(--text-heading);
+  text-shadow: 0 0 30px rgba(var(--ember-rgb), 0.45), 0 6px 18px #000;
 }
 
 .description {
-  margin-bottom: 30px;
-  line-height: 1.6;
-  color: #666;
-  font-size: 14px;
+  max-width: 34em;
+  margin: 14px 0 0;
+  font-style: italic;
+  font-size: 20px;
+  line-height: 1.4;
+  color: #d6c3a0;
 }
 
-.version-info {
-  font-size: 10px;
-  color: #666;
-  margin-top: -5px;
-  margin-bottom: 15px;
-}
-
-.actions {
+/* ===== Preparing the descent ===== */
+.game-panel {
+  grid-area: panel;
+  position: relative;
+  z-index: 1;
+  margin-top: 48px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-top: 20px;
+  gap: 18px;
 }
 
-
-
-.hero-picker {
-  margin: 4px 0 14px;
-  text-align: left;
+.lobby-caption,
+.hero-picker-title {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--text-accent);
 }
 
 .hero-picker-title {
-  margin: 0 0 10px;
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #8f86a8;
+  margin: 0;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
 }
 
-/* Roster: a shelf of portrait tiles */
+.hero-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hero-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(var(--ember-rgb), 0.35);
+  background: rgba(10, 6, 4, 0.7);
+}
+
+.hero-medallion {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  color: var(--text-heading);
+  background: radial-gradient(circle at 50% 35%, #3a2416 0%, #0d0805 80%);
+  box-shadow: 0 0 0 3px var(--iron), 0 0 0 5px var(--iron-edge), 0 0 22px rgba(var(--ember-rgb), 0.35);
+}
+
+.hero-medallion--portrait {
+  align-self: flex-start;
+}
+
+.hero-card-image {
+  width: 100%;
+  height: 150%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.hero-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hero-card-role {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-muted);
+}
+
+.hero-card-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text-heading);
+}
+
+.hero-skills-none {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.hero-skills {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hero-skill {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.hero-skill-name {
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.hero-skill-text {
+  color: var(--text-secondary);
+}
+
+.hero-card-enter-active,
+.hero-card-leave-active {
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.hero-card-enter-from,
+.hero-card-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+/* the roster: small medallions in a row */
 .hero-roster {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .hero-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 6px 1px 5px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.35) 100%);
-  color: #9d95b8;
+  gap: 6px;
+  width: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
-}
-
-.hero-tile:hover {
-  border-color: rgba(var(--accent-light-rgb), 0.5);
-  color: #ece8ff;
-  transform: translateY(-2px);
-}
-
-.hero-tile:focus-visible {
-  outline: 2px solid var(--color-primary-hover);
-  outline-offset: 2px;
-}
-
-.hero-tile.selected {
-  border-color: var(--color-primary-hover);
-  color: var(--text-primary);
-  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.16) 0%, rgba(0, 0, 0, 0.45) 100%);
-  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.7), 0 6px 18px rgba(var(--accent-rgb), 0.16);
 }
 
 .hero-tile-figure {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  width: 100%;
-  height: 72px;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #4a3020 0%, #140c07 75%);
+  box-shadow: 0 0 0 2px var(--iron-dark), 0 0 0 4px var(--iron-edge);
+  transition: box-shadow var(--transition-fast);
 }
 
 .hero-tile-image {
-  height: 72px;
-  width: auto;
-  max-width: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.6));
-  transition: filter 0.15s ease;
-}
-
-.hero-tile.selected .hero-tile-image {
-  filter: drop-shadow(0 0 6px rgba(var(--accent-light-rgb), 0.45));
-}
-
-.hero-tile-emoji {
-  font-size: 40px;
-  line-height: 72px;
+  display: block;
+  width: 100%;
+  height: 150%;
+  object-fit: cover;
+  object-position: top;
 }
 
 .hero-tile-name {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.1;
+  text-align: center;
 }
 
-/* Card: the selected hero, laid out like a rulebook entry */
-.hero-card {
-  display: flex;
-  gap: 18px;
-  align-items: stretch;
-  margin-top: 10px;
-  padding: 14px 16px;
-  min-height: 150px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--accent-rgb), 0.35);
-  background:
-    radial-gradient(ellipse at 18% 60%, rgba(207, 113, 40, 0.14) 0%, transparent 55%),
-    linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.5);
-  text-align: left;
+.hero-tile:hover .hero-tile-figure,
+.hero-tile:focus-visible .hero-tile-figure {
+  box-shadow: 0 0 0 2px var(--color-secondary), 0 0 0 4px var(--iron-edge);
 }
 
-.hero-card-figure {
-  flex: 0 0 96px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.hero-tile:focus-visible {
+  outline: none;
 }
 
-.hero-card-image {
-  height: 132px;
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7));
+.hero-tile.selected {
+  color: var(--text-heading);
 }
 
-.hero-card-emoji {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 132px;
-  color: var(--text-accent);
+.hero-tile.selected .hero-tile-figure {
+  box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 4px var(--iron-edge), 0 0 16px rgba(var(--ember-rgb), 0.6);
 }
 
-.hero-card-body {
-  flex: 1 1 auto;
-  min-width: 0;
+/* the options: checkbox rows divided by hairlines */
+.lobby-options {
   display: flex;
   flex-direction: column;
-  justify-content: center;
 }
 
-.hero-card-role {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #8f86a8;
-}
-
-.hero-card-name {
-  margin: 2px 0 10px;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--text-accent);
-  text-shadow: 0 1px 2px #000;
-}
-
-.hero-skills {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hero-skill {
-  display: grid;
-  grid-template-columns: 112px 1fr;
-  gap: 10px;
-  align-items: baseline;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.hero-skill-name {
-  font-weight: 700;
-  color: #ece8ff;
-}
-
-.hero-skill-name::before {
-  content: '\25C6\00A0';
-  color: var(--color-secondary-hover);
-  font-size: 9px;
-  vertical-align: 2px;
-}
-
-.hero-skill-text {
-  color: #b7afd0;
-}
-
-.hero-skills-none {
-  margin: 0;
-  font-size: 13px;
-  color: #b7afd0;
-}
-
-/* Karak: Regent expansion switch */
 .regent-toggle {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  padding: 8px 10px;
-  border: 1px solid rgba(183, 175, 208, 0.25);
-  border-radius: 8px;
+  gap: 14px;
+  min-height: 52px;
+  padding: 8px 14px;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(234, 220, 192, 0.12);
   cursor: pointer;
-  font-size: 13px;
-  line-height: 1.35;
-}
-
-.lord-karak-toggle {
-  margin-left: 16px;
-}
-
-.random-heroes-toggle {
-  margin: 0 0 4px;
 }
 
 .regent-toggle input {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  accent-color: var(--color-secondary-hover);
-  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--color-primary);
+  cursor: inherit;
+}
+
+.lord-karak-toggle {
+  padding-left: 44px;
+}
+
+.regent-toggle--off {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .regent-toggle-text {
   display: flex;
   flex-direction: column;
-  color: #b7afd0;
+  line-height: 1.25;
 }
 
 .regent-toggle-text strong {
-  color: #ece8ff;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-heading);
 }
 
-/* Card swap: the figure steps in from the roster */
-.hero-card-enter-active,
-.hero-card-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+.regent-toggle-text span {
+  font-size: 14px;
+  color: #a8957a;
 }
 
-.hero-card-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
+/* the descent and the links */
+.primary-button {
+  height: 68px;
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: 34px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 30px rgba(var(--ember-rgb), 0.4), inset 0 1px 0 rgba(255, 220, 180, 0.25);
 }
 
-.hero-card-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
+.primary-button:lang(ru) {
+  font-size: 26px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hero-tile,
-  .hero-card-enter-active,
-  .hero-card-leave-active {
-    transition: none;
-  }
+.lobby-links {
+  display: flex;
+  gap: 12px;
 }
 
-@media (max-width: 520px) {
-  .hero-roster {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .hero-card {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-
-  .hero-skill {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
+.lobby-links .btn {
+  flex: 1;
+  min-height: 48px;
+  gap: 8px;
+  font-size: 15px;
 }
 
 .error-message {
-  color: #aa4444;
-  margin-top: 20px;
+  padding: 10px 14px;
+  border: 1px solid rgba(217, 69, 42, 0.6);
+  background: rgba(217, 69, 42, 0.12);
+  color: #f0b5a8;
 }
 
 .loading-indicator {
-  margin-top: 20px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
+  color: var(--text-secondary);
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  position: relative;
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(var(--ember-rgb), 0.2);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
 }
 
 .spinner-inner {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 4px solid transparent;
-  border-top-color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-  animation: rotate 1.5s linear infinite;
+  display: none;
 }
 
-.spinner-inner:before {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  right: 3px;
-  bottom: 3px;
-  border-radius: 50%;
-  border: 3px solid transparent;
-  border-top-color: #2196F3;
-  border-bottom-color: #2196F3;
-  animation: rotate 2s linear infinite reverse;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.loading-text {
-  color: #557755;
-  font-size: 16px;
-  font-weight: 400;
+.version-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
-@keyframes rotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@media (prefers-reduced-motion: reduce) {
+  .hero-card-enter-active,
+  .hero-card-leave-active,
+  .spinner {
+    transition: none;
+    animation: none;
+  }
 }
 
-/* Tablet and Mobile Responsive Design */
+/* ===== Narrow screens: the title above, the panel below, the dungeon behind both ===== */
 @media (max-width: 1024px) {
-  .main-content {
-    justify-content: center;
-    padding-right: 20px;
+  .home-container {
+    grid-template-columns: 1fr;
+    grid-template-areas: "title" "panel";
+    padding: 72px 24px 32px;
+    justify-items: center;
   }
-  
-  .home-container::before {
-    position: fixed;
-    width: 100%;
-    height: 50%;
-    top: 0;
-    left: 0;
-    transform: none;
-    mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-    opacity: 0.3;
-  }
-}
 
-@media (max-width: 768px) {
-  .home-container::before {
-    opacity: 0.25;
+  .lobby-shade {
+    background:
+      radial-gradient(circle at 50% 30%, rgba(var(--ember-rgb), 0.14) 0%, rgba(var(--ember-rgb), 0) 40%),
+      linear-gradient(180deg, rgba(5, 3, 2, 0.35) 0%, rgba(5, 3, 2, 0.85) 45%, rgba(5, 3, 2, 0.95) 100%);
   }
-  
-  .title {
-    font-size: 36px;
+
+  .lobby-title {
+    text-align: center;
   }
-  
+
+  .description {
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 17px;
+  }
+
   .game-panel {
-    padding: 30px 20px;
+    width: 100%;
+    max-width: 480px;
+    margin-top: 32px;
   }
 }
 
 @media (max-width: 480px) {
-  .title {
-    font-size: 32px;
+  .home-container {
+    padding: 72px 16px 24px;
   }
-  
-  .subtitle {
-    font-size: 14px;
+
+  .primary-button {
+    height: 60px;
+    font-size: 28px;
   }
-  
-  .description {
-    font-size: 13px;
+
+  .primary-button:lang(ru) {
+    font-size: 22px;
   }
-  
-  .primary-button,
-  .secondary-button {
-    font-size: 17px;
-    padding: 10px 20px;
-  }
-  
-  .game-panel {
-    padding: 25px 15px;
+
+  .lobby-links {
+    flex-direction: column;
   }
 }
 </style>

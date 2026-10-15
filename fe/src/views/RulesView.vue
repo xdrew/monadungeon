@@ -1,43 +1,79 @@
 <template>
+  <!-- The rules book: a contents list on the left, one column of text, Torchlight type -->
   <div class="rules-container">
-    <MusicToggle />
+    <div class="rules-tools">
+      <LanguageSwitch />
+      <MusicToggle />
+    </div>
+    <header class="rules-header">
+      <button
+        type="button"
+        class="rules-back btn btn--ghost"
+        @click="$router.push('/')"
+      >
+        <GameIcon name="home" :size="18" /> {{ t('rules.back') }}
+      </button>
+      <h1 class="rules-title">{{ t('rules.title', { app: t('common.appName') }) }}</h1>
+    </header>
+
+    <div class="rules-book">
+      <nav
+        class="rules-toc"
+        :aria-label="t('rules.contents')"
+      >
+        <span class="rules-toc__caption">{{ t('rules.contents') }}</span>
+        <ol>
+          <li
+            v-for="section in SECTIONS"
+            :key="section.id"
+          >
+            <a
+              :href="`#${section.id}`"
+              :class="{ active: activeSection === section.id }"
+              :aria-current="activeSection === section.id ? 'location' : undefined"
+              @click.prevent="goTo(section.id)"
+            ><GameIcon :name="section.icon" :size="16" /> {{ t(section.title) }}</a>
+          </li>
+        </ol>
+      </nav>
+
     <div class="rules-content">
-      <div class="rules-header">
-        <h1 class="rules-title">📜 {{ t('rules.title', { app: t('common.appName') }) }}</h1>
-        <button class="back-button" @click="$router.push('/')">
-          ← {{ t('rules.back') }}
-        </button>
-      </div>
 
       <!-- Game Overview -->
-      <section class="rules-section">
-        <h2>🎮 {{ t('rules.overview.title') }}</h2>
+      <section
+        id="overview"
+        class="rules-section"
+      >
+        <h2><GameIcon name="explore" :size="24" /> {{ t('rules.overview.title') }}</h2>
         <p>
           {{ t('rules.overview.text', { app: t('common.appName'), dragon: dragonAcc }) }}
         </p>
         <div class="overview-grid">
           <div class="overview-item">
-            <span class="overview-icon">👥</span>
+            <span class="overview-icon"><GameIcon name="explore" :size="26" /></span>
             <span>{{ t('rules.overview.players') }}</span>
           </div>
           <div class="overview-item">
-            <span class="overview-icon">❤️</span>
+            <span class="overview-icon"><GameIcon name="heart" :size="26" /></span>
             <span>{{ t('rules.overview.hp') }}</span>
           </div>
           <div class="overview-item">
-            <span class="overview-icon">👟</span>
+            <span class="overview-icon"><GameIcon name="sprint" :size="26" /></span>
             <span>{{ t('rules.overview.moves') }}</span>
           </div>
           <div class="overview-item">
-            <span class="overview-icon">🏆</span>
+            <span class="overview-icon"><GameIcon name="trophy" :size="26" /></span>
             <span>{{ t('rules.overview.vp') }}</span>
           </div>
         </div>
       </section>
 
       <!-- Victory Conditions -->
-      <section class="rules-section">
-        <h2>🏆 {{ t('rules.win.title') }}</h2>
+      <section
+        id="win"
+        class="rules-section"
+      >
+        <h2><GameIcon name="trophy" :size="24" /> {{ t('rules.win.title') }}</h2>
         <div class="win-conditions">
           <div class="win-step">
             <span class="step-number">1</span>
@@ -51,16 +87,19 @@
         <div class="vp-sources">
           <h3>{{ t('rules.win.sources') }}</h3>
           <ul>
-            <li>🎁 {{ t('rules.win.chest') }} <strong>{{ t('dialogs.vp', { n: 2 }) }}</strong></li>
-            <li>💎 {{ t('rules.win.ruby', { dragon: dragonAcc }) }} <strong>{{ t('dialogs.vp', { n: 3 }) }}</strong></li>
-            <li>☠️ {{ t('rules.win.fallen', { fallen: monsterName('fallen', 'acc') }) }} <strong>{{ t('dialogs.vp', { n: 2 }) }}</strong></li>
+            <li><img class="inline-marker" src="/images/chest-opened.webp" alt=""> {{ t('rules.win.chest') }} <strong>{{ t('dialogs.vp', { n: 2 }) }}</strong></li>
+            <li><img class="inline-marker" src="/images/ruby-chest.webp" alt=""> {{ t('rules.win.ruby', { dragon: dragonAcc }) }} <strong>{{ t('dialogs.vp', { n: 3 }) }}</strong></li>
+            <li><GameIcon name="skull" :size="18" class="inline-icon" /> {{ t('rules.win.fallen', { fallen: monsterName('fallen', 'acc') }) }} <strong>{{ t('dialogs.vp', { n: 2 }) }}</strong></li>
           </ul>
         </div>
       </section>
 
       <!-- Monsters -->
-      <section class="rules-section">
-        <h2>👹 {{ t('rules.monsters.title') }}</h2>
+      <section
+        id="monsters"
+        class="rules-section"
+      >
+        <h2><GameIcon name="skull" :size="24" /> {{ t('rules.monsters.title') }}</h2>
         <p class="section-intro">
           {{ t('rules.monsters.intro') }}
         </p>
@@ -72,19 +111,18 @@
             :class="{ 'boss-card': monster.boss }"
           >
             <div class="monster-header">
-              <ThemedImage
+              <img
                 :src="monster.image"
-                :emoji="monster.emoji"
                 :alt="monster.name"
-                :img-class="['monster-image', { 'boss-image': monster.boss }]"
-                :emoji-class="['monster-image', 'monster-emoji', { 'boss-image': monster.boss }]"
-              />
+                class="monster-image"
+                :class="{ 'boss-image': monster.boss }"
+              >
               <span class="monster-name">{{ monster.name }}<template v-if="monster.boss"> ({{ t('rules.monsters.boss') }})</template></span>
               <span v-if="monster.regent" class="regent-chip" :title="t('lobby.regent')">{{ t('hud.regent') }}</span>
             </div>
             <div class="monster-stats">
-              <div class="stat">❤️ {{ t('common.hpCount', monster.hp) }}</div>
-              <div class="stat">{{ monster.drop }}</div>
+              <div class="stat stat--hp"><GameIcon name="heart" :size="14" /> {{ t('common.hpCount', monster.hp) }}</div>
+              <div class="stat"><img v-if="monster.dropImage" class="inline-marker" :src="monster.dropImage" alt=""> {{ monster.drop }}</div>
               <div v-if="monster.extra" class="stat">{{ monster.extra }}</div>
             </div>
           </div>
@@ -92,11 +130,14 @@
       </section>
 
       <!-- Items & Consumables -->
-      <section class="rules-section">
-        <h2>🎒 {{ t('rules.items.title') }}</h2>
+      <section
+        id="items"
+        class="rules-section"
+      >
+        <h2><GameIcon name="treasure" :size="24" /> {{ t('rules.items.title') }}</h2>
         
         <div class="items-category">
-          <h3>⚔️ {{ t('rules.items.weapons') }}</h3>
+          <h3><GameIcon name="sword" :size="18" /> {{ t('rules.items.weapons') }}</h3>
           <div class="items-list">
             <div class="item">
               <img class="item-image" src="/images/dagger.webp" :alt="itemName('dagger')" />
@@ -117,7 +158,7 @@
         </div>
 
         <div class="items-category">
-          <h3>🪄 {{ t('rules.items.spells') }}</h3>
+          <h3><GameIcon name="spells" :size="18" /> {{ t('rules.items.spells') }}</h3>
           <div class="items-list">
             <div class="item">
               <img class="item-image" src="/images/fireball.webp" :alt="itemName('fireball')" />
@@ -143,7 +184,7 @@
         </div>
 
         <div class="items-category">
-          <h3>🗝️ {{ t('rules.items.keys') }}</h3>
+          <h3><GameIcon name="key" :size="18" /> {{ t('rules.items.keys') }}</h3>
           <div class="items-list">
             <div class="item">
               <img class="item-image" src="/images/key.webp" :alt="itemName('key')" />
@@ -164,32 +205,35 @@
         </div>
 
         <div class="inventory-limits">
-          <h3>📦 {{ t('rules.items.limits') }}</h3>
+          <h3><GameIcon name="treasure" :size="18" /> {{ t('rules.items.limits') }}</h3>
           <ul>
-            <li>🗝️ {{ t('rules.items.limitKeys') }}</li>
-            <li>⚔️ {{ t('rules.items.limitWeapons') }}</li>
-            <li>🪄 {{ t('rules.items.limitSpells') }}</li>
-            <li>🎁 {{ t('rules.items.limitTreasures') }}</li>
+            <li><GameIcon name="key" :size="16" class="inline-icon" /> {{ t('rules.items.limitKeys') }}</li>
+            <li><GameIcon name="sword" :size="16" class="inline-icon" /> {{ t('rules.items.limitWeapons') }}</li>
+            <li><GameIcon name="spells" :size="16" class="inline-icon" /> {{ t('rules.items.limitSpells') }}</li>
+            <li><GameIcon name="treasure" :size="16" class="inline-icon" /> {{ t('rules.items.limitTreasures') }}</li>
           </ul>
         </div>
       </section>
 
       <!-- Battle System -->
-      <section class="rules-section">
-        <h2>⚔️ {{ t('rules.battle.title') }}</h2>
+      <section
+        id="battle"
+        class="rules-section"
+      >
+        <h2><GameIcon name="sword" :size="24" /> {{ t('rules.battle.title') }}</h2>
         <div class="battle-flow">
           <div class="battle-step">
-            <span class="step-icon">🎲</span>
+            <span class="step-icon"><GameIcon name="dice" :size="28" /></span>
             <h3>{{ t('rules.battle.roll') }}</h3>
             <p>{{ t('rules.battle.rollText') }}</p>
           </div>
           <div class="battle-step">
-            <span class="step-icon">➕</span>
+            <span class="step-icon"><GameIcon name="sword" :size="28" /></span>
             <h3>{{ t('rules.battle.bonuses') }}</h3>
             <p>{{ t('rules.battle.bonusesText') }}</p>
           </div>
           <div class="battle-step">
-            <span class="step-icon">⚖️</span>
+            <span class="step-icon"><GameIcon name="swap" :size="28" /></span>
             <h3>{{ t('rules.battle.compare') }}</h3>
             <p>{{ t('rules.battle.compareText') }}</p>
           </div>
@@ -210,11 +254,14 @@
       </section>
 
       <!-- Special Mechanics -->
-      <section class="rules-section">
-        <h2>✨ {{ t('rules.mechanics.title') }}</h2>
+      <section
+        id="mechanics"
+        class="rules-section"
+      >
+        <h2><GameIcon name="spells" :size="24" /> {{ t('rules.mechanics.title') }}</h2>
         
         <div class="mechanic">
-          <h3>💀 {{ t('rules.mechanics.stunned') }}</h3>
+          <h3><GameIcon name="skull" :size="18" /> {{ t('rules.mechanics.stunned') }}</h3>
           <p>{{ t('rules.mechanics.stunnedIntro') }}</p>
           <ul>
             <li v-for="n in 3" :key="`stunned-${n}`">{{ t(`rules.mechanics.stunned${n}`) }}</li>
@@ -222,7 +269,7 @@
         </div>
 
         <div class="mechanic">
-          <h3>⛲ {{ t('rules.mechanics.fountains') }}</h3>
+          <h3><GameIcon name="heart" :size="18" /> {{ t('rules.mechanics.fountains') }}</h3>
           <p>{{ t('rules.mechanics.fountainsIntro') }}</p>
           <ul>
             <li v-for="n in 2" :key="`fountain-${n}`">{{ t(`rules.mechanics.fountain${n}`) }}</li>
@@ -230,14 +277,18 @@
         </div>
 
         <div class="mechanic">
-          <h3>🌀 {{ t('rules.mechanics.gates') }}</h3>
+          <h3><GameIcon name="swap" :size="18" /> {{ t('rules.mechanics.gates') }}</h3>
           <p>{{ t('rules.mechanics.gatesText') }}</p>
         </div>
       </section>
 
       <!-- Karak: Regent expansion -->
-      <section class="rules-section" data-testid="rules-regent">
-        <h2>👑 {{ t('rules.regent.title') }}</h2>
+      <section
+        id="regent"
+        class="rules-section"
+        data-testid="rules-regent"
+      >
+        <h2><GameIcon name="crown" :size="24" /> {{ t('rules.regent.title') }}</h2>
         <p class="section-intro">
           {{ t('rules.regent.intro') }}
         </p>
@@ -257,7 +308,7 @@
         </div>
 
         <div class="mechanic" data-testid="rules-hero-dealing">
-          <h3>🎲 {{ t('rules.regent.dealing') }}</h3>
+          <h3><GameIcon name="dice" :size="18" /> {{ t('rules.regent.dealing') }}</h3>
           <ul>
             <I18nT scope="global" keypath="rules.regent.dealing1" tag="li">
               <template #toggle><strong>{{ t('lobby.randomHeroes') }}</strong></template>
@@ -268,7 +319,7 @@
         </div>
 
         <div class="mechanic" data-testid="rules-regent-heroes">
-          <h3>🦸 {{ t('rules.regent.heroes') }} <span class="regent-chip">{{ t('hud.regent') }}</span></h3>
+          <h3><GameIcon name="crown" :size="18" /> {{ t('rules.regent.heroes') }} <span class="regent-chip">{{ t('hud.regent') }}</span></h3>
           <ul>
             <li v-for="hero in REGENT_HEROES" :key="hero.key">
               <I18nT scope="global" :keypath="`rules.regent.${hero.key}`" tag="span">
@@ -282,7 +333,7 @@
         </div>
 
         <div class="mechanic" data-testid="rules-lord-karak">
-          <h3>👑 {{ t('lobby.lordKarak') }} <span class="regent-chip">{{ t('hud.regent') }}</span></h3>
+          <h3><GameIcon name="crown" :size="18" /> {{ t('lobby.lordKarak') }} <span class="regent-chip">{{ t('hud.regent') }}</span></h3>
           <I18nT scope="global" keypath="rules.regent.lordKarakText" tag="p">
             <template #room><strong>{{ t('rules.regent.fifthRoom') }}</strong></template>
           </I18nT>
@@ -293,8 +344,11 @@
       </section>
 
       <!-- Turn Structure -->
-      <section class="rules-section">
-        <h2>🎯 {{ t('rules.turn.title') }}</h2>
+      <section
+        id="turn"
+        class="rules-section"
+      >
+        <h2><GameIcon name="hourglass" :size="24" /> {{ t('rules.turn.title') }}</h2>
         <div class="turn-info">
           <I18nT scope="global" keypath="rules.turn.moves" tag="p">
             <template #actions><strong>{{ t('rules.turn.actions') }}</strong></template>
@@ -312,8 +366,11 @@
       </section>
 
       <!-- Quick Tips -->
-      <section class="rules-section">
-        <h2>💡 {{ t('rules.tips.title') }}</h2>
+      <section
+        id="tips"
+        class="rules-section"
+      >
+        <h2><GameIcon name="eye" :size="24" /> {{ t('rules.tips.title') }}</h2>
         <div class="tips-grid">
           <div class="tip">
             <span class="tip-icon"><img class="item-tip-image" src="/images/key.webp" :alt="itemName('key')" /></span>
@@ -328,39 +385,42 @@
             <p>{{ t('rules.tips.healing') }}</p>
           </div>
           <div class="tip">
-            <span class="tip-icon"><ThemedImage :src="dragon.image" :emoji="dragon.emoji" :alt="monsterName('dragon')" img-class="monster-image" emoji-class="monster-image monster-emoji" /></span>
+            <span class="tip-icon"><img class="item-tip-image" :src="dragon.image" :alt="monsterName('dragon')"></span>
             <p>{{ t('rules.tips.dragon', { dragon: dragonAcc }) }}</p>
           </div>
         </div>
       </section>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { I18nT, useI18n } from 'vue-i18n';
 import MusicToggle from '@/components/game/MusicToggle.vue';
-import ThemedImage from '@/components/ThemedImage.vue';
+import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { musicService } from '@/services/musicService';
 import { getMonster } from '@/theme';
 import { monsterName, itemName, heroName } from '@/i18n/names';
+import { getItemImage } from '@/utils/itemUtils';
 
 const { t } = useI18n();
 
 // Monster stats from the rulebook; images come from the active theme, names and drops from the locale
 const MONSTER_RULES = [
-  { key: 'giant_rat', hp: 5, icon: '🗡️' },
-  { key: 'giant_spider', hp: 6, icon: '✨' },
-  { key: 'mummy', hp: 7, icon: '🔥' },
-  { key: 'skeleton_turnkey', hp: 8, icon: '🗝️' },
-  { key: 'skeleton_warrior', hp: 9, icon: '🗡️' },
-  { key: 'skeleton_king', hp: 10, icon: '🪓' },
-  { key: 'fallen', hp: 12, icon: '🎁' },
-  { key: 'dragon', hp: 15, icon: '💎', boss: true },
+  { key: 'giant_rat', hp: 5, reward: 'dagger' },
+  { key: 'giant_spider', hp: 6, reward: 'teleport' },
+  { key: 'mummy', hp: 7, reward: 'fireball' },
+  { key: 'skeleton_turnkey', hp: 8, reward: 'key' },
+  { key: 'skeleton_warrior', hp: 9, reward: 'sword' },
+  { key: 'skeleton_king', hp: 10, reward: 'axe' },
+  { key: 'fallen', hp: 12, reward: 'chest' },
+  { key: 'dragon', hp: 15, reward: 'ruby_chest', boss: true },
   // Karak: Regent expansion
-  { key: 'giant_bat', hp: 6, icon: '🌑', regent: true },
-  { key: 'skeleton_mage', hp: 11, icon: '🧊', regent: true }
+  { key: 'giant_bat', hp: 6, reward: 'dark_thorn', regent: true },
+  { key: 'skeleton_mage', hp: 11, reward: 'frost_fist', regent: true }
 ];
 
 // Karak: Regent heroes and their two skills, in the order of the rules list
@@ -375,459 +435,567 @@ const monsterCards = computed(() => MONSTER_RULES.map((rule) => ({
   ...rule,
   ...getMonster(rule.key),
   name: monsterName(rule.key),
-  drop: `${rule.icon} ${t(`rules.monsters.drops.${rule.key}`)}`,
-  extra: rule.boss ? `🏁 ${t('rules.monsters.endsGame')}` : null
+  drop: t(`rules.monsters.drops.${rule.key}`),
+  dropImage: getItemImage({ type: rule.reward }),
+  extra: rule.boss ? t('rules.monsters.endsGame') : null
 })));
 const dragon = getMonster('dragon');
 const dragonAcc = computed(() => monsterName('dragon', 'acc'));
 
+// The contents: one entry per section, the section in view is highlighted
+const SECTIONS = [
+  { id: 'overview', icon: 'explore', title: 'rules.overview.title' },
+  { id: 'win', icon: 'trophy', title: 'rules.win.title' },
+  { id: 'monsters', icon: 'skull', title: 'rules.monsters.title' },
+  { id: 'items', icon: 'treasure', title: 'rules.items.title' },
+  { id: 'battle', icon: 'sword', title: 'rules.battle.title' },
+  { id: 'mechanics', icon: 'spells', title: 'rules.mechanics.title' },
+  { id: 'regent', icon: 'crown', title: 'rules.regent.title' },
+  { id: 'turn', icon: 'hourglass', title: 'rules.turn.title' },
+  { id: 'tips', icon: 'eye', title: 'rules.tips.title' }
+];
+const activeSection = ref(SECTIONS[0].id);
+const goTo = (id) => {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  activeSection.value = id;
+  history.replaceState(null, '', `#${id}`);
+};
+let observer = null;
+
 onMounted(() => {
-  // Initialize music service with placeholder URL
-  // Music continues from home view if already playing
+  // Music continues from the lobby if it is already playing
   musicService.init('/music/game-theme.mp3');
+
+  // The topmost section crossing the upper third of the screen is the current one
+  observer = new IntersectionObserver((entries) => {
+    const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+    if (visible.length) activeSection.value = visible[0].target.id;
+  }, { rootMargin: '0px 0px -66% 0px' });
+  SECTIONS.forEach(({ id }) => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+  if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
 });
 
 onBeforeUnmount(() => {
-  // Music continues playing when navigating away
+  observer?.disconnect();
 });
 </script>
 
 <style scoped>
+/* ===== The rules book ===== */
 .rules-container {
+  position: relative;
   min-height: 100vh;
-  background: var(--gradient-dark);
-  color: #e0e0e0;
-  padding: 20px;
+  box-sizing: border-box;
+  padding: 28px 32px 64px;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background-color: var(--bg-field);
+  background-image:
+    radial-gradient(ellipse at 50% -10%, rgba(var(--ember-rgb), 0.14) 0%, rgba(0, 0, 0, 0) 45%),
+    radial-gradient(ellipse at 50% 120%, rgba(60, 35, 20, 0.5) 0%, rgba(0, 0, 0, 0) 60%);
 }
 
-.rules-content {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.rules-header {
+.rules-tools {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 40px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #ffd700;
-}
-
-.rules-title {
-  font-size: 3rem;
-  text-transform: uppercase;
-  background: linear-gradient(45deg, #ffd700, #ffed4e);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.back-button {
-  background: rgba(255, 215, 0, 0.2);
-  border: 2px solid #ffd700;
-  color: #ffd700;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.back-button:hover {
-  background: rgba(255, 215, 0, 0.3);
-  transform: translateY(-2px);
-}
-
-.rules-section {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  padding: 30px;
-  margin-bottom: 30px;
-  border: 1px solid rgba(255, 215, 0, 0.2);
-}
-
-.rules-section h2 {
-  color: #ffd700;
-  font-size: 2rem;
-  margin-bottom: 20px;
-  border-bottom: 2px solid rgba(255, 215, 0, 0.3);
-  padding-bottom: 10px;
-}
-
-.rules-section h3 {
-  color: #ffed4e;
-  font-size: 1.3rem;
-  margin: 20px 0 10px;
-}
-
-.section-intro {
-  font-size: 1.1rem;
-  margin-bottom: 20px;
-  color: #b0b0b0;
-}
-
-/* Overview Grid */
-.overview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
-}
-
-.overview-item {
-  background: rgba(255, 215, 0, 0.1);
-  padding: 15px;
-  border-radius: 8px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
   gap: 10px;
 }
 
-.overview-icon {
-  font-size: 2rem;
-}
-
-/* Win Conditions */
-.win-conditions {
+.rules-header {
+  max-width: 1100px;
+  margin: 0 auto 28px;
   display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.win-step {
-  flex: 1;
-  background: rgba(255, 215, 0, 0.1);
-  padding: 20px;
-  border-radius: 8px;
-  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
+  text-align: center;
 }
 
-.step-number {
-  background: #ffd700;
-  color: var(--bg-field);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 1.5rem;
+.rules-back {
+  align-self: flex-start;
+  gap: 8px;
+  min-height: 44px;
 }
 
-.vp-sources {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 20px;
-  border-radius: 8px;
+.rules-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(40px, 6vw, 72px);
+  line-height: 1;
+  color: var(--text-heading);
+  text-shadow: 0 0 24px rgba(var(--ember-rgb), 0.4), 0 4px 12px #000;
 }
 
-.vp-sources ul {
-  list-style: none;
-  padding: 0;
-}
-
-.vp-sources li {
-  padding: 8px 0;
-  font-size: 1.1rem;
-}
-
-/* Monsters Grid */
-.monsters-grid {
+.rules-book {
+  max-width: 1100px;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
+  grid-template-columns: 240px minmax(0, 760px);
+  justify-content: center;
+  gap: 48px;
+}
+
+/* ===== Contents ===== */
+.rules-toc {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
+.rules-toc__caption {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
+.rules-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid rgba(234, 220, 192, 0.15);
+}
+
+.rules-toc a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 12px;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 15px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.rules-toc a:hover,
+.rules-toc a:focus-visible {
+  outline: none;
+  color: var(--text-heading);
+}
+
+.rules-toc a.active {
+  border-left-color: var(--color-primary);
+  color: var(--text-heading);
+}
+
+.rules-toc a.active :deep(svg) {
+  color: var(--color-primary);
+}
+
+/* ===== Text ===== */
+.rules-content {
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.rules-section {
+  padding: 8px 0 32px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(234, 220, 192, 0.1);
+  scroll-margin-top: 24px;
+}
+
+.rules-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 1.1;
+  color: var(--text-heading);
+}
+
+.rules-section h2 :deep(svg) {
+  color: var(--color-primary);
+}
+
+.rules-section h3 {
+  margin: 20px 0 8px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.15;
+  color: var(--text-heading);
+}
+
+.rules-section h3 :deep(svg) {
+  margin-right: 6px;
+  vertical-align: -2px;
+  color: var(--text-accent);
+}
+
+.rules-section p {
+  margin: 0 0 10px;
+}
+
+.rules-section ul {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+
+.rules-section li {
+  margin-bottom: 6px;
+}
+
+.rules-section li::marker {
+  color: var(--color-secondary);
+}
+
+.rules-section strong {
+  color: var(--text-heading);
+}
+
+.rules-section em {
+  color: var(--text-accent);
+  font-style: normal;
+}
+
+.section-intro {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.inline-marker {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  vertical-align: -5px;
+}
+
+.inline-icon {
+  vertical-align: -3px;
+  color: var(--text-accent);
 }
 
 .regent-chip {
   display: inline-block;
-  margin-left: 6px;
-  padding: 1px 7px;
-  border-radius: 8px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #ffe9c7;
-  background: rgba(181, 84, 28, 0.55);
+  padding: 1px 8px;
+  border: 1px solid rgba(var(--ember-rgb), 0.5);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-accent);
   vertical-align: middle;
 }
 
-.inline-marker {
-  width: 24px;
-  height: 24px;
-  vertical-align: middle;
+/* overview: four facts in a row */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
 }
 
-.monster-card {
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid rgba(255, 215, 0, 0.3);
-  border-radius: 12px;
-  padding: 20px;
-  transition: all 0.3s;
-}
-
-.monster-card:hover {
-  transform: translateY(-5px);
-  border-color: #ffd700;
-  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
-}
-
-.monster-card.boss-card {
-  grid-column: span 2;
-  background: linear-gradient(135deg, rgba(255, 0, 0, 0.1), rgba(0, 0, 0, 0.5));
-  border-color: #ff6b6b;
-}
-
-.monster-header {
+.overview-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 15px;
+  padding: 10px 12px;
+  border: 1px solid rgba(234, 220, 192, 0.15);
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 15px;
 }
 
-.monster-image {
-  width: 48px;
-  height: 48px;
-  image-rendering: pixelated;
-  object-fit: contain;
-  border: 2px solid rgba(255, 215, 0, 0.3);
-  border-radius: 8px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.5);
+.overview-icon {
+  display: inline-flex;
+  color: var(--color-primary);
 }
 
-.monster-image.boss-image {
-  width: 56px;
-  height: 56px;
-  border-color: #ff6b6b;
-  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
-}
-
-.monster-image.monster-emoji {
-  font-size: 26px;
-}
-
-.monster-image.monster-emoji.boss-image {
-  font-size: 32px;
-}
-
-.monster-name {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #ffd700;
-}
-
-.monster-stats {
+/* victory: numbered steps */
+.win-conditions {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.stat {
-  padding: 5px 0;
-  font-size: 0.95rem;
+.win-step {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
 }
 
-/* Items */
-.items-category {
-  margin-bottom: 30px;
+.step-number {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1;
+  color: var(--color-primary);
 }
 
-.items-list {
+.vp-sources ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+/* monsters: rows like a bestiary */
+.monsters-grid {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.monster-card {
   display: grid;
-  gap: 15px;
-  margin-top: 15px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(234, 220, 192, 0.08);
+}
+
+.monster-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.monster-image {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 4px #000);
+}
+
+.boss-image {
+  width: 72px;
+  height: 72px;
+  filter: drop-shadow(0 0 14px rgba(var(--ember-rgb), 0.5)) drop-shadow(0 4px 4px #000);
+}
+
+.monster-name {
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.boss-card .monster-name {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 24px;
+  color: var(--text-accent);
+}
+
+.monster-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat--hp {
+  color: var(--text-heading);
+}
+
+.stat--hp :deep(svg) {
+  color: var(--color-danger);
+  fill: var(--color-danger);
+}
+
+/* items */
+.items-list {
+  display: flex;
+  flex-direction: column;
 }
 
 .item {
-  background: rgba(30, 30, 30, 0.3);
-  padding: 15px;
-  border-radius: 8px;
   display: grid;
-  grid-template-columns: 48px 150px 1fr;
+  grid-template-columns: 40px minmax(120px, 0.6fr) 1fr;
   align-items: center;
-  gap: 15px;
-  border: 1px solid #222;
-}
-
-.item-icon {
-  font-size: 1.5rem;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(234, 220, 192, 0.08);
 }
 
 .item-image {
-  width: 48px;
-  height: 48px;
-  image-rendering: pixelated;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
-  border: 2px solid rgba(255, 215, 0, 0.2);
-  border-radius: 8px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.5);
 }
 
 .item-name {
-  font-weight: bold;
-  color: #ffd700;
+  font-weight: 600;
+  color: var(--text-heading);
 }
 
 .item-effect {
-  color: #b0b0b0;
-}
-
-.inventory-limits {
-  background: rgba(255, 215, 0, 0.05);
-  padding: 20px;
-  border-radius: 8px;
-  margin-top: 20px;
+  font-size: 15px;
+  color: var(--text-secondary);
 }
 
 .inventory-limits ul {
   list-style: none;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
+  padding-left: 0;
 }
 
-/* Battle System */
+/* battle: three steps, then the outcomes */
 .battle-flow {
-  display: flex;
-  justify-content: space-around;
-  margin: 30px 0;
-  flex-wrap: wrap;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .battle-step {
-  text-align: center;
-  flex: 1;
-  min-width: 150px;
+  padding: 12px 14px;
+  border: 1px solid rgba(234, 220, 192, 0.15);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.battle-step h3 {
+  margin-top: 6px;
+  font-size: 20px;
+}
+
+.battle-step p {
+  font-size: 15px;
+  color: var(--text-secondary);
 }
 
 .step-icon {
-  font-size: 3rem;
-  display: block;
-  margin-bottom: 10px;
+  display: inline-flex;
+  color: var(--color-primary);
 }
 
 .battle-outcomes {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 20px;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .outcome {
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 6px;
-}
-
-.outcome.win {
-  background: rgba(var(--accent-light-rgb), 0.1);
-  border-left: 4px solid var(--color-primary);
-}
-
-.outcome.draw {
-  background: rgba(255, 255, 0, 0.1);
-  border-left: 4px solid #ffff00;
-}
-
-.outcome.lose {
-  background: rgba(255, 0, 0, 0.1);
-  border-left: 4px solid #ff0000;
-}
-
-/* Special Mechanics */
-.mechanic {
-  background: rgba(255, 215, 0, 0.05);
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.mechanic h3 {
-  margin-top: 0;
-}
-
-.mechanic ul {
-  margin: 10px 0;
-  padding-left: 25px;
-}
-
-/* Turn Structure */
-.turn-info {
+  padding: 8px 12px;
+  border-left: 3px solid var(--iron);
   background: rgba(0, 0, 0, 0.3);
-  padding: 20px;
-  border-radius: 8px;
+  font-size: 15px;
 }
 
-.turn-info ul {
-  margin: 10px 0;
-  padding-left: 25px;
+.outcome.win { border-left-color: var(--color-primary); }
+.outcome.draw { border-left-color: var(--text-primary); }
+.outcome.lose { border-left-color: var(--color-danger); }
+
+.mechanic {
+  margin-bottom: 8px;
 }
 
-/* Tips */
+/* tips: image + one line each */
 .tips-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
 .tip {
-  background: rgba(255, 215, 0, 0.1);
-  padding: 20px;
-  border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 15px;
-  border: 1px solid rgba(255, 215, 0, 0.2);
-}
-
-.tip-icon {
-  font-size: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.item-tip-image {
-  width: 32px;
-  height: 32px;
-  image-rendering: pixelated;
-  object-fit: contain;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(234, 220, 192, 0.15);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .tip p {
   margin: 0;
-  flex: 1;
+  font-size: 15px;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .rules-title {
-    font-size: 2rem;
+.tip-icon {
+  flex: none;
+}
+
+.item-tip-image {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+/* ===== Narrow screens: the contents above the text ===== */
+@media (max-width: 900px) {
+  .rules-container {
+    padding: 80px 16px 48px;
   }
-  
-  .rules-header {
-    flex-direction: column;
-    gap: 20px;
+
+  .rules-book {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
   }
-  
-  .win-conditions {
-    flex-direction: column;
+
+  .rules-tools {
+    position: absolute;
   }
-  
-  .monster-card.boss-card {
-    grid-column: span 1;
+
+  .rules-section h2 :deep(svg) {
+    flex: none;
   }
-  
-  .battle-flow {
-    flex-direction: column;
+
+  .rules-toc {
+    position: static;
+    padding: 12px 14px;
+    border: 1px solid rgba(234, 220, 192, 0.15);
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  .rules-toc ol {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    border-left: 0;
+  }
+
+  .rules-toc a {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .rules-section h2 {
+    font-size: 30px;
+  }
+
+  .battle-flow,
+  .tips-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .monster-card {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .item {
+    grid-template-columns: 40px 1fr;
+    row-gap: 2px;
+  }
+
+  .item-image {
+    grid-row: span 2;
+  }
+
+  .item-effect {
+    grid-column: 2;
   }
 }
 </style>

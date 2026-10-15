@@ -27,7 +27,8 @@ export default {
     notFound: '404 — nie znaleziono'
   },
   lobby: {
-    description: 'Wyrusz w niebezpieczną wyprawę przez podziemia pełne potworów, skarbów i pradawnych tajemnic.',
+    prepare: 'Przygotowanie do zejścia',
+    description: 'Do lochów pod górą — po skarby i smoczy skarbiec.',
     heroesRandom: 'Bohaterowie są losowani',
     chooseHero: 'Wybierz bohatera',
     randomHeroes: 'Losowi bohaterowie',
@@ -43,8 +44,8 @@ export default {
     regentHint: 'Komnaty Władcy Karaku, ogromne nietoperze i lodowe szkieletory',
     lordKarak: 'Wariant Władca Karaku',
     lordKarakHint: 'W piątej komnacie Władcy Karaku najsłabszy bohater staje się Władcą Karaku',
-    playAi: 'Graj przeciwko SI',
-    leaderboard: 'Ranking',
+    playAi: 'Zejdź do lochów przeciw SI',
+    leaderboard: 'Galeria sław',
     rules: 'Jak grać',
     build: 'Wersja: {version}',
     creating: 'Przygotowujemy twoją przygodę...',
@@ -498,6 +499,7 @@ export default {
     }
   },
   rules: {
+    contents: 'Spis treści',
     title: '{app}: zasady',
     back: 'Do lobby',
     overview: {
