@@ -18,9 +18,9 @@
           type="button"
           class="party-member__medallion"
           :aria-label="t('hud.showKit', { name: entry.name })"
-          :aria-expanded="openId === entry.player.id"
-          @click="toggle(entry.player.id, $event)"
-          @mouseenter="hoverKit(entry.player.id, $event)"
+          :aria-expanded="compact ? openId === entry.player.id : undefined"
+          @click="toggle(entry.player.id)"
+          @mouseenter="hoverId = entry.player.id"
           @mouseleave="hoverId = null"
         >
           <img
@@ -88,11 +88,23 @@
             /> {{ startingRoll(entry.player) }}</span>
           </span>
         </div>
+        <!-- Everyone else's kit, always in sight (yours is the pack, bottom left) -->
         <div
-          v-if="openId === entry.player.id || hoverId === entry.player.id"
+          v-if="!entry.isYou && !compact"
+          class="party-member__kit-inline"
+          role="group"
+          :aria-label="t('hud.kitOf', { name: entry.name })"
+        >
+          <InventorySlots
+            :inventory="entry.player.inventory || {}"
+            :hero-flags="entry.player.heroFlags || {}"
+            size="sm"
+          />
+        </div>
+        <!-- Phones: no room for the kit in the strip — a tap on the medallion opens it -->
+        <div
+          v-if="compact && (openId === entry.player.id || hoverId === entry.player.id)"
           class="party-member__kit"
-          :class="{ 'party-member__kit--floating': kitPos }"
-          :style="kitPos ? { top: `${kitPos.top}px`, left: `${kitPos.left}px` } : undefined"
           role="group"
           :aria-label="t('hud.kitOf', { name: entry.name })"
         >
@@ -109,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { heroName } from '@/i18n/names';
 import GameIcon from '@/components/ui/GameIcon.vue';
@@ -134,26 +146,15 @@ const { t } = useI18n();
 const openId = ref(null);
 const hoverId = ref(null);
 
-// On wide screens the rail scrolls, and a scroll box clips what hangs out of it: the kit floats in the
-// viewport instead (position: fixed), placed where it used to hang — right of the medallion, under the row.
-// On phones the rail is a plain strip and the kit keeps its CSS place.
-const kitPos = ref(null);
-const isCompact = () => window.matchMedia('(max-width: 768px), (max-height: 500px)').matches;
-const placeKit = (event) => {
-  if (isCompact()) {
-    kitPos.value = null;
-    return;
-  }
-  const row = event.currentTarget.closest('.party-member');
-  const medallion = event.currentTarget.getBoundingClientRect();
-  kitPos.value = { top: row.getBoundingClientRect().bottom - 4, left: medallion.right };
-};
-const hoverKit = (playerId, event) => {
-  placeKit(event);
-  hoverId.value = playerId;
-};
-const toggle = (playerId, event) => {
-  if (event) placeKit(event);
+// Phones and short screens: the rail is a strip of medallions and the kits open on a tap
+const COMPACT = '(max-width: 768px), (max-height: 500px)';
+const media = window.matchMedia(COMPACT);
+const compact = ref(media.matches);
+const onMedia = (e) => { compact.value = e.matches; };
+onMounted(() => media.addEventListener('change', onMedia));
+onUnmounted(() => media.removeEventListener('change', onMedia));
+
+const toggle = (playerId) => {
   openId.value = openId.value === playerId ? null : playerId;
 };
 
@@ -199,6 +200,7 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 .party-member {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
   --ring: var(--iron-dark);
@@ -261,6 +263,8 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 }
 
 .party-member__body {
+  /* takes the rest of the row instead of wrapping under the medallion */
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -365,9 +369,10 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
   color: var(--text-secondary);
 }
 
-.party-member__kit--floating {
-  position: fixed !important;
-  z-index: 30;
+/* under the whole row, from the medallion on: room for a full row of slots */
+.party-member__kit-inline {
+  flex-basis: 100%;
+  margin: -4px 0 0 36px;
 }
 
 .party-member__kit {
