@@ -9,93 +9,135 @@
       :aria-label="$t('dialogs.inventoryFull')"
     >
       <span class="inv-caption">{{ $t('dialogs.inventoryFull') }}</span>
-
-      <!-- the find -->
-      <div
-        class="inv-found"
-        :class="itemCategoryClass(droppedItem)"
-      >
-        <span class="inv-found__icon">
-          <img
-            v-if="getItemImage(droppedItem)"
-            :src="getItemImage(droppedItem)"
-            :alt="getDisplayName(droppedItem)"
-            class="inv-found__img"
-            :class="`inv-img--${droppedItem.type}`"
-          >
-          <GameIcon
-            v-else
-            name="treasure"
-            :size="44"
-          />
-        </span>
-        <span class="inv-found__text">
-          <span class="inv-found__name">{{ getDisplayName(droppedItem) }}</span>
-          <span class="inv-found__stats">
-            <span
-              v-if="getItemDamage(droppedItem) > 0"
-              class="inv-stat"
-            ><GameIcon
-              name="sword"
-              :size="15"
-            /> +{{ getItemDamage(droppedItem) }}</span>
-            <span
-              v-if="droppedItem.treasureValue > 0"
-              class="inv-stat inv-stat--gold"
-            ><GameIcon
-              name="treasure"
-              :size="15"
-            /> {{ droppedItem.treasureValue }}</span>
-            <span
-              v-if="['fireball', 'frost_fist', 'dark_thorn'].includes(droppedItem.type)"
-              class="inv-stat inv-stat--note"
-            ><GameIcon
-              name="spells"
-              :size="15"
-            /> {{ $t('dialogs.consumable') }}</span>
-          </span>
-        </span>
-      </div>
-
-      <!-- what goes -->
       <p class="inv-prompt">
         {{ replaceLabel(itemCategory) }}
       </p>
-      <div class="replace-items">
-        <button
-          v-for="item in inventoryForCategory"
-          :key="item.itemId"
-          type="button"
-          class="replace-item"
-          :class="{ selected: selectedItemToReplace && selectedItemToReplace.itemId === item.itemId }"
-          :aria-label="`${getDisplayName(item)} — ${$t('dialogs.dropForFind')}`"
-          @click="dropAndTake(item)"
+
+      <!-- the find, with an ember arrow to every item it could take the place of -->
+      <div
+        ref="swapEl"
+        class="inv-swap"
+      >
+        <svg
+          class="inv-arrows"
+          :width="arrowBox.w"
+          :height="arrowBox.h"
+          aria-hidden="true"
         >
-          <img
-            v-if="getItemImage(item)"
-            :src="getItemImage(item)"
-            alt=""
-            class="replace-item-img"
-            :class="`inv-img--${item.type}`"
-          >
-          <GameIcon
-            v-else
-            name="treasure"
-            :size="32"
+          <defs>
+            <marker
+              id="inv-arrowhead"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path
+                d="M0 0 L10 5 L0 10 z"
+                class="inv-arrowhead"
+              />
+            </marker>
+          </defs>
+          <path
+            v-for="(arrow, index) in arrows"
+            :key="index"
+            :d="arrow"
+            class="inv-arrow"
+            :class="{ 'inv-arrow--hot': hotIndex === index }"
+            marker-end="url(#inv-arrowhead)"
           />
-          <span class="replace-item-text">
-            <span class="replace-item-name">{{ getDisplayName(item) }}</span>
-            <span
-              v-if="getItemDamage(item) > 0"
-              class="replace-item-stat"
-            >+{{ getItemDamage(item) }}</span>
-            <span
-              v-else-if="item.treasureValue > 0"
-              class="replace-item-stat replace-item-stat--gold"
-            >{{ item.treasureValue }}</span>
-            <span class="replace-item-hint">{{ $t('dialogs.dropForFind') }}</span>
+        </svg>
+        <div
+          ref="foundEl"
+          class="inv-found"
+          :class="itemCategoryClass(droppedItem)"
+        >
+          <span class="inv-found__icon">
+            <img
+              v-if="getItemImage(droppedItem)"
+              :src="getItemImage(droppedItem)"
+              :alt="getDisplayName(droppedItem)"
+              class="inv-found__img"
+              :class="`inv-img--${droppedItem.type}`"
+            >
+            <GameIcon
+              v-else
+              name="treasure"
+              :size="44"
+            />
           </span>
-        </button>
+          <span class="inv-found__text">
+            <span class="inv-found__name">{{ getDisplayName(droppedItem) }}</span>
+            <span class="inv-found__stats">
+              <span
+                v-if="getItemDamage(droppedItem) > 0"
+                class="inv-stat"
+              ><GameIcon
+                name="sword"
+                :size="15"
+              /> +{{ getItemDamage(droppedItem) }}</span>
+              <span
+                v-if="droppedItem.treasureValue > 0"
+                class="inv-stat inv-stat--gold"
+              ><GameIcon
+                name="treasure"
+                :size="15"
+              /> {{ droppedItem.treasureValue }}</span>
+              <span
+                v-if="['fireball', 'frost_fist', 'dark_thorn'].includes(droppedItem.type)"
+                class="inv-stat inv-stat--note"
+              ><GameIcon
+                name="spells"
+                :size="15"
+              /> {{ $t('dialogs.consumable') }}</span>
+            </span>
+          </span>
+        </div>
+
+        <!-- what goes -->
+        <div class="replace-items">
+          <button
+            v-for="(item, index) in inventoryForCategory"
+            :key="item.itemId"
+            :ref="(el) => { cardEls[index] = el; }"
+            type="button"
+            class="replace-item"
+            :class="{ selected: selectedItemToReplace && selectedItemToReplace.itemId === item.itemId }"
+            :aria-label="`${getDisplayName(item)} — ${$t('dialogs.dropForFind')}`"
+            @click="dropAndTake(item)"
+            @mouseenter="hotIndex = index"
+            @mouseleave="hotIndex = null"
+            @focus="hotIndex = index"
+            @blur="hotIndex = null"
+          >
+            <img
+              v-if="getItemImage(item)"
+              :src="getItemImage(item)"
+              alt=""
+              class="replace-item-img"
+              :class="`inv-img--${item.type}`"
+            >
+            <GameIcon
+              v-else
+              name="treasure"
+              :size="32"
+            />
+            <span class="replace-item-text">
+              <span class="replace-item-name">{{ getDisplayName(item) }}</span>
+              <span
+                v-if="getItemDamage(item) > 0"
+                class="replace-item-stat"
+              >+{{ getItemDamage(item) }}</span>
+              <span
+                v-else-if="item.treasureValue > 0"
+                class="replace-item-stat replace-item-stat--gold"
+              >{{ item.treasureValue }}</span>
+              <span class="replace-item-hint">{{ $t('dialogs.dropForFind') }}</span>
+            </span>
+          </button>
+        </div>
       </div>
 
       <div class="inv-actions">
@@ -114,7 +156,7 @@
 
 <script setup>
 import GameIcon from '@/components/ui/GameIcon.vue';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { formatItemName, getItemDamage, getItemImage as itemImage } from '@/utils/itemUtils';
 import { t } from '@/i18n';
 import { itemName as localizedItemName } from '@/i18n/names';
@@ -135,6 +177,33 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['replace-item', 'skip-item', 'select-item']);
+
+// Arrows from the find to every item it could replace: curves in an SVG laid over .inv-swap
+const swapEl = ref(null);
+const foundEl = ref(null);
+const cardEls = [];
+const arrows = ref([]);
+const arrowBox = ref({ w: 0, h: 0 });
+const hotIndex = ref(null);
+const drawArrows = () => {
+  if (!swapEl.value || !foundEl.value) return;
+  const box = swapEl.value.getBoundingClientRect();
+  const icon = foundEl.value.querySelector('.inv-found__icon') || foundEl.value;
+  const from = icon.getBoundingClientRect();
+  const fx = from.left + from.width / 2 - box.left;
+  const fy = from.bottom - box.top - 4;
+  arrowBox.value = { w: box.width, h: box.height };
+  arrows.value = props.inventoryForCategory.map((_, index) => {
+    const card = cardEls[index];
+    if (!card) return '';
+    const to = card.getBoundingClientRect();
+    const tx = to.left + to.width / 2 - box.left;
+    const ty = to.top - box.top - 4;
+    const bend = Math.max(18, (ty - fy) * 0.55);
+    return `M ${fx} ${fy} C ${fx} ${fy + bend}, ${tx} ${ty - bend}, ${tx} ${ty}`;
+  });
+};
+watch(() => props.inventoryForCategory, () => nextTick(drawArrows), { deep: true });
 
 const selectedItemToReplace = ref(null);
 
@@ -199,8 +268,17 @@ const onKeyDown = (e) => {
   }
 };
 
-onMounted(() => window.addEventListener('keydown', onKeyDown, true));
-onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown, true);
+  window.addEventListener('resize', drawArrows);
+  nextTick(drawArrows);
+  // images change the layout once they load
+  setTimeout(drawArrows, 350);
+});
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown, true);
+  window.removeEventListener('resize', drawArrows);
+});
 </script>
 
 <style scoped>
@@ -251,6 +329,40 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: var(--text-accent);
+}
+
+/* the find and the items it could replace, joined by arrows */
+.inv-swap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+
+.inv-arrows {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.inv-arrow {
+  fill: none;
+  stroke: rgba(var(--ember-rgb), 0.45);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 5;
+  transition: stroke var(--transition-fast), stroke-width var(--transition-fast);
+}
+
+.inv-arrow--hot {
+  stroke: var(--color-primary);
+  stroke-width: 2.2;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 4px rgba(var(--ember-rgb), 0.8));
+}
+
+.inv-arrowhead {
+  fill: rgba(var(--ember-rgb), 0.75);
 }
 
 /* the find, centred */
@@ -334,7 +446,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 }
 
 .inv-prompt {
-  margin: 4px 0 0;
+  margin: -6px 0 0;
   font-style: italic;
   font-size: 16px;
   color: var(--text-secondary);
@@ -343,6 +455,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 /* what goes: cards with the item, the chosen one in ember */
 .replace-items {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;

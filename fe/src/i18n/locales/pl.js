@@ -439,7 +439,7 @@ export default {
       other: 'Co wyrzucić z „{category}”?'
     },
     dropForFind: 'zamień na znalezisko',
-    leaveItem: 'Zostaw przedmiot',
+    leaveItem: 'Nie bierz znaleziska',
     missingKey: {
       title: 'Brak klucza',
       noKey: 'Brak klucza',
