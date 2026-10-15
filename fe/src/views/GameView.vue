@@ -3746,16 +3746,33 @@ const getRequiredOpenSideLocal = (position) => {
   return getRequiredOpenSide(position, gameData.value, currentPlayerId.value);
 };
 
-// The tile being placed is kept clear of the HUD: when it lands under the rail, the chronicle, the banner or
+// Where the player acts is kept clear of the HUD: when it lands under the rail, the chronicle, the banner or
 // the rings, the field scrolls just enough (not a re-centre). Phones have their own HUD strip and bar: skipped.
 const HUD_CLEARANCE = { left: 330, right: 360, top: 170, bottom: 180 };
+// The area the player acts in: the tile being placed, or the acting hero with the marks of where to go next.
+// It is scrolled clear of the HUD only when it fits in the free middle of the screen at all.
+const actionArea = () => {
+  const ghost = document.querySelector('.ghost-tile');
+  const parts = ghost
+    ? [ghost]
+    : [...document.querySelectorAll('.hero-standee.is-acting, .available-place')];
+  if (!parts.length) return null;
+  return parts.map((el) => el.getBoundingClientRect()).reduce((a, r) => ({
+    left: Math.min(a.left, r.left),
+    top: Math.min(a.top, r.top),
+    right: Math.max(a.right, r.right),
+    bottom: Math.max(a.bottom, r.bottom)
+  }));
+};
 const keepGhostClearOfHud = () => {
   if (window.matchMedia('(max-width: 768px), (max-height: 500px)').matches) return;
   const field = document.querySelector('.game-field');
-  const ghost = document.querySelector('.ghost-tile');
-  if (!field || !ghost) return;
+  const tile = actionArea();
+  if (!field || !tile) return;
   const view = field.getBoundingClientRect();
-  const tile = ghost.getBoundingClientRect();
+  const freeWidth = view.width - HUD_CLEARANCE.left - HUD_CLEARANCE.right;
+  const freeHeight = view.height - HUD_CLEARANCE.top - HUD_CLEARANCE.bottom;
+  if (tile.right - tile.left > freeWidth || tile.bottom - tile.top > freeHeight) return;
   const safeLeft = view.left + HUD_CLEARANCE.left;
   const safeRight = view.right - HUD_CLEARANCE.right;
   const safeTop = view.top + HUD_CLEARANCE.top;
@@ -3767,12 +3784,16 @@ const keepGhostClearOfHud = () => {
   if (tile.top < safeTop) dy = tile.top - safeTop;
   else if (tile.bottom > safeBottom) dy = tile.bottom - safeBottom;
   if (dx || dy) {
-    console.debug('[field] scrolling the tile being placed clear of the HUD', { dx, dy });
+    console.debug('[field] scrolling the action clear of the HUD', { dx, dy });
     field.scrollBy({ left: dx, top: dy, behavior: 'smooth' });
   }
 };
 watch([ghostTilePosition, isPlacingTile], ([position, placing]) => {
   if (position && placing) nextTick(keepGhostClearOfHud);
+});
+// ...and the marks of the next step on your turn
+watch(() => (isPlayerTurn.value ? JSON.stringify(gameData.value?.state?.availablePlaces || null) : null), (places) => {
+  if (places) setTimeout(keepGhostClearOfHud, 450);
 });
 
 // Turning the tile only makes sense when it has two different ways to lie with a door towards the hero:
