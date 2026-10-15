@@ -1610,7 +1610,15 @@ const handleCurseChoice = async (targetPlayerId) => {
     }
   } catch (e) {
     console.error('Failed to place the curse:', e);
-    error.value = t('errors.curse', { reason: e.message });
+    const reason = e?.response?.data?.message || e.message || '';
+    // The server has no curse waiting (it was placed already, the fight on screen is an old one):
+    // drop the choice so the reward and the buttons come back; a short notice instead of the full-screen error
+    if (/no curse to place/i.test(reason) && battleInfo.value) {
+      battleInfo.value = { ...battleInfo.value, curseChoiceRequired: false };
+      await loadGameData(false);
+      return;
+    }
+    showActionNotice(t('errors.curse', { reason }));
   }
 };
 
@@ -2506,7 +2514,10 @@ const loadGameData = async (showLoading = true) => {
       if (battleAwaitsDecision(fetchedGameData, pending) && pending.player === currentPlayerId.value
         && !showBattleReportModal.value && lastProcessedBattleId.value !== pending.battleId) {
         console.debug('[fight] restoring the pending fight after a reload', pending.battleId);
-        battleInfo.value = pending;
+        // the stored fight keeps curseChoiceRequired after the curse was placed: trust the live curse state
+        battleInfo.value = pending.curseChoiceRequired
+          ? { ...pending, curseChoiceRequired: fetchedGameData.state?.curse?.pendingBy === currentPlayerId.value }
+          : pending;
         showBattleReportModal.value = true;
       }
     }
