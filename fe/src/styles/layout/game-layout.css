@@ -49,9 +49,10 @@
   position: relative;
   padding: var(--field-padding);
   /* room for the HUD round the field, so even an edge tile can be scrolled clear of it:
-     the turn-order rail on the left, the chronicle on the right, the rings and the pack at the bottom */
+     the turn-order rail on the left, the chronicle on the right, the turn banner on top, the rings and the pack below */
   padding-left: calc(var(--field-padding) + var(--rail-width));
   padding-right: calc(var(--field-padding) + var(--rail-width));
+  padding-top: calc(var(--field-padding) + 120px);
   padding-bottom: calc(var(--field-padding) + 120px);
   display: grid;
   cursor: default;

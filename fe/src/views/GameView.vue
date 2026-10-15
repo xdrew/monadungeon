@@ -3748,7 +3748,7 @@ const getRequiredOpenSideLocal = (position) => {
 
 // The tile being placed is kept clear of the HUD: when it lands under the rail, the chronicle, the banner or
 // the rings, the field scrolls just enough (not a re-centre). Phones have their own HUD strip and bar: skipped.
-const HUD_CLEARANCE = { left: 330, right: 360, top: 140, bottom: 180 };
+const HUD_CLEARANCE = { left: 330, right: 360, top: 170, bottom: 180 };
 const keepGhostClearOfHud = () => {
   if (window.matchMedia('(max-width: 768px), (max-height: 500px)').matches) return;
   const field = document.querySelector('.game-field');
