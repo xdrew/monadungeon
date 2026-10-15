@@ -1,3 +1,5 @@
+import { t, te } from '@/i18n';
+import { itemName, monsterName } from '@/i18n/names';
 /**
  * Every spell item type (inventory category "spells", max 3); Karak: Regent adds Frost Fist and Dark Thorn.
  * Use this list instead of spelling out spell types, so a new spell is never treated as a treasure.
@@ -140,36 +142,26 @@ export const getItemEmoji = (item) => {
 };
 
 /**
- * Helper function to format item names for display
- * @param {string} name - The item name in snake_case format
- * @returns {string} The formatted item name in Title Case
+ * Display name of an item type or a monster key in the current language
+ * ("dagger" → Dagger / Кинжал / Sztylet, "skeleton_king" → Skeleton King / Король-скелет);
+ * an unknown key falls back to Title Case.
+ * @param {string} name - item type or monster name in snake_case
+ * @returns {string}
  */
 export const formatItemName = (name) => {
-  if (!name) return 'Unknown';
-  
-  // Convert snake_case to Title Case
+  if (!name) return t('common.unknown');
+  if (te(`items.${name}.nom`) || ['treasure_chest', 'ruby'].includes(name)) return itemName(name);
+  if (te(`monsters.${name}.name`)) return monsterName(name);
   return name.split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
 
 /**
- * Helper function to format item types for display
  * @param {string} type - The item type string
- * @returns {string} The formatted item type
+ * @returns {string} The item type's display name in the current language
  */
-export const formatItemType = (type) => {
-  if (!type) return 'Unknown';
-  
-  // Special case handling
-  switch (type) {
-    case 'ruby_chest':
-      return 'Ruby Chest';
-    default:
-      // Convert snake_case to Title Case for other types
-      return type.charAt(0).toUpperCase() + type.slice(1);
-  }
-};
+export const formatItemType = (type) => formatItemName(type);
 
 /**
  * Gets detailed tooltip text for an item
@@ -177,35 +169,27 @@ export const formatItemType = (type) => {
  * @returns {string} Formatted tooltip text with item details
  */
 export const getItemTooltip = (item) => {
-  if (!item) return 'Unknown item';
-  
-  let tooltip = '';
-  
-  // For inventory items, only show the item type (not the monster name)
-  if (item.type) {
-    tooltip += formatItemType(item.type);
-  } else {
-    // Fallback to name if type is not available
-    tooltip += formatItemName(item.name);
-  }
-  
-  // Add guard info if it's a guard (for field items, not inventory)
+  if (!item) return t('items.tooltip.unknown');
+
+  // For inventory items the type names the item (not the monster that dropped it)
+  const lines = [formatItemName(item.type || item.name)];
+
+  // A guard on a field tile
   if (item.guardHP && item.guardHP > 0 && !item.guardDefeated) {
-    tooltip += `\nGuard: ${formatItemName(item.name)}`;
-    tooltip += `\nHP: ${item.guardHP}`;
+    lines.push(t('items.tooltip.guard', { name: formatItemName(item.name) }));
+    lines.push(t('items.tooltip.hp', { hp: item.guardHP }));
   }
-  
-  // Add damage info for weapons and spells
+
+  // Damage of weapons and attack spells
   if (['dagger', 'sword', 'axe', 'fireball', 'frost_fist'].includes(item.type)) {
-    tooltip += `\nDamage: +${getItemDamage(item)}`;
+    lines.push(t('items.tooltip.damage', { damage: getItemDamage(item) }));
   }
-  
-  // Add treasure value if it's a treasure
+
   if (item.treasureValue && item.treasureValue > 0) {
-    tooltip += `\nValue: ${item.treasureValue}`;
+    lines.push(t('items.tooltip.value', { value: item.treasureValue }));
   }
-  
-  return tooltip;
+
+  return lines.join('\n');
 };
 
 /**
@@ -339,7 +323,7 @@ export const handleItemClick = async ({
 
   } catch (err) {
     console.error('Failed to pick up item:', err);
-    error.value = `Failed to pick up item: ${err.message}`;
+    error.value = t('errors.pickUpReason', { reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';

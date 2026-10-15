@@ -16,13 +16,13 @@
           id="journal-title"
           class="journal-drawer__title"
         >
-          Journal
+          {{ $t('hud.journal') }}
         </h2>
         <button
           type="button"
           class="btn btn--iron btn--sm"
-          aria-label="Close the journal"
-          title="Close"
+          :aria-label="$t('hud.closeJournal')"
+          :title="$t('common.close')"
           @click="emit('close')"
         >
           <GameIcon
@@ -40,7 +40,7 @@
           :key="turn.key"
           class="journal-turn"
         >
-          <span class="journal-turn__head">Turn {{ turn.turnNumber }} · {{ turn.name }}</span>
+          <span class="journal-turn__head">{{ $t('hud.journalTurn', { n: turn.turnNumber, name: turn.name }) }}</span>
           <p
             v-for="(line, i) in turn.lines"
             :key="i"
@@ -52,14 +52,14 @@
             v-if="!turn.lines.length"
             class="journal-turn__line journal-turn__line--quiet"
           >
-            Nothing stirs.
+            {{ $t('hud.nothingStirs') }}
           </p>
         </li>
         <li
           v-if="!turns.length"
           class="journal-turn__line journal-turn__line--quiet"
         >
-          The journal is still empty.
+          {{ $t('hud.journalEmpty') }}
         </li>
       </ol>
     </aside>

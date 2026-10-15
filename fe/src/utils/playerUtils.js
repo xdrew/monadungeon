@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 /**
  * Checks if the specified player is in the game
  * @param {Object} gameData - The game data containing player information
@@ -356,7 +357,7 @@ export const getPlayerReady = async (
     };
   } catch (err) {
     console.error('Failed to mark player as ready:', err);
-    const errorMessage = `Failed to mark player as ready: ${err.message}`;
+    const errorMessage = t('errors.ready', { reason: err.message });
     if (setErrorCallback) setErrorCallback(errorMessage);
     throw new Error(errorMessage);
   } finally {

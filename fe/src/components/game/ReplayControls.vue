@@ -5,8 +5,8 @@
     role="status"
   >
     <div class="hud-plaque__row">
-      <span class="hud-plaque__caption">Replay</span>
-      <span class="step-counter">Turn {{ currentReplayTurn }} of {{ gameTurns.length }}</span>
+      <span class="hud-plaque__caption">{{ $t('hud.replay') }}</span>
+      <span class="step-counter">{{ $t('hud.replayTurn', { n: currentReplayTurn, total: gameTurns.length }) }}</span>
     </div>
     <div
       class="progress-bar"
@@ -21,7 +21,7 @@
       <label
         for="replay-speed"
         class="hud-plaque__caption"
-      >Speed</label>
+      >{{ $t('hud.replaySpeed') }}</label>
       <select
         id="replay-speed"
         :value="replaySpeed"
@@ -29,16 +29,16 @@
         @change="onSpeedChange($event.target.value)"
       >
         <option value="0.5">
-          Slow (0.5x)
+          {{ $t('hud.speeds.half') }}
         </option>
         <option value="1">
-          Normal (1x)
+          {{ $t('hud.speeds.one') }}
         </option>
         <option value="2">
-          Fast (2x)
+          {{ $t('hud.speeds.two') }}
         </option>
         <option value="4">
-          Very Fast (4x)
+          {{ $t('hud.speeds.four') }}
         </option>
       </select>
       <button
@@ -46,7 +46,7 @@
         class="stop-replay-button btn btn--ghost btn--sm"
         @click="stopReplay"
       >
-        Stop Replay
+        {{ $t('hud.stopReplay') }}
       </button>
     </div>
   </div>

@@ -1,5 +1,5 @@
 import { computed, watch } from 'vue';
-import { getHero } from '@/theme';
+import { heroName } from '@/i18n/names';
 
 const ROMAN = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
 
@@ -14,19 +14,6 @@ export const toRoman = (n) => {
     }
   }
   return out;
-};
-
-/**
- * The hero's own name as the HUD speaks it: "Aderyn, the Thief" → "Aderyn",
- * a transformed hero → "Lord Karak", no hero → the fallback label.
- * @param {object|null} player
- * @param {string} [fallback='Adventurer']
- */
-export const heroPersonalName = (player, fallback = 'Adventurer') => {
-  if (!player) return fallback;
-  if (player.lordKarak) return 'Lord Karak';
-  if (!player.hero) return fallback;
-  return getHero(player.hero).name.split(',')[0].trim() || fallback;
 };
 
 /**
@@ -71,7 +58,7 @@ export function useTurnOrder(gameData, isYou) {
         else if (list.length > 2 && index === (actingIndex + 1) % list.length) state = 'next';
         else if (index < actingIndex) state = 'done';
       }
-      return { player, numeral: toRoman(index + 1), state, isYou: !!isYou(player), name: heroPersonalName(player) };
+      return { player, numeral: toRoman(index + 1), state, isYou: !!isYou(player), name: heroName(player, 'short') };
     });
   });
 
@@ -103,8 +90,8 @@ export function useTurnOrder(gameData, isYou) {
   return { entries, acting, waitingFor };
 }
 
-/** "Taia" / "Taia and Lorraine" / "Taia, Valduk and Lorraine". */
-export const joinNames = (names) => {
+/** "Taia" / "Taia and Lorraine" / "Taia, Valduk and Lorraine" (the word for "and" comes with the locale). */
+export const joinNames = (names, and = 'and') => {
   if (names.length <= 1) return names[0] || '';
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `${names.slice(0, -1).join(', ')} ${and} ${names[names.length - 1]}`;
 };

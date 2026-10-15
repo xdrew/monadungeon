@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 // Replay Management Utilities
 import { nextTick } from 'vue';
 
@@ -19,7 +20,7 @@ export class ReplayManager {
       const response = await this.gameApi.getGameTurns(gameId);
 
       if (!response?.turns?.length) {
-        alert('No turns available for replay');
+        alert(t('errors.noReplay'));
         return;
       }
 
@@ -52,7 +53,7 @@ export class ReplayManager {
 
     } catch (error) {
       console.error('Failed to start replay:', error);
-      alert('Failed to start replay: ' + (error.message || 'Unknown error'));
+      alert(t('errors.replay', { reason: error.message || t('errors.unknown') }));
       this.replayState.isReplaying = false;
     }
   }

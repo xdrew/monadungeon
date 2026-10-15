@@ -2,24 +2,24 @@
   <div class="zoom-controls">
     <button
       class="zoom-button btn btn--iron btn--sm"
-      title="Center Map"
-      aria-label="Center Map"
+      :title="$t('hud.centerMap')"
+      :aria-label="$t('hud.centerMap')"
       @click="centerMap"
     >
       <GameIcon name="center" :size="18" />
     </button>
     <button
       class="zoom-button btn btn--iron btn--sm"
-      title="Center on Player"
-      aria-label="Center on Player"
+      :title="$t('hud.centerPlayer')"
+      :aria-label="$t('hud.centerPlayer')"
       @click="centerOnPlayer"
     >
       <GameIcon name="pin" :size="18" />
     </button>
     <button
       class="zoom-button btn btn--iron btn--sm"
-      title="Center on Available Places"
-      aria-label="Center on Available Places"
+      :title="$t('hud.centerAvailable')"
+      :aria-label="$t('hud.centerAvailable')"
       @click="centerOnAvailablePlaces"
     >
       <GameIcon name="explore" :size="18" />

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 /**
  * Utility functions for handling inventory operations in the game
  */
@@ -115,7 +116,7 @@ export const replaceItem = async ({
 
   } catch (err) {
     console.error('Failed to replace item:', err);
-    error.value = `Failed to replace item: ${err.message}`;
+    error.value = t('errors.replaceReason', { reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';
@@ -186,7 +187,7 @@ export const skipItem = async ({
 
   } catch (err) {
     console.error('Failed to skip item and end turn:', err);
-    error.value = `Failed to skip item: ${err.message}`;
+    error.value = t('errors.skipItem', { reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';

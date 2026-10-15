@@ -63,7 +63,7 @@
           v-if="monsterImage && item && !item.guardDefeated && item.guardHP > 0"
           :src="monsterImage"
           :emoji="monsterEmoji"
-          :alt="item.name"
+          :alt="formatItemName(item.name)"
           img-class="monster-image"
           emoji-class="monster-emoji"
           fallback-icon="skull"
@@ -72,13 +72,13 @@
         <img
           v-else-if="chestImage"
           :src="chestImage"
-          :alt="item.type"
+          :alt="formatItemName(item.type)"
           class="chest-image"
         />
         <img
           v-else-if="weaponImage"
           :src="weaponImage"
-          :alt="item.type"
+          :alt="formatItemName(item.type)"
           class="weapon-image"
         />
         <GameIcon
@@ -116,14 +116,14 @@
             'is-acting': player.playerId === actingPlayerId
           }"
           :style="standeeStyle(index, allPlayerEmojis.length)"
-          :title="swapTargetable && !isCurrentUser(player.playerId) ? 'Magic Swap: trade places with this hero' : `Player ${player.playerId}`"
+          :title="swapTargetable && !isCurrentUser(player.playerId) ? $t('field.swapTarget') : $t('field.playerTitle', { id: player.playerId })"
           :data-testid="`player-figure-${player.playerId}`"
           @click.stop="onPlayerClick(player.playerId)"
         >
           <!-- hero portrait from the theme when known, else the generic figure -->
           <img
             :src="figureSrc(player.playerId)"
-            :alt="isCurrentUser(player.playerId) ? 'Current Player' : 'AI Player'"
+            :alt="isCurrentUser(player.playerId) ? $t('field.currentPlayer') : $t('field.aiPlayer')"
             :class="isCurrentUser(player.playerId) ? 'player-image' : 'ai-player-image'"
             @error="onFigureError($event, player.playerId)"
           />
@@ -132,34 +132,34 @@
       <div
         v-if="hasHealingFountain"
         class="healing-fountain-indicator"
-        title="Healing Fountain - Restores HP when you enter this tile"
+        :title="$t('field.fountainTitle')"
       >
-        <img src="/images/hf.webp" alt="Healing Fountain" class="healing-fountain-image" />
+        <img src="/images/hf.webp" :alt="$t('field.fountain')" class="healing-fountain-image" />
       </div>
       <div
         v-if="hasTeleportationGate"
         class="teleportation-gate-indicator"
-        title="Teleportation Gate - Travel to other portal tiles"
+        :title="$t('field.gateTitle')"
       >
-        <img src="/images/portal.webp" alt="Portal" class="portal-image" />
+        <img src="/images/portal.webp" :alt="$t('field.gate')" class="portal-image" />
       </div>
       <!-- Karak: Regent — Lord Karak rooms -->
       <div
         v-if="hasBattleArena"
         class="arena-indicator"
         :class="{ 'arena-used': arenaUsed }"
-        :title="arenaUsed ? 'Battle Arena — already fought' : 'Battle Arena — the first hero to enter summons a rival to a duel'"
+        :title="arenaUsed ? $t('field.arenaUsed') : $t('field.arenaTitle')"
         data-testid="arena-marker"
       >
-        <img src="/images/arena.webp" alt="Battle Arena" class="arena-image" />
+        <img src="/images/arena.webp" :alt="$t('field.arena')" class="arena-image" />
       </div>
       <div
         v-if="hasCursedRoom"
         class="cursed-room-indicator"
-        title="Cursed Room — roll 1–3 and the Curse of Karak falls on you"
+        :title="$t('field.cursedRoomTitle')"
         data-testid="cursed-room-marker"
       >
-        <img src="/images/cursed-room.webp" alt="Cursed Room" class="cursed-room-image" />
+        <img src="/images/cursed-room.webp" :alt="$t('field.cursedRoom')" class="cursed-room-image" />
       </div>
       <div
         v-if="isHighlighted"
@@ -168,8 +168,8 @@
         ({{ x }},{{ y }})
         <button
           class="center-view-button btn btn--iron btn--sm"
-          title="Center view on this tile"
-          aria-label="Center view on this tile"
+          :title="$t('field.centerTile')"
+          :aria-label="$t('field.centerTile')"
           @click.stop="centerView"
         >
           <GameIcon name="center" :size="16" />
@@ -207,7 +207,7 @@ import { TILE_SIZE } from '@/utils/fieldUtils';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { defineProps, defineEmits, computed, ref, onMounted } from 'vue';
 import { getPlayerEmoji } from '@/utils/playerUtils';
-import { getItemDamage, getItemImage, getItemIconName } from '@/utils/itemUtils';
+import { getItemDamage, getItemImage, getItemIconName, formatItemName } from '@/utils/itemUtils';
 import { getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
 import { getHero } from '@/theme';
 import ThemedImage from '@/components/ThemedImage.vue';

@@ -2,9 +2,9 @@
   <!-- Your own kit stays at hand, bottom left ("C · Five players") -->
   <section
     class="pack-bar"
-    aria-label="Your pack"
+    :aria-label="t('hud.yourPack')"
   >
-    <span class="pack-bar__caption">Your pack</span>
+    <span class="pack-bar__caption">{{ t('hud.yourPack') }}</span>
     <InventorySlots
       :inventory="inventory"
       :hero-flags="heroFlags"
@@ -16,6 +16,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n';
 import InventorySlots from './InventorySlots.vue';
 
 defineProps({
@@ -26,6 +27,7 @@ defineProps({
 });
 
 const emit = defineEmits(['cast']);
+const { t } = useI18n();
 </script>
 
 <style scoped>

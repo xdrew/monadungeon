@@ -11,7 +11,7 @@
       top: `${(parseInt(position.split(',')[1]) - minY) * tileSize}px`,
       zIndex: '50'
     }"
-    :title="'Click to place tile (Enter)'"
+    :title="$t('field.placeTile')"
     @click="placeTile"
   >
     <!-- Rotated background image layer -->
@@ -37,8 +37,8 @@
       >
         <button
           class="ghost-rotate-btn btn btn--iron btn--sm"
-          title="Rotate tile (R)"
-          aria-label="Rotate tile"
+          :title="$t('field.rotateTitle')"
+          :aria-label="$t('field.rotate')"
           @click.stop="rotateGhostTile"
         >
           <GameIcon name="rotate" :size="18" />

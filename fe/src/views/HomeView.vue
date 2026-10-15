@@ -11,23 +11,23 @@
       <div class="game-panel">
         <ThemeLogo />
         <h1 class="title">
-          {{ theme.appName }}
+          {{ t('common.appName') }}
         </h1>
         <p class="description">
-          Embark on an epic journey through dangerous dungeons filled with monsters, treasures, and ancient secrets.
+          {{ t('lobby.description') }}
         </p>
 
       <div class="actions">
         <!-- Hero selection (hero skills from the Karak board game) -->
         <div class="hero-picker" data-testid="hero-picker">
-          <p class="hero-picker-title">{{ randomHeroes ? 'Heroes are dealt at random' : 'Choose your hero' }}</p>
+          <p class="hero-picker-title">{{ randomHeroes ? t('lobby.heroesRandom') : t('lobby.chooseHero') }}</p>
 
           <!-- Random heroes (the board game rule): you and the AI are dealt different heroes when the game is created -->
           <label class="regent-toggle random-heroes-toggle" data-testid="random-heroes-toggle">
             <input v-model="randomHeroes" type="checkbox" data-testid="random-heroes-toggle-input">
             <span class="regent-toggle-text">
-              <strong>Random heroes</strong>
-              <span>Off: pick your hero, the AI is dealt one of the others</span>
+              <strong>{{ t('lobby.randomHeroes') }}</strong>
+              <span>{{ t('lobby.randomHeroesHint') }}</span>
             </span>
           </label>
 
@@ -36,16 +36,16 @@
               <span class="hero-card-emoji"><GameIcon name="dice" :size="44" /></span>
             </div>
             <div class="hero-card-body">
-              <span class="hero-card-role">Dealt at the start</span>
-              <h3 class="hero-card-name">A hero awaits</h3>
+              <span class="hero-card-role">{{ t('lobby.dealtAtStart') }}</span>
+              <h3 class="hero-card-name">{{ t('lobby.heroAwaits') }}</h3>
               <p class="hero-skills-none">
-                You and the AI each get a different hero{{ regentExpansion ? ', Karak: Regent heroes included' : '' }}.
+                {{ regentExpansion ? t('lobby.eachGetsHeroRegent') : t('lobby.eachGetsHero') }}
               </p>
             </div>
           </div>
 
           <!-- roster: one portrait tile per hero; the skills live in the card below -->
-          <div v-if="!randomHeroes" class="hero-roster" role="radiogroup" aria-label="Hero">
+          <div v-if="!randomHeroes" class="hero-roster" :aria-label="t('lobby.heroGroup')" role="radiogroup">
             <button
               v-for="card in heroCards"
               :key="card.testid"
@@ -91,12 +91,12 @@
                 <span class="hero-card-role">{{ selectedCard.role }}</span>
                 <h3 class="hero-card-name">{{ selectedCard.shortName }}</h3>
                 <ul v-if="selectedCard.skills.length" class="hero-skills">
-                  <li v-for="skill in selectedCard.skills" :key="skill.name" class="hero-skill">
+                  <li v-for="skill in selectedCard.skills" :key="skill.key" class="hero-skill">
                     <span class="hero-skill-name">{{ skill.name }}</span>
                     <span class="hero-skill-text">{{ skill.text }}</span>
                   </li>
                 </ul>
-                <p v-else class="hero-skills-none">No special skills. Plain dice, plain luck.</p>
+                <p v-else class="hero-skills-none">{{ t('lobby.noSkills') }}</p>
               </div>
             </div>
           </transition>
@@ -105,16 +105,16 @@
           <label class="regent-toggle" data-testid="regent-toggle">
             <input v-model="regentExpansion" type="checkbox" data-testid="regent-toggle-input">
             <span class="regent-toggle-text">
-              <strong>Karak: Regent expansion</strong>
-              <span>Lord Karak rooms, Giant Bats and Skeleton Mages</span>
+              <strong>{{ t('lobby.regent') }}</strong>
+              <span>{{ t('lobby.regentHint') }}</span>
             </span>
           </label>
           <!-- Lord Karak variant: the weakest hero becomes Lord Karak when the fifth Lord Karak room is discovered -->
           <label v-if="regentExpansion" class="regent-toggle lord-karak-toggle" data-testid="lord-karak-toggle">
             <input v-model="lordKarakVariant" type="checkbox" data-testid="lord-karak-toggle-input">
             <span class="regent-toggle-text">
-              <strong>Lord Karak variant</strong>
-              <span>At the fifth Lord Karak room the weakest hero becomes Lord Karak</span>
+              <strong>{{ t('lobby.lordKarak') }}</strong>
+              <span>{{ t('lobby.lordKarakHint') }}</span>
             </span>
           </label>
         </div>
@@ -124,7 +124,7 @@
             @click="createNewGame"
             :disabled="loading"
         >
-          Play Against AI
+          {{ t('lobby.playAi') }}
         </button>
         
         <button 
@@ -132,7 +132,7 @@
           @click="viewLeaderboard"
         >
           <GameIcon name="trophy" />
-          View Leaderboard
+          {{ t('lobby.leaderboard') }}
         </button>
         
         <button 
@@ -140,10 +140,10 @@
           @click="viewRules"
         >
           <GameIcon name="journal" />
-          How to Play
+          {{ t('lobby.rules') }}
         </button>
         <div v-if="isDev" class="version-info">
-          Build: {{ buildVersion }}
+          {{ t('lobby.build', { version: buildVersion }) }}
         </div>
       </div>
 
@@ -180,68 +180,48 @@ import ThemeLogo from '@/components/ThemeLogo.vue';
 import ThemedImage from '@/components/ThemedImage.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { musicService } from '@/services/musicService';
+import { useI18n } from 'vue-i18n';
 import { theme, getHero } from '@/theme';
+import { heroName, HERO_SKILL_KEYS } from '@/i18n/names';
 
 const router = useRouter();
+const { t } = useI18n();
 const errorMessage = ref('');
 const loading = ref(false);
-const loadingMessage = ref('Creating your adventure...');
+const loadingMessage = ref('');
 
 // Build version for debugging deployment issues
 const buildVersion = ref(import.meta.env.VITE_BUILD_VERSION || 'dev');
 const isDev = import.meta.env.DEV;
 
-// Hero cards: skills from the Karak rulebook; name and portrait/emoji from the active theme
-const HERO_SKILLS = [
-  { key: null, testid: 'hero-none', shortName: 'No hero', skills: [] },
-  { key: 'warrior', testid: 'hero-warrior', skills: [
-    { name: 'Double Attack', text: 'reroll the dice once per fight, the second roll stands' },
-    { name: 'Reincarnation', text: 'losing the last HP teleports him to a healing fountain with full HP' }
-  ] },
-  { key: 'thief', testid: 'hero-thief', skills: [
-    { name: 'Backstab', text: 'a tie in combat counts as her victory' },
-    { name: 'Stealth', text: 'may sneak past a monster instead of fighting and keep moving' }
-  ] },
-  { key: 'swordsman', testid: 'hero-swordsman', skills: [
-    { name: 'Combat Training', text: 'every die showing 1 is rerolled until it shows better' },
-    { name: 'Unstoppable', text: 'a 6 on the dice keeps his turn going, even after a lost fight' }
-  ] },
-  { key: 'warlock', testid: 'hero-warlock', shortName: 'Xanros', skills: [
-    { name: 'Sacrifice', text: 'after the roll, pay 1 HP for +1 strength (once per fight)' },
-    { name: 'Magic Swap', text: 'trade places with any hero as the first action of the turn, for all 4 moves' }
-  ] },
-  { key: 'wizard', testid: 'hero-wizard', skills: [
-    { name: 'Magical Affinity', text: 'fireballs are not consumed in combat' },
-    { name: 'Astral Walking', text: 'may step onto any adjacent discovered tile, even through a wall' }
-  ] },
-  { key: 'oracle', testid: 'hero-oracle', skills: [
-    { name: 'Farseeing', text: '+1 to the roll when fighting on the first move of the turn' },
-    { name: 'Fateweaver', text: 'draws two tokens for a new room, places one and returns the other' }
-  ] },
+// Hero cards: names and skill summaries are translated (fe/src/i18n), portraits come from the theme
+const HERO_CARDS = [
+  { key: null, testid: 'hero-none' },
+  { key: 'warrior', testid: 'hero-warrior' },
+  { key: 'thief', testid: 'hero-thief' },
+  { key: 'swordsman', testid: 'hero-swordsman' },
+  { key: 'warlock', testid: 'hero-warlock' },
+  { key: 'wizard', testid: 'hero-wizard' },
+  { key: 'oracle', testid: 'hero-oracle' },
   // Karak: Regent heroes (only with the expansion switch on)
-  { key: 'barbarian', testid: 'hero-barbarian', regent: true, skills: [
-    { name: 'Berserk', text: '+1 strength at 3–4 HP, +2 at 1–2 HP; chooses how many HP to heal' },
-    { name: 'Tireless', text: 'after a won fight he may leave the loot and keep moving' }
-  ] },
-  { key: 'battle_mage', testid: 'hero-battle_mage', shortName: 'Markul', regent: true, skills: [
-    { name: 'Sword Master', text: 'a sword has strength 3 in his hands' },
-    { name: 'Lightning Attack', text: 'for all 4 moves, teleport onto any monster and fight it' }
-  ] },
-  { key: 'acrobat', testid: 'hero-acrobat', regent: true, skills: [
-    { name: 'Dagger Throwing', text: 'daggers also fit her spell slots, +1 each, never used up' },
-    { name: 'Sprint', text: 'up to 8 moves over discovered tiles instead of exploring' }
-  ] },
-  { key: 'ranger', testid: 'hero-ranger', shortName: 'Lorraine', regent: true, skills: [
-    { name: 'Bear Attack', text: 'a die showing 1 counts as 6' },
-    { name: 'Listening', text: 'for one move, open an adjacent tile without entering it' }
-  ] }
+  { key: 'barbarian', testid: 'hero-barbarian', regent: true },
+  { key: 'battle_mage', testid: 'hero-battle_mage', regent: true },
+  { key: 'acrobat', testid: 'hero-acrobat', regent: true },
+  { key: 'ranger', testid: 'hero-ranger', regent: true }
 ];
-const allHeroCards = HERO_SKILLS.map((card) => {
+// Re-evaluated on a locale switch (t() reads the current locale)
+const allHeroCards = computed(() => HERO_CARDS.map((card) => {
   const hero = getHero(card.key);
-  // "Horan, the Warrior" → short name "Horan", role "Warrior"; the Adventurer has no role
-  const [firstName, role] = hero.name.includes(', the ') ? hero.name.split(', the ') : [hero.name, 'No hero'];
-  return { ...card, ...hero, key: card.key, shortName: card.shortName || firstName, role };
-});
+  return {
+    ...card,
+    image: hero.image,
+    emoji: hero.emoji,
+    name: card.key ? heroName(card.key) : t('lobby.noHero'),
+    shortName: card.key ? heroName(card.key, 'short') : t('lobby.noHero'),
+    role: card.key ? heroName(card.key, 'role') : t('lobby.noHero'),
+    skills: (HERO_SKILL_KEYS[card.key] || []).map((key) => ({ key, name: t(`skills.${key}.name`), text: t(`skills.${key}.summary`) }))
+  };
+}));
 
 // Karak: Regent expansion switch, remembered per browser ('1' / '0')
 const readStoredRegent = () => {
@@ -292,7 +272,7 @@ watch(randomHeroes, (enabled) => {
   }
 });
 // Hero cards marked `regent: true` come with the expansion (the backend refuses them in a base game)
-const heroCards = computed(() => allHeroCards.filter((card) => !card.regent || regentExpansion.value));
+const heroCards = computed(() => allHeroCards.value.filter((card) => !card.regent || regentExpansion.value));
 
 // Lobby background art comes from the theme (none in the base theme)
 const lobbyStyle = { '--lobby-bg': theme.lobbyBackground ? `url('${theme.lobbyBackground}')` : 'none' };
@@ -362,7 +342,7 @@ const createNewGame = async () => {
   try {
     loading.value = true;
     errorMessage.value = '';
-    loadingMessage.value = 'Creating your adventure...';
+    loadingMessage.value = t('lobby.creating');
 
     // Call the API to create a new game
     const response = await gameApi.createGame(null, {
@@ -407,7 +387,7 @@ const createNewGame = async () => {
     router.push(`/game/${response.gameId}`);
   } catch (error) {
     console.error('Failed to create game:', error);
-    errorMessage.value = 'Failed to create game. Please try again.';
+    errorMessage.value = t('lobby.createFailed');
   } finally {
     loading.value = false;
   }

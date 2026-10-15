@@ -67,6 +67,7 @@ final class HeroSkillsTest extends TestCase
 
         $names = array_column($skills->skills(), 'name');
         self::assertSame(['Bear Attack', 'Listening', 'Berserk', 'Tireless', 'Backstab', 'Stealth'], $names);
+        self::assertSame(['bear_attack', 'listening', 'berserk', 'tireless', 'backstab', 'stealth'], array_column($skills->skills(), 'key'));
     }
 
     #[Test]

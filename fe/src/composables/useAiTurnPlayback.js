@@ -1,3 +1,5 @@
+import { t } from '@/i18n';
+import { monsterName } from '@/i18n/names';
 import { ref } from 'vue';
 
 // Action types that represent visible game-affecting actions
@@ -36,34 +38,32 @@ function getActionLabel(action) {
   switch (action.type) {
     case 'place_tile': {
       const pos = action.details?.result?.position;
-      return pos ? `Placed tile at ${pos}` : 'Placed tile';
+      return pos ? t('playback.placedAt', { pos }) : t('playback.placed');
     }
     case 'move_player': {
       const to = action.details?.result?.to;
-      return to ? `Moved to ${to}` : 'Moved';
+      return to ? t('playback.movedTo', { pos: to }) : t('playback.moved');
     }
     case 'battle': {
       const result = action.battleResult;
-      const monster = action.monsterType || '';
-      const dmg = action.totalDamage || 0;
-      const hp = action.monsterHP || 0;
-      const monsterLabel = monster ? monster.replace(/_/g, ' ') : '';
-      if (result === 'win') return monsterLabel ? `Won vs ${monsterLabel} (${dmg} > ${hp})` : `Won battle (${dmg} > ${hp})`;
-      if (result === 'lose') return monsterLabel ? `Lost vs ${monsterLabel} (${dmg} < ${hp})` : `Lost battle (${dmg} < ${hp})`;
-      if (result === 'draw') return monsterLabel ? `Draw vs ${monsterLabel} (${dmg} = ${hp})` : `Draw (${dmg} = ${hp})`;
-      return 'Battle';
+      const params = { dmg: action.totalDamage || 0, hp: action.monsterHP || 0 };
+      const monster = action.monsterType ? monsterName(action.monsterType, 'name', params.hp) : '';
+      if (result === 'win') return monster ? t('playback.wonVs', { ...params, monster }) : t('playback.won', params);
+      if (result === 'lose') return monster ? t('playback.lostVs', { ...params, monster }) : t('playback.lost', params);
+      if (result === 'draw') return monster ? t('playback.drawVs', { ...params, monster }) : t('playback.draw', params);
+      return t('playback.battle');
     }
     case 'pickup_attempt':
     case 'pickup_result':
     case 'pickup_with_replace':
-      return 'Picked up item';
+      return t('playback.pickedUp');
     case 'treasure_collected':
-      return 'Collected treasure';
+      return t('playback.treasure');
     case 'chest_pickup_attempt':
     case 'chest_pickup_result':
-      return 'Opening chest';
+      return t('playback.chest');
     case 'end_turn':
-      return 'Turn ended';
+      return t('playback.turnEnded');
     default:
       return action.type;
   }

@@ -26,14 +26,14 @@
         <img
           v-if="getItemImage(item)"
           :src="getItemImage(item)"
-          :alt="formatItemName(item.type)"
+          :alt="itemName(item)"
           class="item-image-icon"
         >
         <GameIcon
           v-else
           :name="getItemIconName(item)"
           :size="iconSize"
-          :title="formatItemName(item.type)"
+          :title="itemName(item)"
         />
         <span
           v-if="group.category === 'weapons' || (group.category === 'spells' && getItemStrength(item, heroFlags) > 0)"
@@ -48,7 +48,7 @@
         v-for="n in group.empty"
         :key="`${group.category}-empty-${n}`"
         class="inventory-item inventory-item--empty"
-        :title="`Empty ${group.label} slot`"
+        :title="t('hud.emptySlot', { kind: t(`hud.slotKinds.${group.category}`) })"
         aria-hidden="true"
       />
     </template>
@@ -58,7 +58,9 @@
 <script setup>
 import { computed } from 'vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
-import { INVENTORY_LIMITS, getItemImage, getItemIconName, getItemTooltip, formatItemName, getItemStrength } from '@/utils/itemUtils';
+import { useI18n } from 'vue-i18n';
+import { INVENTORY_LIMITS, getItemImage, getItemIconName, getItemStrength, getItemTooltip } from '@/utils/itemUtils';
+import { itemName } from '@/i18n/names';
 
 const props = defineProps({
   /** { keys, weapons, spells, treasures } as the game state sends it */
@@ -73,6 +75,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['cast']);
+const { t } = useI18n();
 
 const iconSize = computed(() => (props.size === 'sm' ? 18 : 24));
 const canCast = (item) => !!props.castable(item);

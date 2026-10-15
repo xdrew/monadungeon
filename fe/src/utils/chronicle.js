@@ -1,21 +1,11 @@
 /**
  * The chronicle: game-log actions (database turns and AI playback actions) told as plain
  * sentences with the hero as the subject — "Aderyn finds a new corridor." No emoji, no HTML.
- * Used by the HUD chronicle (last lines) and the Journal drawer (every turn).
+ * Every sentence is one chronicle.* key; monsters and items come in the grammatical form the
+ * sentence needs (acc / ins, see fe/src/i18n/names.js). Used by the HUD chronicle and the Journal.
  */
-import { getMonsterName } from '@/theme';
-
-// Spells read better by their card names than by their backend keys
-const ITEM_NAMES = { teleport: 'Portal of Healing', dark_thorn: 'Dark Thorn', frost_fist: 'Frost Fist' };
-const humanize = (value, fallback = '') => (value ? ITEM_NAMES[value] || String(value).replace(/_/g, ' ') : fallback);
-const monsterName = (key) => (key ? getMonsterName(String(key).toLowerCase()) : 'monster');
-
-const ARTICLE_LESS = /^(a|an|the|some)\s/i;
-const withArticle = (noun) => {
-  if (!noun) return 'something';
-  if (ARTICLE_LESS.test(noun)) return noun;
-  return /^[aeiou]/i.test(noun) ? `an ${noun}` : `a ${noun}`;
-};
+import { t } from '@/i18n';
+import { monsterName, itemName } from '@/i18n/names';
 
 const typeOf = (action) => action?.type || action?.action || '';
 const detailsOf = (action) => action?.details || action?.additionalData || {};
@@ -30,18 +20,36 @@ const pickedItemType = (details, siblings) => {
   return detailsOf(fight)?.monster?.type || null;
 };
 
-/** Hero-skill notes of a fight, in the order a reader cares about. */
+/** Hero-skill notes of a fight, in the order a reader cares about (skill names in the current language). */
 const fightNotes = (d) => {
   const notes = [];
-  if (d.lightningAttack) notes.push('Lightning Attack');
-  if (d.rerolled) notes.push('Double Attack');
-  if (d.onesRerolled > 0) notes.push('Combat Training');
-  if (d.onesAsSixes > 0) notes.push('Bear Attack');
-  if (d.berserk > 0) notes.push(`Berserk +${d.berserk}`);
-  if (d.hpSacrificed) notes.push('Sacrifice');
-  if (d.farseeing) notes.push('Farseeing');
-  if (d.spellsKept) notes.push('Magical Affinity');
+  if (d.lightningAttack) notes.push(t('skills.lightning_attack.name'));
+  if (d.rerolled) notes.push(t('skills.double_attack.name'));
+  if (d.onesRerolled > 0) notes.push(t('skills.combat_training.name'));
+  if (d.onesAsSixes > 0) notes.push(t('skills.bear_attack.name'));
+  if (d.berserk > 0) notes.push(`${t('skills.berserk.name')} +${d.berserk}`);
+  if (d.hpSacrificed) notes.push(t('skills.sacrifice.name'));
+  if (d.farseeing) notes.push(t('skills.farseeing.name'));
+  if (d.spellsKept) notes.push(t('skills.magical_affinity.name'));
   return notes;
+};
+
+/** "Aderyn defeats the Giant Rat (9 against 5, Double Attack)." */
+const fightSentence = (who, d) => {
+  const key = d.monsterType || d.monster?.name || d.monster?.type;
+  const total = d.totalDamage ?? d.diceRollDamage;
+  const hp = d.monster?.hp ?? d.monsterHP ?? (typeof d.monster === 'number' ? d.monster : null);
+  const extras = [];
+  if (total != null && hp != null) extras.push(t('chronicle.score', { total, hp }));
+  extras.push(...fightNotes(d));
+  const tail = extras.length ? ` (${extras.join(', ')})` : '';
+  let sentence;
+  if (d.result === 'WIN') sentence = t('chronicle.defeats', { who, monster: monsterName(key, 'acc') });
+  else if (d.result === 'LOSE') sentence = t('chronicle.fallsTo', { who, monster: monsterName(key, 'ins') });
+  else if (d.result === 'DRAW') sentence = t('chronicle.draw', { who, monster: monsterName(key, 'ins') });
+  else return t('chronicle.faces', { who, monster: monsterName(key, 'ins') });
+  const fightsOn = d.unstoppable ? ` ${t('chronicle.fightsOn', { who })}` : '';
+  return `${sentence}${tail}.${fightsOn}`;
 };
 
 /**
@@ -59,103 +67,89 @@ export function describeAction(action, who, nameOf, siblings = []) {
   switch (type) {
     case 'tile_placed':
     case 'place_tile':
-      return `${who} finds a new corridor.`;
-    case 'tile_rotated':
-    case 'rotate_tile':
-      return null;
+      return t('chronicle.corridor', { who });
     case 'player_moved':
     case 'move':
-      if (d.sneakedPastMonster) return `${who} sneaks past the ${monsterName(d.monster?.name)}.`;
-      if (d.throughWall) return `${who} walks through a wall to ${d.to || 'a known room'}.`;
-      if (d.strategy === 'moving toward item') return `${who} heads for the loot.`;
-      return `${who} moves on.`;
+      if (d.sneakedPastMonster) return t('chronicle.sneaks', { who, monster: monsterName(d.monster?.name, 'acc') });
+      if (d.throughWall) return t('chronicle.throughWall', { who, to: d.to || '?' });
+      if (d.strategy === 'moving toward item') return t('chronicle.headsForLoot', { who });
+      return t('chronicle.movesOn', { who });
     case 'magic_swap':
-      return `${who} trades places with another hero.`;
+      return t('chronicle.magicSwap', { who });
     case 'curse':
-      return d.kept ? `The Curse of Karak stays on ${nameOf(d.target)}.` : `${who} lays the Curse of Karak on ${nameOf(d.target)}.`;
+      return d.kept ? t('chronicle.curseStays', { target: nameOf(d.target) }) : t('chronicle.curseLaid', { who, target: nameOf(d.target) });
     case 'use_spell':
       if (d.spell === 'teleport') {
-        return d.self ? `${who} steps through a Portal of Healing.` : `${who} sends ${nameOf(d.target)} through a Portal of Healing.`;
+        return d.self ? t('chronicle.portalSelf', { who }) : t('chronicle.portalOther', { who, target: nameOf(d.target) });
       }
       if (d.spell === 'dark_thorn') {
-        const tail = d.reincarnatedTo ? ', who rises again at a fountain' : d.stunned ? ', who falls stunned' : '';
-        return `${who} pierces ${nameOf(d.target)} with a Dark Thorn${tail}.`;
+        const key = d.reincarnatedTo ? 'chronicle.darkThornRises' : d.stunned ? 'chronicle.darkThornStunned' : 'chronicle.darkThorn';
+        return t(key, { who, target: nameOf(d.target) });
       }
-      return `${who} casts a spell.`;
+      return t('chronicle.castsSpell', { who });
     case 'cursed_room':
-      return d.cursed
-        ? `${nameOf(d.player)} rolls ${d.roll} in a cursed room and is cursed.`
-        : `${nameOf(d.player)} rolls ${d.roll} in a cursed room and walks free.`;
+      return t(d.cursed ? 'chronicle.cursedRoomCursed' : 'chronicle.cursedRoomSafe', { who: nameOf(d.player), roll: d.roll });
     case 'duel': {
-      const totals = `${d.challengerTotal ?? '?'} against ${d.opponentTotal ?? '?'}`;
-      if (d.result === 'tie') return `${nameOf(d.challenger)} and ${nameOf(d.opponent)} duel to a draw, ${totals}.`;
-      const winner = d.result === 'challenger' ? d.challenger : d.opponent;
-      const loot = d.loot?.type ? ` and takes ${withArticle(humanize(d.loot.type))}` : '';
-      return `${nameOf(winner)} wins the duel, ${totals}${loot}.`;
+      const params = { a: d.challengerTotal ?? '?', b: d.opponentTotal ?? '?' };
+      if (d.result === 'tie') return t('chronicle.duelDraw', { ...params, first: nameOf(d.challenger), second: nameOf(d.opponent) });
+      const winner = nameOf(d.result === 'challenger' ? d.challenger : d.opponent);
+      return d.loot?.type
+        ? t('chronicle.duelWinLoot', { ...params, winner, item: itemName(d.loot.type, 'acc') })
+        : t('chronicle.duelWin', { ...params, winner });
     }
     case 'duel_loot':
-      return `${who} takes ${withArticle(humanize(d.item, 'item'))} from ${nameOf(d.from)}.`;
+      return t('chronicle.duelLoot', { who, item: itemName(d.item, 'acc'), from: nameOf(d.from) });
     case 'tireless':
-      return `${who} leaves the ${humanize(d.leftItem?.type, 'loot')} behind and keeps moving.`;
+      return t('chronicle.tireless', { who, item: itemName(d.leftItem?.type, 'acc') });
     case 'lightning_attack':
-      return `${who} strikes the ${monsterName(d.monster?.name)} with lightning.`;
+      return t('chronicle.lightning', { who, monster: monsterName(d.monster?.name, 'acc') });
     case 'retreat':
-      return `${who} retreats to ${d.to || 'safety'}.`;
+      return t('chronicle.retreat', { who, to: d.to || '?' });
     case 'sprint':
-      return `${who} breaks into a sprint.`;
+      return t('chronicle.sprint', { who });
     case 'lord_karak':
-      return `${nameOf(d.player)} becomes Lord Karak.`;
-    case 'listen': {
-      const heard = d.item ? `the ${d.item.hp > 0 ? monsterName(d.item.name) : humanize(d.item.name)}` : 'only silence';
-      return `${who} listens at a door and hears ${heard}.`;
-    }
+      return t('chronicle.lordKarak', { who: nameOf(d.player) });
+    case 'listen':
+      if (!d.item) return t('chronicle.listenSilence', { who });
+      return d.item.hp > 0
+        ? t('chronicle.listenMonster', { who, monster: monsterName(d.item.name, 'acc', d.item.hp) })
+        : t('chronicle.listenItem', { who, item: itemName(d.item.name, 'acc') });
     case 'fateweaver':
-      return `${who} weaves fate: the ${humanize(d.chosen?.name || d.chosen?.type, 'token')} is placed.`;
-    case 'fight_monster': {
-      const name = monsterName(d.monsterType || d.monster?.name || d.monster?.type);
-      const total = d.totalDamage ?? d.diceRollDamage;
-      const hp = d.monster?.hp ?? d.monsterHP ?? (typeof d.monster === 'number' ? d.monster : null);
-      const score = total != null && hp != null ? ` (${total} against ${hp})` : '';
-      const notes = fightNotes(d);
-      const with_ = notes.length ? `, ${notes.join(', ')}` : '';
-      const tail = d.unstoppable ? ' and fights on' : '';
-      if (d.result === 'WIN') return `${who} defeats the ${name}${score}${with_}${tail}.`;
-      if (d.result === 'LOSE') return `${who} falls to the ${name}${score}${with_}${tail}.`;
-      if (d.result === 'DRAW') return `${who} and the ${name} stand even${score}${with_}.`;
-      return `${who} faces the ${name}.`;
-    }
+      return t('chronicle.fateweaver', { who, token: d.chosen?.hp > 0 ? monsterName(d.chosen.name, 'acc', d.chosen.hp) : itemName(d.chosen?.type || d.chosen?.name, 'acc') });
+    case 'fight_monster':
+      return fightSentence(who, d);
     case 'immediate_battle_pickup':
     case 'item_picked_up':
     case 'item_picked':
     case 'pick_item': {
-      if (d.strategy === 'chest opened') return `${who} opens a chest.`;
+      if (d.strategy === 'chest opened') return t('chronicle.opensChest', { who });
       const item = pickedItemType(d, siblings);
-      if (item === 'chest') return `${who} finds a chest.`;
-      return `${who} picks up ${withArticle(humanize(item, 'treasure'))}.`;
+      if (item === 'chest') return t('chronicle.findsChest', { who });
+      return t('chronicle.picksUp', { who, item: itemName(item || 'treasure', 'acc') });
     }
     case 'chest_locked':
-      return `${who} finds a locked chest.`;
+      return t('chronicle.findsLockedChest', { who });
     case 'chest_opened':
-      return `${who} opens a chest.`;
+      return t('chronicle.opensChest', { who });
     case 'item_dropped':
     case 'drop_item':
-      return `${who} drops ${withArticle(humanize(d.item, 'item'))}.`;
+      return t('chronicle.drops', { who, item: itemName(d.item, 'acc') });
     case 'spell_used':
-      return `${who} casts ${humanize(d.spell, 'a spell')}.`;
+      return t('chronicle.casts', { who, spell: itemName(d.spell, 'acc') });
     case 'use_teleport':
-      return `${who} teleports.`;
+      return t('chronicle.teleports', { who });
     case 'use_hero_ability':
-      if (d.ability === 'reincarnation') return `${who} rises again at a healing fountain.`;
-      return `${who} uses a hero skill.`;
+      return d.ability === 'reincarnation' ? t('chronicle.rises', { who }) : t('chronicle.usesSkill', { who });
     case 'player_healed':
-      return `${who} heals ${d.amount || 1} at the fountain.`;
+      return t('chronicle.heals', { who, n: d.amount || 1 }, d.amount || 1);
     case 'player_stunned':
-      return `${who} is stunned.`;
-    case 'ai_decision':
-      return null;
+      return t('chronicle.stunned', { who });
     // Duplicates of fight_monster / pickups, AI internals and turn bookkeeping
     case 'tile_picked':
     case 'pick_tile':
+    case 'tile_rotated':
+    case 'rotate_tile':
+    case 'ai_decision':
     case 'battle_started':
     case 'battle_detected':
     case 'battle_analysis':
@@ -171,7 +165,7 @@ export function describeAction(action, who, nameOf, siblings = []) {
     case 'ai_thinking':
       return null;
     default:
-      return type ? `${who}: ${humanize(type)}.` : null;
+      return type ? t('chronicle.other', { who, action: type.replace(/_/g, ' ') }) : null;
   }
 }
 
@@ -205,6 +199,6 @@ export function chronicleTurns(turns, nameOf) {
  * @returns {{ key: string, text: string }[]}
  */
 export function chronicleTail(turns, nameOf, limit = 4) {
-  const all = chronicleTurns(turns, nameOf).flatMap((t) => t.lines.map((text, i) => ({ key: `${t.key}-${i}`, text })));
+  const all = chronicleTurns(turns, nameOf).flatMap((turn) => turn.lines.map((text, i) => ({ key: `${turn.key}-${i}`, text })));
   return all.slice(-limit);
 }

@@ -1,20 +1,62 @@
 <template>
-  <div class="loading-overlay">
+  <div
+    class="loading-overlay"
+    :data-loading-status="status || 'Processing...'"
+  >
     <div class="loading-indicator-mini">
       <div class="mini-spinner" />
-      <span>{{ status || 'Processing...' }}</span>
+      <span>{{ label }}</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { defineProps } from 'vue';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
+  /** English status from GameView; it stays English as the data-loading-status hook (the e2e reads it) */
   status: {
     type: String,
     default: ''
   }
+});
+
+const { t } = useI18n();
+
+// English status → loading.* key; an unknown status is shown as it is
+const STATUS_KEYS = {
+  'Adding second player...': 'adding-second-player',
+  'Casting Dark Thorn...': 'casting-dark-thorn',
+  'Double Attack! Rerolling...': 'double-attack',
+  'Ending turn...': 'ending-turn',
+  'Finalizing battle and picking up item...': 'finalizing-pickup',
+  'Finalizing battle...': 'finalizing',
+  'Getting second player ready...': 'second-player-ready',
+  'Lightning Attack...': 'lightning-attack',
+  'Loading game data...': 'loading-game',
+  'Locking in strength...': 'locking-strength',
+  'Picking up item...': 'picking-up',
+  'Reincarnating...': 'reincarnating',
+  'Replacing item...': 'replacing',
+  'Retreating...': 'retreating',
+  'Skipping item...': 'skipping-item',
+  'Skipping turn...': 'skipping-turn',
+  'Summoning the rival...': 'summoning',
+  'Swapping places...': 'swapping',
+  'Teleporting...': 'teleporting',
+  'Updating game state...': 'updating-state',
+  'Updating game status...': 'updating-status',
+  'Sneaking past...': 'sneaking',
+  'Moving player...': 'moving',
+  'Starting game...': 'starting',
+  'Getting player ready...': 'player-ready'
+};
+
+const label = computed(() => {
+  if (!props.status) return t('loading.processing');
+  const key = STATUS_KEYS[props.status];
+  return key ? t(`loading.${key}`) : props.status;
 });
 </script>
 

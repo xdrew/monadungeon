@@ -5,8 +5,8 @@
     role="status"
   >
     <div class="hud-plaque__row">
-      <span class="hud-plaque__caption">AI turn</span>
-      <span class="step-counter">Step {{ currentStep }} of {{ totalSteps }}</span>
+      <span class="hud-plaque__caption">{{ $t('hud.aiTurn') }}</span>
+      <span class="step-counter">{{ $t('hud.step', { n: currentStep, total: totalSteps }) }}</span>
     </div>
     <div
       class="progress-bar"
@@ -27,7 +27,7 @@
       <div
         class="speed-controls"
         role="group"
-        aria-label="Playback speed"
+        :aria-label="$t('hud.speed')"
       >
         <button
           v-for="speed in SPEEDS"
@@ -38,7 +38,7 @@
           :aria-pressed="playbackSpeed === speed.value"
           @click="$emit('speed-change', speed.value)"
         >
-          {{ speed.label }}
+          {{ $t(speed.labelKey) }}
         </button>
       </div>
       <button
@@ -46,7 +46,7 @@
         class="skip-btn btn btn--ghost btn--sm"
         @click="$emit('skip')"
       >
-        Skip
+        {{ $t('common.skip') }}
       </button>
     </div>
   </div>
@@ -75,9 +75,9 @@ defineProps({
 defineEmits(['speed-change', 'skip']);
 
 const SPEEDS = [
-  { value: 0.5, label: 'Slow' },
-  { value: 1, label: 'Normal' },
-  { value: 2, label: 'Fast' }
+  { value: 0.5, labelKey: 'hud.slow' },
+  { value: 1, labelKey: 'hud.normal' },
+  { value: 2, labelKey: 'hud.fast' }
 ];
 </script>
 

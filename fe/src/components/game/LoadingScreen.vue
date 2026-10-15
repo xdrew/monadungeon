@@ -3,16 +3,16 @@
     <div class="loading-content">
       <div class="loading-logo">
         <ThemeLogo />
-        <div class="loading-title">{{ theme.appName }}</div>
+        <div class="loading-title">{{ $t('common.appName') }}</div>
       </div>
       <div class="loading-spinner">
         <div class="spinner-icon" />
       </div>
       <div class="loading-text">
-        Loading adventure...
+        {{ $t('loading.adventure') }}
       </div>
       <div class="loading-tips">
-        Prepare to face monsters and discover treasures
+        {{ $t('loading.adventureHint') }}
       </div>
     </div>
   </div>
@@ -20,7 +20,6 @@
 
 <script setup>
 import ThemeLogo from '@/components/ThemeLogo.vue';
-import { theme } from '@/theme';
 </script>
 
 <style scoped>

@@ -1,12 +1,12 @@
 <template>
   <div class="error">
-    <h2>Error Loading Game</h2>
+    <h2>{{ $t('field.errorLoading') }}</h2>
     <p>{{ errorMessage }}</p>
     <button
       class="refresh-button"
       @click="refreshPage"
     >
-      Refresh Page
+      {{ $t('field.refresh') }}
     </button>
   </div>
 </template>

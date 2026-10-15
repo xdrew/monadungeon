@@ -342,6 +342,23 @@ final class HeroTest extends TestCase
     }
 
     #[Test]
+    public function everySkillHasAStableUniqueKey(): void
+    {
+        $keys = [];
+        foreach (HeroType::cases() as $hero) {
+            foreach ($hero->skills() as $skill) {
+                self::assertMatchesRegularExpression('/^[a-z]+(_[a-z]+)*$/', $skill['key'], $hero->value . ' ' . $skill['name']);
+                $keys[] = $skill['key'];
+            }
+        }
+
+        self::assertCount(20, $keys);
+        self::assertSame($keys, array_values(array_unique($keys)), 'skill keys are unique across heroes');
+        self::assertSame(['double_attack', 'reincarnation'], array_column(HeroType::WARRIOR->skills(), 'key'));
+        self::assertSame(['bear_attack', 'listening'], array_column(HeroType::RANGER->skills(), 'key'));
+    }
+
+    #[Test]
     public function berserkBonusDependsOnHp(): void
     {
         self::assertSame([0, 1, 1, 2, 2, 0], array_map(static fn(int $hp): int => HeroType::BARBARIAN->berserkBonus($hp), [5, 4, 3, 2, 1, 0]));

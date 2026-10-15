@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 /**
  * Utility functions for game data management
  */
@@ -313,7 +314,7 @@ export const startGame = async (
 ) => {
   if (!gameId) {
     console.error('Missing game ID');
-    if (setError) setError('Cannot start game: Missing game ID');
+    if (setError) setError(t('errors.noGameId'));
     return { success: false, error: 'Missing game ID' };
   }
 
@@ -340,7 +341,7 @@ export const startGame = async (
     return { success: true, gameData: updatedGameData };
   } catch (err) {
     console.error('Failed to start game:', err);
-    if (setError) setError(`Failed to start game: ${err.message}`);
+    if (setError) setError(t('errors.startGame', { reason: err.message }));
     return { success: false, error: err.message };
   } finally {
     if (setLoading) setLoading(false);

@@ -56,13 +56,13 @@ Authority: user answers > e2e contract > existing code.
   - `fe/src/components/ui/LanguageSwitch.vue`; mount in `HomeView.vue` next to `MusicToggle` and in the HUD `#tools` slot. Switching re-renders without reload.
 
 ### Phase 2: Game screen
-- [ ] Task 4: Backend skill keys (independent of 1-3)
+- [x] Task 4: Backend skill keys (independent of 1-3)
   - `src/src/Game/Player/HeroType.php` `skills()` entries get `key`; PHPDoc shape updated; `HeroSkills::skills()` dedupes by `key`. Psalm types consistent (do not run psalm).
   - Test in `src/tests/Game/Player/HeroTest.php` (and `HeroSkillsTest.php` for Lord Karak): keys non-empty, snake_case, unique; run `docker exec php_monadungeon php vendor/bin/phpunit --filter 'HeroTest|HeroSkillsTest'`.
-- [ ] Task 5: Lobby, HUD, field (depends on 2, 4)
+- [x] Task 5: Lobby, HUD, field (depends on 2, 4)
   - `HomeView.vue` (texts, toggles, hero cards: names/skills via keys, drop `HERO_SKILLS` and the `split(', the ')`), `GameView.vue` template and script strings (action notices with params, `heroTooltip`, `playerLabel`, banner headlines, waiting text, decision plaque panels), `components/game/hud/*`, `useTurnOrder.js` (`heroName(key, 'short')`), `GameTile.vue`, `GhostTile.vue` (`Rotate` stays "Rotate" in en), `ZoomControls`, `MusicToggle`, `AiTurnPlaybackControls`, `ReplayControls`, `LoadingOverlay` (`Processing...` in en), `ErrorDisplay`, `utils/itemUtils.js` (`formatItemName` → `itemName`, tooltips), `utils/fieldUtils.js` / `inventoryUtils.js` / `gameUtils.js` user-visible loading/error strings.
   - Logging: none new beyond `[i18n]`.
-- [ ] Task 6: Chronicle and AI playback labels (depends on 2)
+- [x] Task 6: Chronicle and AI playback labels (depends on 2)
   - `utils/chronicle.js`: every sentence → `t('chronicle.<key>', params)` with monster/item forms; `withArticle`/`humanize` go (en articles live in the en sentences). `composables/useAiTurnPlayback.js` labels → keys. The chronicle recomputes on locale change (computed reads the locale).
 
 ### Phase 3: Battle, dialogs, pages, docs

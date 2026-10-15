@@ -166,14 +166,16 @@ final readonly class HeroSkills
     }
 
     /**
-     * @return list<array{name: string, description: string}>
+     * Each skill once, by its stable key (the frontend translates skills by key).
+     *
+     * @return list<array{key: non-empty-string, name: string, description: string}>
      */
     public function skills(): array
     {
         $skills = [];
         foreach ($this->heroes as $hero) {
             foreach ($hero->skills() as $skill) {
-                $skills[$skill['name']] ??= $skill;
+                $skills[$skill['key']] ??= $skill;
             }
         }
 

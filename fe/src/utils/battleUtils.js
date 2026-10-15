@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 /**
  * Utility functions for battle-related operations in the game
  */
@@ -81,7 +82,7 @@ export const closeBattleReportAndEndTurn = async ({
 
   } catch (err) {
     console.error('Failed to end turn:', err);
-    error.value = `Failed to end turn: ${err.message}`;
+    error.value = t('errors.endTurn', { reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';

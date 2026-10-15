@@ -2,9 +2,9 @@
   <!-- The company in turn order down the left edge ("C · Five players") -->
   <section
     class="party-rail"
-    aria-label="Order of the turn"
+    :aria-label="t('hud.turnOrder')"
   >
-    <span class="party-rail__caption">Order of the turn</span>
+    <span class="party-rail__caption">{{ t('hud.turnOrder') }}</span>
     <ol class="party-rail__list">
       <li
         v-for="entry in entries"
@@ -17,7 +17,7 @@
         <button
           type="button"
           class="party-member__medallion"
-          :aria-label="`${entry.name}: show the kit`"
+          :aria-label="t('hud.showKit', { name: entry.name })"
           :aria-expanded="openId === entry.player.id"
           @click="toggle(entry.player.id)"
           @mouseenter="hoverId = entry.player.id"
@@ -41,7 +41,7 @@
             ><img
               v-if="entry.player.cursed && !entry.player.awaitingReincarnation"
               src="/images/curse.webp"
-              alt="Cursed"
+              :alt="t('hud.cursedBadge')"
               class="curse-token-icon"
               data-testid="curse-token"
             ><GameIcon
@@ -52,13 +52,13 @@
               v-if="entry.player.lordKarak && entry.player.hero"
               class="lord-karak-was"
               data-testid="lord-karak-was"
-            > · was {{ heroShortName(entry.player) }}</span>
+            > · {{ t('hud.was', { name: heroShortName(entry.player) }) }}</span>
           </span>
           <span class="party-member__stats">
             <span
               class="party-member__hearts"
-              :aria-label="`${hp(entry.player)} of ${maxHp(entry.player)} HP`"
-              :title="`HP ${hp(entry.player)}/${maxHp(entry.player)}`"
+              :aria-label="t('hud.hpOf', { hp: hp(entry.player), max: maxHp(entry.player) })"
+              :title="`${t('common.hp')} ${hp(entry.player)}/${maxHp(entry.player)}`"
             >
               <GameIcon
                 v-for="n in maxHp(entry.player)"
@@ -72,7 +72,7 @@
             </span>
             <span
               class="party-member__treasure"
-              title="Victory points"
+              :title="t('hud.victoryPoints')"
             ><GameIcon
               name="treasure"
               :size="13"
@@ -80,7 +80,7 @@
             <span
               v-if="startingRoll(entry.player)"
               class="party-member__roll starting-roll"
-              title="Roll for the starting player"
+              :title="t('hud.startingRoll')"
               data-testid="starting-roll"
             ><GameIcon
               name="dice"
@@ -92,7 +92,7 @@
           v-if="openId === entry.player.id || hoverId === entry.player.id"
           class="party-member__kit"
           role="group"
-          :aria-label="`${entry.name}'s kit`"
+          :aria-label="t('hud.kitOf', { name: entry.name })"
         >
           <InventorySlots
             :inventory="entry.player.inventory || {}"
@@ -108,6 +108,8 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { heroName } from '@/i18n/names';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import InventorySlots from './InventorySlots.vue';
 
@@ -125,6 +127,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['portrait-error']);
+const { t } = useI18n();
 
 const openId = ref(null);
 const hoverId = ref(null);
@@ -137,14 +140,14 @@ const maxHp = (player) => player.maxHp ?? 5;
 
 // "you", "ai" or the player's name, then where they stand in the round
 const whoLabel = (entry) => {
-  const base = entry.isYou ? 'you' : props.isAi(entry.player) ? 'ai' : (entry.player.username || 'player');
+  const base = entry.isYou ? t('hud.you') : props.isAi(entry.player) ? t('hud.ai') : (entry.player.username || t('hud.player'));
   // Your own turn shows in the glow alone; for the others the canvas spells it out
-  if (!entry.isYou && entry.state === 'acting') return `${base} · acting`;
-  if (!entry.isYou && entry.state === 'next') return `${base} · next`;
+  if (!entry.isYou && entry.state === 'acting') return t('hud.acting', { who: base });
+  if (!entry.isYou && entry.state === 'next') return t('hud.next', { who: base });
   return base;
 };
 
-const heroRole = (player) => (player.lordKarak ? 'Lord Karak' : `the ${props.heroShortName(player).toLowerCase()}`);
+const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.heroShortName(player));
 </script>
 
 <style scoped>
@@ -252,6 +255,16 @@ const heroRole = (player) => (player.lordKarak ? 'Lord Karak' : `the ${props.her
 
 .party-member--acting .party-member__name {
   font-size: 28px;
+}
+
+/* Ruslan Display (the Cyrillic fallback of --font-display) runs wider than Pirata One */
+.party-member__name:lang(ru) {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.party-member--acting .party-member__name:lang(ru) {
+  font-size: 21px;
 }
 
 .party-member__who {

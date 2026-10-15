@@ -271,107 +271,127 @@ enum HeroType: string
     }
 
     /**
-     * @return list<array{name: string, description: string}>
+     * @return list<array{key: non-empty-string, name: string, description: string}>
      */
     public function skills(): array
     {
         return match ($this) {
             self::WARRIOR => [
                 [
+                    'key' => 'double_attack',
                     'name' => 'Double Attack',
                     'description' => 'In any combat, the Warrior can reroll the dice if the first roll is not to his liking. He does not lose a HP in the first loss, but must accept the second roll\'s result.',
                 ],
                 [
+                    'key' => 'reincarnation',
                     'name' => 'Reincarnation',
                     'description' => 'If the Warrior loses his last HP, he does not fall unconscious. Instead he teleports to any tile with a healing fountain, where all his HP are replenished. His turn ends anyway.',
                 ],
             ],
             self::THIEF => [
                 [
+                    'key' => 'backstab',
                     'name' => 'Backstab',
                     'description' => 'The Thief attacks from the shadows: she wins any combat that would normally result in a tie.',
                 ],
                 [
+                    'key' => 'stealth',
                     'name' => 'Stealth',
                     'description' => 'The Thief moves in the shadows: when entering a tile with a monster, she can decide to fight it or to sneak past and continue moving.',
                 ],
             ],
             self::SWORDSMAN => [
                 [
+                    'key' => 'combat_training',
                     'name' => 'Combat Training',
                     'description' => 'The Swordsman is an experienced fighter and his strikes are always precise: any die that shows a 1 is rerolled as many times as necessary.',
                 ],
                 [
+                    'key' => 'unstoppable',
                     'name' => 'Unstoppable',
                     'description' => 'If at least one die shows a 6 during combat, the Swordsman continues his turn afterwards. He may even fight the same monster again after a tie or a loss.',
                 ],
             ],
             self::WARLOCK => [
                 [
+                    'key' => 'sacrifice',
                     'name' => 'Sacrifice',
                     'description' => 'The Warlock can sacrifice one HP to gain a bonus of +1 to his strength. He decides after rolling the dice and gains the bonus only once per combat. He can even sacrifice his last HP, but then falls unconscious for his next turn.',
                 ],
                 [
+                    'key' => 'magic_swap',
                     'name' => 'Magic Swap',
                     'description' => 'The Warlock can swap his position with any other hero. This costs 4 moves, so it is only possible at the beginning of his turn; he can still use the ability of the tile where he ended up (unlocking a chest, healing, etc.).',
                 ],
             ],
             self::WIZARD => [
                 [
+                    'key' => 'magical_affinity',
                     'name' => 'Magical Affinity',
                     'description' => 'The Wizard knows how to use the magic bolts more effectively: his fireball scrolls are not consumed when used in combat. This does not apply to the portal of healing.',
                 ],
                 [
+                    'key' => 'astral_walking',
                     'name' => 'Astral Walking',
                     'description' => 'The Wizard can move through walls, so he does not have to respect the continuity of the dungeon. This can be used only while moving over the discovered tiles.',
                 ],
             ],
             self::ORACLE => [
                 [
+                    'key' => 'farseeing',
                     'name' => 'Farseeing',
                     'description' => 'The Oracle has the best knowledge of all her enemies: if she fights in the first move of her turn, she gains a bonus of +1 to her roll.',
                 ],
                 [
+                    'key' => 'fateweaver',
                     'name' => 'Fateweaver',
                     'description' => 'The Oracle can influence her future: whenever she is supposed to draw a token from the bag, she draws two instead, places one on the tile and puts the other one back in the bag.',
                 ],
             ],
             self::BARBARIAN => [
                 [
+                    'key' => 'berserk',
                     'name' => 'Berserk',
                     'description' => 'The weaker the Barbarian gets, the harder he hits: with exactly 3 or 4 HP he gains +1 to his strength, with 1 or 2 HP +2. When healing he may choose how many HP to heal.',
                 ],
                 [
+                    'key' => 'tireless',
                     'name' => 'Tireless',
                     'description' => 'If the Barbarian defeats a monster and does not take its loot, he may continue his remaining moves.',
                 ],
             ],
             self::BATTLE_MAGE => [
                 [
+                    'key' => 'sword_master',
                     'name' => 'Sword Master',
                     'description' => 'A sword has strength 3 in the hands of the Battle Mage.',
                 ],
                 [
+                    'key' => 'lightning_attack',
                     'name' => 'Lightning Attack',
                     'description' => 'For all 4 moves the Battle Mage teleports to any tile with a monster and fights it. If he does not win, he chooses where to retreat, only onto an already opened tile.',
                 ],
             ],
             self::ACROBAT => [
                 [
+                    'key' => 'dagger_throwing',
                     'name' => 'Dagger Throwing',
                     'description' => 'The Acrobat may keep daggers (strength 1) in her spell slots. Every dagger she carries adds +1 to her strength and is never consumed.',
                 ],
                 [
+                    'key' => 'sprint',
                     'name' => 'Sprint',
                     'description' => 'Instead of normal movement the Acrobat may declare a sprint at the start of her turn: up to 8 moves, but she may not explore undiscovered tiles.',
                 ],
             ],
             self::RANGER => [
                 [
+                    'key' => 'bear_attack',
                     'name' => 'Bear Attack',
                     'description' => 'The Ranger fights alongside her bear: a die showing 1 counts as 6.',
                 ],
                 [
+                    'key' => 'listening',
                     'name' => 'Listening',
                     'description' => 'For one move the Ranger may explore an adjacent tile (place it and draw its token) without entering it. Entering later costs another move. She may listen several times per turn.',
                 ],

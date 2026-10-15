@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 /**
  * Utility functions for working with game field and player positions
  */
@@ -502,7 +503,7 @@ const handlePlayerMovement = async (params) => {
       }
     }
     
-    error.value = `Failed to move player: ${err.message}`;
+    error.value = t('errors.move', { reason: err.message });
   } finally {
     isRequestInProgress = false;
     loading.value = false;
@@ -673,14 +674,14 @@ const handleTilePicking = async (params) => {
   // Prevent picking a new tile if one is already picked
   if (pickedTileId.value || pickedTile.value) {
     console.log('A tile is already picked, cannot pick another one');
-    error.value = 'You already have a tile picked. Place it or press Escape to cancel.';
+    error.value = t('errors.tileAlreadyPicked');
     return;
   }
   
   // Check if the deck is empty
   if (gameData?.state?.deck?.isEmpty) {
     console.log('Deck is empty, cannot pick more tiles');
-    error.value = 'No more tiles available in the deck';
+    error.value = t('errors.deckEmpty');
     return;
   }
 
@@ -708,7 +709,7 @@ const handleTilePicking = async (params) => {
     const requiredOpenSide = getRequiredOpenSide(position, gameData, currentPlayerId.value);
     
     if (requiredOpenSide === null) {
-      error.value = 'Could not determine required open side';
+      error.value = t('errors.openSide');
       return;
     }
 
@@ -743,7 +744,7 @@ const handleTilePicking = async (params) => {
 
     if (!validOrientation) {
       cancelTilePlacement();
-      error.value = 'No valid orientation found - tile must have a direct connection to your current tile';
+      error.value = t('errors.noOrientation');
       return;
     }
 
@@ -753,7 +754,7 @@ const handleTilePicking = async (params) => {
     return { tilePicked: true };
   } catch (err) {
     console.error('Failed to pick tile:', err);
-    error.value = `Failed to pick tile: ${err.message}`;
+    error.value = t('errors.pickTile', { reason: err.message });
   } finally {
     isRequestInProgress = false;
   }
@@ -882,7 +883,7 @@ export const handlePlaceClick = async (params) => {
     // Validate tile orientation
     if (!isValidOrientation(position, pickedTile.value.orientation, gameData, currentPlayerId.value)) {
       console.log('Invalid tile orientation for this position');
-      error.value = 'Invalid tile orientation - must have a direct connection to your current tile';
+      error.value = t('errors.badOrientation');
       isRequestInProgress = false;  // Reset flag on validation error
       return;
     }
@@ -893,7 +894,7 @@ export const handlePlaceClick = async (params) => {
       const placeResponse = await handleTilePlacement(actionParams);
       return placeResponse; // Return response from tile placement
     } catch (err) {
-      error.value = `Failed to place tile: ${err.message}`;
+      error.value = t('errors.placeTile', { reason: err.message });
       isRequestInProgress = false;  // Ensure flag is reset
     }
   } else if (!pickedTileId.value && !existingTile && !isDeckEmpty && isMoveTo) {
@@ -903,7 +904,7 @@ export const handlePlaceClick = async (params) => {
   } else if (pickedTileId.value && !existingTile && isMoveTo) {
     // If we have a picked tile but clicked on a non-placeable movement spot, show error
     console.log('Cannot place tile here - not a valid placement location');
-    error.value = 'You cannot place a tile here. Click on a valid placement location or press Escape to cancel.';
+    error.value = t('errors.cannotPlaceHere');
     return;
   } else if (!isMoveTo && !existingTile && !isDeckEmpty) {
     console.log('Debug place tile logic:', {

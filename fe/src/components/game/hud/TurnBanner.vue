@@ -1,16 +1,16 @@
 <template>
   <div class="turn-banner">
     <div class="turn-banner__meta">
-      <!-- The first <h3> on the page reads "Turn: N" (the e2e reads it): no text-transform here,
+      <!-- The first <h3> on the page reads "Turn: N" in en (the e2e reads it): no text-transform here,
            Playwright's innerText would apply it -->
       <h3
         v-if="turn"
         class="turn-banner__turn"
-      >Turn: {{ turn }}</h3>
+      >{{ t('hud.turn', { n: turn }) }}</h3>
       <h3
         v-else
         class="turn-banner__turn"
-      >Game Setup</h3>
+      >{{ t('hud.turnSetup') }}</h3>
       <span
         v-if="sub"
         class="turn-banner__sub"
@@ -19,11 +19,11 @@
         v-if="regent"
         class="turn-banner__sub regent-badge"
         data-testid="regent-badge"
-        title="Karak: Regent expansion — Lord Karak rooms, Giant Bats and Skeleton Mages"
+        :title="t('hud.regentTitle')"
       >· <GameIcon
         name="crown"
         :size="13"
-      /> Regent</span>
+      /> {{ t('hud.regent') }}</span>
     </div>
     <p
       v-if="headline"
@@ -37,6 +37,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n';
 import GameIcon from '@/components/ui/GameIcon.vue';
 
 defineProps({
@@ -45,6 +46,8 @@ defineProps({
   sub: { type: String, default: '' },
   regent: { type: Boolean, default: false }
 });
+
+const { t } = useI18n();
 </script>
 
 <style scoped>

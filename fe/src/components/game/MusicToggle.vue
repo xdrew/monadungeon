@@ -2,8 +2,8 @@
   <button
     class="music-toggle btn btn--iron btn--sm"
     :class="{ 'music-off': !isEnabled }"
-    :title="isEnabled ? 'Mute Music' : 'Play Music'"
-    :aria-label="isEnabled ? 'Mute Music' : 'Play Music'"
+    :title="isEnabled ? $t('hud.musicOff') : $t('hud.musicOn')"
+    :aria-label="isEnabled ? $t('hud.musicOff') : $t('hud.musicOn')"
     :aria-pressed="isEnabled"
     @click="toggleMusic"
   >

@@ -77,25 +77,25 @@
                 v-if="isPlayerTurn && gameData?.state?.sprint"
                 class="hud-chip sprint-badge"
                 data-testid="sprint-badge"
-              >Sprint — up to 8 moves, no exploring</span>
+              >{{ t('hud.sprintNotice') }}</span>
               <label
                 v-if="healLimitOpen && getCurrentPlayerData?.heroFlags?.choosesHealing"
                 class="hud-chip heal-limit-label"
               >
-                Berserk — heal up to
+                {{ t('hud.healUpTo') }}
                 <select
                   data-testid="heal-limit"
                   :value="getCurrentPlayerData.healLimit ?? ''"
                   :disabled="loading || isRequestInProgress"
                   @change="handleHealLimitChange($event.target.value); healLimitOpen = false"
                 >
-                  <option value="">5 HP (full)</option>
+                  <option value="">{{ t('hud.healFull') }}</option>
                   <option
                     v-for="hp in [4, 3, 2, 1]"
                     :key="`heal-limit-${hp}`"
                     :value="hp"
                   >
-                    {{ hp }} HP
+                    {{ t('common.hpCount', hp) }}
                   </option>
                 </select>
               </label>
@@ -105,30 +105,30 @@
               v-if="canMagicSwapNow && !isMagicSwapMode"
               class="end-turn-btn magic-swap-btn"
               icon="swap"
-              label="Magic Swap"
+              :label="t('hud.ring.magicSwap')"
               data-testid="magic-swap"
               :disabled="loading || isRequestInProgress"
-              title="Warlock: trade places with any other hero (first action of the turn, costs all 4 moves)"
+              :title="t('hud.ring.magicSwapTitle')"
               @click="isMagicSwapMode = true"
             />
             <IronRing
               v-if="canLightningAttackNow && !isLightningMode"
               class="end-turn-btn magic-swap-btn"
               icon="lightning"
-              label="Lightning"
+              :label="t('hud.ring.lightning')"
               data-testid="lightning-attack-btn"
               :disabled="loading || isRequestInProgress"
-              title="Baron Markul: teleport onto any monster and fight it (first action of the turn, costs all 4 moves)"
+              :title="t('hud.ring.lightningTitle')"
               @click="isLightningMode = true"
             />
             <IronRing
               v-if="canSprintNow && !isLightningMode"
               class="end-turn-btn magic-swap-btn"
               icon="sprint"
-              label="Sprint"
+              :label="t('hud.ring.sprint')"
               data-testid="sprint-btn"
               :disabled="loading || isRequestInProgress"
-              title="Hanna: up to 8 moves this turn over discovered tiles, no exploring"
+              :title="t('hud.ring.sprintTitle')"
               @click="handleDeclareSprint"
             />
             <IronRing
@@ -136,28 +136,28 @@
               class="end-turn-btn magic-swap-btn"
               :class="{ 'teleport-active': isListenMode }"
               icon="listen"
-              :label="isListenMode ? 'Listening' : 'Listen'"
+              :label="isListenMode ? t('hud.ring.listening') : t('hud.ring.listen')"
               :pressed="isListenMode"
               data-testid="listen-toggle"
               :disabled="loading || isRequestInProgress"
-              :title="isListenMode ? 'Listening — place a tile' : 'Lady Lorraine: the next tile you place is explored without entering it (one move)'"
+              :title="isListenMode ? t('hud.ring.listeningTitle') : t('hud.ring.listenTitle')"
               @click="isListenMode = !isListenMode"
             />
             <IronRing
               v-if="getCurrentPlayerData?.heroFlags?.choosesHealing"
               icon="heart"
-              label="Heal limit"
+              :label="t('hud.ring.healLimit')"
               :badge="getCurrentPlayerData.healLimit ?? 5"
               :pressed="healLimitOpen"
-              title="Berserk: how far the fountain heals you"
+              :title="t('hud.ring.healLimitTitle')"
               @click="healLimitOpen = !healLimitOpen"
             />
             <IronRing
               data-hud-ring="journal"
               icon="journal"
-              label="Journal"
+              :label="t('hud.ring.journal')"
               :pressed="journalOpen"
-              title="Everything that happened in the dungeon"
+              :title="t('hud.ring.journalTitle')"
               @click="journalOpen = !journalOpen"
             />
             <IronRing
@@ -166,14 +166,14 @@
               icon="hourglass"
               :lit="!(loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe)"
               :disabled="loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe"
-              :title="pickedTileId ? 'You must place the picked tile before ending your turn' : (duelBlocksEndTurn ? 'Finish the Battle Arena duel first' : (retreatChoiceForMe ? 'Choose where to retreat first' : ''))"
+              :title="pickedTileId ? t('hud.mustPlaceTile') : (duelBlocksEndTurn ? t('hud.finishDuel') : (retreatChoiceForMe ? t('hud.chooseRetreatFirst') : ''))"
               @click="handleManualEndTurn"
-            >{{ pickedTileId ? 'Place Tile First' : 'End Turn' }}</IronRing>
+            >{{ pickedTileId ? t('hud.ring.placeTileFirst') : t('hud.ring.endTurn') }}</IronRing>
             <!-- Off turn: a dim hourglass, deliberately not .end-turn-btn and not "End Turn" (the e2e looks for those) -->
             <IronRing
               v-else-if="!isPlayerTurn"
               icon="hourglass"
-              label="Wait"
+              :label="t('hud.ring.wait')"
               disabled
             />
             <!-- Dev-only debug plaques (dev builds only; the AI auto-forcing timer works in every build).
@@ -225,8 +225,8 @@
               v-if="isTeleportMode"
               class="teleport-controls"
             >
-              <h4>Portal of Healing</h4>
-              <p>Pick who is carried to the fountain, then click a healing fountain. The portal costs no move and the turn goes on.</p>
+              <h4>{{ t('game.portal.title') }}</h4>
+              <p>{{ t('game.portal.text') }}</p>
               <div class="portal-targets">
                 <button
                   v-for="player in gameData?.players || []"
@@ -244,7 +244,7 @@
                 class="cancel-teleport-btn btn btn--ghost btn--block"
                 @click="cancelTeleportMode"
               >
-                Cancel Teleport
+                {{ t('game.portal.cancel') }}
               </button>
             </div>
 
@@ -254,8 +254,8 @@
               class="teleport-controls dark-thorn-controls"
               data-testid="dark-thorn-banner"
             >
-              <h4>Dark Thorn</h4>
-              <p>Choose another hero: they lose 1 HP. The spell costs no move and the turn goes on.</p>
+              <h4>{{ t('game.darkThorn.title') }}</h4>
+              <p>{{ t('game.darkThorn.text') }}</p>
               <div class="portal-targets">
                 <button
                   v-for="player in darkThornTargets"
@@ -275,13 +275,13 @@
                 :disabled="!darkThornTargetId || loading || isRequestInProgress"
                 @click="castDarkThorn"
               >
-                Cast Dark Thorn
+                {{ t('game.darkThorn.cast') }}
               </button>
               <button
                 class="cancel-teleport-btn btn btn--ghost btn--block"
                 @click="cancelDarkThornMode"
               >
-                Cancel
+                {{ t('common.cancel') }}
               </button>
             </div>
 
@@ -319,8 +319,8 @@
               class="teleport-controls reincarnation-controls"
               data-testid="reincarnation-banner"
             >
-              <h4>Reincarnation</h4>
-              <p>The Warrior lost his last HP. Click a healing fountain to return there with full HP. The turn ends afterwards.</p>
+              <h4>{{ t('game.reincarnation.title') }}</h4>
+              <p>{{ t('game.reincarnation.text') }}</p>
             </div>
 
             <!-- Curse of Karak: the choice is still open (for example after a page reload) -->
@@ -343,15 +343,15 @@
               class="teleport-controls magic-swap-controls"
               data-testid="magic-swap-banner"
             >
-              <h4>Magic Swap</h4>
-              <p>Click another hero's figure to trade places. It costs all 4 moves: the turn ends on the new tile (a chest or a fountain there still counts).</p>
+              <h4>{{ t('game.magicSwap.title') }}</h4>
+              <p>{{ t('game.magicSwap.text') }}</p>
               <button
                 class="end-turn-btn btn btn--ghost btn--block"
                 data-testid="magic-swap-cancel"
                 :disabled="loading || isRequestInProgress"
                 @click="isMagicSwapMode = false"
               >
-                Cancel
+                {{ t('common.cancel') }}
               </button>
             </div>
             <!-- Karak: Regent — Baron Markul retreats after a Lightning Attack that was not won -->
@@ -360,8 +360,8 @@
               class="teleport-controls retreat-controls"
               data-testid="retreat-banner"
             >
-              <h4>Retreat</h4>
-              <p>The Lightning Attack was not won. Choose an opened tile to retreat to; the turn ends there.</p>
+              <h4>{{ t('game.retreat.title') }}</h4>
+              <p>{{ t('game.retreat.text') }}</p>
               <div class="portal-targets">
                 <button
                   v-for="option in retreatChoiceForMe.options"
@@ -383,8 +383,8 @@
               class="teleport-controls lightning-controls"
               data-testid="lightning-banner"
             >
-              <h4>Lightning Attack</h4>
-              <p>Choose a monster to strike. It costs all 4 moves; if you do not win you pick where to retreat.</p>
+              <h4>{{ t('game.lightning.title') }}</h4>
+              <p>{{ t('game.lightning.text') }}</p>
               <div class="portal-targets">
                 <button
                   v-for="target in lightningTargets"
@@ -402,7 +402,7 @@
                 class="cancel-teleport-btn btn btn--ghost btn--block"
                 @click="isLightningMode = false"
               >
-                Cancel
+                {{ t('common.cancel') }}
               </button>
             </div>
           </DecisionPlaque>
@@ -449,12 +449,12 @@
         class="game-finished-banner"
       >
         <span class="trophy-icon"><GameIcon name="trophy" :size="24" /></span>
-        <span class="finished-text">Game Over - {{ isCurrentUserWinner() ? 'You Win!' : winnerId ? `${getPlayerEmoji(winnerId)} Wins!` : 'View Results' }}</span>
+        <span class="finished-text">{{ isCurrentUserWinner() ? t('game.overYouWin') : winnerId ? t('game.overWins', { who: heroNameById(winnerId) }) : t('game.overResults') }}</span>
         <button
           class="view-results-button"
           @click="showLeaderboardModal = true"
         >
-          View Leaderboard
+          {{ t('game.viewLeaderboard') }}
         </button>
       </div>
 
@@ -772,7 +772,7 @@
                 </div>
               </div>
               <p v-else>
-                No field data available for game {{ id }}
+                {{ t('game.noField', { id }) }}
               </p>
             </div>
           </div>
@@ -812,7 +812,7 @@
     >
       <div class="leaderboard-card">
         <div class="leaderboard-header">
-          <span class="leaderboard-header-label">Game Over</span>
+          <span class="leaderboard-header-label">{{ t('game.over') }}</span>
         </div>
 
         <!-- Result message -->
@@ -826,11 +826,11 @@
         >
           <div v-if="isCurrentUserWinner()" class="result-text">
             <span class="result-icon"><GameIcon name="trophy" :size="28" /></span>
-            <span>Victory!</span>
+            <span>{{ t('game.victory') }}</span>
           </div>
           <div v-else class="result-text">
             <span class="result-icon">{{ getPlayerEmoji(winnerId) }}</span>
-            <span>Opponent Wins</span>
+            <span>{{ t('game.opponentWins') }}</span>
           </div>
         </div>
 
@@ -847,8 +847,8 @@
             }"
           >
             <div class="lb-rank">
-              <span v-if="idx === 0" class="rank-medal rank-gold"><GameIcon name="trophy" :size="20" title="First place" /></span>
-              <span v-else-if="idx === 1" class="rank-medal rank-silver"><GameIcon name="trophy" :size="20" title="Second place" /></span>
+              <span v-if="idx === 0" class="rank-medal rank-gold"><GameIcon name="trophy" :size="20" :title="t('game.firstPlace')" /></span>
+              <span v-else-if="idx === 1" class="rank-medal rank-silver"><GameIcon name="trophy" :size="20" :title="t('game.secondPlace')" /></span>
               <span v-else class="rank-num">#{{ idx + 1 }}</span>
             </div>
             <div class="lb-player">
@@ -856,11 +856,11 @@
               <span
                 v-if="entry.playerId === winnerId"
                 class="lb-crown"
-              ><GameIcon name="crown" :size="16" title="Winner" /></span>
+              ><GameIcon name="crown" :size="16" :title="t('game.winner')" /></span>
               <span
                 v-if="isCurrentUserEntry(entry)"
                 class="lb-you-badge"
-              >YOU</span>
+              >{{ t('game.youBadge') }}</span>
             </div>
             <div class="lb-treasure">
               <GameIcon name="treasure" :size="16" /> {{ entry.treasure }}
@@ -874,13 +874,13 @@
             class="lb-btn-primary"
             @click="navigateToLobby"
           >
-            <GameIcon name="home" :size="16" /> Return to Lobby <span class="kbd-hint">(Enter)</span>
+            <GameIcon name="home" :size="16" /> {{ t('game.returnToLobby') }} <span class="kbd-hint">(Enter)</span>
           </button>
           <button
             class="lb-btn-secondary"
             @click="reloadPage"
           >
-            <GameIcon name="eye" :size="16" /> View Game Board <span class="kbd-hint">(Esc)</span>
+            <GameIcon name="eye" :size="16" /> {{ t('game.viewBoard') }} <span class="kbd-hint">(Esc)</span>
           </button>
         </div>
       </div>
@@ -895,14 +895,14 @@
         <div class="stunned-player-icon">
           {{ getPlayerEmoji(currentPlayerId) }}
         </div>
-        <h3><GameIcon name="warning" :size="22" /> You are stunned!</h3>
-        <p>You were defeated in battle and cannot move this turn.</p>
-        <p>Your HP will be restored on your next turn.</p>
+        <h3><GameIcon name="warning" :size="22" /> {{ t('game.stunned') }}</h3>
+        <p>{{ t('game.stunnedText') }}</p>
+        <p>{{ t('game.stunnedHeal') }}</p>
         <button
           class="skip-turn-button"
           @click="skipStunnedPlayerTurn"
         >
-          Skip Turn <span class="kbd-hint">(Enter)</span>
+          {{ t('game.skipTurn') }} <span class="kbd-hint">(Enter)</span>
         </button>
       </div>
     </div>
@@ -958,7 +958,9 @@ import Chronicle from '@/components/game/hud/Chronicle.vue';
 import DecisionPlaque from '@/components/game/hud/DecisionPlaque.vue';
 import JournalDrawer from '@/components/game/hud/JournalDrawer.vue';
 import { chronicleTail, chronicleTurns } from '@/utils/chronicle';
-import { useTurnOrder, heroPersonalName, joinNames } from '@/composables/useTurnOrder';
+import { useTurnOrder, joinNames } from '@/composables/useTurnOrder';
+import { useI18n } from 'vue-i18n';
+import { heroName, monsterName, skillText } from '@/i18n/names';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import { musicService } from '@/services/musicService';
@@ -977,7 +979,7 @@ import { dismissNotification as dismissNotificationUtil, showPlayerSwitchNotific
 import { selectInventoryItem as selectInventoryItemUtil, selectItemToReplace as selectItemToReplaceUtil, replaceItem as replaceItemUtil, skipItem as skipItemUtil, handleInventoryFullResponse as handleInventoryFullResponseUtil } from '@/utils/inventoryUtils';
 
 // Import monster utility functions
-import { getMonsterEmoji as getMonsterEmojiUtil, getMonsterDisplayName } from '@/utils/monsterUtils';
+import { getMonsterEmoji as getMonsterEmojiUtil } from '@/utils/monsterUtils';
 
 // Import battle utility functions
 import { closeBattleReportAndEndTurn as closeBattleReportAndEndTurnUtil, predictBattleResult } from '@/utils/battleUtils';
@@ -1013,6 +1015,7 @@ const getItemDamage = (item) => {
 };
 
 const router = useRouter();
+const { t, locale } = useI18n();
 const route = useRoute();
 const id = computed(() => route.params.id);
 const loading = ref(true);
@@ -1025,7 +1028,8 @@ const showActionNotice = (text) => {
   if (actionNoticeTimer) clearTimeout(actionNoticeTimer);
   actionNoticeTimer = setTimeout(() => { actionNotice.value = ''; }, 5000);
 };
-const apiErrorMessage = (err) => err?.response?.data?.message || err?.message || 'Unknown error';
+// The server's reason stays in English (backend exception text); the frame around it is translated
+const apiErrorMessage = (err) => err?.response?.data?.message || err?.message || t('errors.unknown');
 const loadingStatus = ref('');  // Add this line to track specific loading operations
 const error = ref(null);
 const gameData = ref(null);
@@ -1210,10 +1214,10 @@ const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend
 const isMagicSwapMode = ref(false);
 
 // Hero helpers for the player panel
-const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman', warlock: 'Warlock', wizard: 'Wizard', oracle: 'Oracle', barbarian: 'Barbarian', battle_mage: 'Battle Mage', acrobat: 'Acrobat', ranger: 'Ranger' };
 // Swordsman "Unstoppable": the backend keeps the turn open after a battle with a 6, so the client must not end it
 const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
-const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
+// The hero's role in the current language ("the warrior", «воин», „wojownik”)
+const heroShortName = (player) => (player?.hero ? heroName(player.hero, 'role') : '');
 // Karak: Regent, Lord Karak variant — a transformed hero is drawn as Lord Karak (the chosen hero stays in `hero`)
 const figureHeroKey = (player) => (player?.lordKarak ? 'lord_karak' : player?.hero || null);
 
@@ -1237,28 +1241,29 @@ const onAvatarError = (event, player) => {
 };
 const heroTooltip = (player) => {
   if (!player?.hero && !player?.lordKarak) return '';
-  const lines = [player.heroLabel || heroShortName(player)];
+  const lines = [heroName(player)];
   if (player.lordKarak) {
-    lines.push(player.hero ? `Once ${heroShortName(player)}; now has the abilities of the heroes he took over` : 'Has the abilities of the heroes he took over');
+    lines.push(player.hero ? t('game.tooltip.onceHero', { hero: heroShortName(player) }) : t('game.tooltip.lordKarak'));
   }
   for (const skill of player.heroSkills || []) {
-    lines.push(`${skill.name}: ${skill.description}`);
+    const text = skillText(skill);
+    lines.push(`${text.name}: ${text.description}`);
   }
   if (player.awaitingReincarnation) {
-    lines.push('Fallen — choose a healing fountain to reincarnate');
+    lines.push(t('game.tooltip.fallen'));
   }
   if (player.cursed) {
-    lines.push('Cursed — hero skills are disabled until healed at a fountain');
+    lines.push(t('game.tooltip.cursed'));
   }
   return lines.join('\n');
 };
 
 // Who a player is, the way the player panel names them
 const playerLabel = (player) => {
-  if (!player) return 'Player';
-  if (isVirtualPlayer(player.id)) return 'AI';
-  if (isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })) return 'You';
-  return player.username || heroShortName(player) || 'Player';
+  if (!player) return t('common.player');
+  if (isVirtualPlayer(player.id)) return t('common.ai');
+  if (isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })) return t('common.you');
+  return player.username || heroShortName(player) || t('common.player');
 };
 
 // Curse of Karak: the other players (candidates) and the current holder of the token
@@ -1288,7 +1293,8 @@ const isHumanPlayer = (player) => isCurrentUserEntry({ playerId: player.id, exte
 const turnOrder = useTurnOrder(gameData, isHumanPlayer);
 const heroNameById = (playerId) => {
   const player = playerById(playerId);
-  return player ? heroPersonalName(player, playerLabel(player)) : 'Someone';
+  if (!player) return t('common.unknown');
+  return player.hero || player.lordKarak ? heroName(player, 'short') : playerLabel(player);
 };
 
 // The human at this screen (their pack is drawn bottom left)
@@ -1322,7 +1328,7 @@ const ringsWaitingText = computed(() => {
   const acting = turnOrder.acting.value;
   if (!acting || acting.isYou) return '';
   const names = turnOrder.waitingFor.value;
-  return names.length ? `Your turn comes after ${joinNames(names)}` : 'Your turn is next';
+  return names.length ? t('hud.waitingAfter', { names: joinNames(names, t('hud.and')) }) : t('hud.waitingNext');
 });
 
 // The starting-player roll stays on the rail through the first round
@@ -1331,40 +1337,41 @@ const startingRollShown = (player) => {
   return roll && (gameData.value?.state?.turn || 0) <= (gameData.value?.players?.length || 1) ? roll : null;
 };
 
-const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
-const COUNTS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-
 // "third of five" under the turn number once the company is bigger than two
 const bannerSub = computed(() => {
   const entries = turnOrder.entries.value;
   const index = entries.findIndex((e) => e.state === 'acting');
   if (entries.length < 3 || index < 0) return '';
-  return `${ORDINALS[index] || index + 1} of ${COUNTS[entries.length - 1] || entries.length}`;
+  const ordinal = index < 10 ? t(`hud.ordinals.${index}`) : String(index + 1);
+  const count = entries.length <= 10 ? t(`hud.counts.${entries.length - 1}`) : String(entries.length);
+  return t('hud.ordinalOf', { ordinal, count });
 });
 
 // The banner's headline: who acts and what they are about
 const bannerHeadline = computed(() => {
   const status = gameData.value?.state?.status;
-  if (status === 'finished') return 'The dungeon falls silent';
+  if (status === 'finished') return t('hud.headline.finished');
   const acting = turnOrder.acting.value;
-  if (!acting || !gameData.value?.state?.turn) return 'The company gathers';
+  if (!acting || !gameData.value?.state?.turn) return t('hud.headline.setup');
   const who = acting.name;
+  // ru/pl put the monster in the instrumental case ("сражается с гигантской крысой"); the form comes with the locale
+  const faces = (monsterKey) => t('hud.headline.faces', { who, monster: monsterName(monsterKey, t('hud.headline.facesForm')) });
   if (isAiPlayingBack.value) {
     const action = aiPlayback.currentAction.value;
     switch (action?.type) {
-      case 'battle': return action.monsterType ? `${who} faces the ${getMonsterDisplayName(action.monsterType)}` : `${who} fights`;
-      case 'move_player': return `${who} moves on`;
-      case 'place_tile': return `${who} seeks a path`;
-      case 'end_turn': return `${who} rests`;
-      case undefined: return `${who} ponders`;
-      default: return `${who} gathers the loot`;
+      case 'battle': return action.monsterType ? faces(action.monsterType) : t('hud.headline.fights', { who });
+      case 'move_player': return t('hud.headline.movesOn', { who });
+      case 'place_tile': return t('hud.headline.seeksPath', { who });
+      case 'end_turn': return t('hud.headline.rests', { who });
+      case undefined: return t('hud.headline.ponders', { who });
+      default: return t('hud.headline.loot', { who });
     }
   }
   if (showBattleReportModal.value && battleInfo.value?.monsterType) {
-    return `${who} faces the ${getMonsterDisplayName(battleInfo.value.monsterType)}`;
+    return faces(battleInfo.value.monsterType);
   }
-  if (acting.isYou || !isVirtualPlayer(acting.player.id)) return `${who} seeks a path`;
-  return `${who} ponders`;
+  if (acting.isYou || !isVirtualPlayer(acting.player.id)) return t('hud.headline.seeksPath', { who });
+  return t('hud.headline.ponders', { who });
 });
 
 // The hero rolling in the battle modal: the summoned rival rolls in this browser during a duel
@@ -1445,13 +1452,13 @@ const handleChooseDuelOpponent = async (opponentId) => {
       opponentId
     });
     if (response?.success === false) {
-      showActionNotice(response.message || 'The duel could not start');
+      showActionNotice(response.message || t('errors.duelStart'));
     } else if (response?.battleInfo) {
       battleInfo.value = response.battleInfo;
       showBattleReportModal.value = true;
     }
   } catch (err) {
-    showActionNotice(`The duel could not start: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.duelStartReason', { reason: apiErrorMessage(err) }));
   } finally {
     loading.value = false;
     loadingStatus.value = '';
@@ -1488,7 +1495,7 @@ const handleFinalizeDuelSide = async (finalizeBattleData) => {
       sacrificeHp: finalizeBattleData.sacrificeHp === true
     });
   } catch (err) {
-    showActionNotice(`The duel roll failed: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.duelRoll', { reason: apiErrorMessage(err) }));
   } finally {
     showBattleReportModal.value = false;
     battleInfo.value = null;
@@ -1519,10 +1526,10 @@ const handleTakeDuelLoot = async (itemId) => {
       itemId
     });
     if (response?.success === false) {
-      showActionNotice(response.message || 'The loot could not be taken');
+      showActionNotice(response.message || t('errors.loot'));
     }
   } catch (err) {
-    showActionNotice(`The loot could not be taken: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.lootReason', { reason: apiErrorMessage(err) }));
   }
   await loadGameData(false);
 };
@@ -1566,9 +1573,9 @@ const castDarkThorn = async () => {
       null,
       darkThornTargetId.value
     );
-    showActionNotice(`Dark Thorn — ${playerLabel(target)} loses 1 HP`);
+    showActionNotice(t('game.notice.darkThornHit', { who: playerLabel(target) }));
   } catch (err) {
-    showActionNotice(`Dark Thorn failed: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.failed', { action: t('errors.actions.darkThorn'), reason: apiErrorMessage(err) }));
   } finally {
     cancelDarkThornMode();
     loading.value = false;
@@ -1585,9 +1592,7 @@ watch(() => gameData.value?.state?.roomEvent, (event) => {
   if (key === shownRoomEventKey.value) return;
   shownRoomEventKey.value = key;
   const who = playerLabel(playerById(event.playerId));
-  showActionNotice(event.cursed
-    ? `Cursed Room — ${who} rolled ${event.roll}: cursed!`
-    : `Cursed Room — ${who} rolled ${event.roll}: safe`);
+  showActionNotice(t(event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe', { who, roll: event.roll }));
 });
 const handleCurseChoice = async (targetPlayerId) => {
   try {
@@ -1615,7 +1620,7 @@ const handleCurseChoice = async (targetPlayerId) => {
     }
   } catch (e) {
     console.error('Failed to place the curse:', e);
-    error.value = `Failed to place the curse: ${e.message}`;
+    error.value = t('errors.curse', { reason: e.message });
   }
 };
 
@@ -2326,7 +2331,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
 const loadGameData = async (showLoading = true) => {
   if (!id.value) {
     console.error('No game ID found in route params');
-    error.value = 'Invalid game ID';
+    error.value = t('errors.invalidGame');
     loading.value = false;
     // Reset request lock on error
     resetRequestLock();
@@ -2511,7 +2516,7 @@ const loadGameData = async (showLoading = true) => {
     resetRequestLock();
   } catch (err) {
     console.error('Error loading game:', err);
-    error.value = 'Failed to load game. The game ID may be invalid.';
+    error.value = t('errors.loadGame');
     // Reset request lock on error
     resetRequestLock();
   } finally {
@@ -2615,7 +2620,7 @@ onMounted(async () => {
     // initWebSocket();
   } catch (err) {
     console.error('Error loading game data:', err);
-    error.value = `Failed to load game data: ${err.message}`;
+    error.value = t('errors.loadGameData', { reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';
@@ -2686,7 +2691,7 @@ const joinGame = async () => {
     }
   } catch (err) {
     console.error('Failed to join game:', err);
-    error.value = err.message || 'Failed to join game';
+    error.value = err.message || t('errors.joinGame');
   }
 };
 
@@ -2742,7 +2747,7 @@ const addSecondPlayer = async () => {
 
   } catch (err) {
     console.error('Failed to add second player:', err);
-    error.value = `Failed to add second player: ${err.message}`;
+    error.value = t('errors.secondPlayer', { reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';
@@ -3107,7 +3112,7 @@ const startReplay = async () => {
 
   } catch (error) {
     console.error('Failed to start replay:', error);
-    alert('Failed to start replay: ' + (error.message || 'Unknown error'));
+    alert(t('errors.replay', { reason: error.message || t('errors.unknown') }));
     isReplaying.value = false;
   }
   */
@@ -3758,7 +3763,7 @@ const rotateGhostTileLocal = async () => {
     },
     onError: (err) => {
       console.error('Failed to rotate tile:', err);
-      error.value = `Failed to rotate tile: ${err.message}`;
+      error.value = t('errors.rotate', { reason: err.message });
     }
   });
 };
@@ -4319,7 +4324,7 @@ const closeBattleReportAndEndTurn = async () => {
 
   } catch (err) {
     console.error('Failed to close battle report:', err);
-    error.value = err.message || 'Failed to close battle report';
+    error.value = err.message || t('errors.closeBattle');
     // Still reset the lock even if there's an error
     resetRequestLock();
   } finally {
@@ -4541,7 +4546,7 @@ const handlePickItemAndEndTurn = async () => {
     }
   } catch (err) {
     console.error('Failed to pick up item:', err);
-    error.value = err.message || 'Failed to pick up item';
+    error.value = err.message || t('errors.pickUp');
     closeBattleReportAndEndTurn();
   } finally {
     loading.value = false;
@@ -4598,7 +4603,7 @@ const handlePickItemWithReplacement = async (itemIdToReplace) => {
     await checkAndHandleVirtualPlayerTurn();
   } catch (err) {
     console.error('Failed to replace item:', err);
-    error.value = err.message || 'Failed to replace item';
+    error.value = err.message || t('errors.replace');
     closeBattleReportAndEndTurn();
   } finally {
     loading.value = false;
@@ -4767,7 +4772,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     }
   } catch (err) {
     console.error('Failed to finalize battle and pick up:', err);
-    error.value = err.message || 'Failed to finalize battle and pick up item';
+    error.value = err.message || t('errors.finalizePickup');
     closeBattleReportAndEndTurn();
   } finally {
     loading.value = false;
@@ -4874,7 +4879,7 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
     await loadGameData();
   } catch (err) {
     console.error('Failed to finalize battle:', err);
-    error.value = err.message || 'Failed to finalize battle';
+    error.value = err.message || t('errors.finalize');
     closeBattleReportAndEndTurn();
   } finally {
     loading.value = false;
@@ -5009,7 +5014,7 @@ const handleAutoItemPickup = async () => {
     }
   } catch (err) {
     console.error('Failed to pick up item:', err);
-    error.value = `Failed to pick up item: ${err.message}`;
+    error.value = t('errors.pickUpReason', { reason: err.message });
     // Only dismiss dialog on error if it wasn't already dismissed
     if (showItemPickupDialog.value) {
       dismissItemPickupDialog();
@@ -5089,7 +5094,7 @@ const handleTeleportSpellSelection = async (spell) => {
     selectedTeleportSpell.value = spell;
     teleportTargetPlayerId.value = currentPlayerId.value;
   } else {
-    error.value = 'No other healing fountain tiles available for teleportation';
+    error.value = t('errors.noFountain');
   }
 };
 
@@ -5130,7 +5135,7 @@ const handleTeleportClick = async (position) => {
 
   } catch (err) {
     console.error('Failed to use teleport spell:', err);
-    error.value = `Failed to teleport: ${err.message}`;
+    error.value = t('errors.teleport', { reason: err.message });
     // Exit teleport mode on error
     isTeleportMode.value = false;
     selectedTeleportSpell.value = null;
@@ -5175,7 +5180,7 @@ const handleRerollBattle = async ({ battleId }) => {
     }
   } catch (err) {
     console.error('Failed to reroll battle dice:', err);
-    error.value = `Double Attack failed: ${err.message}`;
+    error.value = t('errors.failed', { action: t('errors.actions.doubleAttack'), reason: err.message });
   } finally {
     loadingStatus.value = '';
   }
@@ -5290,7 +5295,7 @@ const handleLightningAttack = async (targetPosition) => {
   } catch (err) {
     console.error('Lightning Attack failed:', err);
     isLightningMode.value = false;
-    showActionNotice(`Lightning Attack failed: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.failed', { action: t('errors.actions.lightningAttack'), reason: apiErrorMessage(err) }));
     await loadGameData(false).catch(() => {});
   } finally {
     loading.value = false;
@@ -5318,7 +5323,7 @@ const handleChooseRetreat = async (position) => {
     await loadGameData();
   } catch (err) {
     console.error('Retreat failed:', err);
-    showActionNotice(`Retreat failed: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.failed', { action: t('errors.actions.retreat'), reason: apiErrorMessage(err) }));
     await loadGameData(false).catch(() => {});
   } finally {
     loading.value = false;
@@ -5336,7 +5341,7 @@ const handleDeclareSprint = async () => {
     await loadGameData(false);
   } catch (err) {
     console.error('Sprint failed:', err);
-    showActionNotice(`Sprint failed: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.failed', { action: t('errors.actions.sprint'), reason: apiErrorMessage(err) }));
   } finally {
     loading.value = false;
   }
@@ -5367,7 +5372,7 @@ const handleTireless = async () => {
     await loadGameData(false);
   } catch (err) {
     console.error('Tireless failed:', err);
-    showActionNotice(`Tireless failed: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.failed', { action: t('errors.actions.tireless'), reason: apiErrorMessage(err) }));
   } finally {
     loading.value = false;
   }
@@ -5380,7 +5385,7 @@ const handleHealLimitChange = async (value) => {
     await loadGameData(false);
   } catch (err) {
     console.error('Heal limit failed:', err);
-    showActionNotice(`Heal limit failed: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.failed', { action: t('errors.actions.healLimit'), reason: apiErrorMessage(err) }));
   }
 };
 
@@ -5397,7 +5402,7 @@ const handlePlayerFigureClick = async ({ playerId }) => {
     await loadGameData();
     if (!canMagicSwapNow.value) {
       isMagicSwapMode.value = false;
-      showActionNotice('Magic Swap is only possible at the beginning of the turn, before any move.');
+      showActionNotice(t('game.notice.magicSwapTooLate'));
       console.warn('[magic-swap] refused after refresh: turn already has actions');
       return;
     }
@@ -5416,7 +5421,7 @@ const handlePlayerFigureClick = async ({ playerId }) => {
   } catch (err) {
     console.error('Failed to swap places:', err);
     isMagicSwapMode.value = false;
-    showActionNotice(`Magic Swap failed: ${apiErrorMessage(err)}`);
+    showActionNotice(t('errors.failed', { action: t('errors.actions.magicSwap'), reason: apiErrorMessage(err) }));
     await loadGameData().catch(() => {});
   } finally {
     loading.value = false;
@@ -5448,7 +5453,7 @@ const handleReincarnationClick = async (position) => {
     await loadGameData();
   } catch (err) {
     console.error('Failed to reincarnate:', err);
-    error.value = `Reincarnation failed: ${err.message}`;
+    error.value = t('errors.failed', { action: t('errors.actions.reincarnation'), reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';
@@ -5532,7 +5537,7 @@ const handleManualEndTurn = async () => {
     // Check if there's a picked tile that hasn't been placed
     if (pickedTileId.value) {
 
-      error.value = 'You must place the picked tile before ending your turn';
+      error.value = t('hud.mustPlaceTile');
       setTimeout(() => { error.value = null; }, 5000);
       return;
     }
@@ -5580,7 +5585,7 @@ const handleManualEndTurn = async () => {
     await checkAndHandleVirtualPlayerTurn();
   } catch (err) {
     console.error('Failed to end turn:', err);
-    error.value = `Failed to end turn: ${err.message}`;
+    error.value = t('errors.endTurn', { reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';
@@ -5623,7 +5628,7 @@ const forceAITurn = async () => {
 
   } catch (err) {
     console.error('Failed to force AI turn:', err);
-    error.value = `Failed to recover AI turn: ${err.message}`;
+    error.value = t('errors.recoverAi', { reason: err.message });
     
     // Show the button again if recovery failed
     aiStuckDetected.value = true;
@@ -5850,14 +5855,14 @@ const skipStunnedPlayerTurn = async () => {
     );
 
     if (updatedGameState.state.currentPlayerId === currentPlayerId.value) {
-      error.value = 'Turn did not advance. Please refresh or contact support.';
+      error.value = t('errors.turnStuck');
     } else {
       doUpdateGameDataSelectively(updatedGameState);
       // Optionally switch player here if needed
     }
   } catch (err) {
     console.error('Failed to skip turn:', err);
-    error.value = `Failed to skip turn: ${err.message}`;
+    error.value = t('errors.skipTurn', { reason: err.message });
   } finally {
     loading.value = false;
     loadingStatus.value = '';

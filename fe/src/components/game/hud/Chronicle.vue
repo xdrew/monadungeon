@@ -2,7 +2,7 @@
   <!-- Chronicle, top right: the newest line burns brightest, older ones fade ("C · Torchlight") -->
   <ol
     class="chronicle"
-    aria-label="Chronicle"
+    :aria-label="$t('hud.chronicle')"
     aria-live="polite"
   >
     <li
