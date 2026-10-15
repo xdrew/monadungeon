@@ -103,13 +103,20 @@ class GameTurn extends AggregateRoot
     }
 
     /**
-     * Actions that do not change what may follow: an Unstoppable fight and the Curse of Karak bookkeeping.
+     * Actions that do not change what may follow: an Unstoppable fight, a spell (it costs no move),
+     * the Curse of Karak bookkeeping and the Karak: Regent bookkeeping (Cursed Room roll, duel, duel loot).
      *
      * @param array{action: string, tileId: ?string, additionalData: ?array, performedAt: string} $action
      */
     private static function isBookkeepingAction(array $action): bool
     {
-        return self::isUnstoppableBattle($action) || $action['action'] === TurnAction::CURSE->value;
+        return self::isUnstoppableBattle($action) || \in_array($action['action'], [
+            TurnAction::CURSE->value,
+            TurnAction::USE_SPELL->value,
+            TurnAction::CURSED_ROOM->value,
+            TurnAction::DUEL->value,
+            TurnAction::DUEL_LOOT->value,
+        ], true);
     }
 
     #[Handler]
@@ -119,8 +126,8 @@ class GameTurn extends AggregateRoot
             throw new NotYourTurnException();
         }
 
-        // Special handling for battle actions
-        if ($command->action === TurnAction::FIGHT_MONSTER) {
+        // Special handling for battle actions (a Battle Arena duel is recorded the same way, even after the turn ended)
+        if (\in_array($command->action, [TurnAction::FIGHT_MONSTER, TurnAction::DUEL], true)) {
             // If the turn has already ended, just record the battle data without throwing an exception
             // This allows battle results to be recorded for history/stats without causing errors
             $this->actions[] = [
@@ -195,7 +202,15 @@ class GameTurn extends AggregateRoot
         }
 
         // If turn end was deferred for item pickup, only allow PICK_ITEM or END_TURN
-        if ($this->pendingItemPickup && $command->action !== TurnAction::PICK_ITEM && $command->action !== TurnAction::END_TURN && $command->action !== TurnAction::CURSE) {
+        if ($this->pendingItemPickup && !\in_array($command->action, [
+            TurnAction::PICK_ITEM,
+            TurnAction::END_TURN,
+            TurnAction::CURSE,
+            TurnAction::USE_SPELL,
+            TurnAction::CURSED_ROOM,
+            TurnAction::DUEL,
+            TurnAction::DUEL_LOOT,
+        ], true)) {
             // Player tried to do something else — auto-end the turn
             $this->endTurn($command->at);
             $messageContext->dispatch(new TurnEnded(

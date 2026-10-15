@@ -28,6 +28,7 @@ final readonly class BattleCompleted implements Event
      * @param bool $farseeing Oracle "Farseeing": +1 was added to this roll (battle on the first move of the turn)
      * @param bool $curseChoiceRequired Curse of Karak: a mummy was beaten, the (human) slayer must choose whom to curse
      * @param string|null $cursedPlayerId Curse of Karak: the player carrying the token right now
+     * @param array{duelId: string, role: string, opponentId: string, toBeat: ?int}|null $duel Karak: Regent — a Battle Arena duel side
      */
     public function __construct(
         public Uuid $battleId,
@@ -56,5 +57,6 @@ final readonly class BattleCompleted implements Event
         public bool $curseChoiceRequired = false,
         public ?string $cursedPlayerId = null,
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
+        public ?array $duel = null,
     ) {}
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Game\Battle;
 
 // BattleResult is now in the same namespace
+use App\Game\Duel\DuelSide;
+use App\Game\Duel\DuelSideCompleted;
 use App\Game\Field\FieldPlace;
 use App\Game\Field\GetField;
 use App\Game\GameLifecycle\GetCurrentPlayer;
@@ -110,6 +112,24 @@ class Battle extends AggregateRoot
     #[Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $farseeing = false;
 
+    /**
+     * Karak: Regent — the Battle Arena duel this Battle is one side of (null for a monster fight).
+     */
+    #[Column(type: UuidType::class, nullable: true)]
+    private ?Uuid $duelId = null;
+
+    /**
+     * Karak: Regent — 'challenger' or 'opponent' (see DuelSide).
+     */
+    #[Column(type: Types::STRING, nullable: true)]
+    private ?string $duelRole = null;
+
+    /**
+     * Karak: Regent — the other hero of the duel, for the UI.
+     */
+    #[Column(type: UuidType::class, nullable: true)]
+    private ?Uuid $duelOpponentId = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -146,11 +166,19 @@ class Battle extends AggregateRoot
             toPosition: $command->toPosition,
         );
 
-        // Oracle "Farseeing": +1 when no move of the turn has been spent yet (placing a tile is not a move)
-        $player = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
-        if ($player->getHero()?->fightsBetterOnFirstMove() === true) {
-            $turn = $messageContext->dispatch(new GetTurn($command->turnId));
-            $battle->farseeing = $turn !== null && $turn->getPerformedActionsCount() === 0;
+        if ($command->duel !== null) {
+            // Karak: Regent — a duel side: the Duel decided whether Oracle "Farseeing" applies (arena as the first step, or summoned)
+            $battle->duelId = $command->duel->duelId;
+            $battle->duelRole = $command->duel->role;
+            $battle->duelOpponentId = $command->duel->opponentId;
+            $battle->farseeing = $command->duel->farseeing;
+        } else {
+            // Oracle "Farseeing": +1 when no move of the turn has been spent yet (placing a tile is not a move)
+            $player = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
+            if ($player->getHero()?->fightsBetterOnFirstMove() === true) {
+                $turn = $messageContext->dispatch(new GetTurn($command->turnId));
+                $battle->farseeing = $turn !== null && $turn->getPerformedActionsCount() === 0;
+            }
         }
 
         // Roll the dice immediately
@@ -161,6 +189,17 @@ class Battle extends AggregateRoot
 
         // Evaluate the weapons-only roll: auto-finalize a WIN, otherwise ask for consumables / reroll
         $battle->evaluateInitialRoll($command->monster, $command->fromPosition, $command->toPosition, $messageContext);
+
+        // Karak: Regent — nobody can answer for this duel side: it is locked in right away (no reroll, no sacrifice)
+        if ($command->duel !== null && $command->duel->auto && !$battle->battleCompleted) {
+            $battle->finalizeBattle(new FinalizeBattle(
+                battleId: $battle->battleId,
+                gameId: $battle->gameId,
+                playerId: $battle->playerId,
+                turnId: $battle->turnId,
+                selectedConsumableIds: $battle->pickAutoConsumables($command->duel->toBeat, $messageContext),
+            ), $messageContext);
+        }
 
         return $battle;
     }
@@ -191,8 +230,10 @@ class Battle extends AggregateRoot
             throw new \DomainException('Invalid turn ID');
         }
 
+        // Karak: Regent — the summoned hero of a duel rolls during the challenger's turn
         $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($command->gameId));
-        if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId) || !$this->playerId->equals($command->playerId)) {
+        $isCurrentPlayer = $currentPlayerId !== null && $currentPlayerId->equals($command->playerId);
+        if ((!$isCurrentPlayer && $this->duelId === null) || !$this->playerId->equals($command->playerId)) {
             throw new NotYourTurnException();
         }
 
@@ -282,6 +323,11 @@ class Battle extends AggregateRoot
             return;
         }
 
+        // Karak: Regent — a duel side is locked in once (the turn end settles a pending side)
+        if ($this->duelId !== null && $this->battleCompleted) {
+            return;
+        }
+
         // Get player instance
         $player = $messageContext->dispatch(new GetPlayer(
             playerId: $command->playerId,
@@ -298,12 +344,12 @@ class Battle extends AggregateRoot
         // Get selected consumable items
         $selectedConsumables = $player->getItemsByIds($command->selectedConsumableIds);
 
-        // Wizard "Magical Affinity": fireballs still add their bonus but are not consumed
+        // Wizard "Magical Affinity": fireballs and Frost Fists still add their bonus but are not consumed
         $keptConsumableIds = [];
         if ($player->getHero()?->keepsSpellsInCombat() === true) {
             foreach ($selectedConsumables as $selectedConsumable) {
                 $selectedConsumable = Item::fromAnything($selectedConsumable);
-                if ($selectedConsumable->type === ItemType::FIREBALL) {
+                if ($selectedConsumable->type === ItemType::FIREBALL || $selectedConsumable->type === ItemType::FROST_FIST) {
                     $keptConsumableIds[] = $selectedConsumable->itemId->toString();
                 }
             }
@@ -328,6 +374,12 @@ class Battle extends AggregateRoot
 
         // Calculate the final result first (before any side effects)
         $monster = $this->getMonster();
+
+        if ($monster !== null && $this->duelId !== null) {
+            $this->finalizeDuelSide($command, $monster, $finalUsedItems, $keptConsumableIds, $messageContext);
+
+            return;
+        }
 
         if ($monster !== null) {
             $finalResult = $this->resolveResult($monster, $messageContext);
@@ -607,7 +659,41 @@ class Battle extends AggregateRoot
         $initialResult = $this->resolveResult($monster, $messageContext);
         $tieIsWin = $this->playerWinsTies($messageContext);
         // Swordsman "Unstoppable": HP is not reduced yet, a loss will cost 1 HP
-        $unstoppable = $this->turnContinuesAfterBattle($initialResult, 1, $messageContext);
+        $unstoppable = $this->duelId === null && $this->turnContinuesAfterBattle($initialResult, 1, $messageContext);
+
+        // Karak: Regent — the challenger has nothing to beat yet: he always decides on consumables and locks in his strength
+        $isChallenger = $this->duelRole === DuelSide::CHALLENGER;
+        if ($isChallenger) {
+            $initialResult = BattleResult::DRAW;
+        }
+
+        // Karak: Regent — the summoned hero beats the challenger's total with weapons alone: his side is done
+        if ($initialResult === BattleResult::WIN && $this->duelId !== null) {
+            $messageContext->dispatch(new BattleCompleted(
+                battleId: $this->battleId,
+                gameId: $this->gameId,
+                playerId: $this->playerId,
+                result: $initialResult,
+                diceResults: $this->diceResults,
+                diceRollDamage: $diceRollDamage,
+                itemDamage: $itemDamage,
+                totalDamage: $this->totalDamage,
+                monsterHP: $monster->guardHP,
+                usedItems: $this->usedItems,
+                rerolled: $this->rerollUsed,
+                firstDiceResults: $this->firstDiceResults,
+                onesRerolled: $this->onesRerolled,
+                tieIsWin: $tieIsWin,
+                hpSacrificed: $this->hpSacrificed,
+                spellsKept: $this->spellsKept,
+                farseeing: $this->farseeing,
+                duel: $this->duelPayload($monster),
+            ));
+            $this->completeDuelSide($messageContext);
+
+            return;
+        }
+
         // If player wins with weapons only, that's the final result
         if ($initialResult === BattleResult::WIN) {
             $curse = $this->curseInfo($initialResult, $monster, $messageContext);
@@ -675,7 +761,158 @@ class Battle extends AggregateRoot
             hpSacrificed: $this->hpSacrificed,
             spellsKept: $this->spellsKept,
             farseeing: $this->farseeing,
+            duel: $this->duelPayload($monster),
         ));
+    }
+
+    /**
+     * Karak: Regent — the duel side payload for the UI (null for a monster fight).
+     *
+     * @return array{duelId: string, role: string, opponentId: string, toBeat: ?int}|null
+     */
+    private function duelPayload(Item $monster): ?array
+    {
+        if ($this->duelId === null || $this->duelRole === null || $this->duelOpponentId === null) {
+            return null;
+        }
+
+        return [
+            'duelId' => $this->duelId->toString(),
+            'role' => $this->duelRole,
+            'opponentId' => $this->duelOpponentId->toString(),
+            'toBeat' => $this->duelRole === DuelSide::CHALLENGER ? null : $monster->guardHP,
+        ];
+    }
+
+    /**
+     * Karak: Regent — lock in a duel side: consumables are spent as in a fight, but there is no monster to
+     * process — no FIGHT_MONSTER action, no movement, no turn end, no item pickup. The Duel compares the totals.
+     *
+     * @param array<Item> $finalUsedItems
+     * @param list<string> $keptConsumableIds
+     */
+    private function finalizeDuelSide(
+        FinalizeBattle $command,
+        Item $monster,
+        array $finalUsedItems,
+        array $keptConsumableIds,
+        MessageContext $messageContext,
+    ): void {
+        $result = $this->duelRole === DuelSide::CHALLENGER ? BattleResult::DRAW : $this->resolveResult($monster, $messageContext);
+        $diceRollDamage = array_sum($this->diceResults);
+
+        $messageContext->dispatch(new BattleFinalized(
+            battleId: $command->battleId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            finalUsedItems: $finalUsedItems,
+            finalTotalDamage: $this->totalDamage,
+            selectedConsumableIds: $command->selectedConsumableIds,
+            keptConsumableIds: $keptConsumableIds,
+        ));
+
+        foreach ($command->selectedConsumableIds as $itemId) {
+            if (\in_array($itemId, $keptConsumableIds, true)) {
+                continue;
+            }
+            $messageContext->dispatch(new RemoveItemFromInventory(
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                itemId: Uuid::fromString($itemId),
+            ));
+        }
+
+        $messageContext->dispatch(new BattleCompleted(
+            battleId: $command->battleId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            result: $result,
+            diceResults: $this->diceResults,
+            diceRollDamage: $diceRollDamage,
+            itemDamage: $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus(),
+            totalDamage: $this->totalDamage,
+            monsterHP: $monster->guardHP,
+            usedItems: $this->usedItems,
+            availableConsumables: null,
+            needsConsumableConfirmation: false,
+            rerolled: $this->rerollUsed,
+            firstDiceResults: $this->firstDiceResults,
+            onesRerolled: $this->onesRerolled,
+            tieIsWin: $this->playerWinsTies($messageContext),
+            hpSacrificed: $this->hpSacrificed,
+            spellsKept: $this->spellsKept,
+            farseeing: $this->farseeing,
+            duel: $this->duelPayload($monster),
+        ));
+
+        $this->completeDuelSide($messageContext);
+    }
+
+    /**
+     * Karak: Regent — tell the Duel this hero's strength is final.
+     */
+    private function completeDuelSide(MessageContext $messageContext): void
+    {
+        if ($this->duelId === null || $this->duelRole === null) {
+            return;
+        }
+        $this->battleCompleted = true;
+
+        $diceRollDamage = array_sum($this->diceResults);
+        $messageContext->dispatch(new DuelSideCompleted(
+            duelId: $this->duelId,
+            gameId: $this->gameId,
+            battleId: $this->battleId,
+            role: $this->duelRole,
+            playerId: $this->playerId,
+            total: $this->totalDamage,
+            diceResults: array_values($this->diceResults),
+            itemDamage: $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus(),
+            usedItems: array_values(array_map(static fn(Item|array $item): array => Item::fromAnything($item)->toArray(), $this->usedItems ?? [])),
+            hpSacrificed: $this->hpSacrificed,
+            farseeing: $this->farseeing,
+            rerolled: $this->rerollUsed,
+            onesRerolled: $this->onesRerolled,
+            tieIsWin: $this->playerWinsTies($messageContext),
+            spellsKept: $this->spellsKept,
+        ));
+    }
+
+    /**
+     * Karak: Regent — an automatic duel side spends the fewest damage spells (strongest first) that turn the roll
+     * into a win against $toBeat (an equal total is enough for a hero who wins ties); none when they cannot.
+     *
+     * @return list<string>
+     */
+    private function pickAutoConsumables(?int $toBeat, MessageContext $messageContext): array
+    {
+        if ($toBeat === null) {
+            return [];
+        }
+
+        $needed = ($this->playerWinsTies($messageContext) ? $toBeat : $toBeat + 1) - $this->totalDamage;
+        if ($needed <= 0) {
+            return [];
+        }
+
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
+        $spells = array_values(array_filter(
+            array_map(static fn(Item|array $item): Item => Item::fromAnything($item), $player->getConsumableItems()),
+            static fn(Item $item): bool => $item->type->getDamage() > 0,
+        ));
+        usort($spells, static fn(Item $a, Item $b): int => $b->type->getDamage() <=> $a->type->getDamage());
+
+        $picked = [];
+        $sum = 0;
+        foreach ($spells as $spell) {
+            $picked[] = $spell->itemId->toString();
+            $sum += $spell->type->getDamage();
+            if ($sum >= $needed) {
+                return $picked;
+            }
+        }
+
+        return [];
     }
 
     /**

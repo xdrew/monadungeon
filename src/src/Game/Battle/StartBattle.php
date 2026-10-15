@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Game\Battle;
 
+use App\Game\Duel\DuelSide;
 use App\Game\Field\FieldPlace;
 use App\Game\Item\Item;
 use App\Infrastructure\Uuid\Uuid;
@@ -23,5 +24,9 @@ final readonly class StartBattle implements Message
         public Item $monster,
         public FieldPlace $fromPosition,
         public FieldPlace $toPosition,
+        /**
+         * Karak: Regent — this Battle is one side of a Battle Arena duel (null for a monster fight).
+         */
+        public ?DuelSide $duel = null,
     ) {}
 }

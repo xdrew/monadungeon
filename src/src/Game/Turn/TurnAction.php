@@ -30,6 +30,11 @@ enum TurnAction: string
     // Curse of Karak: the mummy slayer placed (or kept) the curse token (not a move, the Game validates it)
     case CURSE = 'curse';
 
+    // Karak: Regent — bookkeeping, never a move: a Cursed Room roll, a Battle Arena duel, the duel loot taken
+    case CURSED_ROOM = 'cursed_room';
+    case DUEL = 'duel';
+    case DUEL_LOOT = 'duel_loot';
+
     // Item interactions
     case PICK_UP_EQUIPMENT = 'pick_up_equipment';
     case UNLOCK_CHEST = 'unlock_chest';
@@ -99,6 +104,25 @@ enum TurnAction: string
         // Curse of Karak: bookkeeping after a won fight, the Game aggregate checks that a choice is pending
         if ($this === self::CURSE) {
             return true;
+        }
+
+        // Karak: Regent bookkeeping: the Field and the Duel aggregate validate these, the turn log just records them
+        if ($this === self::CURSED_ROOM || $this === self::DUEL || $this === self::DUEL_LOOT) {
+            return true;
+        }
+
+        // Spells cost no move: the Portal, then a Dark Thorn, then a move is legal; only tile placement,
+        // a fight and the turn-ending pickups block them
+        if ($this === self::USE_SPELL) {
+            return !\in_array($previousAction, [
+                self::PICK_TILE,
+                self::ROTATE_TILE,
+                self::MAGIC_SWAP,
+                self::FIGHT_MONSTER,
+                self::PICK_UP_EQUIPMENT,
+                self::UNLOCK_CHEST,
+                self::HEAL_AT_FOUNTAIN,
+            ], true);
         }
 
         // Oracle "Fateweaver" settles the token of the room that was just placed

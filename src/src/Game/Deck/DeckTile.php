@@ -68,6 +68,9 @@ final readonly class DeckTile implements \JsonSerializable
             'twoSideCorner' => new self(TileOrientation::twoSideCorner(), false),
             'twoSideStraightRoom' => new self(TileOrientation::twoSideStraight(), true),
             'twoSideStraight' => new self(TileOrientation::twoSideStraight(), false),
+            // Karak: Regent — Lord Karak rooms
+            'battleArena' => new self(TileOrientation::twoSideStraight(), false, [TileFeature::BATTLE_ARENA]),
+            'cursedRoom' => new self(TileOrientation::fourSide(), false, [TileFeature::CURSED_ROOM]),
             default => new self(TileOrientation::fourSide(), false),
         };
     }

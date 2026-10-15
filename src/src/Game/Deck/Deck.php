@@ -189,9 +189,9 @@ class Deck extends AggregateRoot
             // Add starting tile with healing fountain
             array_unshift($tiles, DeckTile::create(TileOrientation::fourSide(), false, 1, [TileFeature::HEALING_FOUNTAIN]));
 
-            // In test mode, use ONLY the specified tiles, don't add more
+            // In test mode, use ONLY the specified tiles, don't add more (scripted decks list Regent tiles by name)
             $deck = new self($command->gameId, $tiles);
-            $messageContext->dispatch(new DeckCreated(gameId: $command->gameId, roomCount: $deck->roomCount));
+            $messageContext->dispatch(new DeckCreated(gameId: $command->gameId, roomCount: $deck->roomCount, regent: $command->regent));
 
             return $deck;
         }
@@ -209,13 +209,36 @@ class Deck extends AggregateRoot
             $tiles = \array_slice($tiles, 0, \count($tiles) + $missingTiles - 1);
         }
 
+        // Karak: Regent — the 18 expansion tiles are mixed into the whole deck after the base slice, so every one of them is in play
+        if ($command->regent) {
+            $tiles = [...$tiles, ...self::regentTiles()];
+            shuffle($tiles);
+        }
+
         // Add starting tile with healing fountain
         array_unshift($tiles, DeckTile::create(TileOrientation::fourSide(), false, 1, [TileFeature::HEALING_FOUNTAIN]));
 
         $deck = new self($command->gameId, $tiles);
-        $messageContext->dispatch(new DeckCreated(gameId: $command->gameId, roomCount: $deck->roomCount));
+        $messageContext->dispatch(new DeckCreated(gameId: $command->gameId, roomCount: $deck->roomCount, regent: $command->regent));
 
         return $deck;
+    }
+
+    /**
+     * Karak: Regent — 6 Battle Arenas, 4 Cursed Rooms (both Lord Karak rooms are corridors: no token is drawn) and 8 rooms.
+     *
+     * @return list<DeckTile>
+     */
+    private static function regentTiles(): array
+    {
+        return [
+            ...DeckTile::create(TileOrientation::twoSideStraight(), false, 6, [TileFeature::BATTLE_ARENA]),
+            ...DeckTile::create(TileOrientation::fourSide(), false, 4, [TileFeature::CURSED_ROOM]),
+            ...DeckTile::create(TileOrientation::fourSide(), true, 2),
+            ...DeckTile::create(TileOrientation::threeSide(), true, 2),
+            ...DeckTile::create(TileOrientation::twoSideCorner(), true, 2),
+            ...DeckTile::create(TileOrientation::twoSideStraight(), true, 2),
+        ];
     }
 
     #[Handler]

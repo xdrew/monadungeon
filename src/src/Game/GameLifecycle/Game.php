@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Game\GameLifecycle;
 
 use App\Game\Battle\MummyDefeated;
+use App\Game\Field\CursedRoomEntered;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyFullGame;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyPreparedGame;
 use App\Game\Item\Item;
@@ -28,6 +29,7 @@ use App\Infrastructure\Doctrine\AggregateRoot;
 use App\Infrastructure\Uuid\DoctrineDBAL\UuidArrayJsonType;
 use App\Infrastructure\Uuid\DoctrineDBAL\UuidType;
 use App\Infrastructure\Uuid\Uuid;
+use Doctrine\DBAL\Types\BooleanType;
 use Doctrine\DBAL\Types\JsonType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping\Column;
@@ -97,6 +99,21 @@ class Game extends AggregateRoot
     #[Column(type: UuidType::class, nullable: true)]
     private ?Uuid $curseChoiceTurnId = null;
 
+    /**
+     * Karak: Regent expansion — the Lord Karak rooms, the new monsters and heroes are in play.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $regent = false;
+
+    /**
+     * Karak: Regent — heroes cursed by a Cursed Room; independent of the mummy token, several at once.
+     * (The default matters: the column is NOT NULL and existing games must migrate.).
+     *
+     * @var list<Uuid>
+     */
+    #[Column(type: UuidArrayJsonType::class, options: ['default' => '[]'])]
+    private array $roomCursedPlayerIds = [];
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -109,10 +126,12 @@ class Game extends AggregateRoot
         $game = new self(
             gameId: $command->gameId,
         );
+        $game->regent = $command->regent;
         $messageContext->dispatch(new GameCreated(
             gameId: $command->gameId,
             gameCreateTime: $command->at,
             deckSize: $command->deckSize,
+            regent: $command->regent,
         ));
 
         return $game;
@@ -289,25 +308,76 @@ class Game extends AggregateRoot
     }
 
     /**
-     * Curse of Karak: healing at a fountain lifts the curse.
+     * Curse of Karak: healing at a fountain lifts the curse — the mummy token and a Cursed Room curse alike.
      */
     #[Handler]
     public function onPlayerHealedAtFountain(PlayerHealedAtFountain $event, MessageContext $messageContext): void
     {
-        if ($this->cursedPlayerId === null || !$this->cursedPlayerId->equals($event->playerId)) {
+        if (!$this->isPlayerCursed($event->playerId)) {
             return;
         }
 
-        $this->cursedPlayerId = null;
+        if ($this->cursedPlayerId?->equals($event->playerId) === true) {
+            $this->cursedPlayerId = null;
+        }
+        $this->roomCursedPlayerIds = array_values(array_filter(
+            $this->roomCursedPlayerIds,
+            static fn(Uuid $id): bool => !$id->equals($event->playerId),
+        ));
+
         $messageContext->dispatch(new CurseLifted(
             gameId: $this->gameId,
             playerId: $event->playerId,
         ));
     }
 
+    /**
+     * Karak: Regent — a Cursed Room roll of 1–3 curses the hero (several heroes may be cursed this way at once).
+     */
+    #[Handler]
+    public function onCursedRoomEntered(CursedRoomEntered $event, MessageContext $messageContext): void
+    {
+        if (!$event->cursed || !$this->status->isInProgress()) {
+            return;
+        }
+        if (!$this->isRoomCursed($event->playerId)) {
+            $this->roomCursedPlayerIds[] = $event->playerId;
+        }
+
+        $messageContext->dispatch(new PlayerCursed(
+            gameId: $this->gameId,
+            playerId: $event->playerId,
+            byPlayerId: $event->playerId,
+        ));
+    }
+
+    /**
+     * Cursed by either source: the mummy token or a Cursed Room.
+     */
+    public function isPlayerCursed(Uuid $playerId): bool
+    {
+        return $this->cursedPlayerId?->equals($playerId) === true || $this->isRoomCursed($playerId);
+    }
+
+    /**
+     * @return list<Uuid>
+     */
+    public function getRoomCursedPlayerIds(): array
+    {
+        return $this->roomCursedPlayerIds;
+    }
+
     public function getCursedPlayerId(): ?Uuid
     {
         return $this->cursedPlayerId;
+    }
+
+    /**
+     * Karak: Regent expansion enabled for this game.
+     */
+    public function isRegent(): bool
+    {
+        return $this->regent;
     }
 
     /**
@@ -534,7 +604,8 @@ class Game extends AggregateRoot
             return ['previous' => $previous?->toString(), 'kept' => true];
         }
 
-        if ($previous !== null) {
+        // The token moves on; a previous holder cursed by a Cursed Room as well stays cursed
+        if ($previous !== null && !$this->isRoomCursed($previous)) {
             $messageContext->dispatch(new CurseLifted(
                 gameId: $this->gameId,
                 playerId: $previous,
@@ -569,6 +640,17 @@ class Game extends AggregateRoot
         }
 
         return $fallback;
+    }
+
+    private function isRoomCursed(Uuid $playerId): bool
+    {
+        foreach ($this->roomCursedPlayerIds as $cursedId) {
+            if ($cursedId->equals($playerId)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function hasPlayer(Uuid $playerId): bool

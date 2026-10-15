@@ -15,6 +15,10 @@ enum ItemType: string
     case FIREBALL = 'fireball';
     case TELEPORT = 'teleport';
 
+    // Karak: Regent spells — Frost Fist (+2 in a fight), Dark Thorn (another hero loses 1 HP)
+    case FROST_FIST = 'frost_fist';
+    case DARK_THORN = 'dark_thorn';
+
     public static function getRandomWeapon(): self
     {
         $weapons = [
@@ -57,7 +61,7 @@ enum ItemType: string
             self::CHEST, self::RUBY_CHEST => ItemCategory::TREASURE,
             self::KEY => ItemCategory::KEY,
             self::DAGGER, self::SWORD, self::AXE => ItemCategory::WEAPON,
-            self::FIREBALL, self::TELEPORT => ItemCategory::SPELL,
+            self::FIREBALL, self::TELEPORT, self::FROST_FIST, self::DARK_THORN => ItemCategory::SPELL,
         };
     }
 
@@ -77,6 +81,7 @@ enum ItemType: string
             self::SWORD => 2,
             self::AXE => 3,
             self::FIREBALL => 1,
+            self::FROST_FIST => 2,
             default => 0,
         };
     }

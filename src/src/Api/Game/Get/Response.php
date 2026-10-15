@@ -171,7 +171,13 @@ final readonly class Response
                 'curse' => [ // Curse of Karak: who carries the token and who still has to place it
                     'cursedPlayerId' => $game->getCursedPlayerId()?->toString(),
                     'pendingBy' => $game->getCurseChoicePendingBy()?->toString(),
+                    // Karak: Regent — heroes cursed by a Cursed Room (several at once)
+                    'roomCursedPlayerIds' => array_map(static fn(Uuid $id): string => $id->toString(), $game->getRoomCursedPlayerIds()),
                 ],
+                'regent' => $game->isRegent(), // Karak: Regent expansion on
+                'roomEvent' => $field?->getRoomEvent(), // Karak: Regent — the last Cursed Room roll
+                'arenaChoice' => $field?->getArenaChoice($game->getPlayers()), // Karak: Regent — a Battle Arena rival to choose
+                'duel' => $field?->getDuelInfo(), // Karak: Regent — the current (or last) Battle Arena duel
             ],
             players: self::formatGameLifecyclePlayers($game->getPlayers(), $playerData, $messageBus),
             settings: [], // Add any settings if available in GameLifecycleGame
@@ -399,6 +405,8 @@ final readonly class Response
             'roomFieldPlaces' => $roomFieldPlaces,
             'items' => $field->getItems(),
             'healingFountainPositions' => $healingFountainPositions,
+            // Karak: Regent — Battle Arenas already fought on (later entries are normal corridors)
+            'activatedArenas' => array_map(static fn($place): string => $place->toString(), $field->getActivatedArenas()),
         ];
     }
 

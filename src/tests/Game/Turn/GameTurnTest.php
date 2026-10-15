@@ -996,4 +996,83 @@ final class GameTurnTest extends TestCase
             performedAt: $this->fixedTime,
         );
     }
+
+    // Karak: Regent — spells cost no move and the Regent bookkeeping never constrains the turn
+
+    #[Test]
+    public function aSpellMayOpenTheTurnAndBeCastAgain(): void
+    {
+        $turn = $this->regentTurn();
+        $this->perform($turn, TurnAction::USE_SPELL);
+        $this->perform($turn, TurnAction::USE_SPELL);
+        $this->perform($turn, TurnAction::MOVE);
+        $this->perform($turn, TurnAction::USE_SPELL);
+        $this->perform($turn, TurnAction::MOVE);
+
+        self::assertSame(2, $turn->getPerformedActionsCount(), 'Only the moves count');
+        self::assertFalse($turn->isEnded());
+    }
+
+    #[Test]
+    public function aSpellIsNotCastWhileATileIsInHand(): void
+    {
+        $turn = $this->regentTurn();
+        $this->perform($turn, TurnAction::PICK_TILE);
+
+        $this->expectException(InvalidTurnActionException::class);
+        $this->perform($turn, TurnAction::USE_SPELL);
+    }
+
+    #[Test]
+    public function regentBookkeepingIsTransparent(): void
+    {
+        $turn = $this->regentTurn();
+        $this->perform($turn, TurnAction::PICK_TILE);
+        foreach ([TurnAction::CURSED_ROOM, TurnAction::DUEL, TurnAction::DUEL_LOOT] as $action) {
+            $this->perform($turn, $action);
+        }
+        // The last constraining action is still PICK_TILE
+        $this->perform($turn, TurnAction::PLACE_TILE);
+
+        self::assertSame(0, $turn->getPerformedActionsCount());
+    }
+
+    #[Test]
+    public function aDuelIsRecordedEvenAfterTheTurnEnded(): void
+    {
+        $turn = $this->regentTurn();
+        $this->perform($turn, TurnAction::MOVE);
+        $this->perform($turn, TurnAction::END_TURN);
+        self::assertTrue($turn->isEnded());
+
+        $this->perform($turn, TurnAction::DUEL);
+
+        $actions = $turn->getActions();
+        self::assertSame('duel', $actions[\count($actions) - 1]['action']);
+    }
+
+    private function regentTurn(): GameTurn
+    {
+        [$turn] = handle(GameTurn::start(...), new StartTurn(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            turnNumber: 1,
+            turnId: $this->turnId,
+            at: $this->fixedTime,
+        ));
+
+        return $turn;
+    }
+
+    private function perform(GameTurn $turn, TurnAction $action): void
+    {
+        handle($turn->performAction(...), new PerformTurnAction(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: $action,
+            at: $this->fixedTime,
+        ));
+        $turn->updateActionCounter(new TurnActionPerformed($this->turnId, $this->gameId, $this->playerId, $action, $this->fixedTime));
+    }
 }

@@ -16,5 +16,9 @@ final readonly class GameCreated implements Event
         public Uuid $gameId,
         public \DateTimeImmutable $gameCreateTime,
         public int $deckSize = 100,
+        /**
+         * Karak: Regent expansion enabled for this game.
+         */
+        public bool $regent = false,
     ) {}
 }

@@ -162,6 +162,42 @@ final readonly class Item
         );
     }
 
+    /**
+     * Karak: Regent — Giant Bat (6 HP) drops a Dark Thorn.
+     */
+    public static function createGiantBat(): self
+    {
+        return new self(
+            name: ItemName::GIANT_BAT,
+            type: ItemType::DARK_THORN,
+        );
+    }
+
+    /**
+     * Karak: Regent — Skeleton Mage (11 HP) drops a Frost Fist.
+     */
+    public static function createSkeletonMage(): self
+    {
+        return new self(
+            name: ItemName::SKELETON_MAGE,
+            type: ItemType::FROST_FIST,
+        );
+    }
+
+    /**
+     * Karak: Regent — the synthetic "monster" of a Battle Arena duel: the rival hero's strength to beat (0 for the challenger).
+     */
+    public static function createDuelTarget(int $strength): self
+    {
+        return new self(
+            name: ItemName::HERO,
+            type: ItemType::CHEST,
+            guardHP: $strength,
+            treasureValue: 0,
+            endsGame: false,
+        );
+    }
+
     public static function createFromName(string $name): self
     {
         // Map common item names to configurations
@@ -175,6 +211,8 @@ final readonly class Item
             'giant_spider' => self::createGiantSpider(),
             'mummy' => self::createMummy(),
             'treasure_chest', 'treasureChest' => self::createTreasureChest(),
+            'giant_bat' => self::createGiantBat(),
+            'skeleton_mage' => self::createSkeletonMage(),
             'random', 'randomMonster' => self::createRandom(),
             default => new self(
                 name: ItemName::tryFrom($name) ?? ItemName::getRandom(),

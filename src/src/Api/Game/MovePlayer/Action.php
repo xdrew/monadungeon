@@ -9,6 +9,7 @@ use App\Game\Field\Field;
 use App\Game\Field\GetField;
 use App\Game\Item\Item;
 use App\Game\Movement\Commands\MovePlayer;
+use App\Game\Player\GetActivePlayers;
 use App\Game\Player\QueryPlayerInventory;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -35,6 +36,12 @@ final readonly class Action
             // Fetch the field to check if a battle occurred
             $field = $messageBus->dispatch(new GetField($request->gameId));
             $battleInfo = $field->getLastBattleInfo();
+
+            // Karak: Regent — the hero activated a Battle Arena and has to choose a rival
+            $arenaChoice = $field->getArenaChoice($messageBus->dispatch(new GetActivePlayers($request->gameId)));
+            if ($arenaChoice !== null && $arenaChoice['playerId'] === $request->playerId->toString()) {
+                return new Response($request->gameId, arenaChoice: $arenaChoice);
+            }
 
             // Only return battle info if it's for the current player and position
             if ($battleInfo !== null

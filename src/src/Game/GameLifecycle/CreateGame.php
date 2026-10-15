@@ -18,5 +18,9 @@ final readonly class CreateGame implements Message
         public Uuid $gameId,
         public \DateTimeImmutable $at = new \DateTimeImmutable(),
         public int $deckSize = 88,
+        /**
+         * Karak: Regent expansion — adds the Lord Karak rooms, the new monsters and heroes.
+         */
+        public bool $regent = false,
     ) {}
 }

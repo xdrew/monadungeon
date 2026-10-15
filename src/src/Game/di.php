@@ -22,6 +22,7 @@ use App\Game\Console\GameRunTurnBasedConsoleCommand;
 use App\Game\Console\TestGameLoggingCommand;
 use App\Game\Deck\Deck;
 use App\Game\Deck\DoctrineDBAL\DeckTileArrayJsonType;
+use App\Game\Duel\Duel;
 use App\Game\Field\DoctrineDBAL\FieldPlaceArrayJsonType;
 use App\Game\Field\DoctrineDBAL\ItemMapType;
 use App\Game\Field\DoctrineDBAL\TileFeatureArrayType;
@@ -73,6 +74,7 @@ return static function (ContainerConfigurator $di): void {
             GameTurn::class => null,
             Battle::class => null,
             Movement::class => null,
+            Duel::class => null,
         ],
     ]);
 

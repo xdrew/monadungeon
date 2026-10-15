@@ -15,5 +15,9 @@ final readonly class DeckCreated implements Event
     public function __construct(
         public Uuid $gameId,
         public int $roomCount,
+        /**
+         * Karak: Regent expansion — the bag gets the Giant Bats and Skeleton Mages.
+         */
+        public bool $regent = false,
     ) {}
 }

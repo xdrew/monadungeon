@@ -157,6 +157,16 @@ class Bag extends AggregateRoot
         for ($i = 0; $i < 10; ++$i) {
             $items[] = Item::createTreasureChest();
         }
+
+        // Karak: Regent tokens
+        if ($event->regent) {
+            for ($i = 0; $i < 6; ++$i) {
+                $items[] = Item::createGiantBat();
+            }
+            for ($i = 0; $i < 2; ++$i) {
+                $items[] = Item::createSkeletonMage();
+            }
+        }
         shuffle($items);
 
         $itemCount = \count($items);

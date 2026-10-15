@@ -592,6 +592,17 @@ class Player extends AggregateRoot
         return $this->cursed;
     }
 
+    /**
+     * Whether one more item of this type fits the inventory (treasures always do).
+     */
+    public function hasRoomFor(ItemType $type): bool
+    {
+        $category = $this->getInventoryCategoryForItemType($type);
+        $maxItems = $this->getMaxItemsForCategory($category);
+
+        return $maxItems === null || \count($this->inventory[$category->value] ?? []) < $maxItems;
+    }
+
     public function isAwaitingReincarnation(): bool
     {
         return $this->awaitingReincarnation;

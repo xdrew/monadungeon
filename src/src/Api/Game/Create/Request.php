@@ -13,5 +13,9 @@ final readonly class Request
         #[Assert\NotBlank]
         #[Assert\Uuid]
         public Uuid $gameId,
+        /**
+         * Karak: Regent expansion.
+         */
+        public bool $regent = false,
     ) {}
 }

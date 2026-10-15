@@ -13,6 +13,14 @@ use App\Game\Battle\BattleResult;
 use App\Game\Battle\MonsterDefeated;
 use App\Game\Deck\Error\NoTilesLeftInDeck;
 use App\Game\Deck\GetDeck;
+use App\Game\Duel\BeginDuel;
+use App\Game\Duel\DuelLootTaken;
+use App\Game\Duel\DuelPhase;
+use App\Game\Duel\DuelResolved;
+use App\Game\Duel\DuelSideCompleted;
+use App\Game\Duel\DuelStarted;
+use App\Game\Duel\SettleDuel;
+use App\Game\Duel\StartDuel;
 use App\Game\Field\DoctrineDBAL\FieldPlaceArrayJsonType;
 use App\Game\Field\DoctrineDBAL\ItemMapType;
 use App\Game\Field\DoctrineDBAL\TileOrientationMapType;
@@ -33,6 +41,7 @@ use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Movement\Commands\ResetPlayerPosition;
 use App\Game\Movement\DoctrineDBAL\PlayerPositionMapType;
 use App\Game\Movement\Events\PlayerMoved;
+use App\Game\Movement\Events\PlayersSwapped;
 use App\Game\Movement\GetPlayerPosition;
 use App\Game\Movement\MovementService;
 use App\Game\Movement\MovementValidator;
@@ -40,6 +49,7 @@ use App\Game\Player\AddItemToInventory;
 use App\Game\Player\CompleteReincarnation;
 use App\Game\Player\Error\InventoryFullException;
 use App\Game\Player\Error\MissingKeyException;
+use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\ItemAddedToInventory;
 use App\Game\Player\ItemPickedUp;
@@ -49,6 +59,7 @@ use App\Game\Player\PickItem;
 use App\Game\Player\PlayerHealedAtFountain;
 use App\Game\Player\PlayerStunned;
 use App\Game\Player\QueryPlayerInventory;
+use App\Game\Player\ReducePlayerHP;
 use App\Game\Player\ReincarnationRequired;
 use App\Game\Player\RemoveItemFromInventory;
 use App\Game\Player\ReplaceInventoryItem;
@@ -194,6 +205,39 @@ class Field extends AggregateRoot
     #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
     private ?array $pendingFateweaver = null;
 
+    /**
+     * Karak: Regent — the last Cursed Room roll, for the UI (cleared when the next turn starts).
+     *
+     * @var array{playerId: string, position: string, roll: int, cursed: bool, turnId: ?string}|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $roomEvent = null;
+
+    /**
+     * Karak: Regent — Battle Arenas already activated (each one only once; later it is a normal corridor).
+     * (The default matters: the column is NOT NULL and existing fields must migrate.).
+     *
+     * @var list<FieldPlace>
+     */
+    #[Column(type: FieldPlaceArrayJsonType::class, options: ['default' => '[]'])]
+    private array $activatedArenas = [];
+
+    /**
+     * Karak: Regent — a human hero activated an arena and still has to choose a rival (dropped at the turn end).
+     *
+     * @var array{position: string, playerId: string, turnId: string, firstStep: bool}|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $pendingArena = null;
+
+    /**
+     * Karak: Regent — the current (or last) Battle Arena duel, for the UI.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $duelInfo = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -241,6 +285,7 @@ class Field extends AggregateRoot
     public function turnStarted(TurnStarted $turnStarted, MessageContext $messageContext): void
     {
         $this->lastBattleInfo = [];
+        $this->roomEvent = null;
 
         // Get the player's HP
         $player = $messageContext->dispatch(new GetPlayer($turnStarted->playerId));
@@ -314,6 +359,202 @@ class Field extends AggregateRoot
         // 3. Item pickup actions that have shouldEndTurn() = true
         // 4. GameTurn when MAX_ACTIONS_PER_TURN is reached
         // Regular movement does NOT end turns - players get up to 4 movement actions
+
+        // Karak: Regent — the Lord Karak rooms react to every entry, battle returns included
+        $this->enterTile($event->playerId, $event->toPosition, $context);
+    }
+
+    /**
+     * Warlock "Magic Swap": both heroes entered a new tile.
+     */
+    #[Handler]
+    public function onPlayersSwapped(PlayersSwapped $event, MessageContext $context): void
+    {
+        $this->enterTile($event->playerId, $event->playerTo, $context);
+        $this->enterTile($event->targetPlayerId, $event->playerFrom, $context);
+    }
+
+    /**
+     * Karak: Regent — the human hero who activated an arena summons a rival: the rival's figure is moved onto
+     * the arena and the duel begins with the challenger's roll.
+     *
+     * @throws \DomainException
+     * @throws NotYourTurnException
+     */
+    #[Handler]
+    public function chooseDuelOpponent(ChooseDuelOpponent $command, MessageContext $context): void
+    {
+        $currentTurnId = $context->dispatch(new GetCurrentTurn($command->gameId));
+        if ($currentTurnId === null || !$currentTurnId->equals($command->turnId)) {
+            throw new \DomainException('Invalid turn ID');
+        }
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
+        if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId)) {
+            throw new NotYourTurnException();
+        }
+        $pending = $this->pendingArena;
+        if ($pending === null || $pending['playerId'] !== $command->playerId->toString() || $pending['turnId'] !== $command->turnId->toString()) {
+            throw new \DomainException('No arena choice pending');
+        }
+        if ($command->opponentId->equals($command->playerId)) {
+            throw new \DomainException('You cannot duel yourself');
+        }
+        $known = false;
+        foreach ($context->dispatch(new GetActivePlayers($command->gameId)) as $playerId) {
+            if ($playerId->equals($command->opponentId)) {
+                $known = true;
+                break;
+            }
+        }
+        if (!$known) {
+            throw new \DomainException('Unknown player');
+        }
+
+        $this->pendingArena = null;
+        $this->startDuel(
+            challengerId: $command->playerId,
+            opponentId: $command->opponentId,
+            arena: FieldPlace::fromString($pending['position']),
+            turnId: $command->turnId,
+            firstStep: $pending['firstStep'],
+            context: $context,
+        );
+    }
+
+    /**
+     * @return list<FieldPlace>
+     */
+    public function getActivatedArenas(): array
+    {
+        return $this->activatedArenas;
+    }
+
+    /**
+     * @return array{position: string, playerId: string, turnId: string, firstStep: bool}|null
+     */
+    public function getPendingArena(): ?array
+    {
+        return $this->pendingArena;
+    }
+
+    /**
+     * Karak: Regent — the pending arena choice for the UI, with the rivals to choose from.
+     *
+     * @param array<Uuid> $activePlayerIds
+     * @return array{position: string, playerId: string, candidates: list<string>}|null
+     */
+    public function getArenaChoice(array $activePlayerIds): ?array
+    {
+        if ($this->pendingArena === null) {
+            return null;
+        }
+        $candidates = [];
+        foreach ($activePlayerIds as $playerId) {
+            if ($playerId->toString() !== $this->pendingArena['playerId']) {
+                $candidates[] = $playerId->toString();
+            }
+        }
+
+        return [
+            'position' => $this->pendingArena['position'],
+            'playerId' => $this->pendingArena['playerId'],
+            'candidates' => $candidates,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getDuelInfo(): ?array
+    {
+        return $this->duelInfo;
+    }
+
+    #[Handler]
+    public function onDuelStarted(DuelStarted $event): void
+    {
+        $this->duelInfo = [
+            'duelId' => $event->duelId->toString(),
+            'phase' => DuelPhase::CHALLENGER_ROLL->value,
+            'arena' => $event->arenaPosition->toString(),
+            'turnId' => $event->turnId->toString(),
+            'challengerId' => $event->challengerId->toString(),
+            'opponentId' => $event->opponentId->toString(),
+            'challengerBattleId' => $event->challengerBattleId->toString(),
+            'opponentBattleId' => $event->opponentBattleId->toString(),
+            'challengerTotal' => null,
+            'opponentTotal' => null,
+            'challengerDetails' => null,
+            'opponentDetails' => null,
+            'result' => null,
+            'loser' => null,
+            'reincarnatedTo' => null,
+            'loot' => null,
+            'lootCandidates' => [],
+        ];
+    }
+
+    #[Handler]
+    public function onDuelSideCompleted(DuelSideCompleted $event): void
+    {
+        if (!$this->isCurrentDuel($event->duelId)) {
+            return;
+        }
+        /** @var array<string, mixed> $info */
+        $info = $this->duelInfo;
+        $info[$event->role . 'Total'] = $event->total;
+        $info[$event->role . 'Details'] = $event->details();
+        // The Duel may already have resolved the whole duel inside this event: the phase only moves forward
+        $info['phase'] = $this->laterPhase($info['phase'] ?? null, DuelPhase::OPPONENT_ROLL);
+        $this->duelInfo = $info;
+    }
+
+    #[Handler]
+    public function onDuelLootTaken(DuelLootTaken $event): void
+    {
+        // The item changes hands: it must not be dropped on the arena when it leaves the loser's inventory
+        $this->consumedItemIds[] = $event->item->itemId->toString();
+
+        if (!$this->isCurrentDuel($event->duelId)) {
+            return;
+        }
+        /** @var array<string, mixed> $info */
+        $info = $this->duelInfo;
+        $info['loot'] = [
+            'itemId' => $event->item->itemId->toString(),
+            'type' => $event->item->type->value,
+            'name' => $event->item->name->value,
+        ];
+        $info['lootCandidates'] = [];
+        $info['phase'] = $this->laterPhase($info['phase'] ?? null, DuelPhase::DONE);
+        $this->duelInfo = $info;
+    }
+
+    #[Handler]
+    public function onDuelResolved(DuelResolved $event): void
+    {
+        if (!$this->isCurrentDuel($event->duelId)) {
+            return;
+        }
+        /** @var array<string, mixed> $info */
+        $info = $this->duelInfo;
+        $info['result'] = $event->result;
+        $info['loser'] = $event->loserId?->toString();
+        $info['reincarnatedTo'] = $event->reincarnatedTo;
+        $info['loot'] ??= $event->loot;
+        $info['phase'] = $this->laterPhase($info['phase'] ?? null, DuelPhase::from($event->phase));
+        $info['lootCandidates'] = $info['phase'] === DuelPhase::LOOT->value ? $event->lootCandidates : [];
+        $this->duelInfo = $info;
+    }
+
+    /**
+     * Karak: Regent — the last Cursed Room roll (null once the next turn started).
+     *
+     * @return array{playerId: string, position: string, roll: int, cursed: bool, turnId: ?string}|null
+     */
+    public function getRoomEvent(): ?array
+    {
+        return $this->roomEvent;
     }
 
     /**
@@ -1300,7 +1541,14 @@ class Field extends AggregateRoot
             // Curse of Karak: the slayer of a mummy picks the victim before the turn ends
             'curseChoiceRequired' => $event->curseChoiceRequired,
             'cursedPlayerId' => $event->cursedPlayerId,
+            // Karak: Regent — a Battle Arena duel side (the "monster" is the rival hero)
+            'duel' => $event->duel,
         ];
+
+        // Karak: Regent — a duel has no monster on the tile: whatever lies on the arena is not part of it
+        if ($event->duel !== null) {
+            return;
+        }
 
         // Check if there are items at this position
         if (!isset($this->items[$positionString])) {
@@ -1318,10 +1566,8 @@ class Field extends AggregateRoot
             // Calculate maximum possible damage with consumables
             $consumableDamage = 0;
             foreach ($event->availableConsumables as $consumable) {
-                if ($consumable->type === ItemType::FIREBALL) {
-                    ++$consumableDamage; // Fireball adds +1 damage
-                }
-                // Add other consumable types here if they provide damage
+                // Fireball +1, Frost Fist +2 (Karak: Regent)
+                $consumableDamage += $consumable->type->getDamage();
             }
 
             // Check if total damage with all consumables would be enough to win
@@ -1778,6 +2024,18 @@ class Field extends AggregateRoot
     #[Handler]
     public function onTurnEnded(TurnEnded $event, MessageContext $messageContext): void
     {
+        // Karak: Regent — a rival never chosen means no duel (the arena stays activated); an open duel is settled
+        if ($this->pendingArena !== null && $this->pendingArena['turnId'] === $event->turnId->toString()) {
+            $this->pendingArena = null;
+        }
+        $duelPhase = DuelPhase::tryFrom((string) ($this->duelInfo['phase'] ?? ''));
+        if ($duelPhase !== null && !$duelPhase->isSettled() && \is_string($this->duelInfo['duelId'] ?? null)) {
+            $messageContext->dispatch(new SettleDuel(
+                duelId: Uuid::fromString($this->duelInfo['duelId']),
+                gameId: $event->gameId,
+            ));
+        }
+
         // Oracle "Fateweaver": a choice that was never made is settled with the first drawn token
         $pending = $this->getPendingFateweaver();
         if ($pending !== null) {
@@ -2046,8 +2304,122 @@ class Field extends AggregateRoot
                     'position' => $command->targetPosition->toString(),
                 ],
             ));
+
+            return;
         }
-        // TODO: Handle other spell types in the future
+
+        // Karak: Regent — Dark Thorn: another hero loses 1 HP; costs no move, several per turn, even on the same hero
+        if ($spell->type === ItemType::DARK_THORN) {
+            $target = $command->targetPlayerId;
+            if ($target === null) {
+                throw new \InvalidArgumentException('Dark Thorn needs a target player');
+            }
+            if ($target->equals($command->playerId)) {
+                throw new \InvalidArgumentException('You cannot target yourself');
+            }
+            $game = $context->dispatch(new GetGame($command->gameId));
+            $targetKnown = false;
+            foreach ($game->getPlayers() as $knownPlayerId) {
+                if ($knownPlayerId->equals($target)) {
+                    $targetKnown = true;
+                    break;
+                }
+            }
+            if (!$targetKnown) {
+                throw new \InvalidArgumentException('Target player is not in this game');
+            }
+
+            $hpBefore = $context->dispatch(new GetPlayer($target))->getHP();
+
+            // Mark the spell as consumed so it won't be dropped on the field
+            $this->consumedItemIds[] = $command->spellId->toString();
+
+            $context->dispatch(new ReducePlayerHP(
+                playerId: $target,
+                gameId: $command->gameId,
+                amount: 1,
+                turnId: $command->turnId,
+            ));
+
+            // A Warrior losing his last HP out of turn reincarnates at the nearest fountain right away
+            $targetPlayer = $context->dispatch(new GetPlayer($target));
+            $reincarnatedTo = null;
+            if ($targetPlayer->isAwaitingReincarnation()) {
+                $this->autoReincarnate(new AutoReincarnate(gameId: $command->gameId, playerId: $target), $context);
+                $reincarnatedTo = $context->dispatch(new GetPlayerPosition(gameId: $command->gameId, playerId: $target))->toString();
+                $targetPlayer = $context->dispatch(new GetPlayer($target));
+            }
+            $hpAfter = $targetPlayer->getHP();
+
+            $context->dispatch(new RemoveItemFromInventory(
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                itemId: $command->spellId,
+            ));
+
+            $context->dispatch(new PerformTurnAction(
+                turnId: $command->turnId,
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                action: TurnAction::USE_SPELL,
+                additionalData: [
+                    'spell' => 'dark_thorn',
+                    'target' => $target->toString(),
+                    'hpBefore' => $hpBefore,
+                    'hpAfter' => $hpAfter,
+                    'stunned' => $hpAfter === 0 && $reincarnatedTo === null,
+                    'reincarnatedTo' => $reincarnatedTo,
+                ],
+            ));
+
+            return;
+        }
+
+        // Karak: Regent — Frost Fist is a battle consumable: it is selected in the fight, not cast from the sidebar
+        if ($spell->type === ItemType::FROST_FIST) {
+            throw new \InvalidArgumentException('Frost Fist is used during a fight');
+        }
+
+        throw new \InvalidArgumentException('This spell cannot be cast');
+    }
+
+    /**
+     * Warrior "Reincarnation" without a choice: the hero knocked out outside his own fight (a Dark Thorn target,
+     * a duel loser) is carried to the discovered healing fountain nearest to him (Manhattan distance, ties → the
+     * first discovered). No turn action is recorded: the caller's entry carries `reincarnatedTo`.
+     */
+    #[Handler]
+    public function autoReincarnate(AutoReincarnate $command, MessageContext $context): void
+    {
+        $player = $context->dispatch(new GetPlayer($command->playerId));
+        if (!$player->isAwaitingReincarnation()) {
+            return;
+        }
+
+        $from = $context->dispatch(new GetPlayerPosition(gameId: $command->gameId, playerId: $command->playerId));
+        $target = null;
+        $best = null;
+        foreach ($this->healingFountainPositions as $fountain) {
+            $distance = abs($fountain->positionX - $from->positionX) + abs($fountain->positionY - $from->positionY);
+            if ($best === null || $distance < $best) {
+                $best = $distance;
+                $target = $fountain;
+            }
+        }
+        $target ??= new FieldPlace(0, 0);
+
+        $context->dispatch(new ResetPlayerPosition(
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            position: $target,
+        ));
+        $context->dispatch(new CompleteReincarnation(
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            position: $target,
+        ));
+
+        unset($this->lastBattleInfo['awaitingReincarnation'], $this->lastBattleInfo['healingFountainPositions']);
     }
 
     /**
@@ -2143,6 +2515,208 @@ class Field extends AggregateRoot
         $this->tilesCache[$tileId->toString()] = $tile;
 
         return $tile;
+    }
+
+    /**
+     * Karak: Regent — a hero stands on a new tile: a Cursed Room makes him roll, a Battle Arena may summon a rival.
+     */
+    private function enterTile(Uuid $playerId, FieldPlace $position, MessageContext $context): void
+    {
+        $tile = $this->tileAt($position, $context);
+        if ($tile === null) {
+            return;
+        }
+
+        if ($tile->hasFeature(TileFeature::CURSED_ROOM)) {
+            $this->rollCursedRoom($playerId, $position, $context);
+        }
+
+        if ($tile->hasFeature(TileFeature::BATTLE_ARENA)) {
+            $this->enterArena($playerId, $position, $context);
+        }
+    }
+
+    /**
+     * Karak: Regent — Cursed Room: 1–3 → the Curse of Karak, 4–6 → avoided; an already cursed hero does not roll.
+     */
+    private function rollCursedRoom(Uuid $playerId, FieldPlace $position, MessageContext $context): void
+    {
+        $player = $context->dispatch(new GetPlayer($playerId));
+        if ($player->isCursed()) {
+            return;
+        }
+
+        $roll = $this->getNextDiceRoll(1, 6);
+        $cursed = $roll <= 3;
+        $turnId = $context->dispatch(new GetCurrentTurn($this->gameId));
+
+        $this->roomEvent = [
+            'playerId' => $playerId->toString(),
+            'position' => $position->toString(),
+            'roll' => $roll,
+            'cursed' => $cursed,
+            'turnId' => $turnId?->toString(),
+        ];
+
+        $context->dispatch(new CursedRoomEntered(
+            gameId: $this->gameId,
+            playerId: $playerId,
+            position: $position,
+            roll: $roll,
+            cursed: $cursed,
+            turnId: $turnId,
+        ));
+
+        // Record the roll on the current turn (the mover may be another hero swapped onto the room)
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($this->gameId));
+        if ($turnId === null || $currentPlayerId === null) {
+            return;
+        }
+
+        try {
+            $context->dispatch(new PerformTurnAction(
+                turnId: $turnId,
+                gameId: $this->gameId,
+                playerId: $currentPlayerId,
+                action: TurnAction::CURSED_ROOM,
+                additionalData: [
+                    'player' => $playerId->toString(),
+                    'position' => $position->toString(),
+                    'roll' => $roll,
+                    'cursed' => $cursed,
+                    'heroAbility' => null,
+                ],
+            ));
+        } catch (\RuntimeException) {
+            // The turn may already be over (a battle return at the end of the turn): the roll still counts
+        }
+    }
+
+    /**
+     * Karak: Regent — the first entry of the current player activates a Battle Arena (once, even when no duel
+     * follows). A virtual player summons the richest rival at once; a human chooses (ChooseDuelOpponent).
+     */
+    private function enterArena(Uuid $playerId, FieldPlace $position, MessageContext $context): void
+    {
+        foreach ($this->activatedArenas as $arena) {
+            if ($arena->equals($position)) {
+                return;
+            }
+        }
+
+        // A hero swapped onto the arena out of his turn does not activate it
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($this->gameId));
+        if ($currentPlayerId === null || !$currentPlayerId->equals($playerId)) {
+            return;
+        }
+        $turnId = $context->dispatch(new GetCurrentTurn($this->gameId));
+        if ($turnId === null) {
+            return;
+        }
+
+        $this->activatedArenas[] = $position;
+
+        $others = array_values(array_filter(
+            $context->dispatch(new GetActivePlayers($this->gameId)),
+            static fn(Uuid $id): bool => !$id->equals($playerId),
+        ));
+        if ($others === []) {
+            return;
+        }
+
+        // The MOVE is recorded after PlayerMoved: no move spent yet means the arena is the first step
+        $firstStep = $context->dispatch(new GetTurn($turnId))?->getPerformedActionsCount() === 0;
+
+        if ($context->dispatch(new GetPlayer($playerId))->isAi()) {
+            $this->startDuel($playerId, $this->pickDuelOpponent($others, $context), $position, $turnId, $firstStep, $context);
+
+            return;
+        }
+
+        $this->pendingArena = [
+            'position' => $position->toString(),
+            'playerId' => $playerId->toString(),
+            'turnId' => $turnId->toString(),
+            'firstStep' => $firstStep,
+        ];
+        $context->dispatch(new ArenaEntered(gameId: $this->gameId, playerId: $playerId, position: $position));
+    }
+
+    /**
+     * A virtual challenger picks the rival with the most treasures (tie → the first in seating order).
+     *
+     * @param non-empty-list<Uuid> $candidates
+     */
+    private function pickDuelOpponent(array $candidates, MessageContext $context): Uuid
+    {
+        $best = $candidates[0];
+        $bestCount = -1;
+        foreach ($candidates as $candidate) {
+            $count = \count($context->dispatch(new GetPlayer($candidate))->getInventory()[ItemCategory::TREASURE->value] ?? []);
+            if ($count > $bestCount) {
+                $best = $candidate;
+                $bestCount = $count;
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * The rival's figure is moved onto the arena; the duel is created first and then begun, so the Duel
+     * aggregate exists when an automatic side completes right away.
+     */
+    private function startDuel(Uuid $challengerId, Uuid $opponentId, FieldPlace $arena, Uuid $turnId, bool $firstStep, MessageContext $context): void
+    {
+        $context->dispatch(new ResetPlayerPosition(
+            gameId: $this->gameId,
+            playerId: $opponentId,
+            position: $arena,
+        ));
+
+        $duelId = Uuid::v7();
+        $context->dispatch(new StartDuel(
+            duelId: $duelId,
+            gameId: $this->gameId,
+            turnId: $turnId,
+            arenaPosition: $arena,
+            challengerId: $challengerId,
+            opponentId: $opponentId,
+            firstStep: $firstStep,
+        ));
+        $context->dispatch(new BeginDuel(duelId: $duelId, gameId: $this->gameId));
+    }
+
+    private function isCurrentDuel(Uuid $duelId): bool
+    {
+        return $this->duelInfo !== null && ($this->duelInfo['duelId'] ?? null) === $duelId->toString();
+    }
+
+    private function laterPhase(mixed $current, DuelPhase $next): string
+    {
+        $currentPhase = \is_string($current) ? DuelPhase::tryFrom($current) : null;
+
+        return $currentPhase !== null && $currentPhase->rank() > $next->rank() ? $currentPhase->value : $next->value;
+    }
+
+    /**
+     * The placed tile at a position, from the cache or the Tile aggregate; null when there is none.
+     */
+    private function tileAt(FieldPlace $position, MessageContext $context): ?Tile
+    {
+        $tileId = $this->tiles[$position->toString()] ?? null;
+        if ($tileId === null) {
+            return null;
+        }
+        if (\is_string($tileId)) {
+            $tileId = Uuid::fromString($tileId);
+        }
+
+        try {
+            return $this->getTile($tileId, $context);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
