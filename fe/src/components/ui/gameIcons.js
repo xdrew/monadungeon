@@ -28,6 +28,7 @@ export const ICONS = {
   pin: [path('M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z'), circle(12, 10, 2.4)],
   sword: [path('M14.5 17.5L3 6V3h3l11.5 11.5'), path('M13 19l6-6'), path('M16 16l4 4'), path('M19 21l2-2')],
   explore: [path('M4 20V8l8-5 8 5v12M9 20v-6h6v6')],
+  compass: [circle(12, 12, 9), path('M15.5 8.5l-2 5-5 2 2-5z'), dot(12, 12, 0.9), path('M12 3v1.6M12 19.4V21M3 12h1.6M19.4 12H21')],
   spells: [path('M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-8z')],
   journal: [path('M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11')],
   hourglass: [path('M7 3h10M7 21h10M8 3c0 5 8 6 8 9s-8 4-8 9M16 3c0 5-8 6-8 9')],

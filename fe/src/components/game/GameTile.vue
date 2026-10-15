@@ -780,28 +780,38 @@ const onItemClick = () => {
   height: 38%;
 }
 
-/* A reward the hero can pick up: an ember ring breathes under it */
+/* A reward the hero can pick up: a pool of torchlight on the floor under it, no frame */
 .tile-items.pickable {
   cursor: pointer;
+  animation: rewardGleam 2.4s ease-in-out infinite;
 }
 
 .tile-items.pickable::before {
   content: '';
   position: absolute;
-  inset: -8%;
+  left: -30%;
+  right: -30%;
+  top: 25%;
+  bottom: -25%;
+  z-index: -1;
   border-radius: 50%;
-  border: 2px solid rgba(var(--ember-rgb), 0.7);
-  box-shadow: 0 0 14px rgba(var(--ember-rgb), 0.45), inset 0 0 10px rgba(var(--ember-rgb), 0.3);
-  animation: emberRing 1.6s ease-in-out infinite;
+  background: radial-gradient(ellipse at 50% 55%, rgba(255, 170, 70, 0.38) 0%, rgba(var(--ember-rgb), 0.14) 40%, rgba(var(--ember-rgb), 0) 70%);
+  animation: lightPool 2.4s ease-in-out infinite;
   pointer-events: none;
 }
 
-@keyframes emberRing {
-  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+@keyframes rewardGleam {
+  0%, 100% { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.9)) brightness(1); }
+  50% { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 8px rgba(255, 170, 70, 0.45)) brightness(1.15); }
+}
+
+@keyframes lightPool {
+  0%, 100% { opacity: 0.65; transform: scale(0.94); }
   50% { opacity: 1; transform: scale(1.04); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tile-items.pickable,
   .tile-items.pickable::before {
     animation: none;
   }

@@ -15,12 +15,17 @@
     @click="handleClick"
   >
     <div class="marker-content">
-      <!-- an unexplored doorway: a dark slot with the explore mark (e2e clicks .place-icon) -->
+      <!-- an unexplored doorway: darkness and drifting mist, a dim compass (e2e clicks .place-icon) -->
+      <span
+        v-if="canPlaceTile"
+        class="unexplored-mist"
+        aria-hidden="true"
+      />
       <span
         v-if="canPlaceTile"
         class="place-icon"
       >
-        <GameIcon name="explore" :size="34" />
+        <GameIcon name="compass" :size="30" />
       </span>
     </div>
   </div>
@@ -116,11 +121,35 @@ const handleClick = () => {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* An unexplored doorway: a dark slot with a dashed ember hairline */
+/* An unexplored doorway: the dark beyond the door — no frame, just a faint ember edge and mist */
 .move-marker.place-tile {
-  border: 2px dashed rgba(var(--ember-rgb), 0.6);
-  background-color: rgba(7, 5, 4, 0.55);
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  border: 1px solid rgba(var(--ember-rgb), 0.18);
+  background-color: rgba(5, 3, 2, 0.72);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85);
+}
+
+.unexplored-mist {
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 40% 30% at 35% 45%, rgba(234, 220, 192, 0.07) 0%, rgba(234, 220, 192, 0) 70%),
+    radial-gradient(ellipse 35% 25% at 65% 60%, rgba(234, 220, 192, 0.06) 0%, rgba(234, 220, 192, 0) 70%),
+    radial-gradient(ellipse 30% 40% at 50% 30%, rgba(var(--ember-rgb), 0.05) 0%, rgba(var(--ember-rgb), 0) 70%);
+  animation: mistDrift 9s ease-in-out infinite alternate;
+}
+
+@keyframes mistDrift {
+  0% { transform: translate(-6%, 2%) scale(1); opacity: 0.7; }
+  50% { transform: translate(4%, -3%) scale(1.08); opacity: 1; }
+  100% { transform: translate(-2%, 5%) scale(1.02); opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unexplored-mist {
+    animation: none;
+  }
 }
 
 .available-place.clickable {
@@ -154,14 +183,16 @@ const handleClick = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: rgba(var(--accent-light-rgb), 0.85);
+  position: relative;
+  color: rgba(var(--ember-rgb), 0.42);
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.9));
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition: color 0.3s ease, transform 0.4s ease;
 }
 
+/* hovering the dark: the compass catches the light and its needle swings */
 .available-place.clickable:hover .place-icon {
-  color: var(--text-heading);
-  transform: scale(1.1);
+  color: var(--text-accent);
+  transform: rotate(25deg) scale(1.08);
 }
 
 @media (prefers-reduced-motion: reduce) {

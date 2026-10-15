@@ -22,7 +22,7 @@
       :aria-label="$t('hud.centerAvailable')"
       @click="centerOnAvailablePlaces"
     >
-      <GameIcon name="explore" :size="18" />
+      <GameIcon name="compass" :size="18" />
     </button>
   </div>
 </template>
