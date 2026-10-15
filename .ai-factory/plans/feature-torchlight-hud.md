@@ -60,13 +60,13 @@ E2E contract this part touches (all must survive):
   - Move badges (`hero-badge`, `curse-token`, `lord-karak-was`, `starting-roll`) into the rail; delete the `.player-inventory-section` block and its CSS (`GameView.vue` style ~6071-6291, hp/hero-badge ~6556-6612, duplicates in `inventory.css` / `gameView.css`).
 
 ### Phase 2: Pack, rings, chronicle
-- [ ] Task 4: Pack (depends on 3)
+- [x] Task 4: Pack (depends on 3)
   - `hud/PackBar.vue` using `InventorySlots` interactive for the human player; spell clicks call the same GameView handlers as today (teleport, dark thorn).
-- [ ] Task 5: Action rings (depends on 2)
+- [x] Task 5: Action rings (depends on 2)
   - `hud/IronRing.vue`, `hud/ActionRings.vue` per the table; move End Turn (`end-turn-section`), Regent skill buttons, `sprint-badge`, heal limit select (into a popover), dev debug plaques (to the rail bottom, DEV only). Keep classes, testids, texts and the DOM order rule (mode confirms < End Turn < debug).
   - `buttons.css`: `.end-turn-btn` hand skin and `.end-turn-section` replaced by `.iron-ring` styles; `.debug-plaque-btn` keeps a plain iron look.
   - Off-turn dimming + "Your turn comes after …" from `useTurnOrder`.
-- [ ] Task 6: Chronicle and Journal (depends on 1, 5)
+- [x] Task 6: Chronicle and Journal (depends on 1, 5)
   - `hud/Chronicle.vue` (last 4 sentences), `hud/JournalDrawer.vue` (all turns, `<h2>`, Esc closes, focus returns to the Journal ring); delete `ActionLog.vue`. Log `console.debug('[hud] journal', open)`.
 
 ### Phase 3: Plaque, playback, mobile, docs

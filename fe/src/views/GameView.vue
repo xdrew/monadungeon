@@ -52,6 +52,169 @@
             @portrait-error="onAvatarError"
           />
         </template>
+        <template
+          v-if="humanPlayer"
+          #pack
+        >
+          <PackBar
+            :inventory="humanPlayer.inventory || {}"
+            :hero-flags="humanPlayer.heroFlags || {}"
+            :castable="(item) => isCastableSpell(item) && isPlayerTurn && humanPlayer.id === currentPlayerId"
+            :active-item-id="activeSpellItemId"
+            @cast="handleSpellClick"
+          />
+        </template>
+        <template
+          v-if="gameData?.players && (gameStarted || ['started', 'turn_in_progress'].includes(gameData?.state?.status))"
+          #rings
+        >
+          <ActionRings :waiting-text="ringsWaitingText">
+            <template
+              v-if="(isPlayerTurn && gameData?.state?.sprint) || healLimitOpen || (devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored)"
+              #above
+            >
+              <span
+                v-if="isPlayerTurn && gameData?.state?.sprint"
+                class="hud-chip sprint-badge"
+                data-testid="sprint-badge"
+              >Sprint — up to 8 moves, no exploring</span>
+              <label
+                v-if="healLimitOpen && getCurrentPlayerData?.heroFlags?.choosesHealing"
+                class="hud-chip heal-limit-label"
+              >
+                Berserk — heal up to
+                <select
+                  data-testid="heal-limit"
+                  :value="getCurrentPlayerData.healLimit ?? ''"
+                  :disabled="loading || isRequestInProgress"
+                  @change="handleHealLimitChange($event.target.value); healLimitOpen = false"
+                >
+                  <option value="">5 HP (full)</option>
+                  <option
+                    v-for="hp in [4, 3, 2, 1]"
+                    :key="`heal-limit-${hp}`"
+                    :value="hp"
+                  >
+                    {{ hp }} HP
+                  </option>
+                </select>
+              </label>
+            </template>
+            <!-- Hero skills of the current turn (Karak: Regent heroes, the Warlock); they keep .end-turn-btn and come before End Turn in the DOM -->
+            <IronRing
+              v-if="canMagicSwapNow && !isMagicSwapMode"
+              class="end-turn-btn magic-swap-btn"
+              icon="swap"
+              label="Magic Swap"
+              data-testid="magic-swap"
+              :disabled="loading || isRequestInProgress"
+              title="Warlock: trade places with any other hero (first action of the turn, costs all 4 moves)"
+              @click="isMagicSwapMode = true"
+            />
+            <IronRing
+              v-if="canLightningAttackNow && !isLightningMode"
+              class="end-turn-btn magic-swap-btn"
+              icon="lightning"
+              label="Lightning"
+              data-testid="lightning-attack-btn"
+              :disabled="loading || isRequestInProgress"
+              title="Baron Markul: teleport onto any monster and fight it (first action of the turn, costs all 4 moves)"
+              @click="isLightningMode = true"
+            />
+            <IronRing
+              v-if="canSprintNow && !isLightningMode"
+              class="end-turn-btn magic-swap-btn"
+              icon="sprint"
+              label="Sprint"
+              data-testid="sprint-btn"
+              :disabled="loading || isRequestInProgress"
+              title="Hanna: up to 8 moves this turn over discovered tiles, no exploring"
+              @click="handleDeclareSprint"
+            />
+            <IronRing
+              v-if="canListenNow && !isLightningMode"
+              class="end-turn-btn magic-swap-btn"
+              :class="{ 'teleport-active': isListenMode }"
+              icon="listen"
+              :label="isListenMode ? 'Listening' : 'Listen'"
+              :pressed="isListenMode"
+              data-testid="listen-toggle"
+              :disabled="loading || isRequestInProgress"
+              :title="isListenMode ? 'Listening — place a tile' : 'Lady Lorraine: the next tile you place is explored without entering it (one move)'"
+              @click="isListenMode = !isListenMode"
+            />
+            <IronRing
+              v-if="getCurrentPlayerData?.heroFlags?.choosesHealing"
+              icon="heart"
+              label="Heal limit"
+              :badge="getCurrentPlayerData.healLimit ?? 5"
+              :pressed="healLimitOpen"
+              title="Berserk: how far the fountain heals you"
+              @click="healLimitOpen = !healLimitOpen"
+            />
+            <IronRing
+              data-hud-ring="journal"
+              icon="journal"
+              label="Journal"
+              :pressed="journalOpen"
+              title="Everything that happened in the dungeon"
+              @click="journalOpen = !journalOpen"
+            />
+            <IronRing
+              v-if="isPlayerTurn && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isDarkThornMode"
+              class="end-turn-btn"
+              icon="hourglass"
+              :lit="!(loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe)"
+              :disabled="loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe"
+              :title="pickedTileId ? 'You must place the picked tile before ending your turn' : (duelBlocksEndTurn ? 'Finish the Battle Arena duel first' : (retreatChoiceForMe ? 'Choose where to retreat first' : ''))"
+              @click="handleManualEndTurn"
+            >{{ pickedTileId ? 'Place Tile First' : 'End Turn' }}</IronRing>
+            <!-- Off turn: a dim hourglass, deliberately not .end-turn-btn and not "End Turn" (the e2e looks for those) -->
+            <IronRing
+              v-else-if="!isPlayerTurn"
+              icon="hourglass"
+              label="Wait"
+              disabled
+            />
+            <!-- Dev-only debug plaques (dev builds only; the AI auto-forcing timer works in every build).
+                 They keep .end-turn-btn after End Turn in the DOM: the e2e runs against the dev server and its .first() must not change. -->
+            <div
+              v-if="devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
+              class="debug-plaque"
+            >
+              <button
+                v-if="aiStuckDetected"
+                class="end-turn-btn debug-plaque-btn"
+                :disabled="loading || isRequestInProgress"
+                @click="forceAITurn"
+              >
+                {{ devAiLabels.stuck }}
+              </button>
+              <small
+                v-if="aiStuckDetected"
+                class="debug-plaque-note"
+              >{{ devAiLabels.stuckNote }}</small>
+              <button
+                class="end-turn-btn debug-plaque-btn"
+                :disabled="loading || isRequestInProgress"
+                @click="forceAITurn"
+              >
+                {{ devAiLabels.execute }}
+              </button>
+            </div>
+          </ActionRings>
+        </template>
+        <template
+          v-if="chronicleLines.length"
+          #chronicle
+        >
+          <Chronicle :lines="chronicleLines" />
+        </template>
+        <JournalDrawer
+          :open="journalOpen"
+          :turns="journalTurns"
+          @close="closeJournal"
+        />
         <template #tools>
           <ZoomControls
             @center-map="centerViewOnMiddle"
@@ -452,7 +615,7 @@
                 </button>
               </div>
               <button
-                class="end-turn-btn btn--block"
+                class="end-turn-btn btn btn--ember btn--block"
                 data-testid="dark-thorn-confirm"
                 :disabled="!darkThornTargetId || loading || isRequestInProgress"
                 @click="castDarkThorn"
@@ -528,7 +691,7 @@
               <h3>Magic Swap</h3>
               <p>Click another hero's figure to trade places. It costs all 4 moves: the turn ends on the new tile (a chest or a fountain there still counts).</p>
               <button
-                class="end-turn-btn btn--block"
+                class="end-turn-btn btn btn--ghost btn--block"
                 data-testid="magic-swap-cancel"
                 :disabled="loading || isRequestInProgress"
                 @click="isMagicSwapMode = false"
@@ -536,21 +699,6 @@
                 Cancel
               </button>
             </div>
-            <div
-              v-else-if="canMagicSwapNow"
-              class="sidebar-section magic-swap-section"
-            >
-              <button
-                class="end-turn-btn btn--block magic-swap-btn"
-                data-testid="magic-swap"
-                :disabled="loading || isRequestInProgress"
-                title="Warlock: trade places with any other hero (first action of the turn, costs all 4 moves)"
-                @click="isMagicSwapMode = true"
-              >
-                Magic Swap
-              </button>
-            </div>
-
             <!-- Karak: Regent — Baron Markul retreats after a Lightning Attack that was not won -->
             <div
               v-if="retreatChoiceForMe && !showBattleReportModal"
@@ -602,128 +750,6 @@
                 Cancel
               </button>
             </div>
-            <div
-              v-else-if="canLightningAttackNow || canSprintNow || canListenNow"
-              class="sidebar-section magic-swap-section regent-hero-actions"
-            >
-              <button
-                v-if="canLightningAttackNow"
-                class="end-turn-btn btn--block magic-swap-btn"
-                data-testid="lightning-attack-btn"
-                :disabled="loading || isRequestInProgress"
-                title="Baron Markul: teleport onto any monster and fight it (first action of the turn, costs all 4 moves)"
-                @click="isLightningMode = true"
-              >
-                Lightning Attack
-              </button>
-              <button
-                v-if="canSprintNow"
-                class="end-turn-btn btn--block magic-swap-btn"
-                data-testid="sprint-btn"
-                :disabled="loading || isRequestInProgress"
-                title="Hanna: up to 8 moves this turn over discovered tiles, no exploring"
-                @click="handleDeclareSprint"
-              >
-                Sprint (8 moves)
-              </button>
-              <button
-                v-if="canListenNow"
-                class="end-turn-btn btn--block magic-swap-btn"
-                :class="{ 'teleport-active': isListenMode }"
-                data-testid="listen-toggle"
-                :disabled="loading || isRequestInProgress"
-                title="Lady Lorraine: the next tile you place is explored without entering it (one move)"
-                @click="isListenMode = !isListenMode"
-              >
-                {{ isListenMode ? 'Listening — place a tile' : 'Listen at the next tile' }}
-              </button>
-            </div>
-            <div
-              v-if="isPlayerTurn && gameData?.state?.sprint"
-              class="sidebar-section sprint-badge"
-              data-testid="sprint-badge"
-            >
-              Sprint — up to 8 moves, no exploring
-            </div>
-            <div
-              v-if="getCurrentPlayerData?.heroFlags?.choosesHealing"
-              class="sidebar-section heal-limit-section"
-            >
-              <label class="heal-limit-label">
-                Berserk — heal up to
-                <select
-                  data-testid="heal-limit"
-                  :value="getCurrentPlayerData.healLimit ?? ''"
-                  :disabled="loading || isRequestInProgress"
-                  @change="handleHealLimitChange($event.target.value)"
-                >
-                  <option value="">5 HP (full)</option>
-                  <option
-                    v-for="hp in [4, 3, 2, 1]"
-                    :key="`heal-limit-${hp}`"
-                    :value="hp"
-                  >
-                    {{ hp }} HP
-                  </option>
-                </select>
-              </label>
-            </div>
-
-            <!-- End Turn Button -->
-            <div
-              v-if="isPlayerTurn && (gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isDarkThornMode"
-              class="sidebar-section end-turn-section"
-            >
-              <button
-                class="end-turn-btn btn--block"
-                @click="handleManualEndTurn"
-                :disabled="loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe"
-                :title="pickedTileId ? 'You must place the picked tile before ending your turn' : (duelBlocksEndTurn ? 'Finish the Battle Arena duel first' : (retreatChoiceForMe ? 'Choose where to retreat first' : ''))"
-              >
-                {{ pickedTileId ? 'Place Tile First' : 'End Turn' }}
-              </button>
-            </div>
-            
-            <!-- Dev-only debug plaques (dev builds only; the AI auto-forcing timer works in every build).
-                 They keep .end-turn-btn: the e2e runs against the dev server and its .first() resolution must not change. -->
-            <div
-              v-if="devAiLabels && aiStuckDetected && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
-              class="sidebar-section debug-plaque"
-            >
-              <button
-                class="end-turn-btn btn--block debug-plaque-btn"
-                @click="forceAITurn"
-                :disabled="loading || isRequestInProgress"
-              >
-                {{ devAiLabels.stuck }}
-              </button>
-              <small class="debug-plaque-note">{{ devAiLabels.stuckNote }}</small>
-            </div>
-
-            <div
-              v-if="devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
-              class="sidebar-section debug-plaque"
-            >
-              <button
-                class="end-turn-btn btn--block debug-plaque-btn"
-                @click="forceAITurn"
-                :disabled="loading || isRequestInProgress"
-              >
-                {{ devAiLabels.execute }}
-              </button>
-            </div>
-
-            <!-- Action Log -->
-            <div
-              v-if="(gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && gameTurns.length > 0"
-              class="sidebar-section"
-            >
-              <ActionLog
-                :turns="gameTurns"
-                :current-player-id="currentPlayerId"
-              />
-            </div>
-
             <!-- AI Turn Playback Controls -->
             <AiTurnPlaybackControls
               v-if="isAiPlayingBack"
@@ -917,10 +943,15 @@ import DuelOpponentPanel from '@/components/game/DuelOpponentPanel.vue';
 import DuelResultPanel from '@/components/game/DuelResultPanel.vue';
 import LordKarakRevealModal from '@/components/game/LordKarakRevealModal.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
-import ActionLog from '@/components/ActionLog.vue';
 import GameHud from '@/components/game/hud/GameHud.vue';
 import TurnBanner from '@/components/game/hud/TurnBanner.vue';
 import PartyRail from '@/components/game/hud/PartyRail.vue';
+import PackBar from '@/components/game/hud/PackBar.vue';
+import ActionRings from '@/components/game/hud/ActionRings.vue';
+import IronRing from '@/components/game/hud/IronRing.vue';
+import Chronicle from '@/components/game/hud/Chronicle.vue';
+import JournalDrawer from '@/components/game/hud/JournalDrawer.vue';
+import { chronicleTail, chronicleTurns } from '@/utils/chronicle';
 import { useTurnOrder, heroPersonalName, joinNames } from '@/composables/useTurnOrder';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import { musicService } from '@/services/musicService';
@@ -1259,6 +1290,35 @@ const heroNameById = (playerId) => {
   const player = playerById(playerId);
   return player ? heroPersonalName(player, playerLabel(player)) : 'Someone';
 };
+
+// The human at this screen (their pack is drawn bottom left)
+const humanPlayer = computed(() => (gameData.value?.players || []).find(isHumanPlayer) || null);
+// The spell being cast from the pack (Portal of Healing / Dark Thorn)
+const activeSpellItemId = computed(() => (isTeleportMode.value && selectedTeleportSpell.value?.itemId)
+  || (isDarkThornMode.value && selectedDarkThornSpell.value?.itemId) || null);
+
+// Rings: the heal-limit popover and the Journal drawer
+const healLimitOpen = ref(false);
+const journalOpen = ref(false);
+watch(journalOpen, (open) => console.debug('[hud] journal', open));
+// Closing the Journal gives the focus back to its ring
+const closeJournal = () => {
+  journalOpen.value = false;
+  nextTick(() => document.querySelector('[data-hud-ring="journal"]')?.focus());
+};
+
+// The chronicle (last lines, top right) and the Journal (every turn) read the same turns
+const chronicleLines = computed(() => chronicleTail(gameTurns.value, heroNameById, 4));
+const journalTurns = computed(() => (journalOpen.value ? chronicleTurns(gameTurns.value, heroNameById) : []));
+
+// "Your turn comes after Taia and Lorraine" while the others act
+const ringsWaitingText = computed(() => {
+  if (isPlayerTurn.value || gameData.value?.state?.status === 'finished') return '';
+  const acting = turnOrder.acting.value;
+  if (!acting || acting.isYou) return '';
+  const names = turnOrder.waitingFor.value;
+  return names.length ? `Your turn comes after ${joinNames(names)}` : 'Your turn is next';
+});
 
 // The starting-player roll stays on the rail through the first round
 const startingRollShown = (player) => {
@@ -6640,43 +6700,37 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   background: rgba(102, 187, 106, 0.25);
 }
 
-/* Karak: Regent heroes */
-.regent-hero-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sprint-badge {
-  font-size: 0.85rem;
-  text-align: center;
-  opacity: 0.9;
-}
-
-.heal-limit-label {
-  display: flex;
+/* HUD chips over the action rings: the Sprint notice and the Berserk heal-limit popover */
+.hud-chip {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  font-size: 0.85rem;
+  padding: 6px 12px;
+  background: var(--bg-panel);
+  border: 1px solid rgba(var(--ember-rgb), 0.45);
+  box-shadow: 0 0 14px rgba(255, 100, 20, 0.2), 0 6px 16px rgba(0, 0, 0, 0.7);
+  color: var(--text-primary);
+  font-style: italic;
+  font-size: 14px;
 }
 
 .heal-limit-label select {
   padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
   color: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-}
-.starting-roll {
-  font-size: 0.8rem;
-  opacity: 0.8;
+  border: 1px solid var(--iron);
+  font-family: var(--font-body);
 }
 
-/* Dev-only debug plaque: small and dim, out of the way of the real controls */
+/* Dev-only debug plaque: small and dim, after the rings, out of the way of the real controls */
 .debug-plaque {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 170px;
   padding: 6px;
-  margin-bottom: 8px;
   border: 1px dashed var(--iron-dark);
   border-radius: var(--radius-sm);
   background: transparent;
@@ -6688,9 +6742,10 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .debug-plaque .debug-plaque-btn {
-  margin-bottom: 0;
   padding: 4px 8px;
-  border-color: var(--iron-dark);
+  border: 1px solid var(--iron-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
   background: rgba(0, 0, 0, 0.4);
   box-shadow: none;
   color: var(--text-muted);

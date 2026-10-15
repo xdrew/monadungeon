@@ -171,11 +171,12 @@
   }
 }
 
-/* Specific game buttons — classes the e2e and the game logic rely on, skinned as the variants */
+/* Specific game buttons — classes the e2e and the game logic rely on, skinned as the variants.
+   .end-turn-btn is a hook only (e2e): End Turn and the hero skills are iron rings (components/game/hud/IronRing.vue),
+   the mode-panel buttons that keep the class carry .btn variants */
 .start-button,
 .join-button,
-.ready-button,
-.end-turn-btn {
+.ready-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -204,15 +205,9 @@
   margin-bottom: var(--spacing-sm);
 }
 
-.end-turn-btn {
-  padding: 10px var(--spacing-lg);
-  margin-bottom: var(--spacing-sm);
-}
-
 .start-button:hover:not(:disabled),
 .join-button:hover:not(:disabled),
-.ready-button:hover:not(:disabled),
-.end-turn-btn:hover:not(:disabled) {
+.ready-button:hover:not(:disabled) {
   border-color: var(--color-primary-hover);
   background: linear-gradient(180deg, rgba(var(--ember-rgb), 0.34) 0%, rgba(130, 52, 10, 0.5) 100%);
   box-shadow: inset 0 0 16px rgba(var(--ember-rgb), 0.2), 0 0 0 1px var(--iron-edge), var(--shadow-glow);
@@ -221,7 +216,6 @@
 .start-button:focus-visible,
 .join-button:focus-visible,
 .ready-button:focus-visible,
-.end-turn-btn:focus-visible,
 .replay-button:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
@@ -253,23 +247,8 @@
 .start-button:disabled,
 .join-button:disabled,
 .ready-button:disabled,
-.end-turn-btn:disabled,
 .replay-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;
-}
-
-/* End Turn Section */
-.end-turn-section {
-  background-color: var(--bg-panel);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-  border: 1px solid var(--iron-dark);
-}
-
-.end-turn-section .end-turn-btn {
-  width: 100%;
-  margin-bottom: 0;
 }
