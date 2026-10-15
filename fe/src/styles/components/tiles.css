@@ -71,8 +71,10 @@
   position: absolute;
   bottom: -2px;
   right: -2px;
-  background: var(--color-primary);
-  color: white;
+  z-index: 2;
+  /* dark red disc with a light rim: the bronze disc vanished on the brown floor */
+  background: #a3161a;
+  color: #fff;
   border-radius: 50%;
   width: 18px;
   height: 18px;
@@ -81,7 +83,16 @@
   justify-content: center;
   font-size: 10px;
   font-weight: bold;
-  border: 1px solid var(--bg-field);
+  border: 1px solid rgba(255, 228, 196, 0.9);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 2px 4px rgba(0, 0, 0, 0.7);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+/* the dragon's HP: as large as the dragon is */
+.tile-items.has-guard.is-boss .monster-hp {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
 }
 
 /* Mobile Responsive Tiles */

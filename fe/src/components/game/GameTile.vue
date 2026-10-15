@@ -53,7 +53,8 @@
           'is-reward': item && (item.guardDefeated || item.guardHP === 0),
           'pickable': isItemPickable,
           'has-monster-image': monsterImage && !item.guardDefeated && item.guardHP > 0,
-          'has-chest-image': chestImage
+          'has-chest-image': chestImage,
+          'is-boss': isBoss
         }" 
         :title="itemTooltip"
         @click="onItemClick"
@@ -452,6 +453,10 @@ const onFigureError = (event, playerId) => {
 };
 
 // Computed property to get monster image
+// The dragon (the monster that ends the game) is drawn larger and lit, so it stands out on the dark floor
+const isBoss = computed(() => !!props.item && !props.item.guardDefeated && props.item.guardHP > 0
+  && (props.item.endsGame === true || props.item.name === 'dragon'));
+
 const monsterImage = computed(() => {
   if (!props.item) return null;
   
@@ -609,7 +614,8 @@ const onItemClick = () => {
 /* Ensure content is above background */
 .tile.has-background-image .tile-content {
   position: relative;
-  z-index: 1;
+  /* above the fog fringe (z-index 4) that darkens the edge of the explored area: tokens, HP and figures stay readable */
+  z-index: 5;
 }
 
 .room-symbol {
@@ -928,6 +934,46 @@ const onItemClick = () => {
   width: 32px;
   height: 32px;
   object-fit: contain;
+}
+
+/* Boss: larger, with a fiery outline and a slow glow (red-brown dragon on a brown floor was hard to spot) */
+.tile-items.has-monster-image.is-boss {
+  width: 66px;
+  height: 66px;
+  bottom: 6px;
+  right: 6px;
+  z-index: 4;
+}
+
+.tile-items.is-boss .monster-image {
+  width: 62px;
+  height: 62px;
+  filter: brightness(1.3) drop-shadow(0 0 1px #fff2c0) drop-shadow(0 0 6px rgba(255, 176, 48, 0.95))
+    drop-shadow(0 0 14px rgba(255, 72, 0, 0.75));
+  animation: bossGlow 1.8s ease-in-out infinite;
+}
+
+.tile-items.is-boss .monster-emoji {
+  width: 62px;
+  height: 62px;
+  font-size: 44px;
+}
+
+@keyframes bossGlow {
+  0%, 100% {
+    filter: brightness(1.3) drop-shadow(0 0 1px #fff2c0) drop-shadow(0 0 6px rgba(255, 176, 48, 0.95))
+      drop-shadow(0 0 14px rgba(255, 72, 0, 0.75));
+  }
+  50% {
+    filter: brightness(1.45) drop-shadow(0 0 2px #fff2c0) drop-shadow(0 0 10px rgba(255, 196, 64, 1))
+      drop-shadow(0 0 22px rgba(255, 72, 0, 0.9));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-items.is-boss .monster-image {
+    animation: none;
+  }
 }
 
 .monster-emoji {
