@@ -50,14 +50,17 @@ export const hasRoomForItem = (player, type) => {
 /**
  * Whether a found item is worth offering: it fits, or a full pack holds something weaker it could replace.
  * Not worth it when everything it could replace is as strong or stronger (a second key, a dagger against
- * two swords, a teleport or a fireball against a full set of scrolls).
+ * two swords); a full set of scrolls is never offered another scroll.
  * @param {Object} player - player data from the game state ({ inventory, heroFlags })
  * @param {Object} item - the item lying on the tile
  * @returns {boolean}
  */
 export const isWorthOffering = (player, item) => {
   if (!item?.type || hasRoomForItem(player, item.type)) return true;
-  const held = player?.inventory?.[getInventoryCategory(item.type)] || [];
+  const category = getInventoryCategory(item.type);
+  // a full set of scrolls is never offered another one: the hero picks it up by hand if he wants
+  if (category === 'spells') return false;
+  const held = player?.inventory?.[category] || [];
   const flags = player?.heroFlags || {};
   const strength = getItemStrength(item, flags);
   return held.some((own) => getItemStrength(own, flags) < strength);
