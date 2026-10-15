@@ -66,6 +66,8 @@
           :alt="item.name"
           img-class="monster-image"
           emoji-class="monster-emoji"
+          fallback-icon="skull"
+          :fallback-icon-size="isBoss ? 72 : 56"
         />
         <img
           v-else-if="chestImage"
@@ -79,7 +81,12 @@
           :alt="item.type"
           class="weapon-image"
         />
-        <span v-else>{{ itemEmoji }}</span>
+        <GameIcon
+          v-else
+          :name="itemIconName"
+          :size="40"
+          class="token-icon"
+        />
         <span
           v-if="item && !item.guardDefeated && item.guardHP > 0"
           class="monster-hp"
@@ -93,16 +100,22 @@
           +{{ getItemDamage(item) }}
         </span>
       </span>
+      <!-- Hero standees: fanned out across the tile, a ground mark for you (blue) and the acting hero (ember) -->
       <div
         v-if="hasPlayer"
         class="player-indicator"
+        :class="`standees-${Math.min(allPlayerEmojis.length, 5)}`"
       >
-        <span 
-          v-for="(player, index) in allPlayerEmojis" 
+        <span
+          v-for="(player, index) in allPlayerEmojis"
           :key="player.playerId"
-          class="player-emoji"
-          :class="{ 'swap-target': swapTargetable && !isCurrentUser(player.playerId) }"
-          :style="{ left: `${index * 8}px` }"
+          class="player-emoji hero-standee"
+          :class="{
+            'swap-target': swapTargetable && !isCurrentUser(player.playerId),
+            'is-you': isCurrentUser(player.playerId),
+            'is-acting': player.playerId === actingPlayerId
+          }"
+          :style="standeeStyle(index, allPlayerEmojis.length)"
           :title="swapTargetable && !isCurrentUser(player.playerId) ? 'Magic Swap: trade places with this hero' : `Player ${player.playerId}`"
           :data-testid="`player-figure-${player.playerId}`"
           @click.stop="onPlayerClick(player.playerId)"
@@ -153,8 +166,8 @@
         class="tile-coordinates"
       >
         ({{ x }},{{ y }})
-        <button 
-          class="center-view-button" 
+        <button
+          class="center-view-button btn btn--iron btn--sm"
           title="Center view on this tile"
           aria-label="Center view on this tile"
           @click.stop="centerView"
@@ -194,7 +207,7 @@ import { TILE_SIZE } from '@/utils/fieldUtils';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { defineProps, defineEmits, computed, ref, onMounted } from 'vue';
 import { getPlayerEmoji } from '@/utils/playerUtils';
-import { getItemDamage } from '@/utils/itemUtils';
+import { getItemDamage, getItemImage, getItemIconName } from '@/utils/itemUtils';
 import { getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
 import { getHero } from '@/theme';
 import ThemedImage from '@/components/ThemedImage.vue';
@@ -294,6 +307,11 @@ const props = defineProps({
   isPlacingAnimation: {
     type: Boolean,
     default: false
+  },
+  /** The hero whose turn it is (ember ground mark) */
+  actingPlayerId: {
+    type: String,
+    default: null
   },
   isCurrentPlayerPosition: {
     type: Boolean,
@@ -440,6 +458,22 @@ const allPlayerEmojis = computed(() => {
   }));
 });
 
+// Standee spots on the tile, in % of the tile, by how many heroes stand on it (left, top)
+// (the item token sits bottom-right, so the heroes keep to the left and the top)
+const STANDEE_SPOTS = {
+  1: [[8, 6]],
+  2: [[2, 6], [30, 2]],
+  3: [[0, 14], [22, 2], [44, 0]],
+  4: [[0, 20], [16, 2], [34, 20], [52, 0]],
+  5: [[0, 24], [14, 4], [28, 24], [44, 2], [62, 0]]
+};
+
+const standeeStyle = (index, count) => {
+  const spots = STANDEE_SPOTS[Math.min(Math.max(count, 1), 5)];
+  const [left, top] = spots[Math.min(index, spots.length - 1)];
+  return { left: `${left}%`, top: `${top}%`, zIndex: 6 + (top > 10 ? 1 : 0) };
+};
+
 const defaultFigure = (playerId) => (isCurrentUser(playerId) ? '/images/player.webp' : '/images/ai.webp');
 
 const figureSrc = (playerId) => {
@@ -472,11 +506,14 @@ const monsterImage = computed(() => {
   return getMonsterImage(battleInfo);
 });
 
-// Emoji shown while the theme has no image for this monster (or the file is missing)
+// Emoji passed to ThemedImage (the field shows the skull icon instead when the image is missing)
 const monsterEmoji = computed(() => {
-  if (!props.item) return '👹';
+  if (!props.item) return '';
   return getMonsterEmoji({ monster_name: props.item.name, monster: props.item.guardHP || 0 });
 });
+
+// Line icon for an item without a picture
+const itemIconName = computed(() => getItemIconName(props.item));
 
 // Computed property to get chest image
 const chestImage = computed(() => {
@@ -499,31 +536,12 @@ const chestImage = computed(() => {
   return null;
 });
 
-// Computed property to get weapon image
+// Picture of a reward lying on the tile (key, weapons, spells — Frost Fist and Dark Thorn included)
 const weaponImage = computed(() => {
   if (!props.item) return null;
-  
-  // Check if guard is defeated and it's a weapon
   const guardDefeated = props.item.guardDefeated || props.item.guardHP === 0;
-  
-  if (guardDefeated && props.item.type) {
-    switch (props.item.type) {
-      case 'key':
-        return '/images/key.webp';
-      case 'dagger':
-        return '/images/dagger.webp';
-      case 'sword':
-        return '/images/sword.webp';
-      case 'axe':
-        return '/images/axe.webp';
-      case 'fireball':
-        return '/images/fireball.webp';
-      case 'teleport':
-        return '/images/hf-teleport.webp';
-    }
-  }
-  
-  return null;
+  if (!guardDefeated || ['chest', 'ruby_chest'].includes(props.item.type)) return null;
+  return getItemImage(props.item);
 });
 
 // Functions
@@ -575,7 +593,22 @@ const onItemClick = () => {
 }
 
 .room {
-  background-color: #2a2a40;
+  background-color: var(--bg-modal);
+}
+
+/* Tiles touch edge to edge; hover: a faint bone hairline inside */
+.tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(234, 220, 192, 0);
+  transition: box-shadow 0.2s ease;
+}
+
+.tile:hover::after {
+  box-shadow: inset 0 0 0 1px rgba(234, 220, 192, 0.28);
 }
 
 .tile-content {
@@ -635,79 +668,87 @@ const onItemClick = () => {
   display: none;
 }
 
-/* Enhance the player indicator instead to make it more visible */
+/* Hero standees: free figures with a shadow, no glow discs */
 .player-indicator {
   position: absolute;
-  top: 10px;
-  left: 5px;
-  font-size: 24px;
-  z-index: 5;
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
-}
-
-.player-emoji {
-  position: absolute;
-  top: 10px;
-  font-size: 24px;
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
-}
-
-.player-emoji.swap-target {
-  cursor: pointer;
+  inset: 0;
   z-index: 6;
+  pointer-events: none;
+}
+
+.hero-standee {
+  position: absolute;
+  width: 40%;
+  height: 60%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.standees-4 .hero-standee,
+.standees-5 .hero-standee {
+  width: 34%;
+  height: 52%;
+}
+
+.hero-standee img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+  display: block;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.9));
+}
+
+/* Ground mark under the feet */
+.hero-standee.is-you::after,
+.hero-standee.is-acting::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -4%;
+  height: 14%;
+  border-radius: 50%;
+}
+
+.hero-standee.is-you::after {
+  border: 2px solid rgba(156, 195, 234, 0.75);
+  background: rgba(156, 195, 234, 0.12);
+}
+
+.hero-standee.is-acting::after {
+  border: 2px solid rgba(var(--ember-rgb), 0.85);
+  background: rgba(var(--ember-rgb), 0.18);
+  box-shadow: 0 0 14px rgba(var(--ember-rgb), 0.6);
+}
+
+/* Magic Swap: the heroes you can trade places with */
+.hero-standee.swap-target {
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 8 !important;
+}
+
+.hero-standee.swap-target img {
   animation: swapTargetPulse 1s ease-in-out infinite;
 }
 
 @keyframes swapTargetPulse {
   0%, 100% {
-    filter: drop-shadow(0 0 6px rgba(186, 104, 200, 0.9));
+    filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 6px rgba(var(--ember-rgb), 0.7));
   }
   50% {
-    filter: drop-shadow(0 0 16px rgba(186, 104, 200, 1));
+    filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 16px rgba(var(--ember-rgb), 1));
   }
 }
 
-.player-image {
-  width: 45px;
-  height: 45px;
-  object-fit: contain;
-  display: block;
-  filter: drop-shadow(0 0 8px rgba(var(--accent-light-rgb), 0.8)) 
-          drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
-  animation: playerGlow 2s ease-in-out infinite;
-}
-
-@keyframes playerGlow {
-  0%, 100% {
-    filter: drop-shadow(0 0 8px rgba(var(--accent-light-rgb), 0.8)) 
-            drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
-  }
-  50% {
-    filter: drop-shadow(0 0 12px rgba(var(--accent-light-rgb), 1)) 
-            drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))
-            drop-shadow(0 0 35px rgba(var(--accent-light-rgb), 0.4));
-  }
-}
-
-.ai-player-image {
-  width: 45px;
-  height: 45px;
-  object-fit: contain;
-  display: block;
-  filter: drop-shadow(0 0 8px rgba(0, 150, 255, 0.8)) 
-          drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
-  animation: aiGlow 2s ease-in-out infinite;
-}
-
-@keyframes aiGlow {
-  0%, 100% {
-    filter: drop-shadow(0 0 8px rgba(0, 150, 255, 0.8)) 
-            drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
-  }
-  50% {
-    filter: drop-shadow(0 0 12px rgba(0, 150, 255, 1)) 
-            drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))
-            drop-shadow(0 0 35px rgba(0, 150, 255, 0.4));
+@media (prefers-reduced-motion: reduce) {
+  .hero-standee.swap-target img {
+    animation: none;
   }
 }
 
@@ -720,64 +761,65 @@ const onItemClick = () => {
 
 .tile-items {
   position: absolute;
-  font-size: 24px;
-  z-index: 3;
-  bottom: 15px;
-  right: 15px;
+  /* above the hero standees: the HP number must always read */
+  z-index: 8;
+  right: 14%;
+  bottom: 14%;
+  width: 48%;
+  height: 48%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.9));
 }
 
-.tile-items.has-guard {
-  color: #ff5252;
-}
-
+/* A reward lying free: smaller than a guard */
 .tile-items.is-reward {
-  color: #ffeb3b;
+  width: 38%;
+  height: 38%;
 }
 
+/* A reward the hero can pick up: an ember ring breathes under it */
 .tile-items.pickable {
   cursor: pointer;
-  animation: pulse 1.5s infinite;
 }
 
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
+.tile-items.pickable::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--ember-rgb), 0.7);
+  box-shadow: 0 0 14px rgba(var(--ember-rgb), 0.45), inset 0 0 10px rgba(var(--ember-rgb), 0.3);
+  animation: emberRing 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes emberRing {
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-items.pickable::before {
+    animation: none;
   }
 }
 
 .tile-coordinates {
   position: absolute;
-  top: -30px;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 3px;
-  border-radius: 4px;
-  font-size: 12px;
+  top: 6px;
+  left: 6px;
   z-index: 100;
-}
-
-.center-view-button {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 2px 5px;
-  margin-left: 5px;
-  border-radius: 3px;
-  background-color: rgba(0, 0, 0, 0.3);
-}
-
-.center-view-button:hover {
-  background-color: rgba(var(--accent-rgb), 0.5);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(7, 5, 4, 0.75);
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 /* Tile openings */
@@ -910,66 +952,65 @@ const onItemClick = () => {
   }
 }
 
-.monster-hp {
+.monster-image,
+.chest-image,
+.weapon-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.monster-emoji {
+  font-size: 40px;
+}
+
+/* HP and weapon strength: a number in the display face, glowing like an ember */
+.monster-hp,
+.weapon-damage {
   position: absolute;
-  bottom: -8px;
-  right: -8px;
-  background-color: rgba(255, 82, 82, 0.9);
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
-  padding: 2px 4px;
-  border-radius: 6px;
-  border: 1px solid #ff0000;
-  min-width: 16px;
-  text-align: center;
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+  right: -6px;
+  bottom: -4px;
   z-index: 1;
+  font-family: var(--font-display);
+  line-height: 1;
+  pointer-events: none;
 }
 
-.chest-image {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
+.monster-hp {
+  font-size: 24px;
+  color: #ffd9a8;
+  text-shadow: 0 0 6px #ff5a1a, 0 2px 2px #000;
 }
 
-.monster-image {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
+.weapon-damage {
+  font-size: 18px;
+  color: var(--text-heading);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 2px 2px #000;
 }
 
-/* Boss: larger, with a fiery outline and a slow glow (red-brown dragon on a brown floor was hard to spot) */
-.tile-items.has-monster-image.is-boss {
-  width: 66px;
-  height: 66px;
-  bottom: 6px;
-  right: 6px;
-  z-index: 4;
+/* Boss: larger, with a fiery outline and a slow glow */
+.tile-items.is-boss {
+  width: 58%;
+  height: 58%;
+  right: 10%;
+  bottom: 10%;
 }
 
 .tile-items.is-boss .monster-image {
-  width: 62px;
-  height: 62px;
-  filter: brightness(1.3) drop-shadow(0 0 1px #fff2c0) drop-shadow(0 0 6px rgba(255, 176, 48, 0.95))
-    drop-shadow(0 0 14px rgba(255, 72, 0, 0.75));
+  filter: drop-shadow(0 0 6px rgba(255, 176, 48, 0.8)) drop-shadow(0 0 14px rgba(255, 72, 0, 0.6));
   animation: bossGlow 1.8s ease-in-out infinite;
 }
 
-.tile-items.is-boss .monster-emoji {
-  width: 62px;
-  height: 62px;
-  font-size: 44px;
+.tile-items.is-boss .monster-hp {
+  font-size: 28px;
 }
 
 @keyframes bossGlow {
   0%, 100% {
-    filter: brightness(1.3) drop-shadow(0 0 1px #fff2c0) drop-shadow(0 0 6px rgba(255, 176, 48, 0.95))
-      drop-shadow(0 0 14px rgba(255, 72, 0, 0.75));
+    filter: drop-shadow(0 0 6px rgba(255, 176, 48, 0.8)) drop-shadow(0 0 14px rgba(255, 72, 0, 0.6));
   }
   50% {
-    filter: brightness(1.45) drop-shadow(0 0 2px #fff2c0) drop-shadow(0 0 10px rgba(255, 196, 64, 1))
-      drop-shadow(0 0 22px rgba(255, 72, 0, 0.9));
+    filter: drop-shadow(0 0 10px rgba(255, 196, 64, 1)) drop-shadow(0 0 22px rgba(255, 72, 0, 0.85));
   }
 }
 
@@ -979,78 +1020,39 @@ const onItemClick = () => {
   }
 }
 
-.monster-emoji {
-  width: 32px;
-  height: 32px;
-  font-size: 22px;
-}
-
-.weapon-image {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-}
-
-.weapon-damage {
-  position: absolute;
-  bottom: -8px;
-  right: -8px;
-  background-color: rgba(255, 153, 0, 0.9);
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
-  padding: 2px 4px;
-  border-radius: 6px;
-  border: 1px solid #ff9900;
-  min-width: 16px;
-  text-align: center;
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
-  z-index: 1;
-}
-
-.healing-fountain-indicator {
-  position: absolute;
-  top: 25px;
-  left: 33px;
-  font-size: 20px;
-  z-index: 4;
-  filter: drop-shadow(0 0 4px rgba(64, 224, 208, 0.8));
-  animation: fountain-glow 2s ease-in-out infinite;
-}
-
-.healing-fountain-image {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-}
-
-.teleportation-gate-indicator {
-  position: absolute;
-  top: 30px;
-  left: 33px;
-  font-size: 20px;
-  z-index: 4;
-  filter: drop-shadow(0 0 4px rgba(138, 43, 226, 0.8));
-}
-
-.portal-image {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-}
-
-/* Karak: Regent — Lord Karak room markers */
+.healing-fountain-indicator,
+.teleportation-gate-indicator,
 .arena-indicator,
 .cursed-room-indicator {
   position: absolute;
-  top: 30px;
-  left: 33px;
+  top: 12%;
+  left: 12%;
+  width: 34%;
+  height: 34%;
   z-index: 4;
   pointer-events: none;
 }
 
+.healing-fountain-image,
+.portal-image,
+.arena-image,
+.cursed-room-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.healing-fountain-indicator {
+  filter: drop-shadow(0 0 6px rgba(var(--ember-rgb), 0.5));
+  animation: fountain-glow 2.4s ease-in-out infinite;
+}
+
+.teleportation-gate-indicator {
+  filter: drop-shadow(0 0 6px rgba(var(--ember-rgb), 0.45));
+}
+
 .arena-indicator {
-  filter: drop-shadow(0 0 4px rgba(224, 122, 42, 0.8));
+  filter: drop-shadow(0 0 6px rgba(var(--ember-rgb), 0.55));
 }
 
 .arena-indicator.arena-used {
@@ -1059,14 +1061,7 @@ const onItemClick = () => {
 }
 
 .cursed-room-indicator {
-  filter: drop-shadow(0 0 4px rgba(155, 89, 182, 0.9));
-}
-
-.arena-image,
-.cursed-room-image {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(217, 69, 42, 0.6));
 }
 
 @keyframes portal-spin {
@@ -1080,12 +1075,16 @@ const onItemClick = () => {
 
 @keyframes fountain-glow {
   0%, 100% {
-    filter: drop-shadow(0 0 4px rgba(64, 224, 208, 0.6));
-    transform: scale(1);
+    filter: drop-shadow(0 0 5px rgba(var(--ember-rgb), 0.4));
   }
   50% {
-    filter: drop-shadow(0 0 8px rgba(64, 224, 208, 1));
-    transform: scale(1.05);
+    filter: drop-shadow(0 0 10px rgba(var(--ember-rgb), 0.75));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .healing-fountain-indicator {
+    animation: none;
   }
 }
 </style> 

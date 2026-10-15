@@ -242,6 +242,7 @@
                     :player-id="tile.playerId"
                     :all-player-ids="tile.allPlayerIds"
                     :player-heroes="playerHeroes"
+                    :acting-player-id="torchlightActingId"
                     :player-emoji="getPlayerEmoji(tile.playerId)"
                     :has-item="tile.hasItem"
                     :item="tile.item"

@@ -53,11 +53,11 @@ Authority: user answers > canvas boards > existing code. The e2e contract (`fe/e
   - `styles/layout/game-layout.css` `.fog-cell`, `.fog-fringe*`: warm `--bg-field` tones, no shimmer keyframes; keep the classes and the dissolve class.
 
 ### Phase 2: Tokens and standees
-- [ ] Task 4: Free tokens (depends on 1)
+- [x] Task 4: Free tokens (depends on 1)
   - `GameTile.vue` tokens, HP and `+N` per the table; pickable ember ring; frost_fist/dark_thorn images via `getItemImage`; boss size.
   - `ThemedImage.vue` `fallbackIcon` prop; `itemUtils.js getItemIconName`; GameTile uses both; remove the `'👹'` default.
   - Fountain/gate/arena/cursed-room glows warm.
-- [ ] Task 5: Hero standees and frameless tiles (depends on 1)
+- [x] Task 5: Hero standees and frameless tiles (depends on 1)
   - `.player-indicator` layout by count, standee size, ground marks (human blue, acting ember), drop the glow keyframes; keep testids, `.swap-target`, clicks.
   - Tiles edge to edge: no border/radius/hover lift; bone hover hairline; `.center-view-button` → `btn btn--iron btn--sm`.
 

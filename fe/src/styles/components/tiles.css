@@ -45,55 +45,6 @@
   opacity: 0.5;
 }
 
-/* Monster Images in Tiles */
-.tile-items.has-monster-image {
-  position: absolute;
-  display: flex;
-  align-items: end;
-  justify-content: end;
-  width: 40px;
-  height: 40px;
-}
-
-.tile-items .monster-image {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  transition: all 0.3s ease;
-}
-
-.tile-items:hover .monster-image {
-  transform: scale(1.1);
-}
-
-.tile-items.has-guard .monster-hp {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  z-index: 2;
-  /* dark red disc with a light rim: the bronze disc vanished on the brown floor */
-  background: #a3161a;
-  color: #fff;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: bold;
-  border: 1px solid rgba(255, 228, 196, 0.9);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 2px 4px rgba(0, 0, 0, 0.7);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
-}
-
-/* the dragon's HP: as large as the dragon is */
-.tile-items.has-guard.is-boss .monster-hp {
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
-}
-
 /* Mobile Responsive Tiles */
 @media (max-width: 768px) {
   .tiles-container {
@@ -101,123 +52,24 @@
     min-height: 200px;
   }
 
-  .tile {
-    width: 80px;
-    height: 80px;
-    font-size: 10px;
-  }
-
   .tile-orientation {
     font-size: 20px;
   }
 
-  .tile-items.has-monster-image {
-    width: 32px;
-    height: 32px;
-  }
-
-  .tile-items .monster-image {
-    width: 28px;
-    height: 28px;
-  }
-
-  .tile-items.has-guard .monster-hp {
-    width: 16px;
-    height: 16px;
-    font-size: 9px;
-  }
-
-  .available-position-marker {
-    width: 70px;
-    height: 70px;
-  }
-
-  .available-move-marker {
-    width: 70px;
-    height: 70px;
-  }
-
-  .player-avatar {
-    width: 24px;
-    height: 24px;
-  }
-
-  .player-health-bar {
-    width: 60px;
-    bottom: -20px;
-  }
-
-  .player-health-bar-fill {
-    height: 3px;
-  }
-
-  .player-health-text {
-    font-size: 9px;
-  }
 }
 
 /* Small Mobile Devices */
 @media (max-width: 480px) {
-  .tile {
-    width: 60px;
-    height: 60px;
-    font-size: 9px;
-  }
 
   .tile-orientation {
     font-size: 16px;
   }
 
-  .tile-items.has-monster-image {
-    width: 24px;
-    height: 24px;
-  }
-
-  .tile-items .monster-image {
-    width: 20px;
-    height: 20px;
-  }
-
-  .tile-items.has-guard .monster-hp {
-    width: 14px;
-    height: 14px;
-    font-size: 8px;
-  }
-
-  .available-position-marker {
-    width: 50px;
-    height: 50px;
-  }
-
-  .available-move-marker {
-    width: 50px;
-    height: 50px;
-  }
-
-  .player-avatar {
-    width: 18px;
-    height: 18px;
-  }
-
-  .player-health-bar {
-    width: 45px;
-    bottom: -16px;
-  }
-
-  .player-health-bar-fill {
-    height: 2px;
-  }
-
-  .player-health-text {
-    font-size: 8px;
-  }
 }
 
 /* Tile Hover Effects */
 .tile:hover {
   z-index: var(--z-tooltip);
-  /*box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.7);*/
-  filter: brightness(1.2);
 }
 
 /* Tile Types */
@@ -303,16 +155,6 @@
   /*height: 30% !important;*/
 }
 
-/* Player Indicators */
-.player-indicator {
-  position: absolute;
-  top: var(--spacing-sm);
-  right: var(--spacing-sm);
-  font-size: 28px;
-  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
-  z-index: 10;
-}
-
 .has-player {
   /*box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7);*/
   z-index: 10;
@@ -321,67 +163,6 @@
 .tile.current-player-position {
   /*box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.6);*/
   z-index: 10;
-}
-
-/* Tile Items */
-.tile-items {
-  font-size: 22px;
-  margin-top: 6px;
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
-  z-index: 5;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: var(--radius-round);
-  padding: 3px;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform var(--transition-fast), filter var(--transition-fast);
-}
-
-.tile-items:hover {
-  transform: scale(1.2);
-  filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
-  z-index: 30;
-}
-
-.tile-items.has-guard {
-  background-color: rgba(220, 53, 69, 0.3);
-  box-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
-  animation: guard-pulse 2s infinite;
-}
-
-/* Special styling for different skeleton types */
-.tile-items.has-guard[title^="Skeleton King"] {
-  background-color: rgba(128, 0, 128, 0.3); /* Purple for King */
-  box-shadow: 0 0 5px rgba(128, 0, 128, 0.5);
-  animation: king-pulse 2s infinite;
-}
-
-.tile-items.has-guard[title^="Skeleton Warrior"] {
-  background-color: rgba(165, 42, 42, 0.3); /* Brown for Warrior */
-  box-shadow: 0 0 5px rgba(165, 42, 42, 0.5);
-}
-
-.tile-items.has-guard[title^="Skeleton Mage"] {
-  background-color: rgba(70, 130, 180, 0.3); /* Steel blue for Mage */
-  box-shadow: 0 0 5px rgba(70, 130, 180, 0.5);
-  animation: crystal-pulse 3s infinite;
-}
-
-.tile-items.has-guard[title^="Skeleton Turnkey"] {
-  background-color: rgba(255, 165, 0, 0.3); /* Orange for Turnkey */
-  box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
-}
-
-.tile-items.is-reward {
-  background-color: rgba(255, 193, 7, 0.3);
-  box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
-  animation: reward-pulse 2s infinite;
 }
 
 /* Item Display */

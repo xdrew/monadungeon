@@ -407,6 +407,29 @@ export const getItemDamage = (item) => {
 };
 
 /**
+ * GameIcon name for an item that has no picture (the field never shows emoji)
+ * @param {Object} item - The item object containing type property
+ * @returns {string} A GameIcon name
+ */
+export const getItemIconName = (item) => {
+  switch (item?.type) {
+    case 'key':
+      return 'key';
+    case 'dagger':
+    case 'sword':
+    case 'axe':
+      return 'sword';
+    case 'fireball':
+    case 'teleport':
+    case 'frost_fist':
+    case 'dark_thorn':
+      return 'spells';
+    default:
+      return 'treasure';
+  }
+};
+
+/**
  * Gets the image path for an item based on its type
  * @param {Object} item - The item object containing type property
  * @returns {string|null} The image path for the item or null if no image available
