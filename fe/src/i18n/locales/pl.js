@@ -428,7 +428,7 @@ export default {
     itemFound: 'Znalezisko',
     pickUpPrompt: 'Podnieść ten przedmiot?',
     pickUp: 'Podnieś',
-    leaveIt: 'Zostaw',
+    leaveIt: 'Nie bierz',
     inventoryFull: 'Pełny ekwipunek',
     consumable: 'Jednorazowe',
     replaceFrom: {

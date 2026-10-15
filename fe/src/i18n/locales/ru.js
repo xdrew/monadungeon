@@ -428,7 +428,7 @@ export default {
     itemFound: 'Находка',
     pickUpPrompt: 'Взять этот предмет?',
     pickUp: 'Взять',
-    leaveIt: 'Оставить',
+    leaveIt: 'Не брать',
     inventoryFull: 'Рюкзак полон',
     consumable: 'Расходуется',
     replaceFrom: {

@@ -227,15 +227,6 @@
               @close="showMissingKeyDialog = false"
             />
 
-            <!-- Item pickup dialog component -->
-            <ItemPickupDialog
-              v-if="showItemPickupDialog"
-              :show="showItemPickupDialog"
-              :item="tileItem"
-              @pickup="handleAutoItemPickup"
-              @skip="skipItemAndEndTurn"
-            />
-
             <!-- Thief "Stealth": fight or sneak past the monster at the destination -->
             <StealthChoiceDialog
               v-if="stealthPrompt"
@@ -489,6 +480,15 @@
           {{ t('game.viewLeaderboard') }}
         </button>
       </div>
+
+      <!-- An item on the tile: a centred plaque over the field -->
+      <ItemPickupDialog
+        v-if="showItemPickupDialog"
+        :show="showItemPickupDialog"
+        :item="tileItem"
+        @pickup="handleAutoItemPickup"
+        @skip="skipItemAndEndTurn"
+      />
 
       <!-- Inventory full: a centred plaque over the field (a bigger choice than the plaque by the rings) -->
       <InventoryFullDialog
@@ -1294,7 +1294,7 @@ const activeSpellItemId = computed(() => (isTeleportMode.value && selectedTelepo
 // A choice waits for the player: the decision plaque (bottom right, over the rings) shows it
 const hasDecision = computed(() => isTeleportMode.value || isDarkThornMode.value || isReincarnationMode.value
   || isMagicSwapMode.value || isLightningMode.value
-  || showMissingKeyDialog.value || showItemPickupDialog.value
+  || showMissingKeyDialog.value
   || !!stealthPrompt.value || !!fateweaverPrompt.value
   || (!showBattleReportModal.value && !!(arenaChoiceForMe.value || visibleDuel.value || curseChoicePendingForMe.value || retreatChoiceForMe.value)));
 
