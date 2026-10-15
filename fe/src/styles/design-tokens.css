@@ -34,7 +34,7 @@
   --text-accent: #ffb35c;
 
   /* Fonts (self-hosted via @fontsource, imported in main.js) */
-  --font-display: 'Pirata One', 'Spectral', Georgia, serif;
+  --font-display: 'Pirata One', 'Ruslan Display', 'Spectral', Georgia, serif; /* Ruslan Display draws only the Cyrillic Pirata One lacks */
   --font-body: 'Spectral', Georgia, serif;
 
   /* Spacing */

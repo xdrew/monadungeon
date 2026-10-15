@@ -4,39 +4,39 @@ import GameView from '@/views/GameView.vue';
 import NotFoundView from '@/views/NotFoundView.vue';
 import LeaderboardView from '@/views/LeaderboardView.vue';
 import RulesView from '@/views/RulesView.vue';
-import { theme } from '@/theme';
+import { t, setTitleResolver } from '@/i18n';
 
 const routes = [
   {
     path: '/',
     name: 'home',
     component: HomeView,
-    meta: { title: 'Home' }
+    meta: { titleKey: 'routes.home' }
   },
   {
     path: '/game/:id',
     name: 'game',
     component: GameView,
     props: true,
-    meta: { title: 'Game' }
+    meta: { titleKey: 'routes.game' }
   },
   {
     path: '/leaderboard',
     name: 'leaderboard',
     component: LeaderboardView,
-    meta: { title: 'Leaderboard' }
+    meta: { titleKey: 'routes.leaderboard' }
   },
   {
     path: '/rules',
     name: 'rules',
     component: RulesView,
-    meta: { title: 'Rules' }
+    meta: { titleKey: 'routes.rules' }
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: NotFoundView,
-    meta: { title: '404 Not Found' }
+    meta: { titleKey: 'routes.notFound' }
   }
 ];
 
@@ -48,7 +48,8 @@ const router = createRouter({
 // Add navigation debugging
 router.beforeEach((to, from, next) => {
   console.log(`Navigating from ${from.path} to ${to.path}`);
-  document.title = to.meta.title ? `${theme.appName} - ${to.meta.title}` : theme.appName;
+  // The title follows the locale too: setLocale() re-runs the resolver
+  setTitleResolver(() => (to.meta.titleKey ? `${t('common.appName')} - ${t(to.meta.titleKey)}` : t('common.appName')));
   next();
 });
 

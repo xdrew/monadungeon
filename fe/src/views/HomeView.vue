@@ -1,6 +1,10 @@
 <template>
   <div class="home-container" :style="lobbyStyle">
-    <MusicToggle />
+    <!-- Corner tools: language and music -->
+    <div class="lobby-tools">
+      <LanguageSwitch />
+      <MusicToggle />
+    </div>
     
     <div class="main-content">
       <!-- Game Options Panel -->
@@ -171,6 +175,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { gameApi } from '@/services/api';
 import MusicToggle from '@/components/game/MusicToggle.vue';
+import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import ThemeLogo from '@/components/ThemeLogo.vue';
 import ThemedImage from '@/components/ThemedImage.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
@@ -411,6 +416,15 @@ const createNewGame = async () => {
 </script>
 
 <style scoped>
+.lobby-tools {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+}
+
 .home-container {
   display: flex;
   flex-direction: column;

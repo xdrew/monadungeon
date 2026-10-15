@@ -438,6 +438,7 @@
             @center-player="centerViewOnCurrentPlayer"
             @center-available="centerViewOnAvailablePlaces"
           />
+          <LanguageSwitch />
           <MusicToggle />
         </template>
       </GameHud>
@@ -959,6 +960,7 @@ import JournalDrawer from '@/components/game/hud/JournalDrawer.vue';
 import { chronicleTail, chronicleTurns } from '@/utils/chronicle';
 import { useTurnOrder, heroPersonalName, joinNames } from '@/composables/useTurnOrder';
 import MusicToggle from '@/components/game/MusicToggle.vue';
+import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';

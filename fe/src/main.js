@@ -4,9 +4,12 @@ import '@fontsource/pirata-one/400.css'
 import '@fontsource/spectral/400.css'
 import '@fontsource/spectral/600.css'
 import '@fontsource/spectral/400-italic.css'
+// Cyrillic headings: Pirata One has no Cyrillic glyphs, the --font-display stack falls back to Ruslan Display
+import '@fontsource/ruslan-display/400.css'
 import './assets/main.css'
 import '@/styles/index.css'
 import router from './router'
+import i18n from './i18n'
 import HomeView from './views/HomeView.vue'
 import GameView from './views/GameView.vue'
 import NotFoundView from './views/NotFoundView.vue'
@@ -153,6 +156,7 @@ app.config.errorHandler = (err, vm, info) => {
 
 // Use router
 app.use(router)
+app.use(i18n)
 
 // Mount the app
 app.mount('#app')
