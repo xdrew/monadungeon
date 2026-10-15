@@ -513,7 +513,8 @@
           <div
             v-show="!isRolling"
             class="battle-footer"
-            :class="{ 'footer-reveal': showResults, 'footer-locked': curseChoicePending }"
+            :class="{ 'footer-reveal': showResults, 'footer-locked': curseChoicePending, 'footer-working': isProcessing }"
+            @click.capture="markPressed"
           >
             <!-- Karak: Regent — a duel side: lock in the strength (consumables / sacrifice / reroll as usual), then continue -->
             <div
@@ -1599,6 +1600,18 @@ const isPotentialReward = computed(() => {
 
 
 
+// While the server works on a choice, the pressed button keeps glowing and the others fade
+// (instead of all of them turning grey under the loading screen)
+const markPressed = (event) => {
+  const button = event.target.closest('button');
+  if (!button || button.disabled) return;
+  event.currentTarget.querySelectorAll('.is-pressed').forEach((b) => b.classList.remove('is-pressed'));
+  button.classList.add('is-pressed');
+};
+watch(isProcessing, (working) => {
+  if (!working) document.querySelectorAll('.battle-footer .is-pressed').forEach((b) => b.classList.remove('is-pressed'));
+});
+
 // ===== The scene: names, states, the breakdown of the roll, the plaque =====
 
 const heroLabel = computed(() => heroName(props.heroKey, 'short'));
@@ -2420,6 +2433,26 @@ button.item-chip {
 .btn-strike {
   padding: 0 30px;
   font-size: 24px;
+}
+
+/* working on a choice: the pressed button smoulders, the rest fade away (not a grey "disabled" look) */
+.footer-working .btn:disabled {
+  opacity: 0.15;
+  cursor: progress;
+}
+
+.footer-working .btn.is-pressed:disabled {
+  opacity: 1;
+  animation: plateWorking 0.8s ease-in-out infinite alternate;
+}
+
+.footer-working .kbd-hint {
+  visibility: hidden;
+}
+
+@keyframes plateWorking {
+  from { box-shadow: 0 0 16px rgba(var(--ember-rgb), 0.3); }
+  to { box-shadow: 0 0 34px rgba(var(--ember-rgb), 0.7); }
 }
 
 /* the key that does it: a small keycap centred under the button, clear of its label */
