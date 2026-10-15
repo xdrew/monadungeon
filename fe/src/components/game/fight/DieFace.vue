@@ -1,32 +1,34 @@
 <template>
-  <!-- One die of the fight: bone face, dark pips; `.dice-face` is an e2e hook -->
+  <!-- One die of the fight: a real cube with six faces that tumbles while rolling and settles on its value.
+       `.dice-face` and `data-value` are e2e hooks. -->
   <div
     class="dice-face"
     :class="{ 'rolling-dice': rolling, 'dice-landed': landed }"
     :data-value="value"
-    :style="{ '--tilt': `${tilt}deg`, animationDelay: rolling ? `${delay}s` : undefined }"
+    :style="dieStyle"
   >
-    <svg
-      viewBox="0 0 34 34"
+    <div class="die-hop">
+      <div class="die-cube">
+        <div
+          v-for="face in FACES"
+          :key="face.n"
+          class="die-side"
+          :class="`die-side--${face.side}`"
+          aria-hidden="true"
+        >
+          <span
+            v-for="(pip, i) in PIPS[face.n]"
+            :key="i"
+            class="die-pip"
+            :style="{ left: `${pip[0]}%`, top: `${pip[1]}%` }"
+          />
+        </div>
+      </div>
+    </div>
+    <div
+      class="die-shadow"
       aria-hidden="true"
-    >
-      <rect
-        x="2"
-        y="2"
-        width="30"
-        height="30"
-        rx="5"
-        class="dice-face__body"
-      />
-      <circle
-        v-for="(pip, i) in pips"
-        :key="i"
-        :cx="pip[0]"
-        :cy="pip[1]"
-        r="2.8"
-        class="dice-face__pip"
-      />
-    </svg>
+    />
   </div>
 </template>
 
@@ -37,15 +39,15 @@ const props = defineProps({
   value: { type: Number, default: 1 },
   rolling: { type: Boolean, default: false },
   landed: { type: Boolean, default: false },
-  /** the die lies a little askew, in degrees */
+  /** the die lies a little askew on the table, in degrees */
   tilt: { type: Number, default: 0 },
-  /** stagger of the rolling animation, in seconds */
+  /** stagger between dice, in seconds: out of step while rolling, the next one lands a little later */
   delay: { type: Number, default: 0 }
 });
 
-const L = 10;
-const M = 17;
-const R = 24;
+const L = 26;
+const M = 50;
+const R = 74;
 const PIPS = {
   1: [[M, M]],
   2: [[L, L], [R, R]],
@@ -55,57 +57,168 @@ const PIPS = {
   6: [[L, L], [R, L], [L, M], [R, M], [L, R], [R, R]]
 };
 
-const pips = computed(() => PIPS[props.value] || []);
+// Opposite sides add up to 7, like a real die
+const FACES = [
+  { n: 1, side: 'front' },
+  { n: 6, side: 'back' },
+  { n: 3, side: 'right' },
+  { n: 4, side: 'left' },
+  { n: 5, side: 'top' },
+  { n: 2, side: 'bottom' }
+];
+
+// The cube rotation that brings each value to the front
+const SHOW = {
+  1: [0, 0],
+  2: [90, 0],
+  3: [0, -90],
+  4: [0, 90],
+  5: [-90, 0],
+  6: [0, 180]
+};
+
+// While rolling the style stays fixed (the faces flicker by themselves as the cube turns);
+// the value only decides the final orientation once the die lands
+const dieStyle = computed(() => {
+  if (props.rolling) {
+    return { '--rx': '0deg', '--ry': '0deg', '--tilt': `${props.tilt}deg`, '--delay': `${-props.delay * 3.3}s` };
+  }
+  const [rx, ry] = SHOW[props.value] || SHOW[1];
+  return { '--rx': `${rx}deg`, '--ry': `${ry}deg`, '--tilt': `${props.tilt}deg`, '--delay': `${props.delay * 1.6}s` };
+});
 </script>
 
 <style scoped>
 .dice-face {
-  width: var(--die-size, 64px);
-  height: var(--die-size, 64px);
-  transform: rotate(var(--tilt));
-  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.85));
+  --s: var(--die-size, 64px);
+  position: relative;
+  width: var(--s);
+  height: var(--s);
+  perspective: 520px;
 }
 
-.dice-face svg {
-  display: block;
+.die-hop {
   width: 100%;
   height: 100%;
+  transform: rotate(var(--tilt));
 }
 
-.dice-face__body {
-  fill: var(--text-primary);
+.die-cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
 }
 
-.dice-face__pip {
-  fill: #1a0f08;
+.die-side {
+  position: absolute;
+  inset: 0;
+  border-radius: 16%;
+  background: radial-gradient(circle at 35% 30%, #fbf1dc 0%, #eadcc0 55%, #cdb994 100%);
+  box-shadow: inset 0 0 0 1px rgba(90, 60, 30, 0.35), inset 0 -4px 8px rgba(90, 60, 30, 0.25);
+  backface-visibility: hidden;
 }
 
-.rolling-dice {
-  animation: rollDice3D 0.45s linear infinite, floatDice 0.9s ease-in-out infinite;
+.die-side--front { transform: translateZ(calc(var(--s) / 2)); }
+.die-side--back { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
+.die-side--right { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
+.die-side--left { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
+.die-side--top { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); }
+.die-side--bottom { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
+
+.die-pip {
+  position: absolute;
+  width: 18%;
+  height: 18%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 40% 35%, #3a2414 0%, #120a05 70%);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
 }
 
-.dice-landed {
-  animation: diceLand 0.4s ease-out;
+.die-shadow {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -14%;
+  height: 16%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 70%);
 }
 
-@keyframes rollDice3D {
-  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-  25% { transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg); }
-  50% { transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg); }
-  75% { transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg); }
-  100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg); }
+/* Rolling: the die hops along the table and tumbles over all its axes */
+.rolling-dice .die-hop {
+  animation: dieHop 0.62s cubic-bezier(0.33, 0, 0.66, 1) infinite;
+  animation-delay: var(--delay);
 }
 
-@keyframes floatDice {
-  0%, 100% { translate: 0 0; scale: 1; }
-  25% { translate: 0 -6px; scale: 1.05; }
-  50% { translate: 0 0; scale: 1; }
-  75% { translate: 0 -3px; scale: 1.02; }
+.rolling-dice .die-cube {
+  animation: dieTumble 0.62s linear infinite;
+  animation-delay: var(--delay);
 }
 
-@keyframes diceLand {
-  0% { transform: rotate(var(--tilt)) scale(1.15); filter: drop-shadow(0 0 18px rgba(var(--ember-rgb), 0.7)); }
-  50% { transform: rotate(var(--tilt)) scale(0.95); }
-  100% { transform: rotate(var(--tilt)) scale(1); }
+.rolling-dice .die-shadow {
+  animation: dieShadow 0.62s cubic-bezier(0.33, 0, 0.66, 1) infinite;
+  animation-delay: var(--delay);
+}
+
+/* Landing: a last fall, the cube slows down onto its value, one small bounce, the die settles askew */
+.dice-landed .die-hop {
+  animation: dieDrop 0.9s cubic-bezier(0.25, 0.9, 0.3, 1) both;
+  animation-delay: var(--delay);
+}
+
+.dice-landed .die-cube {
+  animation: dieSettle 0.9s cubic-bezier(0.15, 0.75, 0.25, 1) both;
+  animation-delay: var(--delay);
+}
+
+.dice-landed .die-shadow {
+  animation: dieShadowLand 0.9s cubic-bezier(0.25, 0.9, 0.3, 1) both;
+  animation-delay: var(--delay);
+}
+
+@keyframes dieHop {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt)); }
+  50% { transform: translateY(-34px) rotate(var(--tilt)); }
+}
+
+@keyframes dieTumble {
+  from { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  to { transform: rotateX(360deg) rotateY(270deg) rotateZ(90deg); }
+}
+
+@keyframes dieShadow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.55); opacity: 0.45; }
+}
+
+@keyframes dieDrop {
+  0% { transform: translateY(-46px) rotate(calc(var(--tilt) - 40deg)); }
+  45% { transform: translateY(0) rotate(calc(var(--tilt) - 8deg)); }
+  62% { transform: translateY(-9px) rotate(calc(var(--tilt) - 2deg)); }
+  78% { transform: translateY(0) rotate(var(--tilt)); }
+  100% { transform: translateY(0) rotate(var(--tilt)); }
+}
+
+@keyframes dieSettle {
+  0% { transform: rotateX(calc(var(--rx) + 540deg)) rotateY(calc(var(--ry) + 360deg)); }
+  100% { transform: rotateX(var(--rx)) rotateY(var(--ry)); }
+}
+
+@keyframes dieShadowLand {
+  0% { transform: scale(0.45); opacity: 0.35; }
+  45% { transform: scale(1); opacity: 1; }
+  62% { transform: scale(0.85); opacity: 0.8; }
+  78%, 100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .die-hop,
+  .die-cube,
+  .die-shadow {
+    animation: none !important;
+  }
 }
 </style>

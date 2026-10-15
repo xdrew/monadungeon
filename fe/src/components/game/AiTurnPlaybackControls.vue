@@ -33,7 +33,7 @@
           v-for="speed in SPEEDS"
           :key="speed.value"
           type="button"
-          class="speed-btn btn btn--iron btn--sm"
+          class="speed-btn btn btn--ghost btn--sm"
           :class="{ active: playbackSpeed === speed.value }"
           :aria-pressed="playbackSpeed === speed.value"
           @click="$emit('speed-change', speed.value)"
@@ -93,18 +93,27 @@ const SPEEDS = [
 
 .speed-controls {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
 }
 
+/* a segmented row: the buttons grow with their label (ru/pl labels are longer than en) */
 .speed-btn {
+  width: auto;
   min-width: 0;
-  padding: 2px 10px;
-  border-radius: var(--radius-sm);
+  height: 36px;
+  padding: 0 12px;
   font-size: 13px;
+  white-space: nowrap;
+}
+
+.speed-btn + .speed-btn {
+  margin-left: -1px;
 }
 
 .speed-btn.active {
-  color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-secondary), 0 0 0 4px var(--iron-edge), 0 0 10px rgba(var(--ember-rgb), 0.45);
+  position: relative;
+  border-color: var(--color-primary);
+  background: rgba(var(--ember-rgb), 0.15);
+  color: var(--text-heading);
 }
 </style>

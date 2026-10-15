@@ -423,7 +423,7 @@
               <GameIcon
                 v-else
                 name="treasure"
-                :size="28"
+                :size="44"
               />
             </span>
             <span class="reward-row__name">{{ battleInfo.reward ? formattedItemName : itemName('treasure') }}</span>
@@ -791,7 +791,7 @@ const startRollingAnimation = () => {
 
   const rollInterval = setInterval(() => {
     rollingValues.value = rollingValues.value.map(() => Math.floor(Math.random() * 6) + 1);
-  }, 80);
+  }, 130);
 
   // Dice roll for 1.2s, then land (800 + 1200 = 2000ms)
   setTimeout(() => {
@@ -1459,8 +1459,10 @@ const getCorrectItemName = (item) => {
 };
 
 const formattedItemName = computed(() => {
-  if (!props.battleInfo.reward || !props.battleInfo.reward.name) return '';
-  return formatItemName(props.battleInfo.reward.name);
+  const reward = props.battleInfo.reward;
+  if (!reward || !(reward.type || reward.name)) return '';
+  // the type names the item; the name may be the monster that dropped it
+  return formatItemName(reward.type || reward.name);
 });
 
 
@@ -1840,7 +1842,7 @@ if (import.meta.env.DEV) {
 }
 
 .dice-stage {
-  min-height: 72px;
+  min-height: 108px;
   opacity: 0;
   transition: opacity var(--transition-normal);
 }
@@ -1851,8 +1853,8 @@ if (import.meta.env.DEV) {
 
 .dice-container {
   display: flex;
-  gap: 16px;
-  perspective: 400px;
+  gap: 28px;
+  padding-top: 30px;
 }
 
 .score {
@@ -2118,9 +2120,9 @@ button.item-chip {
 .reward-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .reward-rise {
@@ -2155,13 +2157,17 @@ button.item-chip {
 }
 
 .reward-row__img {
-  width: 30px;
-  height: 30px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(var(--ember-rgb), 0.35)) drop-shadow(0 4px 4px #000);
 }
 
 .reward-row__name {
-  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+  color: var(--text-heading);
 }
 
 .stat-badge {
@@ -2169,7 +2175,7 @@ button.item-chip {
   align-items: center;
   gap: 3px;
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 26px;
   color: var(--text-heading);
 }
 
