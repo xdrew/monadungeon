@@ -67,7 +67,7 @@ export default {
     acting: '{who} · w turze',
     next: '{who} · następny',
     was: 'dawniej {name}',
-    cursedBadge: 'Przeklęty',
+    cursedBadge: 'Klątwa',
     turnSetup: 'Przygotowanie',
     ordinalOf: '{ordinal} z {count}',
     ordinals: ['pierwszy', 'drugi', 'trzeci', 'czwarty', 'piąty', 'szósty', 'siódmy', 'ósmy', 'dziewiąty', 'dziesiąty'],
@@ -158,16 +158,16 @@ export default {
     youBadge: 'TY',
     returnToLobby: 'Do lobby',
     viewBoard: 'Zobacz planszę',
-    stunned: 'Jesteś ogłuszony!',
-    stunnedText: 'Przegrałeś walkę i nie możesz ruszać się w tej turze.',
+    stunned: 'Tracisz przytomność!',
+    stunnedText: 'Walka przegrana — w tej turze nie możesz się ruszać.',
     stunnedHeal: 'Twoje PW wrócą w następnej turze.',
     skipTurn: 'Pomiń turę',
     noField: 'Brak danych planszy dla gry {id}',
     tooltip: {
       onceHero: 'Dawniej {hero}; teraz ma umiejętności przejętych bohaterów',
       lordKarak: 'Ma umiejętności przejętych bohaterów',
-      fallen: 'Poległ — wybierz uzdrowicielską fontannę, by się odrodzić',
-      cursed: 'Przeklęty — umiejętności nie działają, dopóki nie wyleczy się w fontannie'
+      fallen: 'Czeka na odrodzenie — wybierz uzdrowicielską fontannę',
+      cursed: 'Pod klątwą — umiejętności nie działają do leczenia w fontannie'
     },
     notice: {
       nobody: 'nikt',
@@ -301,8 +301,8 @@ export default {
     portalSelf: '{who} przechodzi przez portal uzdrowienia.',
     portalOther: '{who} wysyła przez portal uzdrowienia: {target}.',
     darkThorn: '{who} rani kolcem ciemności: {target}.',
-    darkThornRises: '{who} rani kolcem ciemności: {target} — a ten odradza się przy fontannie.',
-    darkThornStunned: '{who} rani kolcem ciemności: {target} — a ten traci przytomność.',
+    darkThornRises: '{who} rani kolcem ciemności: {target} — odrodzenie przy fontannie.',
+    darkThornStunned: '{who} rani kolcem ciemności: {target} — utrata przytomności.',
     castsSpell: '{who} rzuca zaklęcie.',
     cursedRoomCursed: '{who}: w przeklętej komnacie wypadło {roll} — klątwa.',
     cursedRoomSafe: '{who}: w przeklętej komnacie wypadło {roll} — bez klątwy.',
@@ -474,8 +474,8 @@ export default {
     },
     curse: {
       title: 'Klątwa Karak',
-      prompt: 'Pokonałeś mumię. Wybierz, kto poniesie klątwę — jego bohater traci wszystkie umiejętności, dopóki nie wyleczy się w fontannie.',
-      alreadyCursed: 'już przeklęty',
+      prompt: 'Mumia pokonana. Wybierz, kto poniesie klątwę — jego bohater traci wszystkie umiejętności, dopóki nie wyleczy się w fontannie.',
+      alreadyCursed: 'już pod klątwą',
       keepOn: 'Zostaw na: {who}',
       currentHolder: 'obecny posiadacz'
     },

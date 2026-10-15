@@ -1573,7 +1573,7 @@ const castDarkThorn = async () => {
       null,
       darkThornTargetId.value
     );
-    showActionNotice(t('game.notice.darkThornHit', { who: playerLabel(target) }));
+    showActionNotice(t('game.notice.darkThornHit', { who: heroNameById(target?.id) }));
   } catch (err) {
     showActionNotice(t('errors.failed', { action: t('errors.actions.darkThorn'), reason: apiErrorMessage(err) }));
   } finally {
@@ -1591,7 +1591,7 @@ watch(() => gameData.value?.state?.roomEvent, (event) => {
   const key = `${event.turnId}:${event.playerId}:${event.position}`;
   if (key === shownRoomEventKey.value) return;
   shownRoomEventKey.value = key;
-  const who = playerLabel(playerById(event.playerId));
+  const who = heroNameById(event.playerId);
   showActionNotice(t(event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe', { who, roll: event.roll }));
 });
 const handleCurseChoice = async (targetPlayerId) => {
@@ -1603,7 +1603,7 @@ const handleCurseChoice = async (targetPlayerId) => {
       targetPlayerId
     });
     const holder = (gameData.value?.players || []).find(p => p.id === result?.cursedPlayerId);
-    const label = holder ? playerLabel(holder) : t('game.notice.nobody');
+    const label = holder ? heroNameById(holder.id) : t('game.notice.nobody');
     if (battleInfo.value) {
       battleInfo.value = {
         ...battleInfo.value,
@@ -3470,34 +3470,6 @@ const replayNextTurn = () => {
   replayTimeout.value = setTimeout(() => {
     replayNextTurn();
   }, duration);
-};
-
-// Helper functions for the replay UI
-const formatActionType = (actionType) => {
-  // Convert snake_case to Title Case
-  if (!actionType) return 'Unknown Action';
-  return actionType.split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
-const formatTileId = (tileId) => {
-  // Shorten tile ID for display
-  if (!tileId) return 'Unknown';
-  return tileId.substring(0, 8) + '...';
-};
-
-const formatTime = (timestamp) => {
-  if (!timestamp) return 'N/A';
-
-  try {
-    // Convert timestamp to readable format
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString();
-  } catch (e) {
-    console.error('Error formatting timestamp:', e);
-    return 'Invalid timestamp';
-  }
 };
 
 // Function to center view on the current player's position
