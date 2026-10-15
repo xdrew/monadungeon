@@ -169,6 +169,26 @@ final class CurseOfKarakTest extends TestCase
     }
 
     #[Test]
+    public function aSecondMummyInTheSameTurnOffersTheChoiceAgain(): void
+    {
+        $game = $this->startedGame([$this->p1, $this->p2]);
+        $tester = $this->createTester();
+        $turnId = $game->getCurrentTurnId();
+        self::assertNotNull($turnId);
+        $firstFight = new MummyDefeated($this->gameId, $this->p1, $turnId, Uuid::v7());
+
+        $tester->handle($game->onMummyDefeated(...), $firstFight);
+        $tester->handle($game->cursePlayer(...), $this->curse($game, $this->p1, $this->p2));
+        // The same fight finalized: no second choice
+        $tester->handle($game->onMummyDefeated(...), $firstFight);
+        self::assertNull($game->getCurseChoicePendingBy());
+
+        // Unstoppable: another mummy beaten in the same turn is a new fight and the slayer chooses again
+        $tester->handle($game->onMummyDefeated(...), new MummyDefeated($this->gameId, $this->p1, $turnId, Uuid::v7()));
+        self::assertTrue($game->getCurseChoicePendingBy()?->equals($this->p1));
+    }
+
+    #[Test]
     public function aVirtualSlayerCursesTheFirstHuman(): void
     {
         $game = $this->startedGame([$this->p1, $this->p2, $this->p3]);

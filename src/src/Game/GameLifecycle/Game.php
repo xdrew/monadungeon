@@ -110,6 +110,13 @@ class Game extends AggregateRoot
     private ?Uuid $curseChoiceTurnId = null;
 
     /**
+     * Curse of Karak: the fight that offered the last choice. A re-processed win must not offer it twice,
+     * but a second mummy beaten in the same turn (Unstoppable) is a new fight and offers it again.
+     */
+    #[Column(type: UuidType::class, nullable: true)]
+    private ?Uuid $curseChoiceBattleId = null;
+
+    /**
      * Karak: Regent expansion — the Lord Karak rooms, the new monsters and heroes are in play.
      */
     #[Column(type: BooleanType::class, options: ['default' => false])]
@@ -354,11 +361,17 @@ class Game extends AggregateRoot
         if (!$this->status->isInProgress() || \count($this->players) < 2) {
             return;
         }
-        // A won fight is processed again when it is finalized: the choice is offered once per turn
-        if ($this->curseChoiceTurnId?->equals($event->turnId) === true) {
+        // A won fight is processed again when it is finalized: the choice is offered once per fight
+        // (once per turn when the event does not name the fight)
+        if ($event->battleId !== null) {
+            if ($this->curseChoiceBattleId?->equals($event->battleId) === true) {
+                return;
+            }
+        } elseif ($this->curseChoiceTurnId?->equals($event->turnId) === true) {
             return;
         }
         $this->curseChoiceTurnId = $event->turnId;
+        $this->curseChoiceBattleId = $event->battleId;
 
         $slayer = $messageContext->dispatch(new GetPlayer($event->playerId));
         if ($slayer->isAi()) {

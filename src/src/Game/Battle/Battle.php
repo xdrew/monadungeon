@@ -1124,6 +1124,7 @@ class Battle extends AggregateRoot
                 gameId: $this->gameId,
                 playerId: $this->playerId,
                 turnId: $this->turnId,
+                battleId: $this->battleId,
             ));
         }
 

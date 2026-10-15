@@ -18,6 +18,8 @@ final readonly class MummyDefeated implements Event
         public Uuid $gameId,
         public Uuid $playerId,
         public Uuid $turnId,
+        /** the fight: a won fight is processed again when finalized, a second mummy in the same turn is a new fight */
+        public ?Uuid $battleId = null,
         public \DateTimeImmutable $defeatedAt = new \DateTimeImmutable(),
     ) {}
 }
