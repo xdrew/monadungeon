@@ -144,34 +144,40 @@ const dismissable = computed(() => props.duel.phase === 'done');
 </script>
 
 <style scoped>
+/* Battle Arena: the outcome of a duel and the loot — in the decision plaque */
 .duel-result {
   margin: 10px 0;
   padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(224, 122, 42, 0.45);
-  background: rgba(70, 35, 15, 0.4);
-  color: #ffeedd;
+  border: 1px solid rgba(var(--ember-rgb), 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
   text-align: center;
 }
 
 .duel-result-header {
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #f0b27a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--text-heading);
 }
 
 .duel-phase,
 .duel-outcome,
 .duel-loot-taken {
   margin: 6px 0;
-  font-size: 0.88rem;
+  font-size: 14px;
   line-height: 1.4;
+  color: var(--text-secondary);
 }
 
 .duel-outcome {
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--text-heading);
 }
 
 .duel-sides {
@@ -181,38 +187,43 @@ const dismissable = computed(() => props.duel.phase === 'done');
 }
 
 .duel-side {
-  padding: 6px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid transparent;
+  padding: 8px 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(234, 220, 192, 0.12);
 }
 
 .duel-side.winner {
-  border-color: rgba(102, 187, 106, 0.7);
+  border-color: rgba(var(--ember-rgb), 0.7);
 }
 
 .duel-side.loser {
-  border-color: rgba(229, 115, 115, 0.7);
+  border-color: rgba(217, 69, 42, 0.6);
 }
 
 .duel-side-name {
-  font-size: 0.8rem;
-  color: #f3dcc6;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .duel-side-total {
-  font-size: 1.4rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1;
+  color: var(--text-heading);
+}
+
+.duel-side.winner .duel-side-total {
+  color: var(--text-accent);
 }
 
 .duel-side-detail {
-  font-size: 0.72rem;
-  color: #d9c2ad;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .duel-loot-title {
-  font-size: 0.85rem;
   margin: 6px 0;
+  font-size: 14px;
 }
 
 .duel-loot-items {
@@ -226,14 +237,22 @@ const dismissable = computed(() => props.duel.phase === 'done');
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(var(--ember-rgb), 0.7);
+  background: rgba(var(--ember-rgb), 0.18);
+  color: var(--text-heading);
+  font: inherit;
+  font-size: 14px;
   font-weight: 600;
-  color: #fff;
   cursor: pointer;
-  background: linear-gradient(135deg, #b5541c, #e07a2a);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.duel-loot-item:hover:not(:disabled),
+.duel-loot-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 14px rgba(var(--ember-rgb), 0.45);
 }
 
 .duel-loot-item:disabled {
@@ -249,12 +268,18 @@ const dismissable = computed(() => props.duel.phase === 'done');
 
 .duel-dismiss {
   margin-top: 8px;
-  padding: 6px 14px;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.82rem;
-  color: #fff;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(var(--ember-rgb), 0.7);
+  background: rgba(var(--ember-rgb), 0.18);
+  color: var(--text-heading);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  background: linear-gradient(135deg, #37474f, #607d8b);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+  border-color: rgba(234, 220, 192, 0.35);
+  background: transparent;
+  color: var(--text-primary);
 }
 </style>

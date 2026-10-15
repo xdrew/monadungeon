@@ -1,100 +1,105 @@
 <template>
-  <div class="inventory-full-overlay">
-    <div class="inventory-full-card">
-      <div class="card-header">
-        <span class="header-label">{{ $t('dialogs.inventoryFull') }}</span>
-      </div>
+  <!-- A full pack: what goes to make room; shown in the decision plaque, `.inventory-full-overlay` is an e2e hook -->
+  <div class="inventory-full-overlay plaque-dialog">
+    <h4>{{ $t('dialogs.inventoryFull') }}</h4>
+    <div
+      class="plaque-dialog__item"
+      :class="itemCategoryClass(droppedItem)"
+    >
+      <img
+        v-if="getItemImage(droppedItem)"
+        :src="getItemImage(droppedItem)"
+        :alt="getDisplayName(droppedItem)"
+        class="plaque-dialog__img"
+      >
+      <GameIcon
+        v-else
+        name="treasure"
+        :size="40"
+        class="plaque-dialog__icon"
+      />
+      <span class="plaque-dialog__name">{{ getDisplayName(droppedItem) }}</span>
+      <span
+        v-if="getItemDamage(droppedItem) > 0"
+        class="plaque-dialog__stat"
+      ><GameIcon
+        name="sword"
+        :size="14"
+      /> +{{ getItemDamage(droppedItem) }}</span>
+      <span
+        v-if="droppedItem.treasureValue > 0"
+        class="plaque-dialog__stat plaque-dialog__stat--gold"
+      ><GameIcon
+        name="treasure"
+        :size="14"
+      /> {{ droppedItem.treasureValue }}</span>
+      <span
+        v-if="['fireball', 'frost_fist', 'dark_thorn'].includes(droppedItem.type)"
+        class="plaque-dialog__stat"
+      ><GameIcon
+        name="spells"
+        :size="14"
+      /> {{ $t('dialogs.consumable') }}</span>
+    </div>
 
-      <!-- Found item -->
-      <div class="found-item-section">
-        <div class="found-item" :class="itemCategoryClass(droppedItem)">
-          <div class="found-item-icon">
-            <img
-              v-if="getItemImage(droppedItem)"
-              :src="getItemImage(droppedItem)"
-              :alt="getDisplayName(droppedItem)"
-              class="found-item-img"
-            />
-            <span v-else class="found-item-emoji">{{ getItemEmoji(droppedItem) }}</span>
-          </div>
-          <div class="found-item-info">
-            <span class="found-item-name">{{ getDisplayName(droppedItem) }}</span>
-            <div class="found-item-badges">
-              <span
-                v-if="getItemDamage(droppedItem) > 0"
-                class="stat-badge badge-damage"
-              ><GameIcon name="sword" :size="13" /> +{{ getItemDamage(droppedItem) }}</span>
-              <span
-                v-if="droppedItem.treasureValue > 0"
-                class="stat-badge badge-value"
-              ><GameIcon name="treasure" :size="13" /> {{ droppedItem.treasureValue }}</span>
-              <span
-                v-if="['fireball', 'frost_fist', 'dark_thorn'].includes(droppedItem.type)"
-                class="stat-badge badge-spell"
-              ><GameIcon name="spells" :size="13" /> {{ $t('dialogs.consumable') }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Replace from inventory -->
-      <div class="replace-section">
-        <div class="replace-label">{{ replaceLabel(itemCategory) }}</div>
-        <div class="replace-items">
-          <div
-            v-for="item in inventoryForCategory"
-            :key="item.itemId"
-            class="replace-item"
-            :class="{ 'selected': selectedItemToReplace && selectedItemToReplace.itemId === item.itemId }"
-            @click="selectItemToReplace(item)"
-          >
-            <img
-              v-if="getItemImage(item)"
-              :src="getItemImage(item)"
-              :alt="getDisplayName(item)"
-              class="replace-item-img"
-            />
-            <span v-else class="replace-item-emoji">{{ getItemEmoji(item) }}</span>
-            <div class="replace-item-info">
-              <span class="replace-item-name">{{ getDisplayName(item) }}</span>
-              <span
-                v-if="getItemDamage(item) > 0"
-                class="stat-badge badge-damage badge-sm"
-              ><GameIcon name="sword" :size="12" /> +{{ getItemDamage(item) }}</span>
-              <span
-                v-if="item.treasureValue > 0"
-                class="stat-badge badge-value badge-sm"
-              ><GameIcon name="treasure" :size="12" /> {{ item.treasureValue }}</span>
-            </div>
-            <div v-if="selectedItemToReplace && selectedItemToReplace.itemId === item.itemId" class="selected-check"><GameIcon name="check" :size="14" /></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="dialog-actions">
-        <button
-          class="btn-primary"
-          :disabled="!selectedItemToReplace"
-          @click="replaceItem"
+    <p>{{ replaceLabel(itemCategory) }}</p>
+    <div class="replace-items">
+      <button
+        v-for="item in inventoryForCategory"
+        :key="item.itemId"
+        type="button"
+        class="replace-item"
+        :class="{ selected: selectedItemToReplace && selectedItemToReplace.itemId === item.itemId }"
+        :aria-pressed="!!(selectedItemToReplace && selectedItemToReplace.itemId === item.itemId)"
+        @click="selectItemToReplace(item)"
+      >
+        <img
+          v-if="getItemImage(item)"
+          :src="getItemImage(item)"
+          alt=""
+          class="replace-item-img"
         >
-          {{ $t('dialogs.replaceSelected') }} <span class="kbd-hint">(Enter)</span>
-        </button>
-        <button
-          class="btn-secondary"
-          @click="skipItem"
-        >
-          {{ $t('dialogs.leaveItem') }} <span class="kbd-hint">(Esc)</span>
-        </button>
-      </div>
+        <GameIcon
+          v-else
+          name="treasure"
+          :size="24"
+        />
+        <span class="replace-item-name">{{ getDisplayName(item) }}</span>
+        <span
+          v-if="getItemDamage(item) > 0"
+          class="replace-item-stat"
+        >+{{ getItemDamage(item) }}</span>
+        <span
+          v-if="item.treasureValue > 0"
+          class="replace-item-stat replace-item-stat--gold"
+        >{{ item.treasureValue }}</span>
+      </button>
+    </div>
+
+    <div class="plaque-dialog__actions">
+      <button
+        type="button"
+        class="btn btn--ghost btn-secondary"
+        @click="skipItem"
+      >
+        {{ $t('dialogs.leaveItem') }} <span class="kbd-hint">(Esc)</span>
+      </button>
+      <button
+        type="button"
+        class="btn btn--ember btn-primary"
+        :disabled="!selectedItemToReplace"
+        @click="replaceItem"
+      >
+        {{ $t('dialogs.replaceSelected') }} <span class="kbd-hint">(Enter)</span>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
 import GameIcon from '@/components/ui/GameIcon.vue';
-import { defineProps, defineEmits, ref, onMounted, onUnmounted } from 'vue';
-import { getItemEmoji, formatItemName, getItemDamage } from '@/utils/itemUtils';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { formatItemName, getItemDamage, getItemImage as itemImage } from '@/utils/itemUtils';
 import { t } from '@/i18n';
 import { itemName as localizedItemName } from '@/i18n/names';
 
@@ -117,22 +122,8 @@ const emit = defineEmits(['replace-item', 'skip-item', 'select-item']);
 
 const selectedItemToReplace = ref(null);
 
-const getItemImage = (item) => {
-  if (!item) return null;
-  switch (item.type) {
-    case 'key': return '/images/key.webp';
-    case 'chest': return '/images/chest-opened.webp';
-    case 'ruby_chest': return '/images/ruby-chest.webp';
-    case 'dagger': return '/images/dagger.webp';
-    case 'sword': return '/images/sword.webp';
-    case 'axe': return '/images/axe.webp';
-    case 'fireball': return '/images/fireball.webp';
-    case 'teleport': return '/images/hf-teleport.webp';
-    case 'frost_fist': return '/images/frost-fist.webp';
-    case 'dark_thorn': return '/images/dark-thorn.webp';
-    default: return null;
-  }
-};
+// in this choice the chest shows open (it is already in a pack)
+const getItemImage = (item) => itemImage(item);
 
 const getDisplayName = (item) => {
   if (!item || !item.name) return t('items.tooltip.unknown');
@@ -198,312 +189,50 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 </script>
 
 <style scoped>
-/* Overlay */
-.inventory-full-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-overlay, rgba(9, 8, 15, 0.88));
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: overlayIn 0.25s ease-out;
-}
-
-@keyframes overlayIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Card */
-.inventory-full-card {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
-  border-radius: 12px;
-  width: 360px;
-  max-width: 95vw;
-  max-height: 85vh;
-  overflow-y: auto;
-  padding: 0 20px 20px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-  animation: cardIn 0.3s ease-out;
-}
-
-@keyframes cardIn {
-  from { opacity: 0; transform: scale(0.92) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-/* Header */
-.card-header {
-  margin: 0 -20px;
-  padding: 10px 20px;
-  border-radius: 12px 12px 0 0;
-  background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(var(--accent-rgb), 0.08) 100%);
-  border-bottom: 1px solid rgba(244, 67, 54, 0.2);
-  margin-bottom: 16px;
-}
-
-.header-label {
-  font-size: 0.75em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #ef9a9a;
-}
-
-/* Found item */
-.found-item-section {
-  margin-bottom: 14px;
-}
-
-.found-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border-radius: 10px;
-  background: rgba(var(--accent-rgb), 0.08);
-  border: 1px solid rgba(var(--accent-rgb), 0.35);
-}
-
-.found-item.category-weapon { border-color: rgba(255, 87, 34, 0.45); background: rgba(255, 87, 34, 0.06); }
-.found-item.category-key { border-color: rgba(255, 193, 7, 0.45); background: rgba(255, 193, 7, 0.06); }
-.found-item.category-spell { border-color: rgba(156, 39, 176, 0.45); background: rgba(156, 39, 176, 0.06); }
-.found-item.category-treasure { border-color: rgba(255, 193, 7, 0.45); background: rgba(255, 193, 7, 0.06); }
-
-.found-item-icon {
-  flex-shrink: 0;
-}
-
-.found-item-img {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
-}
-
-.found-item-emoji {
-  font-size: 2rem;
-}
-
-.found-item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.found-item-name {
-  font-weight: 700;
-  font-size: 1.05rem;
-  color: var(--text-primary);
-}
-
-.found-item-badges {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-/* Stat badges (matching ItemPickupDialog / BattleReportModal) */
-.stat-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  border-radius: 14px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.badge-damage {
-  background: rgba(255, 87, 34, 0.15);
-  color: #FF8A65;
-  border: 1px solid rgba(255, 87, 34, 0.3);
-}
-
-.badge-value {
-  background: rgba(255, 193, 7, 0.15);
-  color: #FFD54F;
-  border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-.badge-spell {
-  background: rgba(156, 39, 176, 0.15);
-  color: #CE93D8;
-  border: 1px solid rgba(156, 39, 176, 0.3);
-}
-
-.badge-sm {
-  font-size: 0.65rem;
-  padding: 1px 6px;
-}
-
-/* Replace section */
-.replace-section {
-  margin-bottom: 16px;
-}
-
-.replace-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-
 .replace-items {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .replace-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.06);
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid rgba(234, 220, 192, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
 }
 
-.replace-item:hover {
-  background: rgba(var(--accent-rgb), 0.12);
-  border-color: rgba(var(--accent-rgb), 0.4);
+.replace-item:hover,
+.replace-item:focus-visible {
+  outline: none;
+  border-color: rgba(var(--ember-rgb), 0.6);
 }
 
 .replace-item.selected {
-  background: rgba(var(--accent-rgb), 0.18);
-  border-color: rgba(var(--accent-light-rgb), 0.7);
-  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(217, 69, 42, 0.85);
+  background: rgba(217, 69, 42, 0.15);
 }
 
 .replace-item-img {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
-  flex-shrink: 0;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
-.replace-item-emoji {
-  font-size: 1.4rem;
-  flex-shrink: 0;
-  min-width: 32px;
-  text-align: center;
+.replace-item-stat {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-heading);
 }
 
-.replace-item-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  flex-wrap: wrap;
-}
-
-.replace-item-name {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-}
-
-.selected-check {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: bold;
-  flex-shrink: 0;
-}
-
-/* Actions */
-.dialog-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-primary,
-.btn-secondary {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.btn-primary {
-  background: var(--gradient-primary);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.35);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.5);
-}
-
-.btn-primary:disabled {
-  background: rgba(var(--accent-rgb), 0.3);
-  cursor: not-allowed;
-  opacity: 0.5;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-secondary {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-}
-
-.btn-secondary:hover {
-  background: rgba(var(--accent-rgb), 0.1);
-  transform: translateY(-2px);
-}
-
-.kbd-hint {
-  font-size: 0.75em;
-  opacity: 0.5;
-  margin-left: 4px;
-}
-
-@media (hover: none) {
-  .kbd-hint { display: none; }
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-  .inventory-full-card {
-    width: 100%;
-    padding: 0 14px 14px;
-  }
-
-  .card-header {
-    margin: 0 -14px;
-    padding: 8px 14px;
-  }
-
-  .dialog-actions {
-    flex-direction: column;
-  }
-
-  .found-item-img {
-    width: 36px;
-    height: 36px;
-  }
+.replace-item-stat--gold {
+  color: #d9c08a;
 }
 </style>

@@ -39,25 +39,25 @@ Authority: user answers > e2e contract > canvas board > existing code.
 ## Tasks
 
 ### Phase 1: The fight scene
-- [ ] Task 1: Fight primitives
+- [x] Task 1: Fight primitives
   - New `fe/src/components/game/fight/`: `DieFace.vue` (SVG die 0–6 pips in bone on `--text-primary`, prop `value`, `rolling`, `tilt`; root keeps class `dice-face`), `FighterFigure.vue` (portrait image, side `hero|monster` for glow colour and mirroring, name, hearts or a note slot, animation state class prop `entrance|idle|victory|defeat|draw` so the existing keyframes apply), `ConsumableCard.vue` (label + checkbox + item image + name + effect; `selected` styling per board).
   - Logging: none.
-- [ ] Task 2: BattleReportModal as the scene (depends on 1)
+- [x] Task 2: BattleReportModal as the scene (depends on 1)
   - Rewrite the template of `fe/src/components/game/BattleReportModal.vue` into the board layout: `.battle-overlay` root (full screen, `--z-modal`), `.screen-flash` kept, header (caption + title, `.close-btn` `×` top right as an iron ring), fighters (hero via `FighterFigure`; monster via `FighterFigure` with the theme image; duel rival hero mirrored with `data-testid="duel-rival"`/`duel-rival-label`), centre roll (`DieFace` ×2 with the rolling values, totals, breakdown line, the damage bar kept as a thin bar under the numbers), skill notes as verdict boxes with their testids, reward/consumables/used consumables/inventory replacement and `CurseChoicePanel` inside the bottom choice plaque, `.battle-footer` with all branches, classes, testids and texts kept (buttons get `.btn--ember` for the primary action, `.btn--ghost` for leave/secondary, `.btn--blood` for defeat; `.kbd-hint` stays).
   - Emoji → `GameIcon` / item images everywhere in the template and in the emoji helpers; delete helpers that become unused.
   - CSS: replace the ~1300 lines of scoped style with the scene styles; keep every animation (26 keyframes) re-coloured to tokens (victory = ember, defeat = `--color-danger`, draw = bone). No `backdrop-filter`.
   - `console.debug('[fight] phase', …)` in dev when `isRolling`/`showResults`/`battleFinalized` change.
-- [ ] Task 3: Scene on phones and texts (depends on 2)
+- [x] Task 3: Scene on phones and texts (depends on 2)
   - Compact layout for `max-width: 768px` and `max-height: 500px` (see Reconciliation); i18n keys for the new strings in en/ru/pl; `npm run i18n:check`.
   - Host Chrome: a won fight, a lost fight, a draw, a fight with fireball selection, a duel (Regent game), in en and ru; 390×844 and 844×390.
 
 ### Phase 2: Dialogs and cleanup
-- [ ] Task 4: Dialogs into the decision plaque (independent of 1-3)
+- [x] Task 4: Dialogs into the decision plaque (independent of 1-3)
   - `ItemPickupDialog`, `InventoryFullDialog`, `MissingKeyDialog`, `StealthChoiceDialog`, `FateweaverChoiceDialog`: drop overlay/backdrop/card chrome, keep root classes/testids, lay out for the plaque width (h4 title, short text, item image row, buttons `.btn--block`); mount them in `GameView.vue` inside the `#plaque` `DecisionPlaque` (move from lines ~472-513); extend `hasDecision`. Make sure nothing else hides the plaque while one is open and the rings do not offer conflicting actions (End Turn stays the single `.end-turn-btn` rule).
   - Logging: none new.
-- [ ] Task 5: Lord Karak cinematic and panels (independent of 1-3)
+- [x] Task 5: Lord Karak cinematic and panels (independent of 1-3)
   - `LordKarakRevealModal.vue` restyle (Reconciliation row). `CurseChoicePanel`, `DuelOpponentPanel`, `DuelResultPanel`: off-palette greens → tokens; check they read well in the plaque and inside the battle scene.
-- [ ] Task 6: Dead notifications and legacy modal CSS (depends on 4, 5)
+- [x] Task 6: Dead notifications and legacy modal CSS (depends on 4, 5)
   - Delete `HealingNotification.vue`, `PlayerSwitchNotification.vue` and their commented references in GameView; prune unused blocks of `fe/src/styles/components/modals.css` (grep each selector first), re-colour what stays with tokens.
 
 ### Phase 3: Docs

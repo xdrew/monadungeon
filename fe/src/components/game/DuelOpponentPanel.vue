@@ -34,29 +34,34 @@ const emit = defineEmits(['choose']);
 </script>
 
 <style scoped>
+/* Battle Arena: the challenger picks the rival — in the decision plaque */
 .duel-panel {
   margin: 10px 0;
   padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(224, 122, 42, 0.45);
-  background: rgba(70, 35, 15, 0.4);
-  color: #ffeedd;
+  border: 1px solid rgba(var(--ember-rgb), 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
   text-align: center;
 }
 
 .duel-header {
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #f0b27a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--text-heading);
 }
 
 .duel-prompt {
   margin: 0 0 10px;
-  font-size: 0.88rem;
+  font-size: 14px;
+  font-style: italic;
   line-height: 1.4;
-  color: #f3dcc6;
+  color: var(--text-secondary);
 }
 
 .duel-targets {
@@ -67,20 +72,22 @@ const emit = defineEmits(['choose']);
 }
 
 .duel-target {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.88rem;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(var(--ember-rgb), 0.7);
+  background: rgba(var(--ember-rgb), 0.18);
+  color: var(--text-heading);
+  font: inherit;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  color: #fff;
-  background: linear-gradient(135deg, #b5541c, #e07a2a);
-  box-shadow: 0 4px 14px rgba(224, 122, 42, 0.35);
-  transition: transform 0.15s ease;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.duel-target:hover:not(:disabled) {
-  transform: translateY(-2px);
+.duel-target:hover:not(:disabled),
+.duel-target:focus-visible {
+  outline: none;
+  box-shadow: 0 0 14px rgba(var(--ember-rgb), 0.45);
 }
 
 .duel-target:disabled {
@@ -89,8 +96,8 @@ const emit = defineEmits(['choose']);
 }
 
 .duel-hint {
-  font-size: 0.75rem;
-  opacity: 0.85;
+  font-size: 12px;
   font-weight: 400;
+  opacity: 0.85;
 }
 </style>

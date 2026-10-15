@@ -54,4 +54,86 @@
 .decision-plaque :deep(.btn--block + .btn--block) {
   margin-top: 6px;
 }
+
+/* Dialogs that live in the plaque (item found, full pack, missing key, stealth, fateweaver) */
+.decision-plaque :deep(.plaque-dialog) {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.decision-plaque :deep(.plaque-dialog h4) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.decision-plaque :deep(.plaque-dialog p) {
+  margin: 0;
+}
+
+.decision-plaque :deep(.plaque-dialog__item) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.decision-plaque :deep(.plaque-dialog__img) {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 4px #000);
+}
+
+.decision-plaque :deep(.plaque-dialog__img--monster) {
+  width: 72px;
+  height: 72px;
+}
+
+.decision-plaque :deep(.plaque-dialog__icon) {
+  color: #d9c08a;
+}
+
+.decision-plaque :deep(.plaque-dialog__name) {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-heading);
+}
+
+.decision-plaque :deep(.plaque-dialog__stat) {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-heading);
+}
+
+.decision-plaque :deep(.plaque-dialog__stat--gold) {
+  color: #d9c08a;
+}
+
+.decision-plaque :deep(.plaque-dialog__stat--hp) {
+  color: var(--color-danger);
+}
+
+.decision-plaque :deep(.plaque-dialog__actions) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.decision-plaque :deep(.plaque-dialog__actions .btn) {
+  flex: 1 1 auto;
+  min-height: 44px;
+  gap: 6px;
+}
+
+.decision-plaque :deep(.kbd-hint) {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.6;
+}
 </style>

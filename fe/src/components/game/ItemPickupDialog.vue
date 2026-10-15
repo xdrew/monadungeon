@@ -1,53 +1,56 @@
 <template>
+  <!-- An item on the tile: shown in the decision plaque; `.item-pickup-overlay` is an e2e hook -->
   <div
     v-if="show"
-    class="item-pickup-overlay"
+    class="item-pickup-overlay plaque-dialog"
+    :class="itemCategoryClass"
   >
-    <div :class="['dialog-card', itemCategoryClass]">
-      <div class="card-header">
-        <span class="header-label">{{ $t('dialogs.itemFound') }}</span>
-      </div>
-
-      <div class="item-showcase">
-        <div class="item-icon-wrapper">
-          <div class="item-glow" />
-          <img
-            v-if="itemImage"
-            :src="itemImage"
-            :alt="itemName"
-            class="item-image"
-          />
-          <span v-else class="item-emoji">{{ itemEmoji }}</span>
-        </div>
-      </div>
-
-      <h3 class="item-name">{{ itemName }}</h3>
-
-      <div v-if="itemDamage > 0 || itemValue > 0" class="stat-badges">
-        <span v-if="itemDamage > 0" class="badge badge-damage">
-          <GameIcon name="sword" :size="14" /> +{{ itemDamage }}
-        </span>
-        <span v-if="itemValue > 0" class="badge badge-value">
-          <GameIcon name="treasure" :size="14" /> {{ $t('dialogs.vp', { n: itemValue }) }}
-        </span>
-      </div>
-
-      <p class="pickup-prompt">{{ $t('dialogs.pickUpPrompt') }}</p>
-
-      <div class="dialog-actions">
-        <button
-          class="btn-pickup"
-          @click="pickupItem"
-        >
-          {{ $t('dialogs.pickUp') }} <span class="kbd-hint">(Enter)</span>
-        </button>
-        <button
-          class="btn-leave"
-          @click="skipItem"
-        >
-          {{ $t('dialogs.leaveIt') }} <span class="kbd-hint">(Esc)</span>
-        </button>
-      </div>
+    <h4>{{ $t('dialogs.itemFound') }}</h4>
+    <div class="plaque-dialog__item">
+      <img
+        v-if="itemImage"
+        :src="itemImage"
+        :alt="itemName"
+        class="plaque-dialog__img"
+      >
+      <GameIcon
+        v-else
+        name="treasure"
+        :size="40"
+        class="plaque-dialog__icon"
+      />
+      <span class="plaque-dialog__name">{{ itemName }}</span>
+      <span
+        v-if="itemDamage > 0"
+        class="plaque-dialog__stat"
+      ><GameIcon
+        name="sword"
+        :size="14"
+      /> +{{ itemDamage }}</span>
+      <span
+        v-if="itemValue > 0"
+        class="plaque-dialog__stat plaque-dialog__stat--gold"
+      ><GameIcon
+        name="treasure"
+        :size="14"
+      /> {{ $t('dialogs.vp', { n: itemValue }) }}</span>
+    </div>
+    <p>{{ $t('dialogs.pickUpPrompt') }}</p>
+    <div class="plaque-dialog__actions">
+      <button
+        type="button"
+        class="btn btn--ghost btn-leave"
+        @click="skipItem"
+      >
+        {{ $t('dialogs.leaveIt') }} <span class="kbd-hint">(Esc)</span>
+      </button>
+      <button
+        type="button"
+        class="btn btn--ember btn-pickup"
+        @click="pickupItem"
+      >
+        {{ $t('dialogs.pickUp') }} <span class="kbd-hint">(Enter)</span>
+      </button>
     </div>
   </div>
 </template>
@@ -55,7 +58,7 @@
 <script setup>
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
-import { getItemEmoji, formatItemName } from '@/utils/itemUtils';
+import { formatItemName } from '@/utils/itemUtils';
 import { t } from '@/i18n';
 import { itemName as localizedItemName } from '@/i18n/names';
 
@@ -98,7 +101,6 @@ const getDisplayName = (item) => {
 };
 
 // Computed properties for item display
-const itemEmoji = computed(() => getItemEmoji(props.item));
 const itemImage = computed(() => {
   if (!props.item) return null;
   
@@ -182,238 +184,4 @@ onMounted(() => window.addEventListener('keydown', onKeyDown, true));
 onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 </script>
 
-<style scoped>
-/* Overlay */
-.item-pickup-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-overlay, rgba(9, 8, 15, 0.85));
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: overlayIn 0.25s ease-out;
-}
 
-/* Card */
-.dialog-card {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(var(--accent-rgb), 0.35);
-  border-radius: 14px;
-  width: 320px;
-  max-width: 90vw;
-  padding: 0 24px 24px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(var(--accent-rgb), 0.15);
-  animation: cardIn 0.3s ease-out;
-  text-align: center;
-}
-
-/* Category-specific accent borders */
-.dialog-card.category-weapon { border-color: rgba(255, 87, 34, 0.5); }
-.dialog-card.category-key    { border-color: rgba(255, 193, 7, 0.5); }
-.dialog-card.category-spell  { border-color: rgba(156, 39, 176, 0.5); }
-.dialog-card.category-treasure { border-color: rgba(255, 193, 7, 0.5); }
-
-/* Header */
-.card-header {
-  margin: 0 -24px;
-  padding: 10px 24px;
-  border-radius: 14px 14px 0 0;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(var(--accent-light-rgb), 0.08) 100%);
-  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
-  margin-bottom: 20px;
-}
-
-.header-label {
-  font-size: 0.75em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-secondary);
-}
-
-/* Item showcase */
-.item-showcase {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 14px;
-}
-
-.item-icon-wrapper {
-  position: relative;
-  width: 88px;
-  height: 88px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.item-glow {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.25) 0%, transparent 70%);
-  animation: glowPulse 2.5s ease-in-out infinite;
-}
-
-.category-weapon .item-glow { background: radial-gradient(circle, rgba(255, 87, 34, 0.25) 0%, transparent 70%); }
-.category-key .item-glow    { background: radial-gradient(circle, rgba(255, 193, 7, 0.25) 0%, transparent 70%); }
-.category-spell .item-glow  { background: radial-gradient(circle, rgba(156, 39, 176, 0.3) 0%, transparent 70%); }
-.category-treasure .item-glow { background: radial-gradient(circle, rgba(255, 193, 7, 0.3) 0%, transparent 70%); }
-
-.item-image {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  position: relative;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
-}
-
-.item-emoji {
-  font-size: 3em;
-  position: relative;
-}
-
-/* Item name */
-.item-name {
-  margin: 0 0 10px;
-  font-size: 1.35em;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-/* Stat badges */
-.stat-badges {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.85em;
-  font-weight: 600;
-}
-
-.badge-damage {
-  background: rgba(255, 87, 34, 0.15);
-  color: #FF8A65;
-  border: 1px solid rgba(255, 87, 34, 0.3);
-}
-
-.badge-value {
-  background: rgba(255, 193, 7, 0.15);
-  color: #FFD54F;
-  border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-/* Prompt text */
-.pickup-prompt {
-  color: var(--text-muted);
-  font-size: 0.9em;
-  margin: 0 0 18px;
-}
-
-/* Actions */
-.dialog-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-pickup,
-.btn-leave {
-  flex: 1;
-  padding: 11px 16px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.95em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.btn-pickup {
-  background: var(--gradient-primary);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.35);
-}
-
-.btn-pickup:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.5);
-}
-
-.btn-leave {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-}
-
-.btn-leave:hover {
-  background: rgba(var(--accent-rgb), 0.1);
-  transform: translateY(-2px);
-}
-
-/* Animations */
-@keyframes overlayIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes glowPulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50%      { opacity: 1;   transform: scale(1.1); }
-}
-
-.kbd-hint {
-  font-size: 0.75em;
-  opacity: 0.6;
-  margin-left: 4px;
-}
-
-@media (hover: none) {
-  .kbd-hint { display: none; }
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-  .dialog-card {
-    width: 280px;
-    padding: 0 18px 18px;
-  }
-
-  .card-header {
-    margin: 0 -18px;
-    padding: 8px 18px;
-  }
-
-  .item-image {
-    width: 60px;
-    height: 60px;
-  }
-
-  .item-icon-wrapper {
-    width: 76px;
-    height: 76px;
-  }
-}
-</style> 

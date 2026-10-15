@@ -220,6 +220,49 @@
           #plaque
         >
           <DecisionPlaque>
+            <!-- Inventory full dialog component -->
+            <InventoryFullDialog
+              v-if="showInventoryFullDialog"
+              :dropped-item="droppedItem"
+              :item-category="itemCategory"
+              :inventory-for-category="inventoryForCategory"
+              @select-item="selectItemToReplace"
+              @replace-item="replaceItem"
+              @skip-item="skipItem"
+            />
+
+            <!-- Missing key dialog component -->
+            <MissingKeyDialog
+              v-if="showMissingKeyDialog"
+              :chest-type="missingKeyChestType"
+              @close="showMissingKeyDialog = false"
+            />
+
+            <!-- Item pickup dialog component -->
+            <ItemPickupDialog
+              v-if="showItemPickupDialog"
+              :show="showItemPickupDialog"
+              :item="tileItem"
+              @pickup="handleAutoItemPickup"
+              @skip="skipItemAndEndTurn"
+            />
+
+            <!-- Thief "Stealth": fight or sneak past the monster at the destination -->
+            <StealthChoiceDialog
+              v-if="stealthPrompt"
+              :show="!!stealthPrompt"
+              :monster="stealthPrompt.monster"
+              @choose="handleStealthChoice"
+            />
+
+            <!-- Oracle "Fateweaver": pick which of the two drawn tokens is placed on the new room -->
+            <FateweaverChoiceDialog
+              v-if="fateweaverPrompt"
+              :show="!!fateweaverPrompt"
+              :choice="fateweaverPrompt.choice"
+              @choose="handleFateweaverChoice"
+            />
+
             <!-- Teleport Mode Controls -->
             <div
               v-if="isTeleportMode"
@@ -457,60 +500,6 @@
           {{ t('game.viewLeaderboard') }}
         </button>
       </div>
-
-      <!-- Player switch notification component -->
-      <!--
-      <PlayerSwitchNotification 
-        v-if="playerSwitched" 
-        :playerId="currentPlayerId"
-        :formattedPlayerId="formatPlayerId(currentPlayerId)"
-        @dismiss="dismissNotification" 
-      />
-      -->
-
-      <!-- Inventory full dialog component -->
-      <InventoryFullDialog
-        v-if="showInventoryFullDialog"
-        :dropped-item="droppedItem"
-        :item-category="itemCategory"
-        :inventory-for-category="inventoryForCategory"
-        @select-item="selectItemToReplace"
-        @replace-item="replaceItem"
-        @skip-item="skipItem"
-      />
-
-      <!-- Missing key dialog component -->
-      <MissingKeyDialog
-        v-if="showMissingKeyDialog"
-        :chest-type="missingKeyChestType"
-        @close="showMissingKeyDialog = false"
-      />
-
-      <!-- Item pickup dialog component -->
-      <ItemPickupDialog
-        v-if="showItemPickupDialog"
-        :show="showItemPickupDialog"
-        :item="tileItem"
-        @pickup="handleAutoItemPickup"
-        @skip="skipItemAndEndTurn"
-      />
-
-      <!-- Thief "Stealth": fight or sneak past the monster at the destination -->
-      <StealthChoiceDialog
-        v-if="stealthPrompt"
-        :show="!!stealthPrompt"
-        :monster="stealthPrompt.monster"
-        @choose="handleStealthChoice"
-      />
-
-      <!-- Oracle "Fateweaver": pick which of the two drawn tokens is placed on the new room -->
-      <FateweaverChoiceDialog
-        v-if="fateweaverPrompt"
-        :show="!!fateweaverPrompt"
-        :choice="fateweaverPrompt.choice"
-        @choose="handleFateweaverChoice"
-      />
-
 
       <!-- Game layout -->
       <div class="game-layout">
@@ -928,8 +917,6 @@ import GameIcon from '@/components/ui/GameIcon.vue';
 import { getHero } from '@/theme';
 import LoadingOverlay from '@/components/game/LoadingOverlay.vue';
 import ErrorDisplay from '@/components/game/ErrorDisplay.vue';
-import PlayerSwitchNotification from '@/components/game/PlayerSwitchNotification.vue';
-// HealingNotification replaced by floating text in tiles-container
 import InventoryFullDialog from '@/components/game/InventoryFullDialog.vue';
 import MissingKeyDialog from '@/components/game/MissingKeyDialog.vue';
 import BattleReportModal from '@/components/game/BattleReportModal.vue';
@@ -1306,6 +1293,8 @@ const activeSpellItemId = computed(() => (isTeleportMode.value && selectedTelepo
 // A choice waits for the player: the decision plaque (bottom right, over the rings) shows it
 const hasDecision = computed(() => isTeleportMode.value || isDarkThornMode.value || isReincarnationMode.value
   || isMagicSwapMode.value || isLightningMode.value
+  || showInventoryFullDialog.value || showMissingKeyDialog.value || showItemPickupDialog.value
+  || !!stealthPrompt.value || !!fateweaverPrompt.value
   || (!showBattleReportModal.value && !!(arenaChoiceForMe.value || visibleDuel.value || curseChoicePendingForMe.value || retreatChoiceForMe.value)));
 
 // Rings: the heal-limit popover and the Journal drawer
