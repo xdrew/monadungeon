@@ -7,6 +7,11 @@
     :data-value="value"
     :style="dieStyle"
   >
+    <!-- first, so the die is drawn over its shadow -->
+    <div
+      class="die-shadow"
+      aria-hidden="true"
+    />
     <div class="die-hop">
       <div
         class="die-cube"
@@ -28,10 +33,6 @@
         </div>
       </div>
     </div>
-    <div
-      class="die-shadow"
-      aria-hidden="true"
-    />
   </div>
 </template>
 
@@ -127,7 +128,9 @@ const dieStyle = computed(() => {
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  /* the cube turns about its centre, sunk half a die behind the screen: at rest the face that came up
+     lies exactly where the die is laid out, not nearer the eye (larger and pushed down over its shadow) */
+  transform: translateZ(calc(var(--s) / -2)) rotateX(var(--rx)) rotateY(var(--ry));
 }
 
 .die-side {
@@ -218,8 +221,8 @@ const dieStyle = computed(() => {
 }
 
 @keyframes dieThrowSpin {
-  0% { transform: rotateX(calc(var(--rx) + 450deg)) rotateY(calc(var(--ry) + 180deg)); }
-  100% { transform: rotateX(var(--rx)) rotateY(var(--ry)); }
+  0% { transform: translateZ(calc(var(--s) / -2)) rotateX(calc(var(--rx) + 450deg)) rotateY(calc(var(--ry) + 180deg)); }
+  100% { transform: translateZ(calc(var(--s) / -2)) rotateX(var(--rx)) rotateY(var(--ry)); }
 }
 
 @keyframes dieThrowShadow {
