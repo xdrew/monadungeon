@@ -424,7 +424,8 @@
 
 .move-marker.place-tile {
   /*border: 3px dashed rgba(var(--accent-light-rgb), 0.6);*/
-  background-color: rgba(var(--accent-light-rgb), 0.2);
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(var(--accent-light-rgb), 0.5);
   animation: pulse-place 2s infinite;
 }
 
@@ -436,7 +437,7 @@
 
 .available-place.clickable:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.8);
+  box-shadow: 0 0 0 2px rgba(var(--accent-light-rgb), 0.35), 0 6px 16px rgba(0, 0, 0, 0.55);
 }
 
 .marker-content {

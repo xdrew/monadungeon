@@ -120,22 +120,24 @@ const handleClick = () => {
   z-index: 55 !important;
 }
 
+/* An empty slot in the dark: dark translucent fill, thin bronze edge — no tinted haze */
 .move-marker {
   border-radius: 10px;
-  background-color: rgba(var(--accent-rgb), 0.15);
-  border: 2px solid rgba(var(--accent-rgb), 0.35);
+  background-color: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(var(--accent-light-rgb), 0.3);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
   animation: markerPulse 2s infinite ease-in-out;
 }
 
 .move-marker.place-tile {
-  background-color: rgba(var(--accent-light-rgb), 0.3);
-  border-color: rgba(var(--accent-light-rgb), 0.5);
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(var(--accent-light-rgb), 0.5);
   animation: pulse-place 2s infinite;
 }
 
 @keyframes markerPulse {
-  0%, 100% { opacity: 0.7; border-color: rgba(var(--accent-rgb), 0.3); }
-  50% { opacity: 1; border-color: rgba(var(--accent-rgb), 0.6); }
+  0%, 100% { opacity: 0.7; border-color: rgba(var(--accent-light-rgb), 0.3); }
+  50% { opacity: 1; border-color: rgba(var(--accent-light-rgb), 0.6); }
 }
 
 @keyframes pulse-place {
@@ -149,9 +151,9 @@ const handleClick = () => {
 }
 
 .available-place.clickable:hover {
-  background-color: rgba(var(--accent-rgb), 0.3);
-  border-color: rgba(var(--accent-light-rgb), 0.8);
-  box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.5);
+  background-color: rgba(var(--accent-light-rgb), 0.1);
+  border-color: rgba(var(--accent-light-rgb), 0.9);
+  box-shadow: 0 0 0 2px rgba(var(--accent-light-rgb), 0.35), 0 6px 16px rgba(0, 0, 0, 0.55);
   z-index: 60 !important;
 }
 
@@ -186,7 +188,7 @@ const handleClick = () => {
   position: absolute;
   width: 0;
   height: 0;
-  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.6));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
 }
 
 /* Arrow pointing up */
@@ -236,7 +238,7 @@ const handleClick = () => {
   height: 30px;
   border-radius: 50%;
   background-color: rgba(var(--accent-light-rgb), 0.9);
-  box-shadow: 0 0 10px rgba(var(--accent-light-rgb), 0.5);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
 .place-icon::before,
