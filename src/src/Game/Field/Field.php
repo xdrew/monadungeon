@@ -10,8 +10,8 @@ use App\Game\Bag\GetBag;
 use App\Game\Battle\BattleCompleted;
 use App\Game\Battle\BattleFinalized;
 use App\Game\Battle\BattleResult;
-use App\Game\Battle\RetreatRequired;
 use App\Game\Battle\MonsterDefeated;
+use App\Game\Battle\RetreatRequired;
 use App\Game\Deck\Error\NoTilesLeftInDeck;
 use App\Game\Deck\GetDeck;
 use App\Game\Duel\BeginDuel;
@@ -1245,23 +1245,6 @@ class Field extends AggregateRoot
             gameId: $command->gameId,
             playerId: $command->playerId,
             at: new \DateTimeImmutable(),
-        ));
-    }
-
-    /**
-     * Move the hero off the monster tile like a battle return (a fountain heals, a Cursed Room rolls).
-     */
-    private function retreat(Uuid $gameId, Uuid $playerId, Uuid $turnId, FieldPlace $from, FieldPlace $to, MessageContext $context): void
-    {
-        $this->pendingRetreat = null;
-        $context->dispatch(new ResetPlayerPosition(gameId: $gameId, playerId: $playerId, position: $to));
-        $context->dispatch(new PlayerMoved(
-            gameId: $gameId,
-            playerId: $playerId,
-            fromPosition: $from,
-            toPosition: $to,
-            movedAt: new \DateTimeImmutable(),
-            isBattleReturn: true,
         ));
     }
 
@@ -2762,6 +2745,23 @@ class Field extends AggregateRoot
         $this->tilesCache[$tileId->toString()] = $tile;
 
         return $tile;
+    }
+
+    /**
+     * Move the hero off the monster tile like a battle return (a fountain heals, a Cursed Room rolls).
+     */
+    private function retreat(Uuid $gameId, Uuid $playerId, Uuid $turnId, FieldPlace $from, FieldPlace $to, MessageContext $context): void
+    {
+        $this->pendingRetreat = null;
+        $context->dispatch(new ResetPlayerPosition(gameId: $gameId, playerId: $playerId, position: $to));
+        $context->dispatch(new PlayerMoved(
+            gameId: $gameId,
+            playerId: $playerId,
+            fromPosition: $from,
+            toPosition: $to,
+            movedAt: new \DateTimeImmutable(),
+            isBattleReturn: true,
+        ));
     }
 
     /**

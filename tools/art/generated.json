@@ -1563,6 +1563,330 @@
           0
         ]
       }
+    },
+    "barbarian": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "70c4eb97ce03c880cb9a6410337feff03d88a6a6bd52d52f4208d6565d7e3969",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/thief.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/swordsman.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warlock.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/wizard.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/oracle.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/barbarian.jpg",
+      "output": "fe/public/themes/base/heroes/barbarian.webp",
+      "generated_at": "2026-10-15T09:06:06+00:00",
+      "duration_s": 31.4,
+      "interaction_id": "v1_ChdZSmZRYXJlOUpJZmtrZFVQbkxXRXVBRRIXWUpmUWFyZTlKSWZra2RVUG5MV0V1QUU",
+      "post": {
+        "bbox": [
+          24,
+          70,
+          824,
+          1202
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "battle_mage": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "78741ed70fc775e99edded8819c514d509fa46c49ca208a05044b92cd3a78b90",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/swordsman.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warlock.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/wizard.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/oracle.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/barbarian.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/battle_mage.jpg",
+      "output": "fe/public/themes/base/heroes/battle_mage.webp",
+      "generated_at": "2026-10-15T09:06:36+00:00",
+      "duration_s": 31.1,
+      "interaction_id": "v1_ChdmcGZRYXQybURPaTRrZFVQdWRPcy1BNBIXZnBmUWF0Mm1ET2k0a2RVUHVkT3MtQTQ",
+      "post": {
+        "bbox": [
+          100,
+          74,
+          746,
+          1191
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.25,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "acrobat": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "15f81a53c6903aef56a3500c5ef1458109150b9d9e4ebf6cc166f07306073f75",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/warlock.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/wizard.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/oracle.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/barbarian.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/battle_mage.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/acrobat.jpg",
+      "output": "fe/public/themes/base/heroes/acrobat.webp",
+      "generated_at": "2026-10-15T09:07:04+00:00",
+      "duration_s": 29.1,
+      "interaction_id": "v1_ChduSmZRYXF2OURmT2Nuc0VQcS1lbTRBdxIXbkpmUWFxdjlEZk9jbnNFUHEtZW00QXc",
+      "post": {
+        "bbox": [
+          75,
+          101,
+          786,
+          1165
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.01,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "ranger": {
+      "kind": "hero",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "9e7ac7325d52f8bf51a5a1c8bdb4a43b818ca1b01727ee8143d18ad373e9acf2",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/player.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/ai.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/wizard.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/oracle.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/barbarian.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/battle_mage.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/heroes/acrobat.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/ranger.jpg",
+      "output": "fe/public/themes/base/heroes/ranger.webp",
+      "generated_at": "2026-10-15T09:07:26+00:00",
+      "duration_s": 23.4,
+      "interaction_id": "v1_Chd1SmZRYXJMTkM3RDRuc0VQc3Z2Y3FBcxIXdUpmUWFyTE5DN0Q0bnNFUHN2dmNxQXM",
+      "post": {
+        "bbox": [
+          38,
+          72,
+          802,
+          1196
+        ],
+        "source_size": [
+          848,
+          1264
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.01,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
     }
   }
 }

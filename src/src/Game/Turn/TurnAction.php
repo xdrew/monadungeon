@@ -38,12 +38,16 @@ enum TurnAction: string
     // Karak: Regent heroes
     // Valduk "Tireless": left the loot of a won fight and keeps moving (the step into the fight is paid now)
     case TIRELESS = 'tireless';
+
     // Baron Markul "Lightning Attack": teleport onto a monster for all 4 moves
     case LIGHTNING_ATTACK = 'lightning_attack';
+
     // Baron Markul: the retreat chosen after a Lightning Attack that was not won (bookkeeping, never a move)
     case RETREAT = 'retreat';
+
     // Hanna "Sprint": up to 8 moves this turn, no tile exploration (bookkeeping, never a move)
     case SPRINT = 'sprint';
+
     // Lady Lorraine "Listening": explored the adjacent tile just placed without entering it (one move)
     case LISTEN = 'listen';
 

@@ -4,6 +4,58 @@
  */
 export const SPELL_TYPES = ['fireball', 'teleport', 'frost_fist', 'dark_thorn'];
 
+/** Every weapon item type (inventory category "weapons", max 2). */
+export const WEAPON_TYPES = ['dagger', 'sword', 'axe'];
+
+/** Slot limits per inventory category (treasures are unlimited), matching the backend Player. */
+export const INVENTORY_LIMITS = { keys: 1, weapons: 2, spells: 3 };
+
+/**
+ * Inventory category of an item type: 'keys' | 'weapons' | 'spells' | 'treasures'
+ * @param {string} type
+ * @returns {string}
+ */
+export const getInventoryCategory = (type) => {
+  if (type === 'key') return 'keys';
+  if (WEAPON_TYPES.includes(type)) return 'weapons';
+  if (SPELL_TYPES.includes(type)) return 'spells';
+  return 'treasures';
+};
+
+/**
+ * Whether one more item of this type fits the player's inventory, hero skills included
+ * (Hanna "Dagger Throwing": a dagger also fits a free spell slot; her heroFlags are empty while cursed).
+ * @param {Object} player - player data from the game state ({ inventory, heroFlags })
+ * @param {string} type - item type
+ * @returns {boolean}
+ */
+export const hasRoomForItem = (player, type) => {
+  const inventory = player?.inventory;
+  if (!type || !inventory) return true;
+
+  const category = getInventoryCategory(type);
+  const limit = INVENTORY_LIMITS[category];
+  if (limit === undefined) return true;
+
+  if (type === 'dagger' && player?.heroFlags?.throwsDaggers === true
+    && (inventory.spells?.length || 0) < INVENTORY_LIMITS.spells) {
+    return true;
+  }
+
+  return (inventory[category]?.length || 0) < limit;
+};
+
+/**
+ * Strength of an item in this hero's hands (Baron Markul "Sword Master": a sword has strength 3).
+ * @param {Object} item
+ * @param {Object} [heroFlags] - the holder's hero skill flags
+ * @returns {number}
+ */
+export const getItemStrength = (item, heroFlags = {}) => {
+  if (item?.type === 'sword' && heroFlags?.masterOfSword === true) return 3;
+  return getItemDamage(item);
+};
+
 /**
  * Gets the emoji representation of an item based on its type and name
  * @param {Object} item - The item object containing name, type, and other properties

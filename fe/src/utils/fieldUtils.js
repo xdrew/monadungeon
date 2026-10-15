@@ -518,7 +518,8 @@ const handlePlayerMovement = async (params) => {
 const handleTilePlacement = async (params) => {
   const {
     position, gameData, currentPlayerId, gameApi, gameId, currentTurnId,
-    tileState, battleState, updateGameDataSelectively, centerViewOnTile, tileUtils, confirmStealth, chooseFateweaverItem
+    tileState, battleState, updateGameDataSelectively, centerViewOnTile, tileUtils, confirmStealth, chooseFateweaverItem,
+    shouldListen
   } = params;
   
   const { pickedTileId, pickedTile, ghostTileOrientation } = tileState;
@@ -580,6 +581,17 @@ const handleTilePlacement = async (params) => {
         ghostTileOrientation.value, 
         pickedTile.value.room
       );
+    }
+
+    // Lady Lorraine "Listening": the new tile is explored for one move, she stays where she is
+    if (typeof shouldListen === 'function' && shouldListen()) {
+      const listenResponse = await gameApi.listen({ gameId, playerId: currentPlayerId.value, turnId: currentTurnId, position });
+      console.log('[listen] explored without entering', { position, item: listenResponse?.item ?? null });
+      const updatedGameState = await gameApi.getGame(gameId);
+      updateGameDataSelectively(updatedGameState);
+      clearTileState(tileState);
+      centerViewOnTile(coords);
+      return { tilePlaced: true, listened: true };
     }
 
     // Move player to the newly placed tile (Thief "Stealth": a monster in the new room may be ignored)

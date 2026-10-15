@@ -107,7 +107,7 @@ When entering an undiscovered zone:
 - Single-player games have no curse ✅
 
 ### Karak: Regent (expansion) ✅
-- **Switch in the lobby** ("Karak: Regent expansion"): the deck gets 18 more tiles (6 Battle Arenas, 4 Cursed Rooms, 8 rooms) and the bag 6 Giant Bats and 2 Skeleton Mages. The Regent heroes and the Lord Karak variant come later ✅
+- **Switch in the lobby** ("Karak: Regent expansion"): the deck gets 18 more tiles (6 Battle Arenas, 4 Cursed Rooms, 8 rooms) and the bag 6 Giant Bats and 2 Skeleton Mages. The four Regent heroes can only be picked with the switch on (see Heroes); the Lord Karak variant comes later ✅
 - **Battle Arena** (a corridor) ✅
   - The first hero to enter it on their own turn chooses another hero; that hero's figure is moved onto the arena and they fight a duel
   - The challenger rolls and decides first (spells, Sacrifice, Double Attack); then the summoned hero rolls; the strength to beat is the other hero's total
@@ -198,6 +198,41 @@ Each player may pick a hero before the game starts (lobby); a player without a h
   - The choice must be made before moving; a choice left unmade when the turn ends keeps the first drawn token ✅
   - With a single token left in the bag it is a normal draw ✅
   - A virtual Oracle chooses automatically: a chest or treasure first, otherwise the weakest monster ✅
+
+The next four heroes come with the Karak: Regent expansion: the lobby shows them only with the switch on and the server refuses them in a base game. Their active skills are used from the sidebar. ✅
+
+#### Valduk, the Barbarian ✅
+- **Berserk** ✅
+  - +1 strength with exactly 3 or 4 HP, +2 with 1 or 2 HP; the HP he has when the dice are rolled counts (monster fights and duels) ✅
+  - He chooses how many HP a heal restores: a "heal up to N" setting in the sidebar (default: full). Fountains, battle returns onto a fountain and the Portal of Healing heal him up to N, never below his current HP; waking up from a stun still gives 1 HP; while cursed he heals fully ✅
+- **Tireless** ✅
+  - After winning a monster fight, if the loot still lies on the tile, he may leave it there and continue his remaining moves ✅
+  - The step into the fight now counts as one of the 4 moves (a move onto a monster is otherwise never counted); the loot cannot be picked up later in that turn ✅
+  - Not available when the reward was a guarded chest collected automatically ✅
+
+#### Baron Markul, the Battle Mage ✅
+- **Sword Master**: a sword has strength 3 in his hands (not while cursed) ✅
+- **Lightning Attack** ✅
+  - As the first action of the turn, for all 4 moves: teleport onto any tile with an undefeated monster and fight it ✅
+  - Win: the usual reward, then the turn ends ✅
+  - Draw or loss (HP is lost as usual): he stays on the monster's tile and chooses where to retreat — an opened neighbouring tile reachable through a door and free of monsters; with none, back to the tile he teleported from. A fountain there heals and a Cursed Room rolls, like after any lost fight. The turn ends after the retreat; a retreat never chosen goes to the first option ✅
+
+#### Hanna, the Acrobat ✅
+- **Dagger Throwing** ✅
+  - A dagger goes into a free weapon slot first, otherwise into a free spell slot; with every slot full the replacement choice offers weapons and spells ✅
+  - Every dagger she carries (weapon or spell slot) adds +1 and is never used up; daggers in spell slots are never offered as spells ✅
+  - While cursed the daggers stay in the spell slots but add nothing, and no new dagger goes there ✅
+- **Sprint** ✅
+  - Declared as the first action of the turn: up to 8 moves this turn, over discovered tiles only (no tile is picked or placed) ✅
+  - Entering a monster's tile still starts a fight ✅
+
+#### Lady Lorraine, the Ranger ✅
+- **Bear Attack**: every die showing 1 counts as 6 (not while cursed) ✅
+- **Listening** ✅
+  - Right after placing a tile next to her she may listen instead of entering: one move, the tile's token is drawn, she stays where she is ✅
+  - Entering that tile later is a normal move (a monster there is fought) ✅
+  - A Battle Arena or Cursed Room explored this way is not triggered ✅
+  - She may listen several times per turn, as long as moves remain ✅
 
 
 ### Healing Fountains ✅

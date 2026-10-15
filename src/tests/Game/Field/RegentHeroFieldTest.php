@@ -216,6 +216,7 @@ final class RegentHeroFieldTest extends TestCase
     public function listeningNeedsLorraineAndAnAdjacentPlacedTile(): void
     {
         $this->hero = HeroType::THIEF;
+
         try {
             $this->createTester()->handle($this->field->listen(...), new Listen($this->gameId, $this->playerId, $this->turnId, FieldPlace::fromString('1,0')));
             self::fail('Only Lorraine listens');

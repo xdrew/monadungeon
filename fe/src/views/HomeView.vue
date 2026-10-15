@@ -217,6 +217,23 @@ const HERO_SKILLS = [
   { key: 'oracle', testid: 'hero-oracle', skills: [
     { name: 'Farseeing', text: '+1 to the roll when fighting on the first move of the turn' },
     { name: 'Fateweaver', text: 'draws two tokens for a new room, places one and returns the other' }
+  ] },
+  // Karak: Regent heroes (only with the expansion switch on)
+  { key: 'barbarian', testid: 'hero-barbarian', regent: true, skills: [
+    { name: 'Berserk', text: '+1 strength at 3–4 HP, +2 at 1–2 HP; chooses how many HP to heal' },
+    { name: 'Tireless', text: 'after a won fight he may leave the loot and keep moving' }
+  ] },
+  { key: 'battle_mage', testid: 'hero-battle_mage', shortName: 'Markul', regent: true, skills: [
+    { name: 'Sword Master', text: 'a sword has strength 3 in his hands' },
+    { name: 'Lightning Attack', text: 'for all 4 moves, teleport onto any monster and fight it' }
+  ] },
+  { key: 'acrobat', testid: 'hero-acrobat', regent: true, skills: [
+    { name: 'Dagger Throwing', text: 'daggers also fit her spell slots, +1 each, never used up' },
+    { name: 'Sprint', text: 'up to 8 moves over discovered tiles instead of exploring' }
+  ] },
+  { key: 'ranger', testid: 'hero-ranger', shortName: 'Lorraine', regent: true, skills: [
+    { name: 'Bear Attack', text: 'a die showing 1 counts as 6' },
+    { name: 'Listening', text: 'for one move, open an adjacent tile without entering it' }
   ] }
 ];
 const allHeroCards = HERO_SKILLS.map((card) => {
@@ -242,7 +259,7 @@ watch(regentExpansion, (enabled) => {
     // localStorage unavailable (private mode) - the switch still works for this page
   }
 });
-// Hero cards marked `regent: true` come with the expansion (none yet: the Regent heroes are part 2)
+// Hero cards marked `regent: true` come with the expansion (the backend refuses them in a base game)
 const heroCards = computed(() => allHeroCards.filter((card) => !card.regent || regentExpansion.value));
 
 // Lobby background art comes from the theme (none in the base theme)
@@ -252,7 +269,7 @@ const lobbyStyle = { '--lobby-bg': theme.lobbyBackground ? `url('${theme.lobbyBa
 const readStoredHero = () => {
   try {
     const stored = localStorage.getItem('selectedHero');
-    return ['warrior', 'thief', 'swordsman', 'warlock', 'wizard', 'oracle'].includes(stored) ? stored : null;
+    return ['warrior', 'thief', 'swordsman', 'warlock', 'wizard', 'oracle', 'barbarian', 'battle_mage', 'acrobat', 'ranger'].includes(stored) ? stored : null;
   } catch (e) {
     return null;
   }
@@ -1067,8 +1084,10 @@ const createNewGame = async () => {
     // Join the newly created game as player with Privy ID, username, and wallet if available
     const playerUsername = localStorage.getItem('monadUsername') || null;
     const walletAddress = localStorage.getItem('walletAddress') || null;
-    await gameApi.joinGame(response.gameId, playerId, privyUserId, playerUsername, walletAddress, false, selectedHero.value);
-    console.log('Joined game as player ID:', playerId, 'with Privy ID:', privyUserId, 'Username:', playerUsername, 'Wallet:', walletAddress, 'Hero:', selectedHero.value);
+    // The hero shown in the roster: a Regent hero remembered from an earlier game is dropped when the switch is off
+    const heroForGame = selectedCard.value?.key ?? null;
+    await gameApi.joinGame(response.gameId, playerId, privyUserId, playerUsername, walletAddress, false, heroForGame);
+    console.log('Joined game as player ID:', playerId, 'with Privy ID:', privyUserId, 'Username:', playerUsername, 'Wallet:', walletAddress, 'Hero:', heroForGame);
 
     // Add a virtual player as player 2 (use valid UUID)
     const virtualPlayerId = generateRandomId();

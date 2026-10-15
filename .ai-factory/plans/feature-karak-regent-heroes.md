@@ -100,12 +100,13 @@ Constraints carried over from part 1 and the earlier heroes: every skill is a `H
   - Run `--filter 'Hero|Regent|Barbarian|BattleMage|Acrobat|Ranger|GameTurnTest|Battle|Duel|Movement|Inventory|Player'`, then the full suite; every earlier hero test stays green (new event/command params default to neutral values).
 
 ### Phase 4: Frontend, art, docs
-- [ ] Task 9: Hero portraits through tools/art (depends on 1)
+- [x] Task 9: Hero portraits through tools/art (depends on 1)
   - `tools/art/assets.json` (hero kind, same style as the six base heroes): `barbarian` ("Valduk the Barbarian: a huge bare-chested northern warrior with a wild red beard and braids, fur cloak, a heavy double-bitted axe, war paint, battle-fury in his eyes"), `battle_mage` ("Baron Markul the Battle Mage: a nobleman in a blue-steel breastplate over violet robes, a longsword crackling with blue lightning in one hand, lightning arcing from the other"), `acrobat` ("Hanna the Acrobat: a lithe young woman in a close-fitting crimson and ochre tumbler's outfit mid-leap, a bandolier of throwing daggers across her chest, a dagger in each hand"), `ranger` ("Lady Lorraine the Ranger: a noble ranger in a forest-green hooded cloak and leather armour, a longbow on her back, one hand cupped to her ear listening, a great brown bear at her side").
   - Run `tools/art/.venv/bin/python -m tools.art generate --only barbarian,battle_mage,acrobat,ranger`; regenerate unconvincing ones with `--force`; commit outputs + `generated.json` (the user does the visual acceptance).
   - `fe/src/theme/base.js`: `barbarian` (🪓), `battle_mage` (⚡), `acrobat` (🤸), `ranger` (🐻) with images; `fe/public/themes/base/README.md`: four rows.
   - Files: assets.json, generated.json, 4 new webp files, base.js, README.md.
-- [ ] Task 10: Lobby, hero actions, battle modal, action log (depends on 7, 9)
+- [x] Task 10: Lobby, hero actions, battle modal, action log (depends on 7, 9)
+  - As built: Lightning Attack targets are sidebar buttons (`lightning-target-<x,y>`), not tile highlights (no `GameTile` change); the retreat is a sidebar panel driven by `state.retreatChoice` (`retreat-<x,y>`), the battle modal only shows a note. The Ranger portrait uses a russet cloak instead of forest green (green is the sprite chroma key).
   - `fe/src/services/api.js`: `setHealLimit`, `continueAfterVictory`, `lightningAttack`, `chooseRetreat`, `declareSprint`, `listen` (same shape as `magicSwap`/`fateweaver`).
   - `fe/src/views/HomeView.vue`: four `HERO_SKILLS` cards with `regent: true` and the skill lines; `readStoredHero` whitelist; `createNewGame` sends `selectedCard.key`'s hero only when visible.
   - `fe/src/utils/itemUtils.js`: `hasRoomForItem(player, type)` (weapons/spells/keys limits, Hanna's daggers into spell slots unless cursed); route the GameView / fieldUtils slot checks and `isItemWorthPickingUp` through it (grep `weapon` literal slot checks).
@@ -115,7 +116,7 @@ Constraints carried over from part 1 and the earlier heroes: every skill is a `H
   - `fe/src/components/ActionLog.vue`: icons/cases `tireless` ("🪓 Tireless — {player} leaves {item} and keeps moving"), `lightning_attack` ("⚡ Lightning Attack — {player} strikes {monster} at {to}"), `retreat` ("↩️ {player} retreats to {to}"), `sprint` ("🏃 Sprint — up to 8 moves"), `listen` ("👂 Listening — {position}: {item}"); fight prefixes "🪓 Berserk (+N)", "🐻 Bear Attack", "⚡ Lightning Attack".
   - `fe/src/views/RulesView.vue`: the four heroes in the hero list with a "Regent" chip.
   - Files: api.js, HomeView.vue, itemUtils.js, BattleReportModal.vue, GameView.vue, fieldUtils.js, GameTile.vue (highlight prop if needed), ActionLog.vue, RulesView.vue.
-- [ ] Task 11: Docs and quality (depends on 8, 10)
+- [x] Task 11: Docs and quality (depends on 8, 10)
   - `rules.md`: under Heroes "#### Valduk, the Barbarian ✅", "#### Baron Markul, the Battle Mage ✅", "#### Hanna, the Acrobat ✅", "#### Lady Lorraine, the Ranger ✅" (Karak: Regent only) with the decisions from the table (heal limit, Tireless move cost, retreat options, automatic dagger placement, Sprint without tile placement, Listening = place + one move); the "Karak: Regent" section drops "Regent heroes come later". README "Hero Skills" bullet mentions the four Regent heroes; `CLAUDE.md` Regent line mentions the heroes (local file).
   - Quality: php-cs-fixer on `src` plus the new test files only (never `tests` as a whole), rector dry-run in the container, full PHPUnit, ESLint on the changed FE files (no new errors), `doctrine:schema:validate` (only the known drift), `npm run build` in the frontend container. Psalm and e2e are run by the user.
   - Files: rules.md, README.md, CLAUDE.md.

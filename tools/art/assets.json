@@ -91,6 +91,30 @@
       "subject": "Taia the Oracle: a serene priestess in flowing white and gold robes with a veil, holding a glowing warm golden crystal sphere in one hand, eyes closed, a thin golden (never green or yellow-green) halo of light behind her head"
     },
     {
+      "id": "barbarian",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/barbarian.webp",
+      "subject": "Valduk the Barbarian: a huge bare-chested northern warrior with a wild red beard and braids, a grey wolf-fur cloak, a heavy double-bitted axe, blue war paint, battle-fury in his eyes"
+    },
+    {
+      "id": "battle_mage",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/battle_mage.webp",
+      "subject": "Baron Markul the Battle Mage: a nobleman with a trimmed dark beard in a blue-steel breastplate over violet robes, a longsword crackling with white-blue lightning in one hand, lightning arcing from the other"
+    },
+    {
+      "id": "acrobat",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/acrobat.webp",
+      "subject": "Hanna the Acrobat: a lithe young woman in a close-fitting crimson and ochre tumbler's outfit caught mid-leap, a bandolier of throwing daggers across her chest, a dagger in each hand"
+    },
+    {
+      "id": "ranger",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/ranger.webp",
+      "subject": "Lady Lorraine the Ranger: a noble ranger in a russet-brown hooded cloak (never green) and leather armour, a longbow on her back, one hand cupped to her ear listening, a great brown bear at her side"
+    },
+    {
       "id": "lobby_bg",
       "kind": "background",
       "out": "fe/public/themes/base/lobby-bg.webp",

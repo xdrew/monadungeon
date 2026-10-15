@@ -49,6 +49,11 @@ export default {
     swordsman: { name: 'Victorius, the Swordsman', emoji: '🤺', image: `${HERO_IMAGES}/swordsman.webp` },
     warlock: { name: 'Lord Xanros, the Warlock', emoji: '🧙', image: `${HERO_IMAGES}/warlock.webp` },
     wizard: { name: 'Argentus, the Wizard', emoji: '🪄', image: `${HERO_IMAGES}/wizard.webp` },
-    oracle: { name: 'Taia, the Oracle', emoji: '👁️', image: `${HERO_IMAGES}/oracle.webp` }
+    oracle: { name: 'Taia, the Oracle', emoji: '👁️', image: `${HERO_IMAGES}/oracle.webp` },
+    // Karak: Regent heroes
+    barbarian: { name: 'Valduk, the Barbarian', emoji: '🪓', image: `${HERO_IMAGES}/barbarian.webp` },
+    battle_mage: { name: 'Baron Markul, the Battle Mage', emoji: '⚡', image: `${HERO_IMAGES}/battle_mage.webp` },
+    acrobat: { name: 'Hanna, the Acrobat', emoji: '🤸', image: `${HERO_IMAGES}/acrobat.webp` },
+    ranger: { name: 'Lady Lorraine, the Ranger', emoji: '🐻', image: `${HERO_IMAGES}/ranger.webp` }
   }
 };

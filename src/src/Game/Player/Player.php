@@ -292,7 +292,7 @@ class Player extends AggregateRoot
             throw new \DomainException('Only Valduk chooses how many HP to heal (Berserk)');
         }
         if ($command->hp !== null && ($command->hp < 1 || $command->hp > self::MAX_HP)) {
-            throw new \DomainException(\sprintf('Heal limit must be between 1 and %d HP', self::MAX_HP));
+            throw new \DomainException(sprintf('Heal limit must be between 1 and %d HP', self::MAX_HP));
         }
 
         $this->healLimit = $command->hp;

@@ -102,6 +102,7 @@ final class RegentHeroPlayerTest extends TestCase
     public function onlyValdukSetsAHealLimitAndItMustBeAValidHp(): void
     {
         $other = $this->createPlayer(HeroType::WARRIOR, 5);
+
         try {
             $other->setHealLimit(new SetHealLimit($this->gameId, $this->playerId, 3));
             self::fail('Only Valduk chooses');

@@ -223,6 +223,11 @@ const getActionIcon = (actionType) => {
     'cursed_room': '☠️',
     'duel': '⚔️',
     'duel_loot': '🎒',
+    'tireless': '🪓',
+    'lightning_attack': '⚡',
+    'retreat': '↩️',
+    'sprint': '🏃',
+    'listen': '👂',
     'pick_item': '',
     'drop_item': '',
     'end_turn': '✅',
@@ -353,6 +358,24 @@ const formatActionText = (action) => {
 
     case 'duel_loot':
       return `🎒 Took ${(details?.item || 'an item').replace(/_/g, ' ')} from player ${String(details?.from || '').slice(-4)}`;
+
+    // Karak: Regent heroes
+    case 'tireless':
+      return `🪓 Tireless — left the ${(details?.leftItem?.type || 'loot').replace(/_/g, ' ')} on ${details?.position || '?'} and keeps moving`;
+
+    case 'lightning_attack':
+      return `⚡ Lightning Attack — struck the ${(details?.monster?.name || 'monster').replace(/_/g, ' ')} at ${details?.to || '?'} (from ${details?.from || '?'})`;
+
+    case 'retreat':
+      return `↩️ Retreated from ${details?.from || '?'} to ${details?.to || '?'}`;
+
+    case 'sprint':
+      return '🏃 Sprint — up to 8 moves, no exploring';
+
+    case 'listen': {
+      const heard = details?.item ? `${details.item.name.replace(/_/g, ' ')}${details.item.hp > 0 ? ` (HP ${details.item.hp})` : ''}` : 'nothing';
+      return `👂 Listening at ${details?.position || '?'} — ${heard}`;
+    }
 
     case 'fateweaver': {
       // Oracle "Fateweaver": two tokens were drawn, one placed, the other returned to the bag
@@ -490,6 +513,17 @@ const formatActionText = (action) => {
       // Oracle "Farseeing": +1 for fighting on the first move of the turn
       if (details?.farseeing) {
         damageBreakdown = `👁️ Farseeing (+1) ${damageBreakdown}`;
+      }
+
+      // Karak: Regent heroes: Valduk "Berserk", Lady Lorraine "Bear Attack", Baron Markul "Lightning Attack"
+      if (details?.berserk > 0) {
+        damageBreakdown = `🪓 Berserk (+${details.berserk}) ${damageBreakdown}`;
+      }
+      if (details?.onesAsSixes > 0) {
+        damageBreakdown = `🐻 Bear Attack (${details.onesAsSixes === 1 ? 'a 1' : `${details.onesAsSixes} ones`} as 6) ${damageBreakdown}`;
+      }
+      if (details?.lightningAttack) {
+        damageBreakdown = `⚡ Lightning Attack ${damageBreakdown}`;
       }
 
       if (result === 'WIN') {

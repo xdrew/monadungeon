@@ -4,7 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Game\Turn;
 
+use App\Game\Field\Field;
+use App\Game\Field\GetField;
+use App\Game\GameLifecycle\CreateGame;
+use App\Game\GameLifecycle\Game;
+use App\Game\GameLifecycle\GameCreated;
+use App\Game\GameLifecycle\GetGame;
 use App\Game\GameLifecycle\NextTurn;
+use App\Game\GameLifecycle\PlayerAdded;
+use App\Game\Player\GetPlayer;
+use App\Game\Player\Player;
 use App\Game\Turn\EndTurn;
 use App\Game\Turn\Error\InvalidTurnActionException;
 use App\Game\Turn\Error\NotYourTurnException;
@@ -17,15 +26,6 @@ use App\Game\Turn\TurnActionPerformed;
 use App\Game\Turn\TurnEnded;
 use App\Game\Turn\TurnStarted;
 use App\Infrastructure\Uuid\Uuid;
-use App\Game\Field\Field;
-use App\Game\Field\GetField;
-use App\Game\GameLifecycle\CreateGame;
-use App\Game\GameLifecycle\Game;
-use App\Game\GameLifecycle\GameCreated;
-use App\Game\GameLifecycle\GetGame;
-use App\Game\GameLifecycle\PlayerAdded;
-use App\Game\Player\GetPlayer;
-use App\Game\Player\Player;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -37,8 +37,11 @@ use function App\Tests\Infrastructure\MessageBus\startMessageContext;
 final class GameTurnTest extends TestCase
 {
     private Uuid $gameId;
+
     private Uuid $playerId;
+
     private Uuid $turnId;
+
     private \DateTimeImmutable $fixedTime;
 
     protected function setUp(): void
@@ -69,7 +72,7 @@ final class GameTurnTest extends TestCase
         self::assertEquals(1, $gameTurn->getTurnNumber());
         self::assertFalse($gameTurn->isEnded());
         self::assertEquals([], $gameTurn->getActions());
-        
+
         self::assertEquals(
             [new TurnStarted($this->turnId, $this->gameId, $this->playerId, 1, $this->fixedTime)],
             $messages,
@@ -86,7 +89,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
         self::assertSame(0, $gameTurn->getPerformedActionsCount());
 
         // Oracle "Farseeing": exploring (pick + place) does not spend a move
@@ -121,7 +124,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
         $tester = MessageBusTester::create();
         $action = fn(TurnAction $action): PerformTurnAction => new PerformTurnAction(
             turnId: $this->turnId,
@@ -158,7 +161,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $performAction = new PerformTurnAction(
             turnId: $this->turnId,
@@ -201,12 +204,12 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $tileId = Uuid::v7();
         $additionalData = ['some' => 'data'];
         $tester = MessageBusTester::create();
-        
+
         // First do a movement action (allowed at start of turn)
         $moveAction = new PerformTurnAction(
             turnId: $this->turnId,
@@ -263,7 +266,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $otherPlayerId = Uuid::v7();
         $performAction = new PerformTurnAction(
@@ -275,7 +278,7 @@ final class GameTurnTest extends TestCase
         );
 
         $tester = MessageBusTester::create();
-        
+
         $this->expectException(NotYourTurnException::class);
         $tester->handle($gameTurn->performAction(...), $performAction);
     }
@@ -290,7 +293,7 @@ final class GameTurnTest extends TestCase
             turnNumber: 1,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         // End the turn first
         $endTurn = new EndTurn(
@@ -300,9 +303,9 @@ final class GameTurnTest extends TestCase
             at: $this->fixedTime,
         );
         $tester = MessageBusTester::create(
-            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
-            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
-            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
+            fn(GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn(GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn(GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
         $tester->handle($gameTurn->end(...), $endTurn);
 
@@ -329,10 +332,10 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $tester = MessageBusTester::create();
-        
+
         // First perform a movement action (allowed at start of turn)
         $moveAction = new PerformTurnAction(
             turnId: $this->turnId,
@@ -368,7 +371,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         // Try to perform an action that's not allowed at the start of turn
         $performAction = new PerformTurnAction(
@@ -395,7 +398,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $endTurn = new EndTurn(
             turnId: $this->turnId,
@@ -405,9 +408,9 @@ final class GameTurnTest extends TestCase
         );
 
         $tester = MessageBusTester::create(
-            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
-            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
-            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
+            fn(GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn(GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn(GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
         [, $messages] = $tester->handle($gameTurn->end(...), $endTurn);
 
@@ -433,7 +436,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $otherPlayerId = Uuid::v7();
         $endTurn = new EndTurn(
@@ -444,9 +447,9 @@ final class GameTurnTest extends TestCase
         );
 
         $tester = MessageBusTester::create(
-            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
-            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
-            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
+            fn(GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn(GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn(GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
 
         $this->expectException(NotYourTurnException::class);
@@ -463,7 +466,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $endTurn = new EndTurn(
             turnId: $this->turnId,
@@ -473,9 +476,9 @@ final class GameTurnTest extends TestCase
         );
 
         $tester = MessageBusTester::create(
-            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
-            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
-            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
+            fn(GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn(GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn(GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
 
         // End turn first time
@@ -497,7 +500,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $actionPerformed = new TurnActionPerformed(
             turnId: $this->turnId,
@@ -525,7 +528,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $otherPlayerId = Uuid::v7();
         $actionPerformed = new TurnActionPerformed(
@@ -552,7 +555,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         // End the turn
         $endTurn = new EndTurn(
@@ -562,9 +565,9 @@ final class GameTurnTest extends TestCase
             at: $this->fixedTime,
         );
         $tester = MessageBusTester::create(
-            fn (GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
-            fn (GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
-            fn (GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
+            fn(GetGame $_query): Game => Game::create(new CreateGame($this->gameId), startMessageContext()),
+            fn(GetField $_query): Field => Field::create(new GameCreated(gameId: $this->gameId, gameCreateTime: new \DateTimeImmutable()), startMessageContext()),
+            fn(GetPlayer $_query): Player => Player::onPlayerAddedToGame(new PlayerAdded(gameId: $this->gameId, playerId: $this->playerId)),
         );
         $tester->handle($gameTurn->end(...), $endTurn);
 
@@ -592,7 +595,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $actionPerformed = new TurnActionPerformed(
             turnId: $this->turnId,
@@ -619,7 +622,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         // First perform a move to get to a tile with a monster
         $moveAction = new PerformTurnAction(
@@ -648,7 +651,7 @@ final class GameTurnTest extends TestCase
         self::assertCount(2, $actions);
         self::assertEquals('move', $actions[0]['action']);
         self::assertEquals('fight_monster', $actions[1]['action']);
-        
+
         // Turn should not end automatically after battle
         self::assertFalse($gameTurn->isEnded());
 
@@ -676,7 +679,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         // First perform a move and fight
         $moveAction = new PerformTurnAction(
@@ -738,10 +741,10 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $tester = MessageBusTester::create();
-        
+
         // First perform a movement action (allowed at start of turn)
         $moveAction = new PerformTurnAction(
             turnId: $this->turnId,
@@ -782,7 +785,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         self::assertEquals($this->turnId, $gameTurn->getTurnId());
         self::assertEquals($this->gameId, $gameTurn->getGameId());
@@ -804,7 +807,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
 
         $tester = MessageBusTester::create();
 
@@ -843,7 +846,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
         $tester = MessageBusTester::create();
 
         // Swordsman "Unstoppable": the fight is recorded, but the turn goes on as if nothing had happened
@@ -881,7 +884,7 @@ final class GameTurnTest extends TestCase
             turnId: $this->turnId,
             at: $this->fixedTime,
         );
-        [$gameTurn, ] = handle(GameTurn::start(...), $startTurn);
+        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
         $tester = MessageBusTester::create();
 
         $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
@@ -896,13 +899,10 @@ final class GameTurnTest extends TestCase
         $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
     }
 
-    /**
-     * @param array<string, mixed>|null $additionalData
-     */
     #[Test]
     public function aMagicSwapSpendsAllFourMovesAndEndsTheTurn(): void
     {
-        [$gameTurn, ] = handle(GameTurn::start(...), $this->startTurn());
+        [$gameTurn] = handle(GameTurn::start(...), $this->startTurn());
         // Route TurnActionPerformed to the counter like the real bus does
         $tester = MessageBusTester::create(static fn(TurnActionPerformed $event) => $gameTurn->updateActionCounter($event));
 
@@ -915,7 +915,7 @@ final class GameTurnTest extends TestCase
     #[Test]
     public function aMagicSwapOntoAnItemTileLeavesTheRewardToPickUp(): void
     {
-        [$gameTurn, ] = handle(GameTurn::start(...), $this->startTurn());
+        [$gameTurn] = handle(GameTurn::start(...), $this->startTurn());
         $tester = MessageBusTester::create(static fn(TurnActionPerformed $event) => $gameTurn->updateActionCounter($event));
 
         [, $messages] = $tester->handle($gameTurn->performAction(...), new PerformTurnAction(
@@ -939,7 +939,7 @@ final class GameTurnTest extends TestCase
     #[Test]
     public function aMagicSwapIsOnlyAllowedAtTheBeginningOfTheTurn(): void
     {
-        [$gameTurn, ] = handle(GameTurn::start(...), $this->startTurn());
+        [$gameTurn] = handle(GameTurn::start(...), $this->startTurn());
         $tester = MessageBusTester::create();
 
         $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
@@ -951,7 +951,7 @@ final class GameTurnTest extends TestCase
     #[Test]
     public function aRegularMoveStillCostsOneMove(): void
     {
-        [$gameTurn, ] = handle(GameTurn::start(...), $this->startTurn());
+        [$gameTurn] = handle(GameTurn::start(...), $this->startTurn());
         $tester = MessageBusTester::create(static fn(TurnActionPerformed $event) => $gameTurn->updateActionCounter($event));
 
         $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
@@ -961,40 +961,6 @@ final class GameTurnTest extends TestCase
 
         $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
         self::assertTrue($gameTurn->isEnded(), 'The 4th move ends the turn');
-    }
-
-    private function startTurn(): StartTurn
-    {
-        return new StartTurn(
-            gameId: $this->gameId,
-            playerId: $this->playerId,
-            turnNumber: 1,
-            turnId: $this->turnId,
-            at: $this->fixedTime,
-        );
-    }
-
-    private function action(TurnAction $action, ?array $additionalData = null): PerformTurnAction
-    {
-        return new PerformTurnAction(
-            turnId: $this->turnId,
-            gameId: $this->gameId,
-            playerId: $this->playerId,
-            action: $action,
-            additionalData: $additionalData,
-            at: $this->fixedTime,
-        );
-    }
-
-    private function performed(TurnAction $action): TurnActionPerformed
-    {
-        return new TurnActionPerformed(
-            turnId: $this->turnId,
-            gameId: $this->gameId,
-            playerId: $this->playerId,
-            action: $action,
-            performedAt: $this->fixedTime,
-        );
     }
 
     // Karak: Regent — spells cost no move and the Regent bookkeeping never constrains the turn
@@ -1164,6 +1130,40 @@ final class GameTurnTest extends TestCase
 
         $this->expectException(InvalidTurnActionException::class);
         $tester->handle($turn->performAction(...), $this->action(TurnAction::LIGHTNING_ATTACK));
+    }
+
+    private function startTurn(): StartTurn
+    {
+        return new StartTurn(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            turnNumber: 1,
+            turnId: $this->turnId,
+            at: $this->fixedTime,
+        );
+    }
+
+    private function action(TurnAction $action, ?array $additionalData = null): PerformTurnAction
+    {
+        return new PerformTurnAction(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: $action,
+            additionalData: $additionalData,
+            at: $this->fixedTime,
+        );
+    }
+
+    private function performed(TurnAction $action): TurnActionPerformed
+    {
+        return new TurnActionPerformed(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: $action,
+            performedAt: $this->fixedTime,
+        );
     }
 
     /**

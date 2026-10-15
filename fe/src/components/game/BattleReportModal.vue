@@ -94,7 +94,7 @@
                   class="bonus-chip-img"
                 />
                 <span v-else>{{ getUsedItemEmoji(weapon) }}</span>
-                <span class="bonus-value">+{{ getItemTypeDamage(weapon.type) }}</span>
+                <span class="bonus-value">+{{ weaponStrength(weapon) }}</span>
               </span>
               <span
                 v-if="usedConsumableDamageTotal > 0"
@@ -218,6 +218,30 @@
             data-testid="farseeing-note"
           >
             👁️ Farseeing! +1 — fought on the first move of the turn
+          </div>
+          <!-- Valduk "Berserk": the lower his HP, the harder he hits -->
+          <div
+            v-if="!isRolling && battleInfo.berserk > 0"
+            class="first-roll-note"
+            data-testid="berserk-note"
+          >
+            🪓 Berserk! +{{ battleInfo.berserk }} — fighting on {{ battleInfo.berserk === 2 ? '1–2' : '3–4' }} HP
+          </div>
+          <!-- Lady Lorraine "Bear Attack": a die showing 1 counts as 6 -->
+          <div
+            v-if="!isRolling && battleInfo.onesAsSixes > 0"
+            class="first-roll-note"
+            data-testid="bear-attack-note"
+          >
+            🐻 Bear Attack! {{ battleInfo.onesAsSixes === 1 ? 'A 1 counted' : `${battleInfo.onesAsSixes} ones counted` }} as 6
+          </div>
+          <!-- Baron Markul "Lightning Attack": a fight that is not won ends in a retreat he chooses -->
+          <div
+            v-if="!isRolling && battleInfo.retreatOptions?.length"
+            class="first-roll-note"
+            data-testid="lightning-retreat-note"
+          >
+            ⚡ Lightning Attack — choose where to retreat in the sidebar
           </div>
           <!-- Curse of Karak: the victim was chosen -->
           <div
@@ -526,6 +550,16 @@
           >
             {{ turnContinues ? 'Leave item and continue' : 'Leave item and end turn' }} <span class="kbd-hint">(Esc)</span>
           </button>
+          <!-- Valduk "Tireless": leave the loot on the tile and keep moving -->
+          <button
+            v-if="canContinueTireless && !isGuardChestReward"
+            class="btn-secondary"
+            :disabled="isProcessing"
+            data-testid="tireless-continue"
+            @click="continueTireless"
+          >
+            🪓 Leave it and keep moving (Tireless)
+          </button>
         </div>
         <!-- Consumable selection buttons -->
         <div v-else-if="showConsumableSelection" class="button-group">
@@ -553,6 +587,16 @@
             @click="finalizeBattleAndLeaveItem"
           >
             Leave reward after victory
+          </button>
+          <!-- Valduk "Tireless": win, leave the loot and keep moving -->
+          <button
+            v-if="hasBoost && beatsMonster(totalCalculatedDamage) && canContinueTireless"
+            class="btn-secondary"
+            :disabled="isProcessing"
+            data-testid="tireless-continue"
+            @click="finalizeBattleAndContinueTireless"
+          >
+            🪓 Win, leave it and keep moving (Tireless)
           </button>
           <button
             v-else-if="hasBoost && totalCalculatedDamage === battleInfo.monster && !battleInfo.tieIsWin"
@@ -656,10 +700,15 @@ const props = defineProps({
   duelRival: {
     type: Object,
     default: null
+  },
+  /** Skill flags of the fighting hero (empty while cursed): Sword Master, Tireless */
+  heroFlags: {
+    type: Object,
+    default: () => ({})
   }
 });
 
-const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up', 'reroll-battle', 'curse', 'duel-continue']);
+const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-replacement', 'finalize-battle', 'finalize-battle-and-pick-up', 'reroll-battle', 'curse', 'duel-continue', 'tireless']);
 
 // Karak: Regent — a Battle Arena duel side ({ duelId, role, opponentId, toBeat }); the challenger has nothing to beat yet
 const duel = computed(() => props.battleInfo?.duel || null);
@@ -881,7 +930,7 @@ const retreatLabel = computed(() => {
 const potentialVictoryWithConsumables = computed(() => {
   if (!availableConsumables.value || duel.value) return false;
 
-  const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
+  const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value + rollBonus.value;
   const maxConsumableDamage = availableConsumables.value
     .filter(item => getItemTypeDamage(item.type) > 0)
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0) + (sacrificeAvailable.value ? 1 : 0);
@@ -899,7 +948,7 @@ const potentialVictoryWithConsumables = computed(() => {
 const potentialImprovementWithConsumables = computed(() => {
   if (!showConsumableSelection.value || !availableConsumables.value) return false;
 
-  const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
+  const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value + rollBonus.value;
   const maxConsumableDamage = availableConsumables.value
     .filter(item => getItemTypeDamage(item.type) > 0)
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0) + (sacrificeAvailable.value ? 1 : 0);
@@ -976,8 +1025,19 @@ const weaponDamageTotal = computed(() => {
   if (!props.battleInfo.usedItems) return 0;
   return props.battleInfo.usedItems
     .filter(item => item.type && ['dagger', 'sword', 'axe'].includes(item.type))
-    .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
+    .reduce((total, item) => total + weaponStrength(item), 0);
 });
+
+// Baron Markul "Sword Master": a sword has strength 3 in his hands
+const weaponStrength = (weapon) => (weapon?.type === 'sword' && props.heroFlags?.masterOfSword === true ? 3 : getItemTypeDamage(weapon?.type));
+
+// Valduk "Tireless": a won fight whose loot he may leave on the tile to keep moving
+const canContinueTireless = computed(() => props.heroFlags?.tireless === true && !duel.value);
+const continueTireless = () => {
+  if (isProcessing.value) return;
+  isProcessing.value = true;
+  emit('tireless', { battleId: props.battleInfo.battleId });
+};
 
 const usedConsumableDamageTotal = computed(() => {
   if (!props.battleInfo.usedItems) return 0;
@@ -993,11 +1053,13 @@ const consumableDamageTotal = computed(() => {
     .reduce((total, item) => total + getItemTypeDamage(item.type), 0) + sacrificeBonus.value;
 });
 
-// Oracle "Farseeing": the +1 belongs to the roll, the backend keeps it out of itemDamage
+// Oracle "Farseeing" and Valduk "Berserk": bonuses of the roll, the backend keeps them out of itemDamage
 const farseeingBonus = computed(() => (props.battleInfo.farseeing ? 1 : 0));
+const berserkBonus = computed(() => props.battleInfo.berserk || 0);
+const rollBonus = computed(() => farseeingBonus.value + berserkBonus.value);
 
 const totalCalculatedDamage = computed(() => {
-  return (props.battleInfo.diceRollDamage || 0) + (props.battleInfo.itemDamage || 0) + consumableDamageTotal.value + farseeingBonus.value;
+  return (props.battleInfo.diceRollDamage || 0) + (props.battleInfo.itemDamage || 0) + consumableDamageTotal.value + rollBonus.value;
 });
 
 const playerHpAfterBattle = computed(() => {
@@ -1084,7 +1146,7 @@ const initializeConsumableSelection = () => {
     }
 
     if (didNotWin) {
-      const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value;
+      const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value + rollBonus.value;
       const consumablesWithDamage = (props.battleInfo.availableConsumables || []).filter(item => getItemTypeDamage(item.type) > 0);
       // Warlock "Sacrifice" counts as one more +1 the player may add
       const sacrificeMax = props.battleInfo.canSacrificeHp ? 1 : 0;
@@ -1224,6 +1286,23 @@ const finalizeBattleAndLeaveItem = () => {
     hideModalImmediately: true
   });
   setShowConsumableSelection(false, 'finalizeBattleAndLeaveItem reset');
+  selectedConsumables.value = [];
+  availableConsumables.value = [];
+};
+
+// Valduk "Tireless": the fight is won with spells, the loot stays and he keeps moving
+const finalizeBattleAndContinueTireless = () => {
+  if (isProcessing.value) return;
+  isProcessing.value = true;
+  battleFinalized.value = true;
+  emit('finalize-battle', {
+    battleId: props.battleInfo.battleId,
+    selectedConsumableIds: selectedConsumables.value,
+    sacrificeHp: sacrificeHp.value,
+    hideModalImmediately: true,
+    tireless: true
+  });
+  setShowConsumableSelection(false, 'finalizeBattleAndContinueTireless reset');
   selectedConsumables.value = [];
   availableConsumables.value = [];
 };

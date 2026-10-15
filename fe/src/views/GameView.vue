@@ -478,7 +478,7 @@
                       <span v-else>{{ getInventoryItemEmoji(item) }}</span>
                     </div>
                     <div class="item-damage-small">
-                      +{{ getItemDamage(item) }}
+                      +{{ getItemStrength(item, player.heroFlags) }}
                     </div>
                   </div>
 
@@ -505,7 +505,7 @@
                       <span v-else>{{ getInventoryItemEmoji(item) }}</span>
                     </div>
                     <div class="item-damage-small">
-                      +{{ getItemDamage(item) }}
+                      +{{ getItemStrength(item, player.heroFlags) }}
                     </div>
                   </div>
 
@@ -687,6 +687,124 @@
               </button>
             </div>
 
+            <!-- Karak: Regent — Baron Markul retreats after a Lightning Attack that was not won -->
+            <div
+              v-if="retreatChoiceForMe && !showBattleReportModal"
+              class="sidebar-section teleport-controls retreat-controls"
+              data-testid="retreat-banner"
+            >
+              <h3>⚡ Retreat</h3>
+              <p>The Lightning Attack was not won. Choose an opened tile to retreat to; the turn ends there.</p>
+              <div class="portal-targets">
+                <button
+                  v-for="option in retreatChoiceForMe.options"
+                  :key="`retreat-${option}`"
+                  type="button"
+                  class="portal-target"
+                  :data-testid="`retreat-${option}`"
+                  :disabled="loading || isRequestInProgress"
+                  @click="handleChooseRetreat(option)"
+                >
+                  ↩️ {{ option }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Karak: Regent heroes — skills used from the sidebar -->
+            <div
+              v-if="isLightningMode"
+              class="sidebar-section teleport-controls lightning-controls"
+              data-testid="lightning-banner"
+            >
+              <h3>⚡ Lightning Attack</h3>
+              <p>Choose a monster to strike. It costs all 4 moves; if you do not win you pick where to retreat.</p>
+              <div class="portal-targets">
+                <button
+                  v-for="target in lightningTargets"
+                  :key="`lightning-${target.position}`"
+                  type="button"
+                  class="portal-target"
+                  :data-testid="`lightning-target-${target.position}`"
+                  :disabled="loading || isRequestInProgress"
+                  @click="handleLightningAttack(target.position)"
+                >
+                  {{ target.label }} ❤️ {{ target.hp }} — {{ target.position }}
+                </button>
+              </div>
+              <button
+                class="cancel-teleport-btn btn--block"
+                @click="isLightningMode = false"
+              >
+                Cancel
+              </button>
+            </div>
+            <div
+              v-else-if="canLightningAttackNow || canSprintNow || canListenNow"
+              class="sidebar-section magic-swap-section regent-hero-actions"
+            >
+              <button
+                v-if="canLightningAttackNow"
+                class="end-turn-btn btn--block magic-swap-btn"
+                data-testid="lightning-attack-btn"
+                :disabled="loading || isRequestInProgress"
+                title="Baron Markul: teleport onto any monster and fight it (first action of the turn, costs all 4 moves)"
+                @click="isLightningMode = true"
+              >
+                ⚡ Lightning Attack
+              </button>
+              <button
+                v-if="canSprintNow"
+                class="end-turn-btn btn--block magic-swap-btn"
+                data-testid="sprint-btn"
+                :disabled="loading || isRequestInProgress"
+                title="Hanna: up to 8 moves this turn over discovered tiles, no exploring"
+                @click="handleDeclareSprint"
+              >
+                🏃 Sprint (8 moves)
+              </button>
+              <button
+                v-if="canListenNow"
+                class="end-turn-btn btn--block magic-swap-btn"
+                :class="{ 'teleport-active': isListenMode }"
+                data-testid="listen-toggle"
+                :disabled="loading || isRequestInProgress"
+                title="Lady Lorraine: the next tile you place is explored without entering it (one move)"
+                @click="isListenMode = !isListenMode"
+              >
+                👂 {{ isListenMode ? 'Listening — place a tile' : 'Listen at the next tile' }}
+              </button>
+            </div>
+            <div
+              v-if="isPlayerTurn && gameData?.state?.sprint"
+              class="sidebar-section sprint-badge"
+              data-testid="sprint-badge"
+            >
+              🏃 Sprint — up to 8 moves, no exploring
+            </div>
+            <div
+              v-if="getCurrentPlayerData?.heroFlags?.choosesHealing"
+              class="sidebar-section heal-limit-section"
+            >
+              <label class="heal-limit-label">
+                🪓 Berserk — heal up to
+                <select
+                  data-testid="heal-limit"
+                  :value="getCurrentPlayerData.healLimit ?? ''"
+                  :disabled="loading || isRequestInProgress"
+                  @change="handleHealLimitChange($event.target.value)"
+                >
+                  <option value="">5 HP (full)</option>
+                  <option
+                    v-for="hp in [4, 3, 2, 1]"
+                    :key="`heal-limit-${hp}`"
+                    :value="hp"
+                  >
+                    {{ hp }} HP
+                  </option>
+                </select>
+              </label>
+            </div>
+
             <!-- End Turn Button -->
             <div
               v-if="isPlayerTurn && (gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress') && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isDarkThornMode"
@@ -695,8 +813,8 @@
               <button
                 class="end-turn-btn btn--block"
                 @click="handleManualEndTurn"
-                :disabled="loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn"
-                :title="pickedTileId ? 'You must place the picked tile before ending your turn' : (duelBlocksEndTurn ? 'Finish the Battle Arena duel first' : '')"
+                :disabled="loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe"
+                :title="pickedTileId ? 'You must place the picked tile before ending your turn' : (duelBlocksEndTurn ? 'Finish the Battle Arena duel first' : (retreatChoiceForMe ? 'Choose where to retreat first' : ''))"
               >
                 {{ pickedTileId ? 'Place Tile First' : 'End Turn' }}
               </button>
@@ -784,6 +902,8 @@
       :player-hp="battleRoller?.hp ?? 5"
       :curse-choice="curseChoice"
       :duel-rival="duelRival"
+      :hero-flags="battleRoller?.heroFlags || {}"
+      @tireless="handleTireless"
       @curse="handleCurseChoice"
       @duel-continue="handleDuelContinue"
       @end-turn="closeBattleReportAndEndTurn"
@@ -932,7 +1052,7 @@ import MusicToggle from '@/components/game/MusicToggle.vue';
 import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';
-import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES } from '@/utils/itemUtils';
+import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES, hasRoomForItem, getItemStrength } from '@/utils/itemUtils';
 
 // Import field utility functions
 import { playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
@@ -1179,7 +1299,7 @@ const reincarnationFountainPositions = ref([]); // ["x,y", ...] from the backend
 const isMagicSwapMode = ref(false);
 
 // Hero helpers for the player panel
-const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman', warlock: 'Warlock', wizard: 'Wizard', oracle: 'Oracle' };
+const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Swordsman', warlock: 'Warlock', wizard: 'Wizard', oracle: 'Oracle', barbarian: 'Barbarian', battle_mage: 'Battle Mage', acrobat: 'Acrobat', ranger: 'Ranger' };
 // Swordsman "Unstoppable": the backend keeps the turn open after a battle with a 6, so the client must not end it
 const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
@@ -3469,6 +3589,12 @@ const handlePlaceClick = async (position) => {
     battleState: { battleInfo, showBattleReportModal },
     confirmStealth,
     chooseFateweaverItem,
+    // Lady Lorraine "Listening": the switch is used up by one tile placement
+    shouldListen: () => {
+      const listening = isListenMode.value;
+      isListenMode.value = false;
+      return listening;
+    },
     updateGameDataSelectively,
     centerViewOnTile,
     tileState: { 
@@ -3997,46 +4123,8 @@ const currentPlayerFieldPosition = computed(() => {
 const hasInventorySpaceForReward = computed(() => {
   if (!battleInfo.value || !battleInfo.value.reward || !getCurrentPlayerData.value) return true;
 
-  const reward = battleInfo.value.reward;
-  const inventory = getCurrentPlayerData.value.inventory;
-
-  if (!reward.type || !inventory) return true;
-
-  // Define inventory limits for each category
-  const inventoryLimits = {
-    'key': 1,
-    'dagger': 2,
-    'sword': 2, 
-    'axe': 2,
-    'fireball': 3,
-    'teleport': 3,
-    'frost_fist': 3,
-    'dark_thorn': 3,
-    'chest': Infinity, // No limit for treasures
-    'ruby_chest': Infinity
-  };
-
-  // Map item types to inventory categories
-  const categoryMap = {
-    'key': 'keys',
-    'dagger': 'weapons',
-    'sword': 'weapons',
-    'axe': 'weapons', 
-    'fireball': 'spells',
-    'teleport': 'spells',
-    'frost_fist': 'spells',
-    'dark_thorn': 'spells',
-    'chest': 'treasures',
-    'ruby_chest': 'treasures'
-  };
-
-  const category = categoryMap[reward.type];
-  const limit = inventoryLimits[reward.type];
-
-  if (!category || limit === undefined) return true; // Unknown type, assume space available
-
-  const currentCount = inventory[category] ? inventory[category].length : 0;
-  return currentCount < limit;
+  // One place for the slot rules (hero skills included: Hanna's daggers also fit a spell slot)
+  return hasRoomForItem(getCurrentPlayerData.value, battleInfo.value.reward.type);
 });
 
 // Function to select inventory item
@@ -4561,6 +4649,10 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
         }
         
         let inventoryForCategory = getCurrentPlayerData.value?.inventory?.[inventoryCategory] || [];
+        // Hanna "Dagger Throwing": a dagger may also replace anything in the spell slots
+        if (rewardType === 'dagger' && getCurrentPlayerData.value?.heroFlags?.throwsDaggers === true) {
+          inventoryForCategory = [...inventoryForCategory, ...(getCurrentPlayerData.value?.inventory?.spells || [])];
+        }
         
         // Filter out consumables that were just used in the battle
         // They haven't been removed from inventory yet but shouldn't be shown as replacement options
@@ -4705,7 +4797,10 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
     // The backend only automatically ends the turn for LOSE/DRAW results
     // For WIN results where the player doesn't pick up the item, we need to manually end the turn
     // (unless the Swordsman is Unstoppable: a 6 keeps his turn going)
-    if (predictedResult === 'win' && !finalizeResult?.awaitingReincarnation && !lastBattleUnstoppable()) {
+    if (predictedResult === 'win' && finalizeBattleData.tireless === true) {
+      // Valduk "Tireless": the loot stays on the tile and the turn goes on
+      await gameApi.continueAfterVictory({ gameId: id.value, playerId: currentPlayerId.value, turnId: currentTurnId });
+    } else if (predictedResult === 'win' && !finalizeResult?.awaitingReincarnation && !lastBattleUnstoppable()) {
 
       await gameApi.endTurn({
         gameId: id.value,
@@ -5094,6 +5189,148 @@ watch(canMagicSwapNow, (possible) => {
     isMagicSwapMode.value = false;
   }
 });
+
+// Karak: Regent heroes ------------------------------------------------------------
+
+// Skills that can only open the turn (Lightning Attack, Sprint): my turn, nothing done yet
+const canOpenTurnWithSkill = computed(() => {
+  if (!isPlayerTurn.value || isReplaying.value || isProcessingAI.value) return false;
+  if (gameData.value?.state?.status === 'finished') return false;
+  if (pickedTileId.value || isTeleportMode.value || isReincarnationMode.value || isMagicSwapMode.value) return false;
+  return currentTurnActions.value.length === 0;
+});
+
+// Baron Markul "Lightning Attack": every tile holding an undefeated monster, except his own
+const isLightningMode = ref(false);
+const lightningTargets = computed(() => {
+  const items = gameData.value?.field?.items || {};
+  const myPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
+  return Object.entries(items)
+    .filter(([position, item]) => item && item.guardHP > 0 && !item.guardDefeated && position !== myPosition)
+    .map(([position, item]) => ({ position, hp: item.guardHP, label: formatItemName(item.name) }));
+});
+const canLightningAttackNow = computed(() => canOpenTurnWithSkill.value
+  && getCurrentPlayerData.value?.heroFlags?.lightningAttack === true
+  && lightningTargets.value.length > 0);
+watch(canLightningAttackNow, (possible) => {
+  if (!possible && isLightningMode.value) {
+    isLightningMode.value = false;
+  }
+});
+
+const handleLightningAttack = async (targetPosition) => {
+  if (isRequestInProgress.value) return;
+  try {
+    loading.value = true;
+    loadingStatus.value = 'Lightning Attack...';
+    const response = await gameApi.lightningAttack({
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: gameData.value.state.currentTurnId,
+      targetPosition
+    });
+    isLightningMode.value = false;
+    await loadGameData(false);
+    if (response?.battleInfo) {
+      battleInfo.value = response.battleInfo;
+      showBattleReportModal.value = true;
+    }
+  } catch (err) {
+    console.error('Lightning Attack failed:', err);
+    isLightningMode.value = false;
+    showActionNotice(`Lightning Attack failed: ${apiErrorMessage(err)}`);
+    await loadGameData(false).catch(() => {});
+  } finally {
+    loading.value = false;
+    loadingStatus.value = '';
+  }
+};
+
+// Baron Markul: the retreat after a Lightning Attack that was not won
+const retreatChoiceForMe = computed(() => {
+  const choice = gameData.value?.state?.retreatChoice;
+  return choice && choice.playerId === currentPlayerId.value ? choice : null;
+});
+const handleChooseRetreat = async (position) => {
+  if (isRequestInProgress.value) return;
+  try {
+    loading.value = true;
+    loadingStatus.value = 'Retreating...';
+    await gameApi.chooseRetreat({
+      gameId: id.value,
+      playerId: currentPlayerId.value,
+      turnId: gameData.value.state.currentTurnId,
+      position
+    });
+    // The retreat ends the turn (this also triggers the AI turn if needed)
+    await loadGameData();
+  } catch (err) {
+    console.error('Retreat failed:', err);
+    showActionNotice(`Retreat failed: ${apiErrorMessage(err)}`);
+    await loadGameData(false).catch(() => {});
+  } finally {
+    loading.value = false;
+    loadingStatus.value = '';
+  }
+};
+
+// Hanna "Sprint": declared as the first action of the turn
+const canSprintNow = computed(() => canOpenTurnWithSkill.value && getCurrentPlayerData.value?.heroFlags?.sprints === true);
+const handleDeclareSprint = async () => {
+  if (isRequestInProgress.value) return;
+  try {
+    loading.value = true;
+    await gameApi.declareSprint({ gameId: id.value, playerId: currentPlayerId.value, turnId: gameData.value.state.currentTurnId });
+    await loadGameData(false);
+  } catch (err) {
+    console.error('Sprint failed:', err);
+    showActionNotice(`Sprint failed: ${apiErrorMessage(err)}`);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Lady Lorraine "Listening": the next placed tile is explored without entering it
+const isListenMode = ref(false);
+const canListenNow = computed(() => isPlayerTurn.value
+  && !isReplaying.value
+  && !isProcessingAI.value
+  && gameData.value?.state?.status !== 'finished'
+  && getCurrentPlayerData.value?.heroFlags?.listens === true
+  && (gameData.value?.state?.availablePlaces?.placeTile || []).length > 0);
+watch(canListenNow, (possible) => {
+  if (!possible) {
+    isListenMode.value = false;
+  }
+});
+
+// Valduk "Tireless": leave the loot of the won fight on its tile and keep moving
+const handleTireless = async () => {
+  try {
+    loading.value = true;
+    await gameApi.continueAfterVictory({ gameId: id.value, playerId: currentPlayerId.value, turnId: gameData.value.state.currentTurnId });
+    showBattleReportModal.value = false;
+    battleInfo.value = null;
+    resetRequestLock();
+    await loadGameData(false);
+  } catch (err) {
+    console.error('Tireless failed:', err);
+    showActionNotice(`Tireless failed: ${apiErrorMessage(err)}`);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Valduk "Berserk": heal only up to N HP ('' = heal fully)
+const handleHealLimitChange = async (value) => {
+  try {
+    await gameApi.setHealLimit({ gameId: id.value, playerId: currentPlayerId.value, hp: value === '' ? null : Number(value) });
+    await loadGameData(false);
+  } catch (err) {
+    console.error('Heal limit failed:', err);
+    showActionNotice(`Heal limit failed: ${apiErrorMessage(err)}`);
+  }
+};
 
 // "Magic Swap": trade places with the clicked hero; the backend spends the 4 moves (and ends the turn unless a reward waits)
 const handlePlayerFigureClick = async ({ playerId }) => {
@@ -6673,6 +6910,35 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .portal-target.selected {
   border-color: var(--color-primary-hover);
   background: rgba(102, 187, 106, 0.25);
+}
+
+/* Karak: Regent heroes */
+.regent-hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sprint-badge {
+  font-size: 0.85rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.heal-limit-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.heal-limit-label select {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 .starting-roll {
   font-size: 0.8rem;

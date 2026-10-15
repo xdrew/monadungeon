@@ -52,6 +52,17 @@ final class HeroTest extends TestCase
         $this->turnId = Uuid::v7();
     }
 
+    /**
+     * @return iterable<string, array{HeroType, string, list<string>, list<string>}>
+     */
+    public static function regentHeroes(): iterable
+    {
+        yield 'barbarian' => [HeroType::BARBARIAN, 'Valduk, the Barbarian', ['berserk', 'choosesHealing', 'tireless'], ['Berserk', 'Tireless']];
+        yield 'battle mage' => [HeroType::BATTLE_MAGE, 'Baron Markul, the Battle Mage', ['masterOfSword', 'lightningAttack'], ['Sword Master', 'Lightning Attack']];
+        yield 'acrobat' => [HeroType::ACROBAT, 'Hanna, the Acrobat', ['throwsDaggers', 'sprints'], ['Dagger Throwing', 'Sprint']];
+        yield 'ranger' => [HeroType::RANGER, 'Lady Lorraine, the Ranger', ['bearAttack', 'listens'], ['Bear Attack', 'Listening']];
+    }
+
     #[Test]
     public function itCreatesPlayerWithHeroFromPlayerAddedEvent(): void
     {
@@ -287,44 +298,6 @@ final class HeroTest extends TestCase
         );
     }
 
-    private function createPlayer(?HeroType $hero, int $hp): Player
-    {
-        [$player] = handle(Player::onPlayerAddedToGame(...), new PlayerAdded(
-            gameId: $this->gameId,
-            playerId: $this->playerId,
-            hp: $hp,
-            hero: $hero,
-        ));
-
-        return $player;
-    }
-
-    /**
-     * @param list<object> $messages
-     * @param class-string $class
-     */
-    private function findMessage(array $messages, string $class): ?object
-    {
-        foreach ($messages as $message) {
-            if ($message instanceof $class) {
-                return $message;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @return iterable<string, array{HeroType, string, list<string>, list<string>}>
-     */
-    public static function regentHeroes(): iterable
-    {
-        yield 'barbarian' => [HeroType::BARBARIAN, 'Valduk, the Barbarian', ['berserk', 'choosesHealing', 'tireless'], ['Berserk', 'Tireless']];
-        yield 'battle mage' => [HeroType::BATTLE_MAGE, 'Baron Markul, the Battle Mage', ['masterOfSword', 'lightningAttack'], ['Sword Master', 'Lightning Attack']];
-        yield 'acrobat' => [HeroType::ACROBAT, 'Hanna, the Acrobat', ['throwsDaggers', 'sprints'], ['Dagger Throwing', 'Sprint']];
-        yield 'ranger' => [HeroType::RANGER, 'Lady Lorraine, the Ranger', ['bearAttack', 'listens'], ['Bear Attack', 'Listening']];
-    }
-
     /**
      * @param list<string> $ownFlags
      * @param list<string> $skillNames
@@ -358,5 +331,32 @@ final class HeroTest extends TestCase
     {
         self::assertSame([0, 1, 1, 2, 2, 0], array_map(static fn(int $hp): int => HeroType::BARBARIAN->berserkBonus($hp), [5, 4, 3, 2, 1, 0]));
         self::assertSame(0, HeroType::WARRIOR->berserkBonus(2));
+    }
+
+    private function createPlayer(?HeroType $hero, int $hp): Player
+    {
+        [$player] = handle(Player::onPlayerAddedToGame(...), new PlayerAdded(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            hp: $hp,
+            hero: $hero,
+        ));
+
+        return $player;
+    }
+
+    /**
+     * @param list<object> $messages
+     * @param class-string $class
+     */
+    private function findMessage(array $messages, string $class): ?object
+    {
+        foreach ($messages as $message) {
+            if ($message instanceof $class) {
+                return $message;
+            }
+        }
+
+        return null;
     }
 }

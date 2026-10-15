@@ -691,6 +691,90 @@ export const gameApi = {
     }
   },
 
+  /**
+   * Valduk "Berserk": heal only up to hp HP (null = heal fully)
+   */
+  setHealLimit: async ({ gameId, playerId, hp }) => {
+    try {
+      const response = await apiClient.post('/game/hero/heal-limit', { gameId, playerId, hp });
+      console.log('Heal limit set:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error (Heal limit set):', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Valduk "Tireless": leave the loot of the won fight on its tile and keep moving
+   */
+  continueAfterVictory: async ({ gameId, playerId, turnId }) => {
+    try {
+      const response = await apiClient.post('/game/tireless', { gameId, playerId, turnId });
+      console.log('Tireless:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error (Tireless):', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Baron Markul "Lightning Attack": teleport onto a monster ("x,y") and fight it; returns { gameId, battleInfo }
+   */
+  lightningAttack: async ({ gameId, playerId, turnId, targetPosition }) => {
+    try {
+      const response = await apiClient.post('/game/lightning-attack', { gameId, playerId, turnId, targetPosition });
+      console.log('Lightning Attack:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error (Lightning Attack):', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Baron Markul: retreat onto an opened tile ("x,y") after a Lightning Attack that was not won (ends the turn)
+   */
+  chooseRetreat: async ({ gameId, playerId, turnId, position }) => {
+    try {
+      const response = await apiClient.post('/game/retreat', { gameId, playerId, turnId, position });
+      console.log('Retreat:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error (Retreat):', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Hanna "Sprint": up to 8 moves this turn, discovered tiles only
+   */
+  declareSprint: async ({ gameId, playerId, turnId }) => {
+    try {
+      const response = await apiClient.post('/game/sprint', { gameId, playerId, turnId });
+      console.log('Sprint declared:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error (Sprint declared):', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lady Lorraine "Listening": explore the adjacent tile just placed ("x,y") without entering it; returns { gameId, position, item }
+   */
+  listen: async ({ gameId, playerId, turnId, position }) => {
+    try {
+      const response = await apiClient.post('/game/listen', { gameId, playerId, turnId, position });
+      console.log('Listened:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error (Listened):', error);
+      throw error;
+    }
+  },
+
   magicSwap: async ({ gameId, playerId, turnId, targetPlayerId }) => {
     try {
       const response = await apiClient.post('/game/magic-swap', { gameId, playerId, turnId, targetPlayerId });
