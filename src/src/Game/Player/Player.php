@@ -170,8 +170,13 @@ class Player extends AggregateRoot
             throw new \DomainException('Cannot change hero after the player is ready');
         }
 
+        $game = $messageContext->dispatch(new GetGame($command->gameId));
+        if ($game->isRandomHeroes()) {
+            throw new \DomainException('Heroes are dealt at random in this game');
+        }
+
         // Karak: Regent heroes come with the expansion only
-        if ($command->hero->isRegent() && !$messageContext->dispatch(new GetGame($command->gameId))->isRegent()) {
+        if ($command->hero->isRegent() && !$game->isRegent()) {
             throw new \DomainException($command->hero->label() . ' needs the Karak: Regent expansion');
         }
 
@@ -316,7 +321,8 @@ class Player extends AggregateRoot
     #[Handler]
     public function setHealLimit(SetHealLimit $command): void
     {
-        if ($this->hero?->choosesHealing() !== true) {
+        // His own card (a cursed Valduk keeps the setting for later) or Valduk's skill gained as Lord Karak
+        if ($this->hero?->choosesHealing() !== true && $this->getSkills()?->choosesHealing() !== true) {
             throw new \DomainException('Only Valduk chooses how many HP to heal (Berserk)');
         }
         if ($command->hp !== null && ($command->hp < 1 || $command->hp > self::MAX_HP)) {

@@ -13,6 +13,7 @@ final readonly class TestGameConfiguration
      * @param array<string, PlayerTestConfig> $playerConfigs Player-specific test configurations
      * @param bool $regent Karak: Regent expansion on (needed for the Regent heroes)
      * @param bool $lordKarak Karak: Regent, Lord Karak variant on (needs $regent)
+     * @param bool $randomHeroes Heroes dealt at random to players configured without a hero
      */
     public function __construct(
         public array $diceRolls = [],
@@ -21,5 +22,6 @@ final readonly class TestGameConfiguration
         public array $playerConfigs = [],
         public bool $regent = false,
         public bool $lordKarak = false,
+        public bool $randomHeroes = false,
     ) {}
 }

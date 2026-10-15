@@ -41,6 +41,7 @@ final readonly class Action
                 playerConfigs: $playerConfigs,
                 regent: $request->regent,
                 lordKarak: $request->lordKarak,
+                randomHeroes: $request->randomHeroes,
             );
 
             $messageBus->dispatch(new SetupTestGame(

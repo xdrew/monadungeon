@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Game\Player;
 
 use App\Game\Field\FieldPlace;
+use App\Game\GameLifecycle\GetGame;
 use App\Game\GameLifecycle\PlayerAdded;
 use App\Game\Player\CompleteReincarnation;
 use App\Game\Player\GetPlayerStatus;
@@ -18,6 +19,7 @@ use App\Game\Player\PlayerStunned;
 use App\Game\Player\ReducePlayerHP;
 use App\Game\Player\ReincarnationRequired;
 use App\Infrastructure\Uuid\Uuid;
+use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -82,7 +84,7 @@ final class HeroTest extends TestCase
     {
         $player = $this->createPlayer(null, 5);
 
-        [, $messages] = handle(
+        [, $messages] = $this->gameTester()->handle(
             static fn(PickHero $command, MessageContext $context) => $player->pickHero($command, $context),
             new PickHero($this->gameId, $this->playerId, HeroType::WARRIOR),
         );
@@ -103,7 +105,20 @@ final class HeroTest extends TestCase
         );
 
         $this->expectException(\DomainException::class);
-        handle(
+        $this->gameTester()->handle(
+            static fn(PickHero $command, MessageContext $context) => $player->pickHero($command, $context),
+            new PickHero($this->gameId, $this->playerId, HeroType::WARRIOR),
+        );
+    }
+
+    #[Test]
+    public function aHeroCannotBePickedWhenHeroesAreDealtAtRandom(): void
+    {
+        $player = $this->createPlayer(null, 5);
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Heroes are dealt at random in this game');
+        $this->gameTester(randomHeroes: true)->handle(
             static fn(PickHero $command, MessageContext $context) => $player->pickHero($command, $context),
             new PickHero($this->gameId, $this->playerId, HeroType::WARRIOR),
         );
@@ -358,5 +373,27 @@ final class HeroTest extends TestCase
         }
 
         return null;
+    }
+
+    /**
+     * A base game without random heroes, for picking a hero.
+     */
+    private function gameTester(bool $randomHeroes = false): MessageBusTester
+    {
+        $game = new class ($randomHeroes) {
+            public function __construct(private readonly bool $randomHeroes) {}
+
+            public function isRegent(): bool
+            {
+                return false;
+            }
+
+            public function isRandomHeroes(): bool
+            {
+                return $this->randomHeroes;
+            }
+        };
+
+        return MessageBusTester::create(static fn(GetGame $_query): object => $game);
     }
 }

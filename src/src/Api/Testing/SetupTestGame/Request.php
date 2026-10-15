@@ -34,5 +34,9 @@ final readonly class Request
          * Karak: Regent, Lord Karak variant on (needs regent).
          */
         public bool $lordKarak = false,
+        /**
+         * Heroes dealt at random to players configured without a hero.
+         */
+        public bool $randomHeroes = false,
     ) {}
 }

@@ -76,6 +76,7 @@ final readonly class SetupTestGameHandler
             at: new \DateTimeImmutable(),
             regent: $config->regent,
             lordKarak: $config->lordKarak,
+            randomHeroes: $config->randomHeroes,
         ));
 
         // Add players if specified in configuration

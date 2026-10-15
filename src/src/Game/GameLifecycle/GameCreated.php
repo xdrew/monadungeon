@@ -24,5 +24,9 @@ final readonly class GameCreated implements Event
          * Karak: Regent, Lord Karak variant enabled for this game.
          */
         public bool $lordKarak = false,
+        /**
+         * Heroes are dealt at random in this game.
+         */
+        public bool $randomHeroes = false,
     ) {}
 }

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Game\Player;
 
-use App\Game\Player\CurseLifted;
-use App\Game\GameLifecycle\LordKarakRevealed;
 use App\Game\GameLifecycle\GetGame;
+use App\Game\GameLifecycle\LordKarakRevealed;
 use App\Game\GameLifecycle\PlayerAdded;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
 use App\Game\Item\ItemName;
 use App\Game\Item\ItemType;
 use App\Game\Player\AddItemToInventory;
+use App\Game\Player\CurseLifted;
 use App\Game\Player\Error\InventoryFullException;
 use App\Game\Player\HeroType;
 use App\Game\Player\PickHero;
@@ -243,6 +243,17 @@ final class RegentHeroPlayerTest extends TestCase
     }
 
     #[Test]
+    public function aLordKarakWithValduksSkillSetsAHealLimit(): void
+    {
+        $player = $this->createPlayer(HeroType::THIEF, 2);
+        $player->onLordKarakRevealed(new LordKarakRevealed($this->gameId, $this->playerId, [HeroType::BARBARIAN], false, 'treasure'));
+
+        $player->setHealLimit(new SetHealLimit($this->gameId, $this->playerId, 4));
+
+        self::assertSame(4, $player->getHealLimit());
+    }
+
+    #[Test]
     public function aLordKarakWithoutHeroesHasNoSkills(): void
     {
         $player = $this->createPlayer(null, 2);
@@ -288,6 +299,11 @@ final class RegentHeroPlayerTest extends TestCase
             public function isRegent(): bool
             {
                 return $this->regent;
+            }
+
+            public function isRandomHeroes(): bool
+            {
+                return false;
             }
 
             public function getStatus(): object

@@ -27,6 +27,8 @@ export interface TestGameConfig {
   regent?: boolean;
   /** Karak: Regent, Lord Karak variant (needs `regent: true`). */
   lordKarak?: boolean;
+  /** Heroes dealt at random to players configured without a hero. */
+  randomHeroes?: boolean;
 }
 
 export class TestGameSetup {
@@ -65,6 +67,7 @@ export class TestGameSetup {
         playerConfigs: config.playerConfigs || {},
         regent: config.regent ?? false,
         lordKarak: config.lordKarak ?? false,
+        randomHeroes: config.randomHeroes ?? false,
       }
     });
     

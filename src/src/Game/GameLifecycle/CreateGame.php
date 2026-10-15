@@ -26,5 +26,9 @@ final readonly class CreateGame implements Message
          * Karak: Regent, Lord Karak variant — the weakest hero becomes Lord Karak (needs the expansion).
          */
         public bool $lordKarak = false,
+        /**
+         * Heroes are dealt at random: a player who joins without a hero gets a free one (AI players always do).
+         */
+        public bool $randomHeroes = false,
     ) {}
 }

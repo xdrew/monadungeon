@@ -122,6 +122,13 @@ class Game extends AggregateRoot
     private bool $lordKarak = false;
 
     /**
+     * Heroes are dealt at random: a player joining without a hero gets one nobody holds; picking a hero is refused.
+     * AI players are dealt a hero in every game.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $randomHeroes = false;
+
+    /**
      * Karak: Regent, Lord Karak variant — the player who became Lord Karak (once per game).
      */
     #[Column(type: UuidType::class, nullable: true)]
@@ -161,12 +168,14 @@ class Game extends AggregateRoot
         );
         $game->regent = $command->regent;
         $game->lordKarak = $command->lordKarak;
+        $game->randomHeroes = $command->randomHeroes;
         $messageContext->dispatch(new GameCreated(
             gameId: $command->gameId,
             gameCreateTime: $command->at,
             deckSize: $command->deckSize,
             regent: $command->regent,
             lordKarak: $command->lordKarak,
+            randomHeroes: $command->randomHeroes,
         ));
 
         return $game;
@@ -256,6 +265,11 @@ class Game extends AggregateRoot
         if ($command->hero?->isRegent() === true && !$this->regent) {
             throw new \DomainException($command->hero->label() . ' needs the Karak: Regent expansion');
         }
+
+        $hero = $command->hero;
+        if ($hero === null && ($command->isAi || $this->randomHeroes)) {
+            $hero = $this->dealHero($messageContext);
+        }
         $this->players = $players;
 
         // Check TestMode for player HP configuration
@@ -276,7 +290,7 @@ class Game extends AggregateRoot
             username: $command->username,
             walletAddress: $command->walletAddress,
             isAi: $command->isAi,
-            hero: $command->hero,
+            hero: $hero,
         ));
     }
 
@@ -569,6 +583,14 @@ class Game extends AggregateRoot
     }
 
     /**
+     * Heroes are dealt at random in this game.
+     */
+    public function isRandomHeroes(): bool
+    {
+        return $this->randomHeroes;
+    }
+
+    /**
      * @return array<string, int>
      */
     public function getStartingRolls(): array
@@ -751,6 +773,34 @@ class Game extends AggregateRoot
             winnerId: $this->winnerId,
             scores: $scores,
         ));
+    }
+
+    /**
+     * Deals a random hero nobody in this game holds yet; the Regent heroes only with the expansion.
+     */
+    private function dealHero(MessageContext $messageContext): ?HeroType
+    {
+        $taken = [];
+        foreach ($this->players as $playerId) {
+            $chosen = $messageContext->dispatch(new GetPlayer($playerId))->getChosenHero();
+            if ($chosen !== null) {
+                $taken[] = $chosen;
+            }
+        }
+
+        $pool = array_values(array_filter(
+            HeroType::cases(),
+            fn(HeroType $hero): bool => ($this->regent || !$hero->isRegent()) && !\in_array($hero, $taken, true),
+        ));
+        if ($pool === []) {
+            error_log(sprintf('WARN Game::dealHero no free hero left in game %s', $this->gameId->toString()));
+
+            return null;
+        }
+
+        $key = TestMode::getInstance()->getRandomArrayKey($pool, 'hero');
+
+        return $pool[(int) $key];
     }
 
     /**
