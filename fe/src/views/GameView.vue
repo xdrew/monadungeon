@@ -1643,6 +1643,17 @@ const battleInfo = ref(null);
 const battleReportModalRef = ref(null);
 const skipBattleModalReshow = ref(false);
 const lastProcessedBattleId = ref(null);
+// The pending post-fight decision is restored at most once per page load (see loadGameData)
+const pendingBattleRestored = ref(false);
+// The fight still waits for the player: the current turn's last action is the fight itself (not a duel, the turn is open)
+const battleAwaitsDecision = (data, battle) => {
+  if (!battle || battle.duel || data?.state?.status !== 'turn_in_progress') return false;
+  if (battle.player !== data.state.currentPlayerId) return false;
+  const turn = (data.turns || []).find((t) => t.turnId === data.state.currentTurnId);
+  const actions = turn?.actions || [];
+  const last = actions[actions.length - 1];
+  return (last?.action || last?.type) === 'fight_monster';
+};
 
 // Computed property to determine if the game can be started
 // Computed properties for ghost tile to ensure reactivity
@@ -2453,6 +2464,19 @@ const loadGameData = async (showLoading = true) => {
 
 
 
+
+    // A reload in the middle of a post-fight decision (pick up / leave / retreat): bring the fight back once,
+    // otherwise the field offers new rooms and the backend refuses PICK_TILE after FIGHT_MONSTER
+    if (!pendingBattleRestored.value) {
+      pendingBattleRestored.value = true;
+      const pending = fetchedGameData.state?.lastBattleInfo;
+      if (battleAwaitsDecision(fetchedGameData, pending) && pending.player === currentPlayerId.value
+        && !showBattleReportModal.value && lastProcessedBattleId.value !== pending.battleId) {
+        console.debug('[fight] restoring the pending fight after a reload', pending.battleId);
+        battleInfo.value = pending;
+        showBattleReportModal.value = true;
+      }
+    }
 
     // Check for pending battle info and show battle modal if needed
     if (fetchedGameData.field && fetchedGameData.field.lastBattleInfo) {
