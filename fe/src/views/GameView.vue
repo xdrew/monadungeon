@@ -335,19 +335,19 @@
                       height: `${tileSize}px`,
                     }"
                   />
-                </div>
 
-                <!-- Floating heal text -->
-                <div
-                  v-if="showHealingNotification && healingNotification"
-                  class="floating-heal-text"
-                  :key="'heal-' + healingNotification.playerId + '-' + Date.now()"
-                  :style="{
-                    left: `${healingNotification.worldX}px`,
-                    top: `${healingNotification.worldY}px`
-                  }"
-                >
-                  +{{ healingNotification.healAmount }} HP
+                  <!-- Floating heal text: inside the tiles container, whose coordinates worldX/worldY use -->
+                  <div
+                    v-if="showHealingNotification && healingNotification"
+                    :key="'heal-' + healingNotification.playerId"
+                    class="floating-heal-text"
+                    :style="{
+                      left: `${healingNotification.worldX}px`,
+                      top: `${healingNotification.worldY}px`
+                    }"
+                  >
+                    +{{ healingNotification.healAmount }} HP
+                  </div>
                 </div>
               </div>
               <p v-else>
@@ -402,7 +402,7 @@
                 <div class="player-card-figure">
                   <img
                     :src="playerAvatar(player)"
-                    :alt="isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'Player' : 'AI Player'"
+                    :alt="(isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'Player' : 'AI Player') + (player.hero ? ` — ${heroShortName(player)}` : '')"
                     class="player-figure-image"
                     :class="{ 'is-ai': !isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) }"
                     @error="onAvatarError($event, player)"
@@ -1327,7 +1327,7 @@ const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.hero
 const figureHeroKey = (player) => (player?.lordKarak ? 'lord_karak' : player?.hero || null);
 const badgeName = (player) => (player?.lordKarak ? 'Lord Karak' : heroShortName(player));
 
-// Hero per player id for the tile figures (theme portraits); AI players have no hero
+// Hero per player id for the tile figures (theme portraits); the AI is dealt a hero like everyone
 const playerHeroes = computed(() => Object.fromEntries(
   (gameData.value?.players || []).map((p) => [p.id, figureHeroKey(p)])
 ));
@@ -2042,6 +2042,17 @@ const applyAiTilePlacement = (action) => {
         if (!gameData.value.field.roomFieldPlaces.includes(position)) {
           gameData.value.field.roomFieldPlaces.push(position);
         }
+      }
+    }
+
+    // The token drawn for the new room (monster, chest…): show it with the tile, before the fight is replayed
+    if (result.item) {
+      // an empty PHP map arrives as []
+      if (!gameData.value.field.items || Array.isArray(gameData.value.field.items)) {
+        gameData.value.field.items = { ...(gameData.value.field.items || {}) };
+      }
+      if (!gameData.value.field.items[position]) {
+        gameData.value.field.items[position] = result.item;
       }
     }
 
@@ -4096,6 +4107,21 @@ const showPlayerSwitchNotification = () => {
   });
 };
 
+// Where a hero's figure stands in field coordinates: offsets ignore the zoom transform of the field.
+// Returns the top centre of the figure, or null when it is not rendered.
+const playerFigureAnchor = (playerId) => {
+  const figure = document.querySelector(`[data-testid="player-figure-${playerId}"]`);
+  const field = figure?.closest('.tile')?.offsetParent;
+  if (!figure || !field) return null;
+  let x = 0;
+  let y = 0;
+  for (let el = figure; el && el !== field; el = el.offsetParent) {
+    x += el.offsetLeft;
+    y += el.offsetTop;
+  }
+  return { x: x + figure.offsetWidth / 2, y };
+};
+
 // Function to show healing notification
 const showHealingNotificationForPlayer = (playerId, healAmount, positionStr = null) => {
   // Try to get player's username from game data
@@ -4121,6 +4147,14 @@ const showHealingNotificationForPlayer = (playerId, healAmount, positionStr = nu
     worldY: hy
   };
   showHealingNotification.value = true;
+
+  // Above the hero's figure once the board shows the new position (the tile centre above is only a fallback)
+  nextTick(() => {
+    const anchor = playerFigureAnchor(playerId);
+    if (anchor && healingNotification.value?.playerId === playerId) {
+      healingNotification.value = { ...healingNotification.value, worldX: anchor.x, worldY: anchor.y - 24 };
+    }
+  });
   
   // Auto-dismiss after animation completes
   setTimeout(() => {

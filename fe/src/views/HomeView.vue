@@ -42,10 +42,32 @@
 
         <!-- Hero selection (hero skills from the Karak board game) -->
         <div class="hero-picker" data-testid="hero-picker">
-          <p class="hero-picker-title">Choose your hero</p>
+          <p class="hero-picker-title">{{ randomHeroes ? 'Heroes are dealt at random' : 'Choose your hero' }}</p>
+
+          <!-- Random heroes (the board game rule): you and the AI are dealt different heroes when the game is created -->
+          <label class="regent-toggle random-heroes-toggle" data-testid="random-heroes-toggle">
+            <input v-model="randomHeroes" type="checkbox" data-testid="random-heroes-toggle-input">
+            <span class="regent-toggle-text">
+              <strong>🎲 Random heroes</strong>
+              <span>Off: pick your hero, the AI is dealt one of the others</span>
+            </span>
+          </label>
+
+          <div v-if="randomHeroes" class="hero-card hero-card-random" data-testid="hero-card-random">
+            <div class="hero-card-figure">
+              <span class="hero-card-emoji">🎲</span>
+            </div>
+            <div class="hero-card-body">
+              <span class="hero-card-role">Dealt at the start</span>
+              <h3 class="hero-card-name">A hero awaits</h3>
+              <p class="hero-skills-none">
+                You and the AI each get a different hero{{ regentExpansion ? ', Karak: Regent heroes included' : '' }}.
+              </p>
+            </div>
+          </div>
 
           <!-- roster: one portrait tile per hero; the skills live in the card below -->
-          <div class="hero-roster" role="radiogroup" aria-label="Hero">
+          <div v-if="!randomHeroes" class="hero-roster" role="radiogroup" aria-label="Hero">
             <button
               v-for="card in heroCards"
               :key="card.testid"
@@ -72,7 +94,7 @@
           </div>
 
           <!-- the selected hero's card, laid out like a rulebook entry -->
-          <transition name="hero-card" mode="out-in">
+          <transition v-if="!randomHeroes" name="hero-card" mode="out-in">
             <div
               :key="selectedCard.testid"
               class="hero-card"
@@ -279,6 +301,22 @@ const lordKarakVariant = ref(readStoredLordKarak());
 watch(lordKarakVariant, (enabled) => {
   try {
     localStorage.setItem('lordKarakVariant', enabled ? '1' : '0');
+  } catch (e) {
+    // localStorage unavailable (private mode) - the switch still works for this page
+  }
+});
+// Random heroes switch (the board game deals heroes), on unless turned off in this browser ('1' / '0')
+const readStoredRandomHeroes = () => {
+  try {
+    return localStorage.getItem('randomHeroes') !== '0';
+  } catch (e) {
+    return true;
+  }
+};
+const randomHeroes = ref(readStoredRandomHeroes());
+watch(randomHeroes, (enabled) => {
+  try {
+    localStorage.setItem('randomHeroes', enabled ? '1' : '0');
   } catch (e) {
     // localStorage unavailable (private mode) - the switch still works for this page
   }
@@ -1083,7 +1121,8 @@ const createNewGame = async () => {
     // Call the API to create a new game
     const response = await gameApi.createGame(null, {
       regent: regentExpansion.value,
-      lordKarak: regentExpansion.value && lordKarakVariant.value
+      lordKarak: regentExpansion.value && lordKarakVariant.value,
+      randomHeroes: randomHeroes.value
     });
     console.log('Game created with ID:', response.gameId);
 
@@ -1111,8 +1150,9 @@ const createNewGame = async () => {
     // Join the newly created game as player with Privy ID, username, and wallet if available
     const playerUsername = localStorage.getItem('monadUsername') || null;
     const walletAddress = localStorage.getItem('walletAddress') || null;
-    // The hero shown in the roster: a Regent hero remembered from an earlier game is dropped when the switch is off
-    const heroForGame = selectedCard.value?.key ?? null;
+    // The hero shown in the roster: a Regent hero remembered from an earlier game is dropped when the switch is off;
+    // with random heroes the backend deals one
+    const heroForGame = randomHeroes.value ? null : (selectedCard.value?.key ?? null);
     await gameApi.joinGame(response.gameId, playerId, privyUserId, playerUsername, walletAddress, false, heroForGame);
     console.log('Joined game as player ID:', playerId, 'with Privy ID:', privyUserId, 'Username:', playerUsername, 'Wallet:', walletAddress, 'Hero:', heroForGame);
 
@@ -1543,6 +1583,10 @@ const createNewGame = async () => {
 
 .lord-karak-toggle {
   margin-left: 16px;
+}
+
+.random-heroes-toggle {
+  margin: 0 0 4px;
 }
 
 .regent-toggle input {
