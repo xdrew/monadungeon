@@ -38,14 +38,6 @@
         >
           {{ dynamicResultText }}
         </h3>
-        <button
-          type="button"
-          class="close-btn"
-          :aria-label="$t('common.close')"
-          @click="duel ? duelPrimaryAction() : leaveItemAndEndTurn()"
-        >
-          &times;
-        </button>
       </header>
 
       <div class="battle-body">
@@ -458,7 +450,6 @@
             class="reward-row"
             :class="[rewardCategoryClass, { 'reward-rise': showResults, 'reward-row--potential': isPotentialReward && !hasBoost }]"
           >
-            <span class="reward-row__label">{{ $t('battle.reward') }}</span>
             <span class="reward-row__icon">
               <span
                 v-if="dynamicResult === 'win'"
@@ -485,22 +476,33 @@
                 :size="44"
               />
             </span>
-            <span class="reward-row__name">{{ battleInfo.reward ? formattedItemName : itemName('treasure') }}</span>
-            <span
-              v-if="battleInfo.reward && getItemTypeDamage(battleInfo.reward.type) > 0"
-              class="stat-badge badge-damage"
-            >+{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
-            <span
-              v-if="battleInfo.reward?.treasureValue > 0"
-              class="stat-badge badge-value"
-            ><GameIcon
-              name="treasure"
-              :size="13"
-            /> {{ battleInfo.reward.treasureValue }}</span>
-            <span
-              v-if="isGuardChestReward && !showConsumableSelection"
-              class="reward-note success"
-            >{{ $t('battle.chestAutoOpened') }}</span>
+            <span class="reward-row__text">
+              <span class="reward-row__label">{{ $t('battle.reward') }}</span>
+              <span class="reward-row__name">{{ battleInfo.reward ? formattedItemName : itemName('treasure') }}</span>
+              <span
+                v-if="(battleInfo.reward && getItemTypeDamage(battleInfo.reward.type) > 0) || battleInfo.reward?.treasureValue > 0 || (isGuardChestReward && !showConsumableSelection)"
+                class="reward-row__stats"
+              >
+                <span
+                  v-if="battleInfo.reward && getItemTypeDamage(battleInfo.reward.type) > 0"
+                  class="stat-badge badge-damage"
+                ><GameIcon
+                  name="sword"
+                  :size="15"
+                /> +{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
+                <span
+                  v-if="battleInfo.reward?.treasureValue > 0"
+                  class="stat-badge badge-value"
+                ><GameIcon
+                  name="treasure"
+                  :size="15"
+                /> {{ battleInfo.reward.treasureValue }}</span>
+                <span
+                  v-if="isGuardChestReward && !showConsumableSelection"
+                  class="reward-note success"
+                >{{ $t('battle.chestAutoOpened') }}</span>
+              </span>
+            </span>
           </div>
 
           <!-- The buttons -->
@@ -524,7 +526,7 @@
                 <GameIcon
                   name="dice"
                   :size="18"
-                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
+                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">R</span>
               </button>
               <button
                 class="btn btn--ember btn-primary"
@@ -532,7 +534,7 @@
                 :data-testid="duelAwaitsDecision ? 'finalize-battle' : 'duel-continue'"
                 @click="duelPrimaryAction"
               >
-                {{ duelPrimaryLabel }} <span class="kbd-hint">(Enter)</span>
+                {{ duelPrimaryLabel }} <span class="kbd-hint">Enter</span>
               </button>
             </div>
             <!-- Keys: player already has one -->
@@ -541,11 +543,11 @@
               class="button-group"
             >
               <button
-                class="btn btn--ember btn-primary"
+                class="btn btn--ember btn-primary close-btn"
                 :disabled="isProcessing"
                 @click="leaveItemAndEndTurn"
               >
-                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.allKeysSame') }} <span class="kbd-hint">(Enter)</span>
+                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.allKeysSame') }} <span class="kbd-hint">Enter</span>
               </button>
             </div>
             <!-- Guard chest: auto-collected -->
@@ -558,7 +560,7 @@
                 :disabled="isProcessing"
                 @click="pickUpAndEndTurn"
               >
-                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.treasureAuto') }} <span class="kbd-hint">(Enter)</span>
+                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.treasureAuto') }} <span class="kbd-hint">Enter</span>
               </button>
             </div>
             <!-- Normal victory with reward -->
@@ -566,13 +568,15 @@
               v-else-if="battleInfo.result === 'win' && battleInfo.reward && !showInventorySelection && !showConsumableSelection"
               class="button-group"
             >
+              <!-- Leave the reward on the tile (also the e2e's old "×" hook: .close-btn) -->
               <button
-                v-if="!hasInventorySpace && !isKeyReward && !isGuardChestReward"
-                class="btn btn--ghost btn-secondary"
+                v-if="!isGuardChestReward"
+                class="btn btn--ghost btn-secondary close-btn"
                 :disabled="isProcessing"
+                data-testid="leave-reward"
                 @click="leaveItemAndEndTurn"
               >
-                {{ turnContinues ? $t('battle.leaveContinue') : $t('battle.leaveEndTurn') }} <span class="kbd-hint">(Esc)</span>
+                {{ turnContinues ? $t('battle.leaveContinue') : $t('battle.leaveEndTurn') }} <span class="kbd-hint">Esc</span>
               </button>
               <!-- Valduk "Tireless": leave the loot on the tile and keep moving -->
               <button
@@ -589,7 +593,7 @@
                 :disabled="isProcessing"
                 @click="pickUpAndEndTurn"
               >
-                {{ turnContinues ? $t('battle.pickUpContinue') : $t('battle.pickUpEndTurn') }} <span class="kbd-hint">(Enter)</span>
+                {{ turnContinues ? $t('battle.pickUpContinue') : $t('battle.pickUpEndTurn') }} <span class="kbd-hint">Enter</span>
               </button>
             </div>
             <!-- Consumable selection buttons -->
@@ -607,7 +611,7 @@
                 <GameIcon
                   name="dice"
                   :size="18"
-                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
+                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">R</span>
               </button>
               <button
                 v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
@@ -645,11 +649,11 @@
               </button>
               <button
                 v-else
-                class="btn btn--blood btn-defeat"
+                class="btn btn--blood btn-defeat close-btn"
                 :disabled="isProcessing"
                 @click="finalizeBattleWithoutConsumables"
               >
-                {{ retreatLabel }} <span class="kbd-hint">(Enter)</span>
+                {{ retreatLabel }} <span class="kbd-hint">Enter</span>
               </button>
             </div>
             <!-- Lost or draw without consumable selection -->
@@ -667,14 +671,14 @@
                 <GameIcon
                   name="dice"
                   :size="18"
-                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
+                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">R</span>
               </button>
               <button
-                class="btn btn--blood btn-defeat"
+                class="btn btn--blood btn-defeat close-btn"
                 :disabled="isProcessing"
                 @click="handleRetreat"
               >
-                {{ retreatLabel }} <span class="kbd-hint">(Enter)</span>
+                {{ retreatLabel }} <span class="kbd-hint">Enter</span>
               </button>
             </div>
             <!-- Inventory replacement -->
@@ -703,11 +707,11 @@
               class="button-group"
             >
               <button
-                class="btn btn--ember btn-primary"
+                class="btn btn--ember btn-primary close-btn"
                 :disabled="isProcessing"
                 @click="leaveItemAndEndTurn"
               >
-                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} <span class="kbd-hint">(Enter)</span>
+                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} <span class="kbd-hint">Enter</span>
               </button>
             </div>
           </div>
@@ -1808,31 +1812,6 @@ if (import.meta.env.DEV) {
   100% { transform: scale(1); }
 }
 
-.close-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 26px;
-  line-height: 1;
-  color: var(--text-primary);
-  background: radial-gradient(circle at 50% 35%, #2a201a 0%, #0d0907 80%);
-  box-shadow: 0 0 0 3px var(--iron-dark), 0 0 0 5px var(--iron-edge);
-  transition: color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.close-btn:hover,
-.close-btn:focus-visible {
-  outline: none;
-  color: var(--text-accent);
-  box-shadow: 0 0 0 3px var(--color-secondary), 0 0 0 5px var(--iron-edge), 0 0 14px rgba(var(--ember-rgb), 0.5);
-}
-
 /* ===== The fighters and the roll between them ===== */
 .battle-body {
   flex: 1;
@@ -2212,9 +2191,8 @@ button.item-chip {
 .reward-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 17px;
+  gap: 16px;
+  min-width: 0;
 }
 
 .reward-rise {
@@ -2228,18 +2206,12 @@ button.item-chip {
 }
 
 .reward-row--potential .reward-row__icon {
-  outline: 1px solid var(--color-primary);
-  outline-offset: 3px;
   animation: pulseBorder 1.4s ease-in-out infinite;
 }
 
 @keyframes pulseBorder {
-  0%, 100% { outline-color: rgba(var(--ember-rgb), 0.9); }
-  50% { outline-color: rgba(var(--ember-rgb), 0.25); }
-}
-
-.reward-row__label {
-  color: var(--text-secondary);
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
 }
 
 .reward-row__icon {
@@ -2271,20 +2243,49 @@ button.item-chip {
   transform: scale(1.2);
 }
 
+/* caption over the name, like the scene's own captions */
+.reward-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.reward-row__label {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
 .reward-row__name {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 28px;
   line-height: 1;
   color: var(--text-heading);
+  text-shadow: 0 2px 6px #000;
+}
+
+.reward-row__stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .stat-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 20px;
+  line-height: 1;
   color: var(--text-heading);
+}
+
+.stat-badge :deep(svg) {
+  color: var(--text-accent);
 }
 
 .badge-value {
@@ -2293,6 +2294,7 @@ button.item-chip {
 
 .reward-note {
   font-style: italic;
+  font-size: 14px;
   color: var(--text-accent);
 }
 
@@ -2318,9 +2320,16 @@ button.item-chip {
   100% { transform: translate(var(--sparkle-x), var(--sparkle-y)) scale(1.2); opacity: 0; }
 }
 
-/* ===== Buttons ===== */
+/* ===== Buttons: an ember plate for the main action, bone-rimmed ones for the rest ===== */
+/* the reward on top, the buttons under it across the whole plaque */
+.choice-plaque__bottom {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
 .battle-footer {
-  margin-left: auto;
+  width: 100%;
 }
 
 .footer-reveal {
@@ -2340,27 +2349,88 @@ button.item-chip {
 .button-group {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 12px;
 }
 
 .button-group .btn {
-  min-height: 48px;
-  gap: 6px;
+  flex: 1 1 0;
+  min-width: 220px;
+}
+
+.battle-footer .btn {
+  position: relative;
+  min-height: 58px;
+  padding: 0 28px;
+  gap: 12px;
+  white-space: nowrap;
+  border-radius: 2px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  transition: box-shadow var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.battle-footer .btn--ember {
+  border: 1px solid var(--color-primary);
+  background: linear-gradient(180deg, rgba(255, 130, 40, 0.38) 0%, rgba(150, 60, 10, 0.38) 100%);
+  color: #ffe2b8;
+  text-shadow: 0 1px 2px #000;
+  box-shadow: 0 0 26px rgba(var(--ember-rgb), 0.38), inset 0 1px 0 rgba(255, 220, 180, 0.3), inset 0 -2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.battle-footer .btn--ember:hover:not(:disabled),
+.battle-footer .btn--ember:focus-visible {
+  outline: none;
+  background: linear-gradient(180deg, rgba(255, 150, 60, 0.5) 0%, rgba(170, 70, 15, 0.5) 100%);
+  box-shadow: 0 0 36px rgba(var(--ember-rgb), 0.55), inset 0 1px 0 rgba(255, 220, 180, 0.4), inset 0 -2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.battle-footer .btn--ghost {
+  border: 1px solid rgba(234, 220, 192, 0.35);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.battle-footer .btn--ghost:hover:not(:disabled),
+.battle-footer .btn--ghost:focus-visible {
+  outline: none;
+  border-color: rgba(234, 220, 192, 0.7);
+  color: var(--text-heading);
+}
+
+.battle-footer .btn--blood {
+  border: 1px solid rgba(217, 69, 42, 0.8);
+  background: linear-gradient(180deg, rgba(150, 40, 20, 0.45) 0%, rgba(80, 18, 8, 0.45) 100%);
+  color: #f6d2c6;
+  box-shadow: 0 0 22px rgba(217, 69, 42, 0.3), inset 0 1px 0 rgba(255, 190, 170, 0.2);
 }
 
 .btn-strike {
-  padding: 0 28px;
-  font-family: var(--font-display);
-  font-size: 22px;
-  box-shadow: 0 0 18px rgba(var(--ember-rgb), 0.35);
+  padding: 0 30px;
+  font-size: 24px;
 }
 
+/* the key that does it, a small keycap in the button's corner */
 .kbd-hint {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-bottom-width: 2px;
+  border-radius: 3px;
   font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 400;
-  opacity: 0.6;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  opacity: 0.5;
 }
 
 /* ===== Phones and low screens: fighters smaller, side by side, the plaque full width ===== */
@@ -2380,11 +2450,6 @@ button.item-chip {
 
   .result-title {
     font-size: 22px;
-  }
-
-  .close-btn {
-    top: 12px;
-    right: 12px;
   }
 
   .battle-body {
@@ -2428,6 +2493,10 @@ button.item-chip {
 
   .choice-plaque {
     padding: 14px;
+  }
+
+  .choice-plaque__bottom {
+    flex-wrap: wrap;
   }
 
   .battle-footer,

@@ -365,7 +365,7 @@ export default {
     guards: 'охраняет: {item}',
     part: '{name} +{n}',
     adds: '+{n} к броску',
-    reward: 'Награда:',
+    reward: 'Награда',
     afterRoll: 'После броска',
     alone: '{n} без заклинаний против {need}',
     duelHeader: 'Поединок на арене',

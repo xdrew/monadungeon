@@ -365,7 +365,7 @@ export default {
     guards: 'strzeże: {item}',
     part: '{name} +{n}',
     adds: '+{n} do rzutu',
-    reward: 'Nagroda:',
+    reward: 'Nagroda',
     afterRoll: 'Po rzucie',
     alone: '{n} bez zaklęć przeciw {need}',
     duelHeader: 'Pojedynek na arenie walki',

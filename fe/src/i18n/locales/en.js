@@ -366,7 +366,7 @@ export default {
     guards: 'guards: {item}',
     part: '{name} +{n}',
     adds: '+{n} to the roll',
-    reward: 'Reward:',
+    reward: 'Reward',
     afterRoll: 'After the roll',
     alone: '{n} by itself against {need}',
     duelHeader: 'Duel on the Battle Arena',

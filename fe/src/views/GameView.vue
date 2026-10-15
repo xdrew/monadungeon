@@ -1647,7 +1647,8 @@ const lastProcessedBattleId = ref(null);
 const pendingBattleRestored = ref(false);
 // The fight still waits for the player: the current turn's last action is the fight itself (not a duel, the turn is open)
 const battleAwaitsDecision = (data, battle) => {
-  if (!battle || battle.duel || data?.state?.status !== 'turn_in_progress') return false;
+  // the first turn of a game runs in status 'started', later ones in 'turn_in_progress'
+  if (!battle || battle.duel || !['started', 'turn_in_progress'].includes(data?.state?.status)) return false;
   if (battle.player !== data.state.currentPlayerId) return false;
   const turn = (data.turns || []).find((t) => t.turnId === data.state.currentTurnId);
   const actions = turn?.actions || [];
