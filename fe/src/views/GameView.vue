@@ -4233,7 +4233,9 @@ const replaceItem = async () => {
     playerId: currentPlayerId.value,
     turnId: currentTurnId,
     loadGameData,
-    keepTurn: inventoryFullKeepsTurn.value
+    keepTurn: inventoryFullKeepsTurn.value,
+    // the dialog stays open: the player can try again or leave the find
+    onError: (message) => showActionNotice(message)
   });
   inventoryFullKeepsTurn.value = false;
 };

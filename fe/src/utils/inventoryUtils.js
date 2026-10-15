@@ -62,7 +62,9 @@ export const replaceItem = async ({
   playerId,
   turnId,
   loadGameData,
-  keepTurn = false
+  keepTurn = false,
+  // a failed swap is told by this (a short notice over the game) when given; the full-screen error is the fallback
+  onError = null
 }) => {
   if (!selectedItemToReplace.value || !droppedItem.value) return;
 
@@ -116,7 +118,9 @@ export const replaceItem = async ({
 
   } catch (err) {
     console.error('Failed to replace item:', err);
-    error.value = t('errors.replaceReason', { reason: err.message });
+    const reason = err?.response?.data?.message || err.message;
+    if (onError) onError(t('errors.replaceReason', { reason }));
+    else error.value = t('errors.replaceReason', { reason });
   } finally {
     loading.value = false;
     loadingStatus.value = '';
