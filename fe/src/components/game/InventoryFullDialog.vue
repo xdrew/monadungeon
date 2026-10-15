@@ -25,18 +25,35 @@
           aria-hidden="true"
         >
           <defs>
+            <!-- fixed-size heads (not scaled with the stroke): the base sits on the line's end -->
             <marker
               id="inv-arrowhead"
               viewBox="0 0 10 10"
-              refX="8"
+              refX="0"
               refY="5"
-              markerWidth="7"
-              markerHeight="7"
-              orient="auto-start-reverse"
+              markerWidth="10"
+              markerHeight="10"
+              markerUnits="userSpaceOnUse"
+              orient="auto"
             >
               <path
                 d="M0 0 L10 5 L0 10 z"
                 class="inv-arrowhead"
+              />
+            </marker>
+            <marker
+              id="inv-arrowhead-hot"
+              viewBox="0 0 10 10"
+              refX="0"
+              refY="5"
+              markerWidth="10"
+              markerHeight="10"
+              markerUnits="userSpaceOnUse"
+              orient="auto"
+            >
+              <path
+                d="M0 0 L10 5 L0 10 z"
+                class="inv-arrowhead inv-arrowhead--hot"
               />
             </marker>
           </defs>
@@ -46,7 +63,7 @@
             :d="arrow"
             class="inv-arrow"
             :class="{ 'inv-arrow--hot': hotIndex === index }"
-            marker-end="url(#inv-arrowhead)"
+            :marker-end="hotIndex === index ? 'url(#inv-arrowhead-hot)' : 'url(#inv-arrowhead)'"
           />
         </svg>
         <div
@@ -198,7 +215,8 @@ const drawArrows = () => {
     if (!card) return '';
     const to = card.getBoundingClientRect();
     const tx = to.left + to.width / 2 - box.left;
-    const ty = to.top - box.top - 4;
+    // the line stops a head's length (10px) above the card: the head's base sits on its end, the tip near the card
+    const ty = to.top - box.top - 14;
     const bend = Math.max(18, (ty - fy) * 0.55);
     return `M ${fx} ${fy} C ${fx} ${fy + bend}, ${tx} ${ty - bend}, ${tx} ${ty}`;
   });
@@ -348,21 +366,25 @@ onUnmounted(() => {
 
 .inv-arrow {
   fill: none;
-  stroke: rgba(var(--ember-rgb), 0.45);
+  stroke: rgba(var(--ember-rgb), 0.55);
   stroke-width: 1.6;
-  stroke-dasharray: 5 5;
+  stroke-linecap: round;
+  stroke-dasharray: 4 6;
   transition: stroke var(--transition-fast), stroke-width var(--transition-fast);
 }
 
 .inv-arrow--hot {
   stroke: var(--color-primary);
-  stroke-width: 2.2;
+  stroke-width: 2;
   stroke-dasharray: none;
-  filter: drop-shadow(0 0 4px rgba(var(--ember-rgb), 0.8));
 }
 
 .inv-arrowhead {
-  fill: rgba(var(--ember-rgb), 0.75);
+  fill: rgba(var(--ember-rgb), 0.55);
+}
+
+.inv-arrowhead--hot {
+  fill: var(--color-primary);
 }
 
 /* the find, centred */
