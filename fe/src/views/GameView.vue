@@ -215,6 +215,223 @@
           :turns="journalTurns"
           @close="closeJournal"
         />
+        <template
+          v-if="hasDecision"
+          #plaque
+        >
+          <DecisionPlaque>
+            <!-- Teleport Mode Controls -->
+            <div
+              v-if="isTeleportMode"
+              class="teleport-controls"
+            >
+              <h4>Portal of Healing</h4>
+              <p>Pick who is carried to the fountain, then click a healing fountain. The portal costs no move and the turn goes on.</p>
+              <div class="portal-targets">
+                <button
+                  v-for="player in gameData?.players || []"
+                  :key="`portal-target-${player.id}`"
+                  type="button"
+                  class="portal-target btn btn--ghost btn--sm"
+                  :class="{ selected: teleportTargetPlayerId === player.id }"
+                  :data-testid="`portal-target-${player.id}`"
+                  @click="teleportTargetPlayerId = player.id"
+                >
+                  {{ playerLabel(player) }}
+                </button>
+              </div>
+              <button
+                class="cancel-teleport-btn btn btn--ghost btn--block"
+                @click="cancelTeleportMode"
+              >
+                Cancel Teleport
+              </button>
+            </div>
+
+            <!-- Karak: Regent — Dark Thorn: pick the hero who loses 1 HP -->
+            <div
+              v-if="isDarkThornMode"
+              class="teleport-controls dark-thorn-controls"
+              data-testid="dark-thorn-banner"
+            >
+              <h4>Dark Thorn</h4>
+              <p>Choose another hero: they lose 1 HP. The spell costs no move and the turn goes on.</p>
+              <div class="portal-targets">
+                <button
+                  v-for="player in darkThornTargets"
+                  :key="`dark-thorn-target-${player.id}`"
+                  type="button"
+                  class="portal-target btn btn--ghost btn--sm"
+                  :class="{ selected: darkThornTargetId === player.id }"
+                  :data-testid="`dark-thorn-target-${player.id}`"
+                  @click="darkThornTargetId = player.id"
+                >
+                  {{ playerLabel(player) }} <GameIcon name="heart" :size="13" /> {{ player.hp }}
+                </button>
+              </div>
+              <button
+                class="end-turn-btn btn btn--ember btn--block"
+                data-testid="dark-thorn-confirm"
+                :disabled="!darkThornTargetId || loading || isRequestInProgress"
+                @click="castDarkThorn"
+              >
+                Cast Dark Thorn
+              </button>
+              <button
+                class="cancel-teleport-btn btn btn--ghost btn--block"
+                @click="cancelDarkThornMode"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <!-- Karak: Regent — Battle Arena: choose the rival -->
+            <div
+              v-if="arenaChoiceForMe && !showBattleReportModal"
+              class="teleport-controls arena-controls"
+              data-testid="arena-banner"
+            >
+              <DuelOpponentPanel
+                :players="duelOpponentCandidates"
+                :disabled="loading || isRequestInProgress"
+                @choose="handleChooseDuelOpponent"
+              />
+            </div>
+
+            <!-- Karak: Regent — the current (or last) duel -->
+            <div
+              v-if="visibleDuel && !showBattleReportModal"
+              class="duel-section"
+            >
+              <DuelResultPanel
+                :duel="visibleDuel"
+                :players="duelPanelPlayers"
+                :current-player-id="currentPlayerId"
+                :disabled="loading || isRequestInProgress"
+                @loot="handleTakeDuelLoot"
+                @dismiss="dismissDuel"
+              />
+            </div>
+
+            <!-- Warrior "Reincarnation" Controls -->
+            <div
+              v-if="isReincarnationMode"
+              class="teleport-controls reincarnation-controls"
+              data-testid="reincarnation-banner"
+            >
+              <h4>Reincarnation</h4>
+              <p>The Warrior lost his last HP. Click a healing fountain to return there with full HP. The turn ends afterwards.</p>
+            </div>
+
+            <!-- Curse of Karak: the choice is still open (for example after a page reload) -->
+            <div
+              v-if="curseChoicePendingForMe && !showBattleReportModal"
+              class="teleport-controls curse-controls"
+              data-testid="curse-banner"
+            >
+              <CurseChoicePanel
+                :players="curseChoice.players"
+                :cursed-player-id="curseChoice.cursedPlayerId"
+                :cursed-label="curseChoice.cursedLabel"
+                @choose="handleCurseChoice"
+              />
+            </div>
+
+            <!-- Warlock "Magic Swap" Controls -->
+            <div
+              v-if="isMagicSwapMode"
+              class="teleport-controls magic-swap-controls"
+              data-testid="magic-swap-banner"
+            >
+              <h4>Magic Swap</h4>
+              <p>Click another hero's figure to trade places. It costs all 4 moves: the turn ends on the new tile (a chest or a fountain there still counts).</p>
+              <button
+                class="end-turn-btn btn btn--ghost btn--block"
+                data-testid="magic-swap-cancel"
+                :disabled="loading || isRequestInProgress"
+                @click="isMagicSwapMode = false"
+              >
+                Cancel
+              </button>
+            </div>
+            <!-- Karak: Regent — Baron Markul retreats after a Lightning Attack that was not won -->
+            <div
+              v-if="retreatChoiceForMe && !showBattleReportModal"
+              class="teleport-controls retreat-controls"
+              data-testid="retreat-banner"
+            >
+              <h4>Retreat</h4>
+              <p>The Lightning Attack was not won. Choose an opened tile to retreat to; the turn ends there.</p>
+              <div class="portal-targets">
+                <button
+                  v-for="option in retreatChoiceForMe.options"
+                  :key="`retreat-${option}`"
+                  type="button"
+                  class="portal-target btn btn--ghost btn--sm"
+                  :data-testid="`retreat-${option}`"
+                  :disabled="loading || isRequestInProgress"
+                  @click="handleChooseRetreat(option)"
+                >
+                  {{ option }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Karak: Regent heroes — Lightning Attack target -->
+            <div
+              v-if="isLightningMode"
+              class="teleport-controls lightning-controls"
+              data-testid="lightning-banner"
+            >
+              <h4>Lightning Attack</h4>
+              <p>Choose a monster to strike. It costs all 4 moves; if you do not win you pick where to retreat.</p>
+              <div class="portal-targets">
+                <button
+                  v-for="target in lightningTargets"
+                  :key="`lightning-${target.position}`"
+                  type="button"
+                  class="portal-target btn btn--ghost btn--sm"
+                  :data-testid="`lightning-target-${target.position}`"
+                  :disabled="loading || isRequestInProgress"
+                  @click="handleLightningAttack(target.position)"
+                >
+                  {{ target.label }} <GameIcon name="heart" :size="13" /> {{ target.hp }} — {{ target.position }}
+                </button>
+              </div>
+              <button
+                class="cancel-teleport-btn btn btn--ghost btn--block"
+                @click="isLightningMode = false"
+              >
+                Cancel
+              </button>
+            </div>
+          </DecisionPlaque>
+        </template>
+        <template
+          v-if="isAiPlayingBack || isReplaying"
+          #playback
+        >
+          <!-- AI Turn Playback Controls -->
+          <AiTurnPlaybackControls
+            v-if="isAiPlayingBack"
+            :current-step="aiPlayback.currentStepIndex.value + 1"
+            :total-steps="aiPlayback.totalSteps.value"
+            :playback-speed="aiPlayback.playbackSpeed.value"
+            :current-action="aiPlayback.currentAction.value"
+            @speed-change="aiPlayback.setSpeed"
+            @skip="aiPlayback.skip"
+          />
+
+          <!-- Replay controls -->
+          <ReplayControls
+            v-if="isReplaying"
+            :current-replay-turn="currentReplayTurn"
+            :game-turns="gameTurns"
+            :replay-speed="replaySpeed"
+            @stop-replay="finishReplay"
+            @speed-change="changeReplaySpeed"
+          />
+        </template>
         <template #tools>
           <ZoomControls
             @center-map="centerViewOnMiddle"
@@ -559,219 +776,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Game sidebar on the right -->
-        <div class="game-sidebar">
-          <div class="sidebar-content">
-            <!-- Player Setup and Game Controls sections removed for cleaner UI -->
-
-            <!-- Teleport Mode Controls -->
-            <div
-              v-if="isTeleportMode"
-              class="sidebar-section teleport-controls"
-            >
-              <h3>Portal of Healing</h3>
-              <p>Pick who is carried to the fountain, then click a healing fountain. The portal costs no move and the turn goes on.</p>
-              <div class="portal-targets">
-                <button
-                  v-for="player in gameData?.players || []"
-                  :key="`portal-target-${player.id}`"
-                  type="button"
-                  class="portal-target"
-                  :class="{ selected: teleportTargetPlayerId === player.id }"
-                  :data-testid="`portal-target-${player.id}`"
-                  @click="teleportTargetPlayerId = player.id"
-                >
-                  {{ playerLabel(player) }}
-                </button>
-              </div>
-              <button
-                class="cancel-teleport-btn btn--block"
-                @click="cancelTeleportMode"
-              >
-                Cancel Teleport
-              </button>
-            </div>
-
-            <!-- Karak: Regent — Dark Thorn: pick the hero who loses 1 HP -->
-            <div
-              v-if="isDarkThornMode"
-              class="sidebar-section teleport-controls dark-thorn-controls"
-              data-testid="dark-thorn-banner"
-            >
-              <h3>Dark Thorn</h3>
-              <p>Choose another hero: they lose 1 HP. The spell costs no move and the turn goes on.</p>
-              <div class="portal-targets">
-                <button
-                  v-for="player in darkThornTargets"
-                  :key="`dark-thorn-target-${player.id}`"
-                  type="button"
-                  class="portal-target"
-                  :class="{ selected: darkThornTargetId === player.id }"
-                  :data-testid="`dark-thorn-target-${player.id}`"
-                  @click="darkThornTargetId = player.id"
-                >
-                  {{ playerLabel(player) }} <GameIcon name="heart" :size="13" /> {{ player.hp }}
-                </button>
-              </div>
-              <button
-                class="end-turn-btn btn btn--ember btn--block"
-                data-testid="dark-thorn-confirm"
-                :disabled="!darkThornTargetId || loading || isRequestInProgress"
-                @click="castDarkThorn"
-              >
-                Cast Dark Thorn
-              </button>
-              <button
-                class="cancel-teleport-btn btn--block"
-                @click="cancelDarkThornMode"
-              >
-                Cancel
-              </button>
-            </div>
-
-            <!-- Karak: Regent — Battle Arena: choose the rival -->
-            <div
-              v-if="arenaChoiceForMe && !showBattleReportModal"
-              class="sidebar-section teleport-controls arena-controls"
-              data-testid="arena-banner"
-            >
-              <DuelOpponentPanel
-                :players="duelOpponentCandidates"
-                :disabled="loading || isRequestInProgress"
-                @choose="handleChooseDuelOpponent"
-              />
-            </div>
-
-            <!-- Karak: Regent — the current (or last) duel -->
-            <div
-              v-if="visibleDuel && !showBattleReportModal"
-              class="sidebar-section duel-section"
-            >
-              <DuelResultPanel
-                :duel="visibleDuel"
-                :players="duelPanelPlayers"
-                :current-player-id="currentPlayerId"
-                :disabled="loading || isRequestInProgress"
-                @loot="handleTakeDuelLoot"
-                @dismiss="dismissDuel"
-              />
-            </div>
-
-            <!-- Warrior "Reincarnation" Controls -->
-            <div
-              v-if="isReincarnationMode"
-              class="sidebar-section teleport-controls reincarnation-controls"
-              data-testid="reincarnation-banner"
-            >
-              <h3>Reincarnation</h3>
-              <p>The Warrior lost his last HP. Click a healing fountain to return there with full HP. The turn ends afterwards.</p>
-            </div>
-
-            <!-- Curse of Karak: the choice is still open (for example after a page reload) -->
-            <div
-              v-if="curseChoicePendingForMe && !showBattleReportModal"
-              class="sidebar-section teleport-controls curse-controls"
-              data-testid="curse-banner"
-            >
-              <CurseChoicePanel
-                :players="curseChoice.players"
-                :cursed-player-id="curseChoice.cursedPlayerId"
-                :cursed-label="curseChoice.cursedLabel"
-                @choose="handleCurseChoice"
-              />
-            </div>
-
-            <!-- Warlock "Magic Swap" Controls -->
-            <div
-              v-if="isMagicSwapMode"
-              class="sidebar-section teleport-controls magic-swap-controls"
-              data-testid="magic-swap-banner"
-            >
-              <h3>Magic Swap</h3>
-              <p>Click another hero's figure to trade places. It costs all 4 moves: the turn ends on the new tile (a chest or a fountain there still counts).</p>
-              <button
-                class="end-turn-btn btn btn--ghost btn--block"
-                data-testid="magic-swap-cancel"
-                :disabled="loading || isRequestInProgress"
-                @click="isMagicSwapMode = false"
-              >
-                Cancel
-              </button>
-            </div>
-            <!-- Karak: Regent — Baron Markul retreats after a Lightning Attack that was not won -->
-            <div
-              v-if="retreatChoiceForMe && !showBattleReportModal"
-              class="sidebar-section teleport-controls retreat-controls"
-              data-testid="retreat-banner"
-            >
-              <h3>Retreat</h3>
-              <p>The Lightning Attack was not won. Choose an opened tile to retreat to; the turn ends there.</p>
-              <div class="portal-targets">
-                <button
-                  v-for="option in retreatChoiceForMe.options"
-                  :key="`retreat-${option}`"
-                  type="button"
-                  class="portal-target"
-                  :data-testid="`retreat-${option}`"
-                  :disabled="loading || isRequestInProgress"
-                  @click="handleChooseRetreat(option)"
-                >
-                  ↩️ {{ option }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Karak: Regent heroes — skills used from the sidebar -->
-            <div
-              v-if="isLightningMode"
-              class="sidebar-section teleport-controls lightning-controls"
-              data-testid="lightning-banner"
-            >
-              <h3>Lightning Attack</h3>
-              <p>Choose a monster to strike. It costs all 4 moves; if you do not win you pick where to retreat.</p>
-              <div class="portal-targets">
-                <button
-                  v-for="target in lightningTargets"
-                  :key="`lightning-${target.position}`"
-                  type="button"
-                  class="portal-target"
-                  :data-testid="`lightning-target-${target.position}`"
-                  :disabled="loading || isRequestInProgress"
-                  @click="handleLightningAttack(target.position)"
-                >
-                  {{ target.label }} <GameIcon name="heart" :size="13" /> {{ target.hp }} — {{ target.position }}
-                </button>
-              </div>
-              <button
-                class="cancel-teleport-btn btn--block"
-                @click="isLightningMode = false"
-              >
-                Cancel
-              </button>
-            </div>
-            <!-- AI Turn Playback Controls -->
-            <AiTurnPlaybackControls
-              v-if="isAiPlayingBack"
-              :current-step="aiPlayback.currentStepIndex.value + 1"
-              :total-steps="aiPlayback.totalSteps.value"
-              :playback-speed="aiPlayback.playbackSpeed.value"
-              :current-action="aiPlayback.currentAction.value"
-              @speed-change="aiPlayback.setSpeed"
-              @skip="aiPlayback.skip"
-            />
-
-            <!-- Replay controls -->
-            <ReplayControls
-              v-if="isReplaying"
-              :current-replay-turn="currentReplayTurn"
-              :game-turns="gameTurns"
-              :replay-speed="replaySpeed"
-              @stop-replay="finishReplay"
-              @speed-change="changeReplaySpeed"
-            />
-          </div>
-        </div>
       </div>
     </div>
 
@@ -950,6 +954,7 @@ import PackBar from '@/components/game/hud/PackBar.vue';
 import ActionRings from '@/components/game/hud/ActionRings.vue';
 import IronRing from '@/components/game/hud/IronRing.vue';
 import Chronicle from '@/components/game/hud/Chronicle.vue';
+import DecisionPlaque from '@/components/game/hud/DecisionPlaque.vue';
 import JournalDrawer from '@/components/game/hud/JournalDrawer.vue';
 import { chronicleTail, chronicleTurns } from '@/utils/chronicle';
 import { useTurnOrder, heroPersonalName, joinNames } from '@/composables/useTurnOrder';
@@ -957,10 +962,10 @@ import MusicToggle from '@/components/game/MusicToggle.vue';
 import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';
-import { getItemEmoji, getInventoryItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES, hasRoomForItem, getItemStrength } from '@/utils/itemUtils';
+import { getItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES, hasRoomForItem } from '@/utils/itemUtils';
 
 // Import field utility functions
-import { TILE_SIZE, playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
+import { TILE_SIZE, calculateScrollPosition, playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
 import { updateGameDataSelectively as doUpdateGameDataSelectively, initGame as doInitGame, joinGame as doJoinGame, startGame as doStartGame } from '@/utils/gameUtils';
 
 // Import notification utility functions
@@ -977,12 +982,6 @@ import { closeBattleReportAndEndTurn as closeBattleReportAndEndTurnUtil, predict
 
 // Import keyboard utility functions
 import { handleKeyboardEvents as handleKeyboardEventsUtil } from '@/utils/keyboardUtils';
-
-// Helper function to get inventory item image
-const getInventoryItemImage = (item) => {
-  // Use the getItemImage function from itemUtils for consistency
-  return getItemImage(item);
-};
 
 // Helper function for calculating item damage values
 const getItemDamage = (item) => {
@@ -1215,7 +1214,6 @@ const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
 // Karak: Regent, Lord Karak variant — a transformed hero is drawn as Lord Karak (the chosen hero stays in `hero`)
 const figureHeroKey = (player) => (player?.lordKarak ? 'lord_karak' : player?.hero || null);
-const badgeName = (player) => (player?.lordKarak ? 'Lord Karak' : heroShortName(player));
 
 // Hero per player id for the tile figures (theme portraits); the AI is dealt a hero like everyone
 const playerHeroes = computed(() => Object.fromEntries(
@@ -1296,6 +1294,11 @@ const humanPlayer = computed(() => (gameData.value?.players || []).find(isHumanP
 // The spell being cast from the pack (Portal of Healing / Dark Thorn)
 const activeSpellItemId = computed(() => (isTeleportMode.value && selectedTeleportSpell.value?.itemId)
   || (isDarkThornMode.value && selectedDarkThornSpell.value?.itemId) || null);
+
+// A choice waits for the player: the decision plaque (bottom right, over the rings) shows it
+const hasDecision = computed(() => isTeleportMode.value || isDarkThornMode.value || isReincarnationMode.value
+  || isMagicSwapMode.value || isLightningMode.value
+  || (!showBattleReportModal.value && !!(arenaChoiceForMe.value || visibleDuel.value || curseChoicePendingForMe.value || retreatChoiceForMe.value)));
 
 // Rings: the heal-limit popover and the Journal drawer
 const healLimitOpen = ref(false);
@@ -1401,7 +1404,7 @@ const dismissLordKarak = () => {
   }
 };
 
-// The duel result stays in the sidebar until dismissed (remembered per game and duel)
+// The duel result stays in the decision plaque until dismissed (remembered per game and duel)
 const dismissedDuelId = ref(null);
 const dismissedDuelKey = () => `dismissedDuel:${id.value}`;
 try {
@@ -1522,7 +1525,7 @@ const handleTakeDuelLoot = async (itemId) => {
   await loadGameData(false);
 };
 
-// Dark Thorn: a sidebar spell aimed at another hero; Frost Fist is used in fights only
+// Dark Thorn: a spell cast from the pack at another hero; Frost Fist is used in fights only
 const isDarkThornMode = ref(false);
 const selectedDarkThornSpell = ref(null);
 const darkThornTargetId = ref(null);
@@ -1709,7 +1712,7 @@ const fieldStyles = computed(() => {
     height: `${fieldHeight}px`,
     position: 'relative',
     transform: `scale(${zoomLevel.value})`,
-    margin: '0 auto',
+    margin: 'auto', // centred in the view while smaller than it (.game-field is a grid), from the padding once larger
     transformOrigin: 'top left' // Change transform origin to avoid centering issues when zooming
   };
 });
@@ -2791,46 +2794,14 @@ const centerViewOnMiddle = () => {
   const minY = gameData.value.field.size.minY || 0;
   const maxY = gameData.value.field.size.maxY || 0;
 
-  // Calculate field dimensions
-  const fieldWidth = (maxX - minX + 1) * tileSize.value;
-  const fieldHeight = (maxY - minY + 1) * tileSize.value;
-
-  // Calculate view dimensions
-  const viewWidth = fieldElement.clientWidth;
-  const viewHeight = fieldElement.clientHeight;
-
-  // Get center coordinates of the field in pixels
+  // Center of the field in pixels; the padding and the scroll range come from the element (fieldUtils)
   const centerX = ((maxX + minX) / 2 - minX) * tileSize.value;
   const centerY = ((maxY + minY) / 2 - minY) * tileSize.value;
 
-  // Calculate ideal scroll positions
-  let idealScrollLeft = centerX - (viewWidth / 2);
-  let idealScrollTop = centerY - (viewHeight / 2);
-
-  // For debugging
-
-
-  // Take into account the field's padding (one tile on all sides, --field-padding)
-  const padding = TILE_SIZE;
-
-  // Calculate maximum scroll boundaries with padding
-  const maxScrollLeft = Math.max(0, fieldWidth + (padding * 2) - viewWidth);
-  const maxScrollTop = Math.max(0, fieldHeight + (padding * 2) - viewHeight);
-
-  // Ensure we don't scroll beyond field boundaries
-  // Add padding to account for the UI elements and padding in .game-field
-  const boundedScrollLeft = Math.min(Math.max(0, idealScrollLeft + padding), maxScrollLeft);
-  const boundedScrollTop = Math.min(Math.max(0, idealScrollTop + padding), maxScrollTop);
-
-  // Apply scroll with smooth behavior
   fieldElement.scrollTo({
-    left: boundedScrollLeft,
-    top: boundedScrollTop,
+    ...calculateScrollPosition(centerX, centerY, fieldElement),
     behavior: 'smooth'
   });
-
-  // Debug info
-
 };
 
 // Tile highlighting functions
@@ -6436,38 +6407,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   background-color: var(--color-primary-dark);
 }
 
-/* Teleport mode styles */
-.teleport-controls {
-  background-color: var(--color-tertiary-light);
-  border: 2px solid var(--color-tertiary);
-}
-
-.teleport-controls h3 {
-  color: var(--color-tertiary-dark);
-  margin-bottom: 0.5rem;
-}
-
-.teleport-controls p {
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-}
-
-.cancel-teleport-btn {
-  background-color: var(--color-secondary);
-  padding: var(--spacing-md);
-  font-size: var(--font-size-md);
-  font-weight: bold;
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.cancel-teleport-btn:hover {
-  background-color: var(--color-secondary-dark);
-}
-
 /* Floating heal text */
 .floating-heal-text {
   position: absolute;
@@ -6559,35 +6498,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   display: none;
 }
 
-/* Clickable spell items */
-.inventory-item.spell-item.clickable {
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.inventory-item.spell-item.clickable:hover {
-  transform: scale(1.1);
-  box-shadow: 0 0 10px rgba(138, 43, 226, 0.6);
-  background: rgba(138, 43, 226, 0.2);
-}
-
-/* Active teleport spell indicator */
-/* Karak: Regent */
-.inventory-item.spell-item.teleport-active {
-  animation: pulse-glow 1.5s ease-in-out infinite;
-  box-shadow: 0 0 15px rgba(138, 43, 226, 0.8), inset 0 0 0 2px #8a2be2;
-  background: rgba(138, 43, 226, 0.3);
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(138, 43, 226, 0.8);
-  }
-  50% {
-    box-shadow: 0 0 25px rgba(138, 43, 226, 1);
-  }
-}
-
 /* AI Battle Overlay */
 .ai-battle-overlay {
   position: absolute;
@@ -6677,29 +6587,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 @media (hover: none) {
   .kbd-hint { display: none; }
 }
-/* Portal of Healing target */
-.portal-targets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 8px 0;
-}
-
-.portal-target {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.06);
-  color: inherit;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.portal-target.selected {
-  border-color: var(--color-primary-hover);
-  background: rgba(102, 187, 106, 0.25);
-}
-
 /* HUD chips over the action rings: the Sprint notice and the Berserk heal-limit popover */
 .hud-chip {
   display: inline-flex;

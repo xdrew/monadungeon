@@ -86,4 +86,5 @@
   --tile-size: 150px; /* TILE_SIZE in utils/fieldUtils.js */
   --field-padding: 150px; /* one tile: room for the marks and the ghost tile beyond the field edge */
   --rail-width: 300px; /* the turn-order rail and its scrim (components/game/hud) */
+  --hud-bar-height: 92px; /* phones: the bottom bar of pack and rings */
 } 

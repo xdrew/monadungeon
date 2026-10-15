@@ -8,8 +8,6 @@ import { SPELL_TYPES } from './itemUtils';
 // Constants
 /** Size of one field tile in px (Torchlight: 150, as on the canvas boards) */
 export const TILE_SIZE = 150;
-// One tile of padding around the field (--field-padding): room for the marks beyond its edge
-const FIELD_PADDING = TILE_SIZE;
 const TILE_ANIMATION_DURATION = 1000;
 const FIELD_ELEMENT_SELECTOR = '.game-field';
 
@@ -86,33 +84,27 @@ const calculateBounds = (coordinates) => {
 };
 
 /**
- * Calculate scroll position to center on coordinates
+ * Scroll offsets that put a point of the field (px from the field's top-left tile corner) in the
+ * middle of the view. The padding is read from the element's computed style (--field-padding,
+ * plus the rail on desktop and the bottom bar on phones), so the math follows the CSS at every width;
+ * the scroll range comes from the element itself.
  * @param {number} centerX - Center X coordinate in pixels
  * @param {number} centerY - Center Y coordinate in pixels
- * @param {HTMLElement} fieldElement - Field DOM element
- * @param {Object} fieldSize - Field size information
- * @param {number} tileSize - Size of each tile
+ * @param {HTMLElement} fieldElement - Field DOM element (.game-field)
  * @returns {{left: number, top: number}} Scroll coordinates
  */
-const calculateScrollPosition = (centerX, centerY, fieldElement, fieldSize, tileSize) => {
+export const calculateScrollPosition = (centerX, centerY, fieldElement) => {
   const { clientWidth: viewWidth, clientHeight: viewHeight } = fieldElement;
-  const { minX, minY, maxX, maxY } = fieldSize;
-  
-  // Calculate ideal scroll positions
-  const idealScrollLeft = centerX - (viewWidth / 2);
-  const idealScrollTop = centerY - (viewHeight / 2);
-  
-  // Calculate field dimensions with padding
-  const fieldWidth = (maxX - minX + 1) * tileSize;
-  const fieldHeight = (maxY - minY + 1) * tileSize;
-  
-  // Calculate maximum scroll boundaries with padding
-  const maxScrollLeft = Math.max(0, fieldWidth + (FIELD_PADDING * 2) - viewWidth);
-  const maxScrollTop = Math.max(0, fieldHeight + (FIELD_PADDING * 2) - viewHeight);
-  
+  const style = getComputedStyle(fieldElement);
+  const padLeft = parseFloat(style.paddingLeft);
+  const padTop = parseFloat(style.paddingTop);
+
+  const maxScrollLeft = Math.max(0, fieldElement.scrollWidth - viewWidth);
+  const maxScrollTop = Math.max(0, fieldElement.scrollHeight - viewHeight);
+
   return {
-    left: Math.min(Math.max(0, idealScrollLeft + FIELD_PADDING), maxScrollLeft),
-    top: Math.min(Math.max(0, idealScrollTop + FIELD_PADDING), maxScrollTop)
+    left: Math.min(Math.max(0, centerX + (Number.isNaN(padLeft) ? TILE_SIZE : padLeft) - viewWidth / 2), maxScrollLeft),
+    top: Math.min(Math.max(0, centerY + (Number.isNaN(padTop) ? TILE_SIZE : padTop) - viewHeight / 2), maxScrollTop)
   };
 };
 
@@ -178,7 +170,7 @@ export const centerViewOnAvailablePlaces = (gameData, centerViewOnMiddle, tileSi
   const centerX = ((bounds.minX + bounds.maxX) / 2 - fieldSize.minX) * tileSize;
   const centerY = ((bounds.minY + bounds.maxY) / 2 - fieldSize.minY) * tileSize;
 
-  const scrollPosition = calculateScrollPosition(centerX, centerY, fieldElement, fieldSize, tileSize);
+  const scrollPosition = calculateScrollPosition(centerX, centerY, fieldElement);
   smoothScrollTo(fieldElement, scrollPosition);
 
   console.log('Centered view on available places', { 
@@ -351,7 +343,7 @@ export const scrollToPosition = (x, y, gameData, tileSize) => {
     tileCenterPx: { x: tileCenterX, y: tileCenterY }
   });
 
-  const scrollPosition = calculateScrollPosition(tileCenterX, tileCenterY, fieldElement, fieldSize, tileSize);
+  const scrollPosition = calculateScrollPosition(tileCenterX, tileCenterY, fieldElement);
   smoothScrollTo(fieldElement, scrollPosition);
 
   console.log('Applied scroll position:', scrollPosition);

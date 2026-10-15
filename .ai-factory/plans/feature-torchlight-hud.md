@@ -70,13 +70,13 @@ E2E contract this part touches (all must survive):
   - `hud/Chronicle.vue` (last 4 sentences), `hud/JournalDrawer.vue` (all turns, `<h2>`, Esc closes, focus returns to the Journal ring); delete `ActionLog.vue`. Log `console.debug('[hud] journal', open)`.
 
 ### Phase 3: Plaque, playback, mobile, docs
-- [ ] Task 7: Decision plaque, playback, sidebar removal (depends on 2-6)
+- [x] Task 7: Decision plaque, playback, sidebar removal (depends on 2-6)
   - `hud/DecisionPlaque.vue` hosting the mode panels unchanged (restyle `.teleport-controls`, `.portal-target`, `.cancel-teleport-btn`; panel headings `h4`).
   - Restyle `AiTurnPlaybackControls.vue`, `ReplayControls.vue` per the table, placed under the banner.
   - Delete `.game-sidebar` markup and all now-dead CSS (`game-layout.css` sidebar rules incl. the 1024/landscape queries, `inventory.css` `.sidebar-section/.inventory-section`, `gameView.css` leftovers, GameView style blocks for teleport-controls/sprint/heal-limit/starting-roll/debug-plaque that moved into components).
-- [ ] Task 8: Mobile HUD and field padding (depends on 7)
+- [x] Task 8: Mobile HUD and field padding (depends on 7)
   - Mobile rules per the table in the HUD components and `game-layout.css`; `.game-field` keeps `var(--field-padding)` on all widths + bottom-bar padding.
   - `fieldUtils.js calculateScrollPosition`: read the computed padding; remove the unused `FIELD_PADDING` constant.
-- [ ] Task 9: Verify and docs (depends on 1-8)
+- [x] Task 9: Verify and docs (depends on 1-8)
   - `npm run build` (prod-like check with `NODE_ENV=production`), ESLint on touched files adds no errors; host Chrome, new tab, `http://127.0.0.1:18080`: desktop 1440×900 own turn / AI turn (rail, banner headline, playback plaque) / pack with items / journal open; emulation 390×844 and 844×390; `document.querySelector('h3').innerText === 'Turn: N'`; exactly one visible `.end-turn-btn` in a base game.
   - README "Theme": the HUD — banner, turn-order rail, pack, contextual iron rings, chronicle/Journal, decision plaque, mobile strip/bar; CLAUDE.md theme bullet gets one clause about `fe/src/components/game/hud/` and the first-h3/`.end-turn-btn` contract.

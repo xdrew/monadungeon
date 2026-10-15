@@ -59,4 +59,17 @@ defineProps({
   align-items: flex-end;
   gap: 8px;
 }
+
+@media (max-width: 768px), (max-height: 500px) {
+  .action-rings__row {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .action-rings__waiting {
+    margin-bottom: 0;
+    max-width: 110px;
+    font-size: 12px;
+  }
+}
 </style>

@@ -15,6 +15,7 @@
 @import './components/inventory.css';
 @import './components/controls.css';
 @import './components/gameView.css';
+@import './components/hud.css';
 
 /* Future imports can be added here as you continue extracting:
  * @import './utils/helpers.css';

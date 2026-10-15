@@ -100,4 +100,20 @@ defineProps({
   margin-top: 6px;
   background: linear-gradient(90deg, rgba(var(--ember-rgb), 0) 0%, var(--color-primary) 50%, rgba(var(--ember-rgb), 0) 100%);
 }
+
+@media (max-width: 768px), (max-height: 500px) {
+  .turn-banner__turn,
+  .turn-banner__sub {
+    font-size: 13px;
+    letter-spacing: 0.2em;
+  }
+
+  .turn-banner__headline {
+    font-size: 22px;
+  }
+
+  .turn-banner__rule {
+    display: none;
+  }
+}
 </style>

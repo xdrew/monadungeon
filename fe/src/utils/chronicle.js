@@ -5,7 +5,9 @@
  */
 import { getMonsterName } from '@/theme';
 
-const humanize = (value, fallback = '') => (value ? String(value).replace(/_/g, ' ') : fallback);
+// Spells read better by their card names than by their backend keys
+const ITEM_NAMES = { teleport: 'Portal of Healing', dark_thorn: 'Dark Thorn', frost_fist: 'Frost Fist' };
+const humanize = (value, fallback = '') => (value ? ITEM_NAMES[value] || String(value).replace(/_/g, ' ') : fallback);
 const monsterName = (key) => (key ? getMonsterName(String(key).toLowerCase()) : 'monster');
 
 const ARTICLE_LESS = /^(a|an|the|some)\s/i;

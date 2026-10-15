@@ -172,4 +172,22 @@ watch(() => props.open, async (open) => {
     transition: none;
   }
 }
+
+/* Phones: a bottom sheet */
+@media (max-width: 768px), (max-height: 500px) {
+  .journal-drawer {
+    top: auto;
+    left: 0;
+    width: 100vw;
+    height: 70dvh;
+    border-left: 0;
+    border-top: 1px solid var(--iron-dark);
+    box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.7);
+  }
+
+  .journal-enter-from,
+  .journal-leave-to {
+    transform: translateY(24px);
+  }
+}
 </style>

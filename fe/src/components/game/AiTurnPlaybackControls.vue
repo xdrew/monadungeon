@@ -1,63 +1,54 @@
 <template>
-  <div class="sidebar-section ai-playback">
-    <h4>
-      <img
-        src="/images/ai.webp"
-        alt="AI"
-        class="ai-avatar-tiny"
-      >
-      AI Turn
-    </h4>
-
-    <div class="playback-progress">
+  <!-- The AI's turn played back step by step: a slim plaque under the turn banner -->
+  <div
+    class="ai-playback hud-plaque"
+    role="status"
+  >
+    <div class="hud-plaque__row">
+      <span class="hud-plaque__caption">AI turn</span>
       <span class="step-counter">Step {{ currentStep }} of {{ totalSteps }}</span>
-      <div class="progress-bar">
-        <div
-          class="progress-fill"
-          :style="{ width: `${(currentStep / totalSteps) * 100}%` }"
-        />
-      </div>
     </div>
-
     <div
+      class="progress-bar"
+      aria-hidden="true"
+    >
+      <div
+        class="progress-fill"
+        :style="{ width: `${totalSteps ? (currentStep / totalSteps) * 100 : 0}%` }"
+      />
+    </div>
+    <p
       v-if="currentAction"
       class="current-action"
     >
-      <span class="action-icon">{{ currentAction.icon }}</span>
       <span class="action-label">{{ currentAction.label }}</span>
+    </p>
+    <div class="hud-plaque__row">
+      <div
+        class="speed-controls"
+        role="group"
+        aria-label="Playback speed"
+      >
+        <button
+          v-for="speed in SPEEDS"
+          :key="speed.value"
+          type="button"
+          class="speed-btn btn btn--iron btn--sm"
+          :class="{ active: playbackSpeed === speed.value }"
+          :aria-pressed="playbackSpeed === speed.value"
+          @click="$emit('speed-change', speed.value)"
+        >
+          {{ speed.label }}
+        </button>
+      </div>
+      <button
+        type="button"
+        class="skip-btn btn btn--ghost btn--sm"
+        @click="$emit('skip')"
+      >
+        Skip
+      </button>
     </div>
-
-    <div class="speed-controls">
-      <span class="speed-label">Speed:</span>
-      <button
-        class="speed-btn"
-        :class="{ active: playbackSpeed === 0.5 }"
-        @click="$emit('speed-change', 0.5)"
-      >
-        Slow
-      </button>
-      <button
-        class="speed-btn"
-        :class="{ active: playbackSpeed === 1 }"
-        @click="$emit('speed-change', 1)"
-      >
-        Normal
-      </button>
-      <button
-        class="speed-btn"
-        :class="{ active: playbackSpeed === 2 }"
-        @click="$emit('speed-change', 2)"
-      >
-        Fast
-      </button>
-    </div>
-
-    <button
-      class="skip-btn"
-      @click="$emit('skip')"
-    >
-      Skip
-    </button>
   </div>
 </template>
 
@@ -82,129 +73,38 @@ defineProps({
 });
 
 defineEmits(['speed-change', 'skip']);
+
+const SPEEDS = [
+  { value: 0.5, label: 'Slow' },
+  { value: 1, label: 'Normal' },
+  { value: 2, label: 'Fast' }
+];
 </script>
 
 <style scoped>
-.ai-playback {
-  background-color: var(--bg-modal);
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-  border: 1px solid var(--color-primary);
-  color: #e6e6e6;
-}
-
-h4 {
-  color: #ffcc00;
-  margin-top: 0;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #444;
-  padding-bottom: 5px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ai-avatar-tiny {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-}
-
-.playback-progress {
-  margin-bottom: 12px;
-}
-
-.step-counter {
-  font-size: 0.85em;
-  color: #bbb;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background-color: #333;
-  border-radius: 4px;
-  margin-top: 5px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), #a855f7);
-  transition: width 0.3s ease;
-  border-radius: 4px;
-}
-
 .current-action {
-  background-color: #2a2a40;
-  border-radius: 6px;
-  padding: 8px 10px;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9em;
-  min-height: 36px;
-}
-
-.action-icon {
-  font-size: 1.1em;
-}
-
-.action-label {
-  color: #e6e6e6;
+  margin: 0;
+  min-height: 1.4em;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--text-primary);
+  text-align: center;
 }
 
 .speed-controls {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.speed-label {
-  font-size: 0.85em;
-  color: #bbb;
-  margin-right: 2px;
+  gap: 8px;
 }
 
 .speed-btn {
-  padding: 4px 10px;
-  background-color: #333;
-  color: #ccc;
-  border: 1px solid #555;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8em;
-  transition: all 0.2s;
-}
-
-.speed-btn:hover {
-  background-color: #444;
-  color: #fff;
+  min-width: 0;
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
 }
 
 .speed-btn.active {
-  background-color: var(--color-primary);
-  color: #fff;
-  border-color: #a855f7;
-}
-
-.skip-btn {
-  width: 100%;
-  padding: 8px;
-  background-color: #333;
-  color: #ccc;
-  border: 1px solid #555;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85em;
-  transition: all 0.2s;
-}
-
-.skip-btn:hover {
-  background-color: #555;
-  color: #fff;
+  color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-secondary), 0 0 0 4px var(--iron-edge), 0 0 10px rgba(var(--ember-rgb), 0.45);
 }
 </style>

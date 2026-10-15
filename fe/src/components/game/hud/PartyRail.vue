@@ -338,4 +338,49 @@ const heroRole = (player) => (player.lordKarak ? 'Lord Karak' : `the ${props.her
   border: 1px solid rgba(234, 220, 192, 0.2);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8);
 }
+
+/* Phones: a strip of small medallions; hearts shrink to one heart and a number, a tap opens the kit */
+@media (max-width: 768px), (max-height: 500px) {
+  .party-rail__caption,
+  .party-member__numeral,
+  .party-member__name,
+  .party-member__who,
+  .party-member__treasure,
+  .party-member__roll {
+    display: none;
+  }
+
+  .party-rail__list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .party-member {
+    flex-direction: column;
+    gap: 4px;
+    --size: 40px;
+  }
+
+  .party-member--acting {
+    --size: 48px;
+  }
+
+  .party-member__hearts .hp-heart:not(:first-child) {
+    display: none;
+  }
+
+  .party-member__hp-number {
+    display: inline;
+    margin-left: 2px;
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+
+  .party-member__kit {
+    left: 0;
+    top: 100%;
+    margin-top: 4px;
+  }
+}
 </style>

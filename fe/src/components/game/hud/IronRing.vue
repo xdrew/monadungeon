@@ -124,4 +124,22 @@ defineProps({
   background: var(--iron-edge);
   box-shadow: 0 0 0 2px var(--iron);
 }
+
+/* Phones: smaller disks; the label stays in the button text (End Turn) but is visually hidden */
+@media (max-width: 768px), (max-height: 500px) {
+  .iron-ring {
+    min-width: 48px;
+    --disk: 48px;
+  }
+
+  .iron-ring__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 </style>

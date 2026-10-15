@@ -154,4 +154,73 @@
 .game-hud__rings {
   margin-left: auto;
 }
+
+/* Phones (and short landscape screens): banner on top, a strip of medallions under it, tools down the right edge,
+   a bottom bar of pack and rings; the chronicle hides behind the Journal ring */
+@media (max-width: 768px), (max-height: 500px) {
+  .game-hud {
+    --hud-left: 0px;
+    --hud-gutter: 8px;
+  }
+
+  .game-hud__scrim,
+  .game-hud__chronicle {
+    display: none;
+  }
+
+  .game-hud__top {
+    top: 6px;
+    left: 8px;
+    right: 8px;
+    gap: 6px;
+  }
+
+  .game-hud__rail {
+    top: 62px;
+    left: 8px;
+    right: 56px;
+    width: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .game-hud__tools {
+    top: 62px;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .game-hud__tools :slotted(.zoom-controls) {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .game-hud__plaque {
+    left: 8px;
+    right: 8px;
+    bottom: calc(var(--hud-bar-height) + 8px);
+    width: auto;
+    max-height: 45dvh;
+  }
+
+  .game-hud__bottom {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-height: var(--hud-bar-height);
+    padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+    gap: 10px;
+    align-items: flex-end;
+    background: linear-gradient(0deg, rgba(7, 5, 4, 0.95) 0%, rgba(7, 5, 4, 0.85) 70%, rgba(7, 5, 4, 0) 100%);
+    pointer-events: auto;
+  }
+
+  .game-hud__pack {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
 </style>

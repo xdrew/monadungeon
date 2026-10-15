@@ -43,4 +43,16 @@ const emit = defineEmits(['cast']);
   color: var(--text-muted);
   text-shadow: 0 2px 4px #000;
 }
+
+@media (max-width: 768px), (max-height: 500px) {
+  .pack-bar__caption {
+    display: none;
+  }
+
+  .pack-bar :deep(.inventory-slots) {
+    flex-wrap: nowrap;
+    --slot: 32px;
+    --slot-img: 26px;
+  }
+}
 </style>

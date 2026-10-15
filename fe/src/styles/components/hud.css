@@ -1,0 +1,45 @@
+/* Slim HUD plaques under the turn banner: AI turn playback, replay (components/game/AiTurnPlaybackControls.vue,
+   ReplayControls.vue) */
+.hud-plaque {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(380px, calc(100vw - 32px));
+  padding: 10px 14px;
+  background: var(--bg-panel);
+  border: 1px solid rgba(var(--ember-rgb), 0.35);
+  box-shadow: 0 0 18px rgba(255, 100, 20, 0.15), 0 8px 20px rgba(0, 0, 0, 0.7);
+  color: var(--text-primary);
+}
+
+.hud-plaque__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hud-plaque__caption,
+.hud-plaque .step-counter {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-muted);
+}
+
+.hud-plaque__caption {
+  color: var(--text-accent);
+}
+
+.hud-plaque .progress-bar {
+  height: 2px;
+  background: rgba(234, 220, 192, 0.12);
+}
+
+.hud-plaque .progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  box-shadow: 0 0 8px rgba(var(--ember-rgb), 0.8);
+  transition: width var(--transition-normal);
+}
