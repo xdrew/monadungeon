@@ -202,21 +202,33 @@ const cardEls = [];
 const arrows = ref([]);
 const arrowBox = ref({ w: 0, h: 0 });
 const hotIndex = ref(null);
+// Positions inside .inv-swap from offsetLeft/offsetTop: unlike screen rects they ignore the dialog's rise animation
+const offsetWithin = (el, ancestor) => {
+  let x = 0;
+  let y = 0;
+  let node = el;
+  while (node && node !== ancestor) {
+    x += node.offsetLeft;
+    y += node.offsetTop;
+    node = node.offsetParent;
+  }
+  return { x, y };
+};
 const drawArrows = () => {
-  if (!swapEl.value || !foundEl.value) return;
-  const box = swapEl.value.getBoundingClientRect();
+  const box = swapEl.value;
+  if (!box || !foundEl.value) return;
   const icon = foundEl.value.querySelector('.inv-found__icon') || foundEl.value;
-  const from = icon.getBoundingClientRect();
-  const fx = from.left + from.width / 2 - box.left;
-  const fy = from.bottom - box.top - 4;
-  arrowBox.value = { w: box.width, h: box.height };
+  const from = offsetWithin(icon, box);
+  const fx = from.x + icon.offsetWidth / 2;
+  const fy = from.y + icon.offsetHeight - 4;
+  arrowBox.value = { w: box.offsetWidth, h: box.offsetHeight };
   arrows.value = props.inventoryForCategory.map((_, index) => {
     const card = cardEls[index];
     if (!card) return '';
-    const to = card.getBoundingClientRect();
-    const tx = to.left + to.width / 2 - box.left;
+    const to = offsetWithin(card, box);
+    const tx = to.x + card.offsetWidth / 2;
     // the line stops a head's length (10px) above the card: the head's base sits on its end, the tip near the card
-    const ty = to.top - box.top - 14;
+    const ty = to.y - 14;
     const bend = Math.max(18, (ty - fy) * 0.55);
     return `M ${fx} ${fy} C ${fx} ${fy + bend}, ${tx} ${ty - bend}, ${tx} ${ty}`;
   });
@@ -286,16 +298,23 @@ const onKeyDown = (e) => {
   }
 };
 
+// any change of the block's size (images loading, fonts, the window) redraws the arrows
+let resizeObserver = null;
 onMounted(() => {
   window.addEventListener('keydown', onKeyDown, true);
-  window.addEventListener('resize', drawArrows);
   nextTick(drawArrows);
-  // images change the layout once they load
-  setTimeout(drawArrows, 350);
+  if (typeof ResizeObserver !== 'undefined' && swapEl.value) {
+    resizeObserver = new ResizeObserver(() => drawArrows());
+    resizeObserver.observe(swapEl.value);
+    cardEls.forEach((card) => card && resizeObserver.observe(card));
+  } else {
+    window.addEventListener('resize', drawArrows);
+  }
 });
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeyDown, true);
   window.removeEventListener('resize', drawArrows);
+  resizeObserver?.disconnect();
 });
 </script>
 
