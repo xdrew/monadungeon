@@ -396,42 +396,16 @@
           </span>
         </div>
 
-        <!-- A full pack: what goes to make room for the reward -->
-        <div
+        <!-- A full pack: the same plaque as outside the fight — the reward, an arrow to every item it could
+             replace, one click swaps; "leave the find" wins the fight and leaves the reward -->
+        <InventoryFullDialog
           v-if="!isRolling && showInventorySelection"
-          class="items-section items-section--replace"
-        >
-          <button
-            v-for="(item, index) in inventoryForSelection"
-            :key="`inventory-${index}`"
-            type="button"
-            class="item-chip selectable inventory-replace"
-            :class="{ selected: selectedItemForReplacement?.itemId === item.itemId }"
-            :aria-pressed="selectedItemForReplacement?.itemId === item.itemId"
-            @click="setSelectedItemForReplacement(item)"
-          >
-            <img
-              v-if="getItemImage(item)"
-              :src="getItemImage(item)"
-              alt=""
-              class="chip-img"
-            >
-            <GameIcon
-              v-else
-              name="treasure"
-              :size="24"
-            />
-            <span class="chip-name">{{ formatItemName(item.type || item.name) }}</span>
-            <span
-              v-if="getItemTypeDamage(item.type || item.name) > 0"
-              class="chip-damage"
-            >+{{ getItemTypeDamage(item.type || item.name) }}</span>
-            <span
-              v-else-if="item.treasureValue > 0"
-              class="chip-value"
-            >{{ item.treasureValue }}</span>
-          </button>
-        </div>
+          :dropped-item="pendingPickupItem || battleInfo.reward"
+          :item-category="rewardCategory"
+          :inventory-for-category="inventoryForSelection"
+          @replace-item="replaceAndTake"
+          @skip-item="finalizeBattleAndLeaveItem"
+        />
 
         <!-- Curse of Karak: choose the victim before picking up the reward or ending the turn -->
         <CurseChoicePanel
@@ -686,26 +660,6 @@
                 {{ retreatLabel }} <span class="kbd-hint">Enter</span>
               </button>
             </div>
-            <!-- Inventory replacement -->
-            <div
-              v-else-if="showInventorySelection"
-              class="button-group"
-            >
-              <button
-                class="btn btn--ghost btn-danger"
-                :disabled="isProcessing"
-                @click="cancelReplacement"
-              >
-                {{ $t('common.cancel') }}
-              </button>
-              <button
-                class="btn btn--ember btn-primary"
-                :disabled="!selectedItemForReplacement || isProcessing"
-                @click="confirmReplacement"
-              >
-                {{ potentialVictoryWithConsumables ? $t('battle.replacePickUp') : (turnContinues ? $t('battle.replaceContinue') : $t('battle.replaceEndTurn')) }}
-              </button>
-            </div>
             <!-- Fallback end turn -->
             <div
               v-else
@@ -733,6 +687,7 @@ import { getMonsterImage } from '@/utils/monsterUtils';
 import { formatItemName, getItemImage } from '@/utils/itemUtils';
 import { itemName, monsterName, heroName } from '@/i18n/names';
 import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
+import InventoryFullDialog from '@/components/game/InventoryFullDialog.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import DieFace from '@/components/game/fight/DieFace.vue';
 import FighterFigure from '@/components/game/fight/FighterFigure.vue';
@@ -912,12 +867,6 @@ const rerollDice = () => {
 const showInventorySelection = ref(false);
 const inventoryForSelection = ref([]);
 const selectedItemForReplacement = ref(null);
-const setSelectedItemForReplacement = (item) => {
-  selectedItemForReplacement.value = item;
-  try {
-    console.log('[BattleReportModal] Selected item for replacement:', item?.itemId || item);
-  } catch { /* logging must never break the fight */ }
-};
 const pendingPickupItem = ref(null);
 
 // Reactive data for consumable selection
@@ -1370,17 +1319,19 @@ const confirmReplacement = () => {
   availableConsumables.value = [];
 };
 
-const cancelReplacement = () => {
-  if (isProcessing.value) return;
-  isProcessing.value = false;
-  showInventorySelection.value = false;
-  inventoryForSelection.value = [];
-  selectedItemForReplacement.value = null;
-  pendingPickupItem.value = null;
-  if (selectedConsumables.value.length > 0) {
-    setShowConsumableSelection(true, 'cancelReplacement showing consumable selection again');
-  }
+// one click on a card of the full-pack plaque: that item goes, the reward takes its place
+const replaceAndTake = (item) => {
+  selectedItemForReplacement.value = item;
+  confirmReplacement();
 };
+
+const rewardCategory = computed(() => {
+  const type = (pendingPickupItem.value || props.battleInfo?.reward)?.type;
+  if (type === 'key') return 'key';
+  if (['dagger', 'sword', 'axe'].includes(type)) return 'weapon';
+  if (['fireball', 'teleport', 'frost_fist', 'dark_thorn'].includes(type)) return 'spell';
+  return 'treasure';
+});
 
 const leaveItemAndEndTurn = () => {
   if (isProcessing.value) return;
@@ -1441,6 +1392,8 @@ const showFinalizeBattleInventoryFullSelection = (inventory) => {
 // Keyboard handler
 const onKeyDown = (e) => {
   if (isRolling.value || isProcessing.value || curseChoicePending.value) return;
+  // the full-pack plaque handles its own keys (Esc leaves the find)
+  if (showInventorySelection.value) return;
 
   // Karak: Regent — a duel side has one main action
   if (duel.value) {
@@ -2170,11 +2123,6 @@ if (import.meta.env.DEV) {
 
 button.item-chip {
   cursor: pointer;
-}
-
-.item-chip.inventory-replace.selected {
-  border-color: rgba(217, 69, 42, 0.8);
-  background: rgba(217, 69, 42, 0.15);
 }
 
 .consumable-kept {
