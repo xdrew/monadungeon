@@ -19,8 +19,8 @@
           class="party-member__medallion"
           :aria-label="t('hud.showKit', { name: entry.name })"
           :aria-expanded="openId === entry.player.id"
-          @click="toggle(entry.player.id)"
-          @mouseenter="hoverId = entry.player.id"
+          @click="toggle(entry.player.id, $event)"
+          @mouseenter="hoverKit(entry.player.id, $event)"
           @mouseleave="hoverId = null"
         >
           <img
@@ -91,6 +91,8 @@
         <div
           v-if="openId === entry.player.id || hoverId === entry.player.id"
           class="party-member__kit"
+          :class="{ 'party-member__kit--floating': kitPos }"
+          :style="kitPos ? { top: `${kitPos.top}px`, left: `${kitPos.left}px` } : undefined"
           role="group"
           :aria-label="t('hud.kitOf', { name: entry.name })"
         >
@@ -131,7 +133,27 @@ const { t } = useI18n();
 
 const openId = ref(null);
 const hoverId = ref(null);
-const toggle = (playerId) => {
+
+// On wide screens the rail scrolls, and a scroll box clips what hangs out of it: the kit floats in the
+// viewport instead (position: fixed), placed where it used to hang — right of the medallion, under the row.
+// On phones the rail is a plain strip and the kit keeps its CSS place.
+const kitPos = ref(null);
+const isCompact = () => window.matchMedia('(max-width: 768px), (max-height: 500px)').matches;
+const placeKit = (event) => {
+  if (isCompact()) {
+    kitPos.value = null;
+    return;
+  }
+  const row = event.currentTarget.closest('.party-member');
+  const medallion = event.currentTarget.getBoundingClientRect();
+  kitPos.value = { top: row.getBoundingClientRect().bottom - 4, left: medallion.right };
+};
+const hoverKit = (playerId, event) => {
+  placeKit(event);
+  hoverId.value = playerId;
+};
+const toggle = (playerId, event) => {
+  if (event) placeKit(event);
   openId.value = openId.value === playerId ? null : playerId;
 };
 
@@ -260,11 +282,13 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 /* Ruslan Display (the Cyrillic fallback of --font-display) runs wider than Pirata One */
 .party-member__name:lang(ru) {
   font-size: 16px;
-  overflow-wrap: anywhere;
+  /* never cut a name in the middle ("Викториу / с"): long names shrink instead */
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .party-member--acting .party-member__name:lang(ru) {
-  font-size: 21px;
+  font-size: 19px;
 }
 
 .party-member__who {
@@ -339,6 +363,11 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 
 .party-member__roll {
   color: var(--text-secondary);
+}
+
+.party-member__kit--floating {
+  position: fixed !important;
+  z-index: 30;
 }
 
 .party-member__kit {
