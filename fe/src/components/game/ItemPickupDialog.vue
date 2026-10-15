@@ -117,8 +117,8 @@ const getDisplayName = (item) => {
   
   if (isMonster) {
     // Return generic name based on item type
-    if (['key', 'dagger', 'sword', 'axe', 'fireball', 'frost_fist', 'dark_thorn', 'chest', 'ruby_chest'].includes(item.type)) return localizedItemName(item.type);
-    return localizedItemName('treasure');
+    // every item type has its name (the teleport scroll used to fall through to "Treasure")
+    return localizedItemName(item.type);
   }
   
   // For non-monster items, show the actual name
