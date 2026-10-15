@@ -110,12 +110,16 @@ const dieStyle = computed(() => {
   width: var(--s);
   height: var(--s);
   perspective: 520px;
+  /* the eye is above the table: a die shows its top while it turns, its bottom face never */
+  perspective-origin: 50% -80%;
 }
 
 .die-hop {
   width: 100%;
   height: 100%;
   transform: rotate(var(--tilt));
+  /* keep the cube in 3D through this layer (a flat layer would draw it as if seen from below) */
+  transform-style: preserve-3d;
 }
 
 .die-cube {
