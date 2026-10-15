@@ -108,8 +108,8 @@ const emit = defineEmits(['error']);
 }
 
 /* Animation states (the timing comes from the fight: entrance → idle while rolling → result) */
-.fighter--hero.fighter--entrance .fighter__img { animation: heroSlideIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
-.fighter--foe.fighter--entrance .fighter__img { animation: monsterSlideIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.fighter--hero.fighter--entrance .fighter__img { animation: heroSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.fighter--foe.fighter--entrance .fighter__img { animation: monsterSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .fighter--idle .fighter__img { animation: characterIdle 1.6s ease-in-out infinite; }
 .fighter--hero.fighter--victory .fighter__img { animation: victoryCelebration 0.8s ease-out forwards; }
 .fighter--hero.fighter--defeat .fighter__img { animation: defeatRecoil 0.6s ease-out; filter: drop-shadow(0 0 20px rgba(217, 69, 42, 0.45)) drop-shadow(0 10px 10px #000) brightness(0.85); }

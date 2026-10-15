@@ -780,43 +780,43 @@ const startRollingAnimation = () => {
     rollingValues.value = props.battleInfo.diceResults.map(() => 1);
   }
 
-  // Phase 1: Entrance animations (0-800ms)
-  // Characters slide in via CSS (0.7s duration), let them finish
+  // Phase 1: Entrance animations (0-400ms)
+  // Characters slide in via CSS (0.35s duration), let them finish
 
   // Phase 2: Show dice and start rolling (after entrances settle)
   setTimeout(() => {
     isAnimating.value = false;
     showDice.value = true;
-  }, 800);
+  }, 400);
 
   const rollInterval = setInterval(() => {
     rollingValues.value = rollingValues.value.map(() => Math.floor(Math.random() * 6) + 1);
-  }, 130);
+  }, 90);
 
-  // Dice roll for 1.2s, then land (800 + 1200 = 2000ms)
+  // Dice roll for 0.6s, then land (400 + 600 = 1000ms)
   setTimeout(() => {
     clearInterval(rollInterval);
     rollingValues.value = [...props.battleInfo.diceResults];
 
-    // Pause to let dice values register visually (500ms)
+    // Pause to let dice values register visually (250ms)
     setTimeout(() => {
       isRolling.value = false;
 
-      // Screen flash after a beat (300ms later)
+      // Screen flash after a beat (150ms later)
       setTimeout(() => {
         showFlash.value = true;
         showResultSlam.value = true;
         setTimeout(() => {
           showFlash.value = false;
-        }, 500);
-      }, 300);
+        }, 300);
+      }, 150);
 
-      // Show damage numbers, reward, buttons (600ms after result)
+      // Show damage numbers, reward, buttons (300ms after result)
       setTimeout(() => {
         showResults.value = true;
-      }, 600);
-    }, 500);
-  }, 2000);
+      }, 300);
+    }, 250);
+  }, 1000);
 };
 
 // Start animation when component mounts or battle info changes

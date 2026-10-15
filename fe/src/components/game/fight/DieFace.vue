@@ -81,10 +81,10 @@ const SHOW = {
 // the value only decides the final orientation once the die lands
 const dieStyle = computed(() => {
   if (props.rolling) {
-    return { '--rx': '0deg', '--ry': '0deg', '--tilt': `${props.tilt}deg`, '--delay': `${-props.delay * 3.3}s` };
+    return { '--rx': '0deg', '--ry': '0deg', '--tilt': `${props.tilt}deg`, '--delay': `${-props.delay * 2.2}s` };
   }
   const [rx, ry] = SHOW[props.value] || SHOW[1];
-  return { '--rx': `${rx}deg`, '--ry': `${ry}deg`, '--tilt': `${props.tilt}deg`, '--delay': `${props.delay * 0.8}s` };
+  return { '--rx': `${rx}deg`, '--ry': `${ry}deg`, '--tilt': `${props.tilt}deg`, '--delay': `${props.delay * 0.4}s` };
 });
 </script>
 
@@ -149,33 +149,33 @@ const dieStyle = computed(() => {
 
 /* Rolling: the die hops along the table and tumbles over all its axes */
 .rolling-dice .die-hop {
-  animation: dieHop 0.62s cubic-bezier(0.33, 0, 0.66, 1) infinite;
+  animation: dieHop 0.42s cubic-bezier(0.33, 0, 0.66, 1) infinite;
   animation-delay: var(--delay);
 }
 
 .rolling-dice .die-cube {
-  animation: dieTumble 0.62s linear infinite;
+  animation: dieTumble 0.42s linear infinite;
   animation-delay: var(--delay);
 }
 
 .rolling-dice .die-shadow {
-  animation: dieShadow 0.62s cubic-bezier(0.33, 0, 0.66, 1) infinite;
+  animation: dieShadow 0.42s cubic-bezier(0.33, 0, 0.66, 1) infinite;
   animation-delay: var(--delay);
 }
 
 /* Landing: a last fall, the cube slows down onto its value, one small bounce, the die settles askew */
 .dice-landed .die-hop {
-  animation: dieDrop 1.2s cubic-bezier(0.3, 0.7, 0.35, 1) both;
+  animation: dieDrop 0.6s cubic-bezier(0.3, 0.7, 0.35, 1) both;
   animation-delay: var(--delay);
 }
 
 .dice-landed .die-cube {
-  animation: dieSettle 1.2s cubic-bezier(0.2, 0.55, 0.3, 1) both;
+  animation: dieSettle 0.6s cubic-bezier(0.2, 0.55, 0.3, 1) both;
   animation-delay: var(--delay);
 }
 
 .dice-landed .die-shadow {
-  animation: dieShadowLand 1.2s cubic-bezier(0.3, 0.7, 0.35, 1) both;
+  animation: dieShadowLand 0.6s cubic-bezier(0.3, 0.7, 0.35, 1) both;
   animation-delay: var(--delay);
 }
 
