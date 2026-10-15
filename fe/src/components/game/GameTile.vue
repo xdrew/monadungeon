@@ -80,6 +80,7 @@
           :src="weaponImage"
           :alt="formatItemName(item.type)"
           class="weapon-image"
+          :class="`weapon-image--${item.type}`"
         />
         <GameIcon
           v-else
@@ -789,13 +790,10 @@ const onItemClick = () => {
 .tile-items.pickable::before {
   content: '';
   position: absolute;
-  left: -30%;
-  right: -30%;
-  top: 25%;
-  bottom: -25%;
+  inset: -28%;
   z-index: -1;
   border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 55%, rgba(255, 170, 70, 0.38) 0%, rgba(var(--ember-rgb), 0.14) 40%, rgba(var(--ember-rgb), 0) 70%);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 170, 70, 0.38) 0%, rgba(var(--ember-rgb), 0.14) 40%, rgba(var(--ember-rgb), 0) 70%);
   animation: lightPool 2.4s ease-in-out infinite;
   pointer-events: none;
 }
@@ -970,6 +968,15 @@ const onItemClick = () => {
   object-fit: contain;
 }
 
+/* the dagger and the axe fill only half of their art: scale them to read like the other tokens */
+.weapon-image--dagger {
+  transform: scale(1.45);
+}
+
+.weapon-image--axe {
+  transform: scale(1.2);
+}
+
 .monster-emoji {
   font-size: 40px;
 }
@@ -992,8 +999,11 @@ const onItemClick = () => {
   text-shadow: 0 0 6px #ff5a1a, 0 2px 2px #000;
 }
 
+/* the weapon art is a thin diagonal inside its box: the number sits by the blade, not in the box corner */
 .weapon-damage {
-  font-size: 18px;
+  right: 8%;
+  bottom: 10%;
+  font-size: 20px;
   color: var(--text-heading);
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 2px 2px #000;
 }
