@@ -356,9 +356,18 @@ export default {
     turnEnded: 'Ход окончен'
   },
   battle: {
-    header: 'Бой',
+    caption: 'Бой во тьме',
+    title: '{hero} — {foe}',
+    vs: 'против',
+    itsStrength: 'сила противника',
+    rivalStrength: 'сила, которую нужно превзойти',
+    guards: 'охраняет: {item}',
+    part: '{name} +{n}',
+    adds: '+{n} к броску',
+    reward: 'Награда:',
+    afterRoll: 'После броска',
+    alone: '{n} без заклинаний против {need}',
     duelHeader: 'Поединок на арене',
-    heroAlt: 'Герой',
     monster: 'Чудовище',
     rival: 'Соперник',
     rivalRollsNext: 'Следующим бросает: {name}',
@@ -375,11 +384,8 @@ export default {
       lightningRetreat: '{skill} — выберите, куда отступить, на панели у кругов действий',
       unstoppable: '{skill}! Выпала 6 — ход продолжается'
     },
-    use: 'Использовать:',
     sacrificeTitle: '{skill}: отдать 1 ОЗ за +1 к силе (раз за бой)',
     chestAutoOpened: 'Сундук открыт автоматически!',
-    noTreasure: 'Чудовище побеждено! Сокровищ нет.',
-    selectConsumables: 'Выберите, что использовать:',
     sacrificePrompt: 'Отдать 1 ОЗ за +1 к силе?',
     sacrificeChip: 'Отдать 1 ОЗ',
     spellsKept: 'Заклинания сохранены ({skill}):',
@@ -414,9 +420,6 @@ export default {
     victory: 'Победа!',
     draw: 'Ничья',
     defeat: 'Поражение',
-    potentialReward: 'Возможная награда за победу!',
-    victoryReward: 'Награда за победу!',
-    rewardTip: 'Для победы не хватает {missing} урона. Выбранные предметы дают +{selected}.'
   },
   dialogs: {
     vp: '{n} ОП',

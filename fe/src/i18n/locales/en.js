@@ -357,9 +357,18 @@ export default {
     turnEnded: 'Turn ended'
   },
   battle: {
-    header: 'Battle',
+    caption: 'A fight in the dark',
+    title: '{hero} against {foe}',
+    vs: 'vs',
+    itsStrength: 'its strength',
+    rivalStrength: 'strength to beat',
+    guards: 'guards: {item}',
+    part: '{name} +{n}',
+    adds: '+{n} to the roll',
+    reward: 'Reward:',
+    afterRoll: 'After the roll',
+    alone: '{n} by itself against {need}',
     duelHeader: 'Duel on the Battle Arena',
-    heroAlt: 'Hero',
     monster: 'Monster',
     rival: 'Rival',
     rivalRollsNext: '{name} rolls next',
@@ -376,11 +385,8 @@ export default {
       lightningRetreat: '{skill} — choose where to retreat on the panel by the action rings',
       unstoppable: '{skill}! A 6 was rolled — the turn goes on'
     },
-    use: 'Use:',
     sacrificeTitle: '{skill}: pay 1 HP for +1 strength (once per combat)',
     chestAutoOpened: 'Chest auto-opened!',
-    noTreasure: 'Monster defeated! No treasure found.',
-    selectConsumables: 'Select consumables to use:',
     sacrificePrompt: 'Sacrifice 1 HP for +1 strength?',
     sacrificeChip: 'Sacrifice 1 HP',
     spellsKept: 'Spells kept ({skill}):',
@@ -415,9 +421,6 @@ export default {
     victory: 'Victory!',
     draw: 'Draw',
     defeat: 'Defeat',
-    potentialReward: 'Potential Victory Reward!',
-    victoryReward: 'Victory Reward!',
-    rewardTip: 'You need {missing} more damage to win. Your selected consumables provide +{selected} damage.'
   },
   dialogs: {
     vp: '{n} VP',

@@ -17,7 +17,7 @@
       :class="{ 'game-finished': gameData?.state?.status === 'finished' }"
     >
       <!-- The HUD over the full-bleed dungeon. It comes first in the DOM: its banner <h3> "Turn: N" must be the page's first h3 -->
-      <GameHud>
+      <GameHud :class="{ 'game-hud--under-fight': showBattleReportModal }">
         <template #banner>
           <TurnBanner
             :turn="gameData?.state?.turn || null"

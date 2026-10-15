@@ -66,6 +66,12 @@
   --hud-gutter: 32px;
 }
 
+/* The fight scene covers the field: the HUD fades so its texts do not show through the title */
+.game-hud--under-fight {
+  opacity: 0.08;
+  transition: opacity var(--transition-normal);
+}
+
 .game-hud--with-rail {
   --hud-left: var(--rail-width);
 }

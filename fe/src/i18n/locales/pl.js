@@ -356,9 +356,18 @@ export default {
     turnEnded: 'Koniec tury'
   },
   battle: {
-    header: 'Walka',
+    caption: 'Walka w ciemności',
+    title: '{hero} — {foe}',
+    vs: 'kontra',
+    itsStrength: 'siła przeciwnika',
+    rivalStrength: 'siła do pokonania',
+    guards: 'strzeże: {item}',
+    part: '{name} +{n}',
+    adds: '+{n} do rzutu',
+    reward: 'Nagroda:',
+    afterRoll: 'Po rzucie',
+    alone: '{n} bez zaklęć przeciw {need}',
     duelHeader: 'Pojedynek na arenie walki',
-    heroAlt: 'Bohater',
     monster: 'Potwór',
     rival: 'Rywal',
     rivalRollsNext: 'Następny rzuca: {name}',
@@ -375,11 +384,8 @@ export default {
       lightningRetreat: '{skill} — wybierz miejsce odwrotu na panelu przy pierścieniach akcji',
       unstoppable: '{skill}! Wypadła 6 — tura trwa dalej'
     },
-    use: 'Użyj:',
     sacrificeTitle: '{skill}: oddaj 1 PW za +1 do siły (raz na walkę)',
     chestAutoOpened: 'Skrzynia otwarta automatycznie!',
-    noTreasure: 'Potwór pokonany! Brak skarbu.',
-    selectConsumables: 'Wybierz, czego użyć:',
     sacrificePrompt: 'Oddać 1 PW za +1 do siły?',
     sacrificeChip: 'Oddaj 1 PW',
     spellsKept: 'Zaklęcia zachowane ({skill}):',
@@ -414,9 +420,6 @@ export default {
     victory: 'Zwycięstwo!',
     draw: 'Remis',
     defeat: 'Porażka',
-    potentialReward: 'Możliwa nagroda za zwycięstwo!',
-    victoryReward: 'Nagroda za zwycięstwo!',
-    rewardTip: 'Do zwycięstwa brakuje {missing} siły. Wybrane przedmioty dają +{selected}.'
   },
   dialogs: {
     vp: '{n} PZ',

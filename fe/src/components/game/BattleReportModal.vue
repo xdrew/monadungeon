@@ -1,6 +1,9 @@
 <template>
-  <div class="battle-overlay">
-    <!-- Screen flash effect -->
+  <!-- The fight as a full-screen scene: the hero left, the foe right, the roll between them, the choice below -->
+  <div
+    class="battle-overlay"
+    :class="[`battle-overlay--${isRolling ? 'rolling' : dynamicResult}`, { 'battle-overlay--duel': duel }]"
+  >
     <div
       v-if="showFlash"
       class="screen-flash"
@@ -11,12 +14,18 @@
       }"
     />
 
-    <div class="battle-card">
-      <!-- Header -->
-      <div class="battle-header">
-        <div class="header-left">
-          <span class="header-label">{{ duel ? '⚔️ ' + $t('battle.duelHeader') : $t('battle.header') }}</span>
-        </div>
+    <div
+      class="battle-card"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="sceneTitle"
+    >
+      <!-- Caption, title, the result -->
+      <header class="battle-header">
+        <span class="header-label">{{ duel ? $t('battle.duelHeader') : $t('battle.caption') }}</span>
+        <h2 class="scene-title">
+          {{ sceneTitle }}
+        </h2>
         <h3
           :class="{
             'result-title': true,
@@ -30,638 +39,621 @@
           {{ dynamicResultText }}
         </h3>
         <button
+          type="button"
           class="close-btn"
+          :aria-label="$t('common.close')"
           @click="duel ? duelPrimaryAction() : leaveItemAndEndTurn()"
         >
           &times;
         </button>
+      </header>
+
+      <div class="battle-body">
+        <!-- The hero -->
+        <FighterFigure
+          class="combatant hero-side"
+          side="hero"
+          :src="heroSprite"
+          :alt="heroLabel"
+          :name="heroLabel"
+          :state="heroState"
+          @error="onHeroSpriteError"
+        >
+          <span
+            class="hero-hp"
+            :class="{ 'hp-loss': !isRolling && (dynamicResult === 'lose' || sacrificeHp) }"
+            :aria-label="$t('hud.hpOf', { hp: shownHp, max: 5 })"
+          >
+            <GameIcon
+              v-for="n in 5"
+              :key="n"
+              name="heart"
+              :size="20"
+              class="hp-heart"
+              :class="{ filled: n <= shownHp }"
+            />
+          </span>
+        </FighterFigure>
+
+        <!-- The roll between them -->
+        <div class="roll-centre">
+          <div
+            class="dice-stage"
+            :class="{ 'dice-visible': showDice }"
+          >
+            <div class="dice-container">
+              <DieFace
+                v-for="(value, index) in (isRolling ? rollingValues : battleInfo.diceResults)"
+                :key="index"
+                :value="value"
+                :rolling="isRolling"
+                :landed="!isRolling && showResults"
+                :tilt="index % 2 ? 8 : -12"
+                :delay="index * 0.1"
+              />
+            </div>
+          </div>
+
+          <div
+            class="score"
+            :class="{ 'score--shown': !isRolling }"
+          >
+            <div class="score__side">
+              <div
+                class="score__num score__num--hero"
+                :class="!isRolling ? 'dealt-' + dynamicResult : 'dealt-hidden'"
+              >
+                {{ isRolling ? '–' : totalCalculatedDamage }}
+              </div>
+              <div
+                v-if="!isRolling && breakdown.length"
+                class="score__detail"
+              >
+                <span
+                  v-for="(part, i) in breakdown"
+                  :key="i"
+                  :class="{ 'score__part--accent': part.accent }"
+                >{{ i ? `, ${part.text}` : part.text }}</span>
+              </div>
+            </div>
+            <template v-if="!isDuelChallenger">
+              <span class="score__vs">{{ $t('battle.vs') }}</span>
+              <div class="score__side">
+                <div class="score__num score__num--foe">
+                  {{ battleInfo.monster }}
+                </div>
+                <div class="score__detail">
+                  {{ duel ? $t('battle.rivalStrength') : $t('battle.itsStrength') }}
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- How far the strike reaches against the foe -->
+          <div
+            v-if="!isDuelChallenger"
+            class="damage-bar-center"
+            :class="{ 'hp-bar-reveal': showResults }"
+          >
+            <div class="hp-bar-track">
+              <div
+                class="hp-bar-fill"
+                :class="'bar-' + dynamicResult"
+                :style="{ width: (isRolling ? 0 : damageBarPercent) + '%' }"
+              />
+            </div>
+          </div>
+
+          <!-- What the heroes' skills did to the roll -->
+          <div
+            v-if="!isRolling"
+            class="verdicts"
+          >
+            <div
+              v-if="battleInfo.rerolled && battleInfo.firstDiceResults"
+              class="first-roll-note"
+              data-testid="first-roll"
+            >
+              <I18nT
+                scope="global"
+                keypath="battle.notes.doubleAttack"
+                tag="span"
+              >
+                <template #skill>
+                  <b>{{ $t('skills.double_attack.name') }}</b>
+                </template>
+                <template #roll>
+                  <s>{{ battleInfo.firstDiceResults.join(' + ') }}</s>
+                </template>
+              </I18nT>
+            </div>
+            <div
+              v-if="battleInfo.tieIsWin && battleInfo.result === 'win' && battleInfo.totalDamage === battleInfo.monster"
+              class="first-roll-note"
+              data-testid="backstab-note"
+            >
+              {{ $t('battle.notes.backstab', { skill: $t('skills.backstab.name') }) }}
+            </div>
+            <div
+              v-if="battleInfo.onesRerolled > 0"
+              class="first-roll-note"
+              data-testid="combat-training-note"
+            >
+              {{ $t('battle.notes.combatTraining', { skill: $t('skills.combat_training.name'), n: battleInfo.onesRerolled }) }}
+            </div>
+            <div
+              v-if="battleInfo.hpSacrificed"
+              class="first-roll-note"
+              data-testid="sacrifice-note"
+            >
+              {{ $t('battle.notes.sacrifice', { skill: $t('skills.sacrifice.name') }) }}
+            </div>
+            <div
+              v-if="battleInfo.spellsKept"
+              class="first-roll-note"
+              data-testid="affinity-note"
+            >
+              {{ $t('battle.notes.affinity', { skill: $t('skills.magical_affinity.name') }) }}
+            </div>
+            <div
+              v-if="battleInfo.farseeing"
+              class="first-roll-note"
+              data-testid="farseeing-note"
+            >
+              {{ $t('battle.notes.farseeing', { skill: $t('skills.farseeing.name') }) }}
+            </div>
+            <div
+              v-if="battleInfo.berserk > 0"
+              class="first-roll-note"
+              data-testid="berserk-note"
+            >
+              {{ $t('battle.notes.berserk', { skill: $t('skills.berserk.name'), bonus: battleInfo.berserk, range: battleInfo.berserk === 2 ? '1–2' : '3–4' }) }}
+            </div>
+            <div
+              v-if="battleInfo.onesAsSixes > 0"
+              class="first-roll-note"
+              data-testid="bear-attack-note"
+            >
+              {{ $t('battle.notes.bearAttack', { skill: $t('skills.bear_attack.name'), n: battleInfo.onesAsSixes }, battleInfo.onesAsSixes) }}
+            </div>
+            <div
+              v-if="battleInfo.retreatOptions?.length"
+              class="first-roll-note"
+              data-testid="lightning-retreat-note"
+            >
+              {{ $t('battle.notes.lightningRetreat', { skill: $t('skills.lightning_attack.name') }) }}
+            </div>
+            <div
+              v-if="battleInfo.curseResolvedLabel"
+              class="first-roll-note first-roll-note--curse"
+              data-testid="curse-note"
+            >
+              <img
+                src="/images/curse.webp"
+                alt=""
+                class="first-roll-note__icon"
+              >{{ battleInfo.curseResolvedLabel }}
+            </div>
+            <div
+              v-if="turnContinues"
+              class="first-roll-note"
+              data-testid="unstoppable-note"
+            >
+              {{ $t('battle.notes.unstoppable', { skill: $t('skills.unstoppable.name') }) }}
+            </div>
+          </div>
+        </div>
+
+        <!-- The foe: a monster, or the rival hero of a Battle Arena duel -->
+        <FighterFigure
+          v-if="duel"
+          class="combatant monster-side"
+          side="foe"
+          :src="rivalSprite"
+          :alt="rivalLabel"
+          :name="rivalLabel"
+          img-testid="duel-rival"
+        >
+          <span
+            class="monster-name-label"
+            data-testid="duel-rival-label"
+          >{{ duelRivalText }}</span>
+        </FighterFigure>
+        <FighterFigure
+          v-else
+          class="combatant monster-side"
+          side="foe"
+          :src="displayMonsterImage"
+          :alt="formattedMonsterName"
+          :name="formattedMonsterName"
+          :state="foeState"
+        >
+          <span
+            v-if="guardNote"
+            class="monster-name-label"
+          >{{ guardNote }}</span>
+        </FighterFigure>
       </div>
 
-      <!-- Battle Body -->
-      <div class="battle-body">
-        <!-- Damage bar (centered above arena) -->
-        <div class="damage-bar-center" :class="{ 'hp-bar-reveal': showResults }">
-          <div class="hp-bar-track">
-            <div
-              class="hp-bar-fill"
-              :class="'bar-' + dynamicResult"
-              :style="{ width: (isRolling ? 0 : damageBarPercent) + '%' }"
-            />
-            <div class="hp-bar-text">
-              <span class="hp-dealt" :class="!isRolling ? 'dealt-' + dynamicResult : 'dealt-hidden'">⚔ {{ totalCalculatedDamage }}</span>
-              <template v-if="!isDuelChallenger">
-                <span class="hp-separator" :class="{ 'dealt-hidden': isRolling }">vs</span>
-                <span class="hp-total">{{ duel ? '⚔' : '♥' }} {{ battleInfo.monster }}</span>
-              </template>
-            </div>
-          </div>
-        </div>
-
-        <!-- Arena: Hero vs Monster confrontation -->
-        <div class="battle-arena">
-          <div class="combatant hero-side">
-            <div class="combatant-sprite-wrap">
-              <div class="combatant-glow hero-glow" />
-              <img
-                :src="heroSprite"
-                :alt="$t('battle.heroAlt')"
-                class="combatant-sprite"
-                @error="onHeroSpriteError"
-                :class="{
-                  'hero-entrance': isAnimating,
-                  'hero-idle': !isAnimating && isRolling,
-                  'hero-victory': !isRolling && dynamicResult === 'win',
-                  'hero-defeat': !isRolling && dynamicResult === 'lose',
-                  'hero-draw': !isRolling && dynamicResult === 'draw'
-                }"
-              />
-            </div>
-            <!-- Weapon bonuses under hero -->
-            <div
-              v-if="(equippedWeapons.length > 0 || usedConsumableDamageTotal > 0) && !isRolling"
-              class="hero-bonuses"
-              :class="{ 'bonuses-reveal': showResults }"
-            >
-              <span
-                v-for="(weapon, index) in equippedWeapons"
-                :key="`weapon-${index}`"
-                class="bonus-chip"
-              >
-                <img
-                  v-if="getWeaponImage(weapon)"
-                  :src="getWeaponImage(weapon)"
-                  :alt="itemName(weapon)"
-                  class="bonus-chip-img"
-                />
-                <span v-else>{{ getUsedItemEmoji(weapon) }}</span>
-                <span class="bonus-value">+{{ weaponStrength(weapon) }}</span>
-              </span>
-              <span
-                v-if="usedConsumableDamageTotal > 0"
-                class="bonus-chip spell-chip"
-              >
-                🔮 <span class="bonus-value">+{{ usedConsumableDamageTotal }}</span>
-              </span>
-            </div>
-            <!-- Player HP -->
-            <div v-if="!isRolling" class="hero-hp" :class="{ 'hp-loss': dynamicResult === 'lose' || sacrificeHp }">
-              ❤️ {{ dynamicResult === 'lose' || sacrificeHp ? playerHpAfterBattle : playerHp }}/5
-            </div>
-          </div>
-
-          <div class="vs-separator">
-            <div class="vs-energy-line" />
-            <div
-              class="vs-badge"
-              :class="{ 'vs-pulse': isRolling }"
-            >
-              <span class="vs-text">VS</span>
-            </div>
-            <div class="vs-energy-line" />
-          </div>
-
-          <div class="combatant monster-side">
-            <!-- Karak: Regent — the rival hero instead of a monster -->
-            <div v-if="duel" class="combatant-sprite-wrap">
-              <div class="combatant-glow monster-glow" />
-              <img
-                :src="rivalSprite"
-                :alt="rivalLabel"
-                class="combatant-sprite"
-                data-testid="duel-rival"
-              />
-            </div>
-            <div v-if="duel" class="monster-name-label" data-testid="duel-rival-label">{{ duelRivalText }}</div>
-            <div v-if="!duel" class="combatant-sprite-wrap">
-              <div class="combatant-glow monster-glow" />
-              <ThemedImage
-                :src="displayMonsterImage"
-                :emoji="displayMonsterEmoji"
-                :alt="formattedMonsterName"
-                :img-class="['combatant-sprite', {
-                  'monster-entrance': isAnimating,
-                  'monster-idle': !isAnimating && isRolling,
-                  'monster-victory': !isRolling && dynamicResult === 'lose',
-                  'monster-defeat': !isRolling && dynamicResult === 'win',
-                  'monster-draw': !isRolling && dynamicResult === 'draw'
-                }]"
-                :emoji-class="['monster-emoji-large', { 'monster-entrance': isAnimating }]"
-              />
-            </div>
-            <div v-if="!duel" class="monster-name-label">{{ formattedMonsterName }}</div>
-          </div>
-        </div>
-
-        <!-- Dice Stage -->
-        <div class="dice-stage" :class="{ 'dice-visible': showDice }">
-          <div class="dice-container">
-            <div
-              v-for="(value, index) in (isRolling ? rollingValues : battleInfo.diceResults)"
-              :key="index"
-              class="dice-face"
-              :class="{ 'rolling-dice': isRolling, 'dice-landed': !isRolling && showResults }"
-              :data-value="value"
-              :style="isRolling ? { animationDelay: `${index * 0.1}s` } : {}"
-            >
-              <span
-                v-for="pip in value"
-                :key="`pip-${index}-${pip}`"
-                class="pip"
-                :class="`pip-${value}-${pip}`"
-              />
-            </div>
-          </div>
-          <!-- Warrior "Double Attack": the discarded first roll -->
-          <div
-            v-if="!isRolling && battleInfo.rerolled && battleInfo.firstDiceResults"
-            class="first-roll-note"
-            data-testid="first-roll"
-          >
-            ⚔️ <I18nT scope="global" keypath="battle.notes.doubleAttack" tag="span"><template #skill>{{ $t('skills.double_attack.name') }}</template><template #roll><s>{{ battleInfo.firstDiceResults.join(' + ') }}</s></template></I18nT>
-          </div>
-          <!-- Thief "Backstab": a tie counts as a victory -->
-          <div
-            v-if="!isRolling && battleInfo.tieIsWin && battleInfo.result === 'win' && battleInfo.totalDamage === battleInfo.monster"
-            class="first-roll-note"
-            data-testid="backstab-note"
-          >
-            🗡️ {{ $t('battle.notes.backstab', { skill: $t('skills.backstab.name') }) }}
-          </div>
-          <!-- Swordsman "Combat Training": dice showing 1 were rerolled -->
-          <div
-            v-if="!isRolling && battleInfo.onesRerolled > 0"
-            class="first-roll-note"
-            data-testid="combat-training-note"
-          >
-            🎯 {{ $t('battle.notes.combatTraining', { skill: $t('skills.combat_training.name'), n: battleInfo.onesRerolled }) }}
-          </div>
-          <!-- Warlock "Sacrifice": 1 HP was paid for +1 strength -->
-          <div
-            v-if="!isRolling && battleInfo.hpSacrificed"
-            class="first-roll-note"
-            data-testid="sacrifice-note"
-          >
-            🩸 {{ $t('battle.notes.sacrifice', { skill: $t('skills.sacrifice.name') }) }}
-          </div>
-          <!-- Wizard "Magical Affinity": the used fireballs stay in the inventory -->
-          <div
-            v-if="!isRolling && battleInfo.spellsKept"
-            class="first-roll-note"
-            data-testid="affinity-note"
-          >
-            ✨ {{ $t('battle.notes.affinity', { skill: $t('skills.magical_affinity.name') }) }}
-          </div>
-          <!-- Oracle "Farseeing": +1 for fighting on the first move of the turn -->
-          <div
-            v-if="!isRolling && battleInfo.farseeing"
-            class="first-roll-note"
-            data-testid="farseeing-note"
-          >
-            👁️ {{ $t('battle.notes.farseeing', { skill: $t('skills.farseeing.name') }) }}
-          </div>
-          <!-- Valduk "Berserk": the lower his HP, the harder he hits -->
-          <div
-            v-if="!isRolling && battleInfo.berserk > 0"
-            class="first-roll-note"
-            data-testid="berserk-note"
-          >
-            🪓 {{ $t('battle.notes.berserk', { skill: $t('skills.berserk.name'), bonus: battleInfo.berserk, range: battleInfo.berserk === 2 ? '1–2' : '3–4' }) }}
-          </div>
-          <!-- Lady Lorraine "Bear Attack": a die showing 1 counts as 6 -->
-          <div
-            v-if="!isRolling && battleInfo.onesAsSixes > 0"
-            class="first-roll-note"
-            data-testid="bear-attack-note"
-          >
-            🐻 {{ $t('battle.notes.bearAttack', { skill: $t('skills.bear_attack.name'), n: battleInfo.onesAsSixes }, battleInfo.onesAsSixes) }}
-          </div>
-          <!-- Baron Markul "Lightning Attack": a fight that is not won ends in a retreat he chooses -->
-          <div
-            v-if="!isRolling && battleInfo.retreatOptions?.length"
-            class="first-roll-note"
-            data-testid="lightning-retreat-note"
-          >
-            ⚡ {{ $t('battle.notes.lightningRetreat', { skill: $t('skills.lightning_attack.name') }) }}
-          </div>
-          <!-- Curse of Karak: the victim was chosen -->
-          <div
-            v-if="!isRolling && battleInfo.curseResolvedLabel"
-            class="first-roll-note"
-            data-testid="curse-note"
-          >
-            ☠️ {{ battleInfo.curseResolvedLabel }}
-          </div>
-          <!-- Swordsman "Unstoppable": a 6 keeps the turn going -->
-          <div
-            v-if="!isRolling && turnContinues"
-            class="first-roll-note"
-            data-testid="unstoppable-note"
-          >
-            ⚡ {{ $t('battle.notes.unstoppable', { skill: $t('skills.unstoppable.name') }) }}
-          </div>
-        </div>
-
-        <!-- Combined reward + consumable selection (side by side when both present) -->
+      <!-- The choice after the roll -->
+      <section
+        v-show="!isRolling"
+        class="choice-plaque"
+        :class="{ 'section-reveal': showResults }"
+      >
         <div
-          v-if="!isRolling && showConsumableSelection && (shouldShowReward || potentialVictoryWithConsumables)"
-          class="reward-consumable-row"
-          :class="{ 'section-reveal': showResults }"
+          v-if="plaqueTitle"
+          class="choice-plaque__head"
         >
-          <!-- Reward (compact) -->
-          <div class="reward-compact" :class="rewardCategoryClass">
-            <div v-if="battleInfo.reward" class="reward-compact-inner">
-              <div class="reward-icon-compact">
-                <img
-                  v-if="displayItemImage"
-                  :src="displayItemImage"
-                  :alt="formattedItemName"
-                  class="reward-img-sm"
-                />
-                <span v-else class="reward-emoji-sm">{{ displayItemEmoji }}</span>
-                <span
-                  v-if="isPotentialReward && selectedConsumables.length === 0"
-                  class="potential-badge"
-                >?</span>
-              </div>
-              <div class="reward-compact-info">
-                <span class="reward-compact-name">{{ formattedItemName }}</span>
-                <span
-                  v-if="getItemTypeDamage(battleInfo.reward.type) > 0"
-                  class="stat-badge badge-damage badge-sm"
-                >⚔️ +{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
-                <span
-                  v-if="battleInfo.reward.treasureValue && battleInfo.reward.treasureValue > 0"
-                  class="stat-badge badge-value badge-sm"
-                >💰 {{ battleInfo.reward.treasureValue }}</span>
-              </div>
-            </div>
-            <div v-else class="reward-compact-inner">
-              <ThemedImage :src="displayMonsterImage" :emoji="displayMonsterEmoji" :alt="formattedMonsterName" img-class="reward-img-sm" emoji-class="reward-img-sm" />
-              <span class="reward-compact-name">{{ itemName('treasure') }}</span>
-            </div>
-          </div>
-
-          <!-- Consumable selection (compact) -->
-          <div class="consumable-compact">
-            <div class="consumable-compact-label">{{ $t('battle.use') }}</div>
-            <div class="consumable-compact-list">
-              <div
-                v-for="(item, index) in availableDamageConsumables"
-                :key="`consumable-${index}`"
-                class="item-chip selectable"
-                :class="{ 'selected': selectedConsumables.includes(item.itemId) }"
-                @click="toggleConsumable(item)"
-              >
-                <img
-                  v-if="getInventoryItemImage(item)"
-                  :src="getInventoryItemImage(item)"
-                  :alt="getSpellDisplayName(item)"
-                  class="chip-img"
-                />
-                <span v-else class="chip-emoji">{{ getInventoryItemEmoji(item) }}</span>
-                <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
-              </div>
-              <!-- Warlock "Sacrifice": pay 1 HP for +1 strength -->
-              <div
-                v-if="sacrificeAvailable"
-                class="item-chip selectable sacrifice-chip"
-                :class="{ 'selected': sacrificeHp }"
-                data-testid="sacrifice-hp"
-                :title="$t('battle.sacrificeTitle', { skill: $t('skills.sacrifice.name') })"
-                @click="toggleSacrifice"
-              >
-                <span class="chip-emoji">🩸</span>
-                <span class="chip-damage">+1</span>
-              </div>
-            </div>
-          </div>
+          <span class="choice-plaque__title">{{ plaqueTitle }}</span>
+          <span
+            v-if="plaqueHint"
+            class="choice-plaque__hint"
+          >{{ plaqueHint }}</span>
         </div>
 
-        <!-- Victory Reward Section (standalone, when no consumable selection) -->
+        <!-- Spells and Sacrifice to add to the roll -->
         <div
-          v-if="!isRolling && !showConsumableSelection && shouldShowReward"
-          class="reward-section"
-          :class="{ 'reward-rise': showResults }"
+          v-if="!isRolling && showConsumableSelection && (availableDamageConsumables.length || sacrificeAvailable)"
+          class="consumable-row"
         >
-          <!-- Victory sparkles -->
-          <div v-if="dynamicResult === 'win'" class="victory-sparkles">
-            <span v-for="i in 8" :key="`sparkle-${i}`" class="sparkle" :style="sparkleStyle(i)" />
-          </div>
-
-          <div class="reward-card" :class="rewardCategoryClass">
-            <div
-              v-if="battleInfo.reward"
-              class="reward-item-inline"
-            >
-              <img
-                v-if="displayItemImage"
-                :src="displayItemImage"
-                :alt="formattedItemName"
-                class="reward-inline-img"
-              />
-              <span v-else class="reward-inline-emoji">{{ displayItemEmoji }}</span>
-              <div class="reward-inline-info">
-                <span class="reward-item-name">{{ formattedItemName }}</span>
-                <div class="reward-badges">
-                  <span
-                    v-if="getItemTypeDamage(battleInfo.reward.type) > 0"
-                    class="stat-badge badge-damage badge-sm"
-                  >⚔️ +{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
-                  <span
-                    v-if="battleInfo.reward.treasureValue && battleInfo.reward.treasureValue > 0"
-                    class="stat-badge badge-value badge-sm"
-                  >💰 {{ battleInfo.reward.treasureValue }}</span>
-                </div>
-                <div v-if="isGuardChestReward" class="reward-note success">
-                  {{ $t('battle.chestAutoOpened') }}
-                </div>
-              </div>
-            </div>
-            <div v-else class="no-reward">
-              {{ $t('battle.noTreasure') }}
-            </div>
-          </div>
+          <ConsumableCard
+            v-for="item in availableDamageConsumables"
+            :key="item.itemId"
+            class="item-chip selectable"
+            :class="{ selected: selectedConsumables.includes(item.itemId) }"
+            :data-item-id="item.itemId"
+            :name="getSpellDisplayName(item)"
+            :effect="$t('battle.adds', { n: getItemTypeDamage(item.type) })"
+            :image="getItemImage(item)"
+            :selected="selectedConsumables.includes(item.itemId)"
+            @toggle="toggleConsumable(item)"
+          />
+          <ConsumableCard
+            v-if="sacrificeAvailable"
+            class="item-chip selectable sacrifice-chip"
+            :class="{ selected: sacrificeHp }"
+            data-testid="sacrifice-hp"
+            :name="$t('battle.sacrificeChip')"
+            :effect="$t('battle.adds', { n: 1 })"
+            icon="heart"
+            :title="$t('battle.sacrificeTitle', { skill: $t('skills.sacrifice.name') })"
+            :selected="sacrificeHp"
+            @toggle="toggleSacrifice"
+          />
         </div>
 
-        <!-- Consumable selection only (no reward to show) -->
+        <!-- Spells spent in this fight -->
         <div
-          v-if="!isRolling && showConsumableSelection && !shouldShowReward && !potentialVictoryWithConsumables"
+          v-if="!isRolling && !showConsumableSelection && !showInventorySelection && usedDamageConsumables.length > 0"
           class="items-section"
-          :class="{ 'section-reveal': showResults }"
         >
-          <div class="items-section-title">{{ availableDamageConsumables.length > 0 ? $t('battle.selectConsumables') : $t('battle.sacrificePrompt') }}</div>
-          <div class="items-list">
-            <div
-              v-for="(item, index) in availableDamageConsumables"
-              :key="`consumable-${index}`"
-              class="item-chip selectable"
-              :class="{ 'selected': selectedConsumables.includes(item.itemId) }"
-              @click="toggleConsumable(item)"
+          <span class="items-section-title">{{ battleInfo.spellsKept ? $t('battle.spellsKept', { skill: $t('skills.magical_affinity.name') }) : $t('battle.usedConsumables') }}</span>
+          <span
+            v-for="(item, index) in usedDamageConsumables"
+            :key="`used-${index}`"
+            class="item-chip consumable-used"
+            :class="{ 'consumable-kept': battleInfo.spellsKept }"
+          >
+            <img
+              v-if="getItemImage(item)"
+              :src="getItemImage(item)"
+              alt=""
+              class="chip-img"
             >
-              <img
-                v-if="getInventoryItemImage(item)"
-                :src="getInventoryItemImage(item)"
-                :alt="getSpellDisplayName(item)"
-                class="chip-img"
-              />
-              <span v-else class="chip-emoji">{{ getInventoryItemEmoji(item) }}</span>
-              <span class="chip-name">{{ getSpellDisplayName(item) }}</span>
-              <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
-            </div>
-            <!-- Warlock "Sacrifice": pay 1 HP for +1 strength -->
-            <div
-              v-if="sacrificeAvailable"
-              class="item-chip selectable sacrifice-chip"
-              :class="{ 'selected': sacrificeHp }"
-              data-testid="sacrifice-hp"
-              :title="$t('battle.sacrificeTitle', { skill: $t('skills.sacrifice.name') })"
-              @click="toggleSacrifice"
-            >
-              <span class="chip-emoji">🩸</span>
-              <span class="chip-name">{{ $t('battle.sacrificeChip') }}</span>
-              <span class="chip-damage">+1</span>
-            </div>
-          </div>
+            <span class="chip-name">{{ getCorrectItemName(item) }}</span>
+            <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
+          </span>
         </div>
 
-        <!-- Used consumables display (after battle finalized) -->
-        <div
-          v-if="!isRolling && !showConsumableSelection && !showInventorySelection && usedDamageConsumables && usedDamageConsumables.length > 0"
-          class="items-section"
-          :class="{ 'section-reveal': showResults }"
-        >
-          <div class="items-section-title">{{ battleInfo.spellsKept ? $t('battle.spellsKept', { skill: $t('skills.magical_affinity.name') }) : $t('battle.usedConsumables') }}</div>
-          <div class="items-list">
-            <div
-              v-for="(item, index) in usedDamageConsumables"
-              :key="`used-${index}`"
-              class="item-chip consumable-used"
-              :class="{ 'consumable-kept': battleInfo.spellsKept }"
-            >
-              <span class="chip-emoji">{{ getUsedItemEmoji(item) }}</span>
-              <span class="chip-name">{{ getCorrectItemName(item) }}</span>
-              <span class="chip-damage">+{{ getItemTypeDamage(item.type) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Inventory replacement section -->
+        <!-- A full pack: what goes to make room for the reward -->
         <div
           v-if="!isRolling && showInventorySelection"
-          class="items-section"
-          :class="{ 'section-reveal': showResults }"
+          class="items-section items-section--replace"
         >
-          <div class="items-section-title">{{ $t('battle.chooseReplace') }}</div>
-          <div class="items-list">
-            <div
-              v-for="(item, index) in inventoryForSelection"
-              :key="`inventory-${index}`"
-              class="item-chip selectable inventory-replace"
-              :class="{ 'selected': selectedItemForReplacement?.itemId === item.itemId }"
-              @click="setSelectedItemForReplacement(item)"
+          <button
+            v-for="(item, index) in inventoryForSelection"
+            :key="`inventory-${index}`"
+            type="button"
+            class="item-chip selectable inventory-replace"
+            :class="{ selected: selectedItemForReplacement?.itemId === item.itemId }"
+            :aria-pressed="selectedItemForReplacement?.itemId === item.itemId"
+            @click="setSelectedItemForReplacement(item)"
+          >
+            <img
+              v-if="getItemImage(item)"
+              :src="getItemImage(item)"
+              alt=""
+              class="chip-img"
             >
+            <GameIcon
+              v-else
+              name="treasure"
+              :size="24"
+            />
+            <span class="chip-name">{{ formatItemName(item.type || item.name) }}</span>
+            <span
+              v-if="getItemTypeDamage(item.type || item.name) > 0"
+              class="chip-damage"
+            >+{{ getItemTypeDamage(item.type || item.name) }}</span>
+            <span
+              v-else-if="item.treasureValue > 0"
+              class="chip-value"
+            >{{ item.treasureValue }}</span>
+          </button>
+        </div>
+
+        <!-- Curse of Karak: choose the victim before picking up the reward or ending the turn -->
+        <CurseChoicePanel
+          v-if="curseChoicePending"
+          :players="curseChoice?.players || []"
+          :cursed-player-id="curseChoice?.cursedPlayerId || null"
+          :cursed-label="curseChoice?.cursedLabel || ''"
+          :disabled="isProcessing"
+          @choose="(target) => emit('curse', target)"
+        />
+
+        <div class="choice-plaque__bottom">
+          <!-- The reward the foe guards -->
+          <div
+            v-if="showRewardRow"
+            class="reward-row"
+            :class="[rewardCategoryClass, { 'reward-rise': showResults, 'reward-row--potential': isPotentialReward && !hasBoost }]"
+          >
+            <span class="reward-row__label">{{ $t('battle.reward') }}</span>
+            <span class="reward-row__icon">
+              <span
+                v-if="dynamicResult === 'win'"
+                class="victory-sparkles"
+                aria-hidden="true"
+              >
+                <span
+                  v-for="i in 8"
+                  :key="`sparkle-${i}`"
+                  class="sparkle"
+                  :style="sparkleStyle(i)"
+                />
+              </span>
               <img
-                v-if="getInventoryItemImage(item)"
-                :src="getInventoryItemImage(item)"
-                :alt="formatItemName(item.type || item.name)"
-                class="chip-img"
+                v-if="battleInfo.reward && displayItemImage"
+                :src="displayItemImage"
+                :alt="formattedItemName"
+                class="reward-row__img"
+              >
+              <GameIcon
+                v-else
+                name="treasure"
+                :size="28"
               />
-              <span v-else class="chip-emoji">{{ getInventoryItemEmoji(item) }}</span>
-              <span class="chip-name">{{ formatItemName(item.type || item.name) }}</span>
-              <span
-                v-if="getItemTypeDamage(item.type || item.name) > 0"
-                class="chip-damage"
-              >+{{ getItemTypeDamage(item.type || item.name) }}</span>
-              <span
-                v-else-if="item.treasureValue > 0"
-                class="chip-value"
-              >💰{{ item.treasureValue }}</span>
+            </span>
+            <span class="reward-row__name">{{ battleInfo.reward ? formattedItemName : itemName('treasure') }}</span>
+            <span
+              v-if="battleInfo.reward && getItemTypeDamage(battleInfo.reward.type) > 0"
+              class="stat-badge badge-damage"
+            >+{{ getItemTypeDamage(battleInfo.reward.type) }}</span>
+            <span
+              v-if="battleInfo.reward?.treasureValue > 0"
+              class="stat-badge badge-value"
+            ><GameIcon
+              name="treasure"
+              :size="13"
+            /> {{ battleInfo.reward.treasureValue }}</span>
+            <span
+              v-if="isGuardChestReward && !showConsumableSelection"
+              class="reward-note success"
+            >{{ $t('battle.chestAutoOpened') }}</span>
+          </div>
+
+          <!-- The buttons -->
+          <div
+            v-show="!isRolling"
+            class="battle-footer"
+            :class="{ 'footer-reveal': showResults, 'footer-locked': curseChoicePending }"
+          >
+            <!-- Karak: Regent — a duel side: lock in the strength (consumables / sacrifice / reroll as usual), then continue -->
+            <div
+              v-if="duel"
+              class="button-group"
+            >
+              <button
+                v-if="duelAwaitsDecision && battleInfo.canReroll"
+                class="btn btn--ghost btn-reroll"
+                :disabled="isProcessing"
+                data-testid="reroll-battle"
+                @click="rerollDice"
+              >
+                <GameIcon
+                  name="dice"
+                  :size="18"
+                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
+              </button>
+              <button
+                class="btn btn--ember btn-primary"
+                :disabled="isProcessing"
+                :data-testid="duelAwaitsDecision ? 'finalize-battle' : 'duel-continue'"
+                @click="duelPrimaryAction"
+              >
+                {{ duelPrimaryLabel }} <span class="kbd-hint">(Enter)</span>
+              </button>
+            </div>
+            <!-- Keys: player already has one -->
+            <div
+              v-else-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection && !battleFinalized"
+              class="button-group"
+            >
+              <button
+                class="btn btn--ember btn-primary"
+                :disabled="isProcessing"
+                @click="leaveItemAndEndTurn"
+              >
+                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.allKeysSame') }} <span class="kbd-hint">(Enter)</span>
+              </button>
+            </div>
+            <!-- Guard chest: auto-collected -->
+            <div
+              v-else-if="battleInfo.result === 'win' && battleInfo.reward && isGuardChestReward && !showInventorySelection && !showConsumableSelection"
+              class="button-group"
+            >
+              <button
+                class="btn btn--ember btn-primary"
+                :disabled="isProcessing"
+                @click="pickUpAndEndTurn"
+              >
+                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.treasureAuto') }} <span class="kbd-hint">(Enter)</span>
+              </button>
+            </div>
+            <!-- Normal victory with reward -->
+            <div
+              v-else-if="battleInfo.result === 'win' && battleInfo.reward && !showInventorySelection && !showConsumableSelection"
+              class="button-group"
+            >
+              <button
+                v-if="!hasInventorySpace && !isKeyReward && !isGuardChestReward"
+                class="btn btn--ghost btn-secondary"
+                :disabled="isProcessing"
+                @click="leaveItemAndEndTurn"
+              >
+                {{ turnContinues ? $t('battle.leaveContinue') : $t('battle.leaveEndTurn') }} <span class="kbd-hint">(Esc)</span>
+              </button>
+              <!-- Valduk "Tireless": leave the loot on the tile and keep moving -->
+              <button
+                v-if="canContinueTireless && !isGuardChestReward"
+                class="btn btn--ghost btn-secondary"
+                :disabled="isProcessing"
+                data-testid="tireless-continue"
+                @click="continueTireless"
+              >
+                {{ $t('battle.tirelessLeave', { skill: $t('skills.tireless.name') }) }}
+              </button>
+              <button
+                class="btn btn--ember btn-primary"
+                :disabled="isProcessing"
+                @click="pickUpAndEndTurn"
+              >
+                {{ turnContinues ? $t('battle.pickUpContinue') : $t('battle.pickUpEndTurn') }} <span class="kbd-hint">(Enter)</span>
+              </button>
+            </div>
+            <!-- Consumable selection buttons -->
+            <div
+              v-else-if="showConsumableSelection"
+              class="button-group"
+            >
+              <button
+                v-if="battleInfo.canReroll && !battleFinalized"
+                class="btn btn--ghost btn-reroll"
+                :disabled="isProcessing"
+                data-testid="reroll-battle"
+                @click="rerollDice"
+              >
+                <GameIcon
+                  name="dice"
+                  :size="18"
+                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
+              </button>
+              <button
+                v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
+                class="btn btn--ghost btn-secondary"
+                :disabled="isProcessing"
+                @click="finalizeBattleAndLeaveItem"
+              >
+                {{ $t('battle.leaveAfterVictory') }}
+              </button>
+              <!-- Valduk "Tireless": win, leave the loot and keep moving -->
+              <button
+                v-if="hasBoost && beatsMonster(totalCalculatedDamage) && canContinueTireless"
+                class="btn btn--ghost btn-secondary"
+                :disabled="isProcessing"
+                data-testid="tireless-continue"
+                @click="finalizeBattleAndContinueTireless"
+              >
+                {{ $t('battle.tirelessWin', { skill: $t('skills.tireless.name') }) }}
+              </button>
+              <button
+                v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
+                class="btn btn--ember btn-primary btn-strike"
+                :disabled="isProcessing"
+                @click="finalizeBattleAndPickUp"
+              >
+                {{ $t('battle.fightWinPickUp') }}
+              </button>
+              <button
+                v-else-if="hasBoost && totalCalculatedDamage === battleInfo.monster && !battleInfo.tieIsWin"
+                class="btn btn--ghost btn-draw"
+                :disabled="isProcessing"
+                @click="finalizeBattleWithConsumables"
+              >
+                {{ $t('battle.fightForDraw') }}
+              </button>
+              <button
+                v-else
+                class="btn btn--blood btn-defeat"
+                :disabled="isProcessing"
+                @click="finalizeBattleWithoutConsumables"
+              >
+                {{ retreatLabel }} <span class="kbd-hint">(Enter)</span>
+              </button>
+            </div>
+            <!-- Lost or draw without consumable selection -->
+            <div
+              v-else-if="(battleInfo.result === 'lose' || battleInfo.result === 'draw') && !showInventorySelection"
+              class="button-group"
+            >
+              <button
+                v-if="battleInfo.canReroll && !battleFinalized"
+                class="btn btn--ghost btn-reroll"
+                :disabled="isProcessing"
+                data-testid="reroll-battle"
+                @click="rerollDice"
+              >
+                <GameIcon
+                  name="dice"
+                  :size="18"
+                /> {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
+              </button>
+              <button
+                class="btn btn--blood btn-defeat"
+                :disabled="isProcessing"
+                @click="handleRetreat"
+              >
+                {{ retreatLabel }} <span class="kbd-hint">(Enter)</span>
+              </button>
+            </div>
+            <!-- Inventory replacement -->
+            <div
+              v-else-if="showInventorySelection"
+              class="button-group"
+            >
+              <button
+                class="btn btn--ghost btn-danger"
+                :disabled="isProcessing"
+                @click="cancelReplacement"
+              >
+                {{ $t('common.cancel') }}
+              </button>
+              <button
+                class="btn btn--ember btn-primary"
+                :disabled="!selectedItemForReplacement || isProcessing"
+                @click="confirmReplacement"
+              >
+                {{ potentialVictoryWithConsumables ? $t('battle.replacePickUp') : (turnContinues ? $t('battle.replaceContinue') : $t('battle.replaceEndTurn')) }}
+              </button>
+            </div>
+            <!-- Fallback end turn -->
+            <div
+              v-else
+              class="button-group"
+            >
+              <button
+                class="btn btn--ember btn-primary"
+                :disabled="isProcessing"
+                @click="leaveItemAndEndTurn"
+              >
+                {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} <span class="kbd-hint">(Enter)</span>
+              </button>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Curse of Karak: choose the victim before picking up the reward or ending the turn -->
-      <CurseChoicePanel
-        v-if="curseChoicePending"
-        :players="curseChoice?.players || []"
-        :cursed-player-id="curseChoice?.cursedPlayerId || null"
-        :cursed-label="curseChoice?.cursedLabel || ''"
-        :disabled="isProcessing"
-        @choose="(target) => emit('curse', target)"
-      />
-
-      <!-- Footer -->
-      <div v-show="!isRolling" class="battle-footer" :class="{ 'footer-reveal': showResults, 'footer-locked': curseChoicePending }">
-        <!-- Karak: Regent — a duel side: lock in the strength (consumables / sacrifice / reroll as usual), then continue -->
-        <div v-if="duel" class="button-group">
-          <button
-            v-if="duelAwaitsDecision && battleInfo.canReroll"
-            class="btn-reroll"
-            :disabled="isProcessing"
-            data-testid="reroll-battle"
-            @click="rerollDice"
-          >
-            🎲 {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
-          </button>
-          <button
-            class="btn-primary"
-            :disabled="isProcessing"
-            :data-testid="duelAwaitsDecision ? 'finalize-battle' : 'duel-continue'"
-            @click="duelPrimaryAction"
-          >
-            {{ duelPrimaryLabel }} <span class="kbd-hint">(Enter)</span>
-          </button>
-        </div>
-        <!-- Keys: player already has one -->
-        <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && isKeyReward && !hasInventorySpace && !showInventorySelection && !showConsumableSelection && !battleFinalized">
-          <button
-            class="btn-primary"
-            :disabled="isProcessing"
-            @click="leaveItemAndEndTurn"
-          >
-            {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.allKeysSame') }} <span class="kbd-hint">(Enter)</span>
-          </button>
-        </div>
-        <!-- Guard chest: auto-collected -->
-        <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && isGuardChestReward && !showInventorySelection && !showConsumableSelection">
-          <button
-            class="btn-primary"
-            :disabled="isProcessing"
-            @click="pickUpAndEndTurn"
-          >
-            {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} {{ $t('battle.treasureAuto') }} <span class="kbd-hint">(Enter)</span>
-          </button>
-        </div>
-        <!-- Normal victory with reward -->
-        <div v-else-if="battleInfo.result === 'win' && battleInfo.reward && !showInventorySelection && !showConsumableSelection" class="button-group">
-          <button
-            class="btn-primary"
-            :disabled="isProcessing"
-            @click="pickUpAndEndTurn"
-          >
-            🎒 {{ turnContinues ? $t('battle.pickUpContinue') : $t('battle.pickUpEndTurn') }} <span class="kbd-hint">(Enter)</span>
-          </button>
-          <button
-            v-if="!hasInventorySpace && !isKeyReward && !isGuardChestReward"
-            class="btn-secondary"
-            :disabled="isProcessing"
-            @click="leaveItemAndEndTurn"
-          >
-            {{ turnContinues ? $t('battle.leaveContinue') : $t('battle.leaveEndTurn') }} <span class="kbd-hint">(Esc)</span>
-          </button>
-          <!-- Valduk "Tireless": leave the loot on the tile and keep moving -->
-          <button
-            v-if="canContinueTireless && !isGuardChestReward"
-            class="btn-secondary"
-            :disabled="isProcessing"
-            data-testid="tireless-continue"
-            @click="continueTireless"
-          >
-            🪓 {{ $t('battle.tirelessLeave', { skill: $t('skills.tireless.name') }) }}
-          </button>
-        </div>
-        <!-- Consumable selection buttons -->
-        <div v-else-if="showConsumableSelection" class="button-group">
-          <button
-            v-if="battleInfo.canReroll && !battleFinalized"
-            class="btn-reroll"
-            :disabled="isProcessing"
-            data-testid="reroll-battle"
-            @click="rerollDice"
-          >
-            🎲 {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
-          </button>
-          <button
-            v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
-            class="btn-primary"
-            :disabled="isProcessing"
-            @click="finalizeBattleAndPickUp"
-          >
-            🎒 {{ $t('battle.fightWinPickUp') }}
-          </button>
-          <button
-            v-if="hasBoost && beatsMonster(totalCalculatedDamage)"
-            class="btn-secondary"
-            :disabled="isProcessing"
-            @click="finalizeBattleAndLeaveItem"
-          >
-            {{ $t('battle.leaveAfterVictory') }}
-          </button>
-          <!-- Valduk "Tireless": win, leave the loot and keep moving -->
-          <button
-            v-if="hasBoost && beatsMonster(totalCalculatedDamage) && canContinueTireless"
-            class="btn-secondary"
-            :disabled="isProcessing"
-            data-testid="tireless-continue"
-            @click="finalizeBattleAndContinueTireless"
-          >
-            🪓 {{ $t('battle.tirelessWin', { skill: $t('skills.tireless.name') }) }}
-          </button>
-          <button
-            v-else-if="hasBoost && totalCalculatedDamage === battleInfo.monster && !battleInfo.tieIsWin"
-            class="btn-draw"
-            :disabled="isProcessing"
-            @click="finalizeBattleWithConsumables"
-          >
-            ⚔️ {{ $t('battle.fightForDraw') }}
-          </button>
-          <button
-            v-else
-            class="btn-defeat"
-            :disabled="isProcessing"
-            @click="finalizeBattleWithoutConsumables"
-          >
-            {{ retreatLabel }} <span class="kbd-hint">(Enter)</span>
-          </button>
-        </div>
-        <!-- Lost or draw without consumable selection -->
-        <div v-else-if="(battleInfo.result === 'lose' || battleInfo.result === 'draw') && !showInventorySelection" class="button-group">
-          <button
-            v-if="battleInfo.canReroll && !battleFinalized"
-            class="btn-reroll"
-            :disabled="isProcessing"
-            data-testid="reroll-battle"
-            @click="rerollDice"
-          >
-            🎲 {{ $t('battle.reroll', { skill: $t('skills.double_attack.name') }) }} <span class="kbd-hint">(R)</span>
-          </button>
-          <button
-            class="btn-defeat"
-            :disabled="isProcessing"
-            @click="handleRetreat"
-          >
-            {{ retreatLabel }} <span class="kbd-hint">(Enter)</span>
-          </button>
-        </div>
-        <!-- Inventory replacement -->
-        <div v-else-if="showInventorySelection" class="button-group">
-          <button
-            :disabled="!selectedItemForReplacement || isProcessing"
-            :class="potentialVictoryWithConsumables ? 'btn-primary' : 'btn-primary'"
-            @click="confirmReplacement"
-          >
-            ✅ {{ potentialVictoryWithConsumables ? $t('battle.replacePickUp') : (turnContinues ? $t('battle.replaceContinue') : $t('battle.replaceEndTurn')) }}
-          </button>
-          <button
-            class="btn-danger"
-            :disabled="isProcessing"
-            @click="cancelReplacement"
-          >
-            ❌ {{ $t('common.cancel') }}
-          </button>
-        </div>
-        <!-- Fallback end turn -->
-        <div v-else>
-          <button
-            class="btn-primary"
-            :disabled="isProcessing"
-            @click="leaveItemAndEndTurn"
-          >
-            {{ turnContinues ? $t('battle.continueTurn') : $t('battle.endTurn') }} <span class="kbd-hint">(Enter)</span>
-          </button>
-        </div>
-      </div>
+      </section>
     </div>
   </div>
 </template>
@@ -669,11 +661,14 @@
 <script setup>
 import { defineProps, defineEmits, computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { I18nT, useI18n } from 'vue-i18n';
-import { getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
-import { formatItemName } from '@/utils/itemUtils';
-import { itemName, monsterName } from '@/i18n/names';
-import ThemedImage from '@/components/ThemedImage.vue';
+import { getMonsterImage } from '@/utils/monsterUtils';
+import { formatItemName, getItemImage } from '@/utils/itemUtils';
+import { itemName, monsterName, heroName } from '@/i18n/names';
 import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
+import DieFace from '@/components/game/fight/DieFace.vue';
+import FighterFigure from '@/components/game/fight/FighterFigure.vue';
+import ConsumableCard from '@/components/game/fight/ConsumableCard.vue';
 import { getHero } from '@/theme';
 
 const props = defineProps({
@@ -727,7 +722,7 @@ const duelRivalText = computed(() => (isDuelChallenger.value
 const duelAwaitsDecision = computed(() => !!duel.value && props.battleInfo?.needsConsumableConfirmation === true && !battleFinalized.value);
 const duelPrimaryLabel = computed(() => {
   if (!duelAwaitsDecision.value) return t('battle.continue');
-  return isDuelChallenger.value ? `🔒 ${t('battle.lockIn')}` : `⚔️ ${t('battle.fight')}`;
+  return isDuelChallenger.value ? t('battle.lockIn') : t('battle.fight');
 });
 const duelPrimaryAction = () => {
   if (isProcessing.value) return;
@@ -836,6 +831,7 @@ watch(() => props.battleInfo?.battleId, (newId, oldId) => {
     isProcessing.value = false;
     battleFinalized.value = false;
     sacrificeHp.value = false;
+    selectedConsumables.value = [];
   }
 });
 
@@ -927,9 +923,9 @@ const beatsMonster = (damage) => (props.battleInfo?.tieIsWin ? damage >= props.b
 const turnContinues = computed(() => props.battleInfo?.unstoppable === true);
 const retreatLabel = computed(() => {
   if (props.battleInfo?.result === 'draw') {
-    return `⬅️ ${turnContinues.value ? t('battle.retreatContinue') : t('battle.retreat')}`;
+    return turnContinues.value ? t('battle.retreatContinue') : t('battle.retreat');
   }
-  return `😵 ${turnContinues.value ? t('battle.takeHitContinue') : t('battle.acceptDefeat')}`;
+  return turnContinues.value ? t('battle.takeHitContinue') : t('battle.acceptDefeat');
 });
 
 const potentialVictoryWithConsumables = computed(() => {
@@ -950,24 +946,6 @@ const potentialVictoryWithConsumables = computed(() => {
   return beatsMonster(currentDamage + maxConsumableDamage);
 });
 
-const potentialImprovementWithConsumables = computed(() => {
-  if (!showConsumableSelection.value || !availableConsumables.value) return false;
-
-  const currentDamage = (props.battleInfo.diceRollDamage || 0) + weaponDamageTotal.value + rollBonus.value;
-  const maxConsumableDamage = availableConsumables.value
-    .filter(item => getItemTypeDamage(item.type) > 0)
-    .reduce((total, item) => total + getItemTypeDamage(item.type), 0) + (sacrificeAvailable.value ? 1 : 0);
-
-  const totalPossibleDamage = currentDamage + maxConsumableDamage;
-
-  if (props.battleInfo.result === 'lose') {
-    return totalPossibleDamage >= props.battleInfo.monster;
-  }
-  if (props.battleInfo.result === 'draw') {
-    return beatsMonster(totalPossibleDamage);
-  }
-  return false;
-});
 
 const dynamicResult = computed(() => {
   if (hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) {
@@ -1012,12 +990,6 @@ const usedDamageConsumables = computed(() => {
   );
 });
 
-const usedConsumables = computed(() => {
-  if (!props.battleInfo.usedItems) return [];
-  return props.battleInfo.usedItems.filter(item =>
-    item.type && ['fireball', 'teleport', 'frost_fist', 'dark_thorn'].includes(item.type)
-  );
-});
 
 const equippedWeapons = computed(() => {
   if (!props.battleInfo.usedItems) return [];
@@ -1044,12 +1016,6 @@ const continueTireless = () => {
   emit('tireless', { battleId: props.battleInfo.battleId });
 };
 
-const usedConsumableDamageTotal = computed(() => {
-  if (!props.battleInfo.usedItems) return 0;
-  return props.battleInfo.usedItems
-    .filter(item => ['fireball', 'frost_fist'].includes(item.type))
-    .reduce((total, item) => total + getItemTypeDamage(item.type), 0);
-});
 
 const consumableDamageTotal = computed(() => {
   if (!availableConsumables.value || selectedConsumables.value.length === 0) return sacrificeBonus.value;
@@ -1497,88 +1463,12 @@ const formattedItemName = computed(() => {
   return formatItemName(props.battleInfo.reward.name);
 });
 
-const formattedItemType = computed(() => {
-  if (!props.battleInfo.reward || !props.battleInfo.reward.type) return '';
-  return formatItemName(props.battleInfo.reward.type);
-});
 
-const displayItemEmoji = computed(() => {
-  if (!props.battleInfo.reward) return '❓';
-  const item = props.battleInfo.reward;
-  switch (item.type) {
-    case 'key': return '🔑';
-    case 'chest': return '📦';
-    case 'ruby_chest': return '💎';
-    case 'dagger': return '🗡️';
-    case 'sword': return '⚔️';
-    case 'axe': return '🪓';
-    case 'fireball': return '🔥';
-    case 'teleport': return '✨';
-    case 'frost_fist': return '🧊';
-    case 'dark_thorn': return '🌑';
-    default: return '💰';
-  }
-});
 
-const displayItemImage = computed(() => {
-  if (!props.battleInfo.reward) return null;
-  const item = props.battleInfo.reward;
-  if (item.type === 'key') return '/images/key.webp';
-  if (item.type === 'chest') return '/images/chest-opened.webp';
-  if (item.type === 'ruby_chest') return '/images/ruby-chest.webp';
-  if (item.type === 'fireball') return '/images/fireball.webp';
-  if (item.type === 'teleport') return '/images/hf-teleport.webp';
-  if (item.type === 'frost_fist') return '/images/frost-fist.webp';
-  if (item.type === 'dark_thorn') return '/images/dark-thorn.webp';
-  if (item.type === 'dagger') return '/images/dagger.webp';
-  if (item.type === 'sword') return '/images/sword.webp';
-  if (item.type === 'axe') return '/images/axe.webp';
-  return null;
-});
+const displayItemImage = computed(() => (props.battleInfo.reward ? getItemImage({ type: props.battleInfo.reward.type }) : null));
 
-const getInventoryItemImage = (item) => {
-  if (!item) return null;
-  const itemType = item.type || item.name;
-  switch (itemType) {
-    case 'key': return '/images/key.webp';
-    case 'chest': return '/images/chest-opened.webp';
-    case 'ruby_chest': return '/images/ruby-chest.webp';
-    case 'fireball': return '/images/fireball.webp';
-    case 'teleport': return '/images/hf-teleport.webp';
-    case 'frost_fist': return '/images/frost-fist.webp';
-    case 'dark_thorn': return '/images/dark-thorn.webp';
-    case 'dagger': return '/images/dagger.webp';
-    case 'sword': return '/images/sword.webp';
-    case 'axe': return '/images/axe.webp';
-    default: return null;
-  }
-};
 
-const getInventoryItemEmoji = (item) => {
-  if (!item) return '❓';
-  const itemType = item.type || item.name;
-  switch (itemType) {
-    case 'key': return '🔑';
-    case 'chest': return '📦';
-    case 'ruby_chest': return '💎';
-    case 'dagger': return '🗡️';
-    case 'sword': return '⚔️';
-    case 'axe': return '🪓';
-    case 'fireball': return '🔥';
-    case 'teleport': return '✨';
-    case 'frost_fist': return '🧊';
-    case 'dark_thorn': return '🌑';
-    default: return '💰';
-  }
-};
 
-const displayMonsterEmoji = computed(() => {
-  if (!props.battleInfo) return '👹';
-  return getMonsterEmoji({
-    monster_name: props.battleInfo.monsterType || '',
-    monster: props.battleInfo.monster || 0
-  });
-});
 
 const DEFAULT_HERO_SPRITE = '/images/player.webp';
 const heroSpriteFailed = ref(false);
@@ -1602,30 +1492,7 @@ const displayMonsterImage = computed(() => {
   return getMonsterImage(battleData);
 });
 
-const getUsedItemEmoji = (item) => {
-  if (!item) return '❓';
-  switch (item.type) {
-    case 'key': return '🔑';
-    case 'dagger': return '🗡️';
-    case 'sword': return '⚔️';
-    case 'axe': return '🪓';
-    case 'fireball': return '🔥';
-    case 'teleport': return '✨';
-    case 'frost_fist': return '🧊';
-    case 'dark_thorn': return '🌑';
-    default: return '🧪';
-  }
-};
 
-const getWeaponImage = (item) => {
-  if (!item || !item.type) return null;
-  switch (item.type) {
-    case 'dagger': return '/images/dagger.webp';
-    case 'sword': return '/images/sword.webp';
-    case 'axe': return '/images/axe.webp';
-    default: return null;
-  }
-};
 
 const formattedMonsterName = computed(() => {
   if (!props.battleInfo.monsterType) return t('battle.monster');
@@ -1673,33 +1540,112 @@ const isPotentialReward = computed(() => {
          potentialVictoryWithConsumables.value;
 });
 
-const victoryText = computed(() => {
-  if (isPotentialReward.value) return `🎉 ${t('battle.potentialReward')}`;
-  return `🎉 ${t('battle.victoryReward')}`;
+
+
+// ===== The scene: names, states, the breakdown of the roll, the plaque =====
+
+const heroLabel = computed(() => heroName(props.heroKey, 'short'));
+const sceneTitle = computed(() => t('battle.title', { hero: heroLabel.value, foe: duel.value ? rivalLabel.value : formattedMonsterName.value }));
+
+// entrance → idle while the dice roll → the result
+const heroState = computed(() => {
+  if (isAnimating.value) return 'entrance';
+  if (isRolling.value) return 'idle';
+  return { win: 'victory', lose: 'defeat', draw: 'draw' }[dynamicResult.value] || '';
+});
+const foeState = computed(() => {
+  if (isAnimating.value) return 'entrance';
+  if (isRolling.value) return 'idle';
+  return { win: 'defeat', lose: 'victory', draw: 'draw' }[dynamicResult.value] || '';
 });
 
-const potentialRewardTip = computed(() => {
-  if (!isPotentialReward.value) return '';
-  const missingDamage = props.battleInfo.monster - (props.battleInfo.diceRollDamage + weaponDamageTotal.value);
-  const selectedDamage = consumableDamageTotal.value;
-  return t('battle.rewardTip', { missing: missingDamage, selected: selectedDamage });
+const shownHp = computed(() => (!isRolling.value && (dynamicResult.value === 'lose' || sacrificeHp.value) ? playerHpAfterBattle.value : props.playerHp));
+
+// What the hero's number is made of: "4 + 2, Dagger +1, Fireball +1"
+const breakdown = computed(() => {
+  const bi = props.battleInfo || {};
+  const parts = [];
+  const dice = bi.diceResults || [];
+  const diceSum = dice.reduce((a, b) => a + b, 0);
+  if (dice.length) parts.push({ text: diceSum === bi.diceRollDamage ? dice.join(' + ') : String(bi.diceRollDamage ?? diceSum) });
+  // the same spell twice reads as one part: "Fireball +2"
+  const part = (name, n, accent = false) => {
+    const same = parts.find((p) => p.name === name && p.accent === accent);
+    if (same) {
+      same.n += n;
+      same.text = t('battle.part', { name, n: same.n });
+    } else {
+      parts.push({ name, n, text: t('battle.part', { name, n }), accent });
+    }
+  };
+  equippedWeapons.value.forEach((w) => part(itemName(w.type), weaponStrength(w)));
+  if (showConsumableSelection.value) {
+    availableConsumables.value
+      .filter((item) => selectedConsumables.value.includes(item.itemId))
+      .forEach((item) => part(getSpellDisplayName(item), getItemTypeDamage(item.type), true));
+    if (sacrificeHp.value) part(t('skills.sacrifice.name'), 1, true);
+  } else {
+    usedDamageConsumables.value.forEach((item) => part(getCorrectItemName(item), getItemTypeDamage(item.type), true));
+    if (bi.hpSacrificed) part(t('skills.sacrifice.name'), 1, true);
+  }
+  if (farseeingBonus.value) part(t('skills.farseeing.name'), farseeingBonus.value);
+  if (berserkBonus.value) part(t('skills.berserk.name'), berserkBonus.value);
+  return parts;
 });
+
+// "guards: Key" under a monster that guards a reward
+const guardNote = computed(() => {
+  const reward = props.battleInfo?.reward;
+  if (!reward || duel.value) return '';
+  return t('battle.guards', { item: itemName(reward.type || reward.name) });
+});
+
+const showRewardRow = computed(() => !isRolling.value && !duel.value
+  && (shouldShowReward.value || (showConsumableSelection.value && potentialVictoryWithConsumables.value)));
+
+const plaqueTitle = computed(() => {
+  if (showInventorySelection.value) return t('battle.chooseReplace');
+  if (showConsumableSelection.value) {
+    return availableDamageConsumables.value.length > 0 ? t('battle.afterRoll') : t('battle.sacrificePrompt');
+  }
+  return '';
+});
+// "7 by itself — one short": the roll without the spells against the foe
+const plaqueHint = computed(() => {
+  if (!showConsumableSelection.value || isDuelChallenger.value) return '';
+  const alone = totalCalculatedDamage.value - consumableDamageTotal.value;
+  return t('battle.alone', { n: alone, need: props.battleInfo.monster });
+});
+
+if (import.meta.env.DEV) {
+  watch([isRolling, showResults, battleFinalized], ([rolling, results, finalized]) => {
+    console.debug('[fight] phase', { rolling, results, finalized, result: dynamicResult.value });
+  });
+}
 </script>
 
 <style scoped>
-/* ============================================
-   OVERLAY & CARD (theme tokens)
-   ============================================ */
+/* ===== The scene: full screen, the field faintly behind ===== */
 .battle-overlay {
   position: fixed;
   inset: 0;
-  background: var(--bg-overlay, rgba(9, 8, 15, 0.88));
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: overlayIn 0.25s ease-out;
+  z-index: var(--z-modal);
+  overflow-y: auto;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background-color: rgba(5, 3, 2, 0.95);
+  background-image:
+    radial-gradient(ellipse at 22% 45%, rgba(90, 140, 200, 0.12) 0%, rgba(0, 0, 0, 0) 35%),
+    radial-gradient(ellipse at 78% 45%, rgba(var(--ember-rgb), 0.16) 0%, rgba(0, 0, 0, 0) 38%),
+    radial-gradient(ellipse at 50% 100%, rgba(60, 35, 20, 0.6) 0%, rgba(0, 0, 0, 0) 60%);
+  animation: overlayIn 0.35s ease-out;
+}
+
+.battle-overlay--lose {
+  background-image:
+    radial-gradient(ellipse at 22% 45%, rgba(217, 69, 42, 0.12) 0%, rgba(0, 0, 0, 0) 35%),
+    radial-gradient(ellipse at 78% 45%, rgba(var(--ember-rgb), 0.2) 0%, rgba(0, 0, 0, 0) 40%),
+    radial-gradient(ellipse at 50% 100%, rgba(60, 20, 12, 0.6) 0%, rgba(0, 0, 0, 0) 60%);
 }
 
 @keyframes overlayIn {
@@ -1708,43 +1654,32 @@ const potentialRewardTip = computed(() => {
 }
 
 .battle-card {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-  border-radius: 10px;
-  width: 400px;
-  max-width: 95vw;
-  max-height: 90vh;
-  overflow: hidden;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  position: relative;
+  min-height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  color: var(--text-primary);
-  animation: cardIn 0.35s ease-out;
+  padding: 28px 24px 32px;
+  animation: cardIn 0.45s ease-out;
 }
 
 @keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  from { opacity: 0; transform: scale(0.97) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Screen flash */
+/* Result flash over everything */
 .screen-flash {
   position: fixed;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
-  z-index: 1001;
-  animation: screenFlash 0.4s ease-out forwards;
+  animation: screenFlash 0.5s ease-out forwards;
 }
 
-.flash-victory { background: rgba(var(--accent-rgb), 0.4); }
-.flash-defeat { background: rgba(244, 67, 54, 0.35); }
-.flash-draw { background: rgba(255, 152, 0, 0.3); }
+.flash-victory { background: radial-gradient(circle, rgba(var(--ember-rgb), 0.45) 0%, rgba(var(--ember-rgb), 0) 70%); }
+.flash-defeat { background: radial-gradient(circle, rgba(217, 69, 42, 0.45) 0%, rgba(217, 69, 42, 0) 70%); }
+.flash-draw { background: radial-gradient(circle, rgba(234, 220, 192, 0.3) 0%, rgba(234, 220, 192, 0) 70%); }
 
 @keyframes screenFlash {
   0% { opacity: 0; }
@@ -1752,67 +1687,68 @@ const potentialRewardTip = computed(() => {
   100% { opacity: 0; }
 }
 
-/* ============================================
-   HEADER
-   ============================================ */
+/* ===== Header: caption, title, result ===== */
 .battle-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 6px 12px;
-  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(var(--accent-light-rgb), 0.08) 100%);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 4px;
+  text-align: center;
+  text-shadow: 0 2px 6px #000;
 }
 
 .header-label {
-  font-size: 0.7em;
   font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-secondary);
+  color: var(--text-accent);
+}
+
+.scene-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 1.05;
+  color: var(--text-heading);
 }
 
 .result-title {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.rolling-title {
+  color: var(--text-muted);
+  animation: titlePulse 1.2s ease-in-out infinite;
 }
 
 .victory-title {
   color: var(--color-primary);
-  text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.6);
+  text-shadow: 0 0 18px rgba(var(--ember-rgb), 0.6), 0 2px 6px #000;
 }
 
 .defeat-title {
-  color: #f44336;
-  text-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+  color: var(--color-danger);
+  text-shadow: 0 0 16px rgba(217, 69, 42, 0.5), 0 2px 6px #000;
 }
 
 .draw-title {
-  color: #ff9800;
-  text-shadow: 0 0 20px rgba(255, 152, 0, 0.5);
+  color: var(--text-heading);
 }
 
-.rolling-title {
-  color: var(--text-primary);
-  animation: titlePulse 0.8s infinite ease-in-out;
+.result-slam {
+  animation: resultSlam 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes titlePulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
-}
-
-.result-slam {
-  animation: resultSlam 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes resultSlam {
@@ -1824,285 +1760,61 @@ const potentialRewardTip = computed(() => {
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 1.6rem;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   cursor: pointer;
-  color: var(--text-muted);
+  font-size: 26px;
   line-height: 1;
-  transition: color 0.2s;
-}
-
-.close-btn:hover {
   color: var(--text-primary);
+  background: radial-gradient(circle at 50% 35%, #2a201a 0%, #0d0907 80%);
+  box-shadow: 0 0 0 3px var(--iron-dark), 0 0 0 5px var(--iron-edge);
+  transition: color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-/* ============================================
-   BATTLE BODY
-   ============================================ */
+.close-btn:hover,
+.close-btn:focus-visible {
+  outline: none;
+  color: var(--text-accent);
+  box-shadow: 0 0 0 3px var(--color-secondary), 0 0 0 5px var(--iron-edge), 0 0 14px rgba(var(--ember-rgb), 0.5);
+}
+
+/* ===== The fighters and the roll between them ===== */
 .battle-body {
-  padding: 6px;
-  background: rgba(0, 0, 0, 0.15);
   flex: 1;
-  overflow: hidden;
-  min-height: 0;
-}
-
-/* ============================================
-   BATTLE ARENA (Hero vs Monster)
-   ============================================ */
-.battle-arena {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 520px) 1fr;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  margin-bottom: 4px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 10px;
-  border: 1px solid rgba(var(--accent-rgb), 0.15);
-  position: relative;
-  overflow: hidden;
+  justify-items: center;
+  gap: 16px;
+  padding: 8px 0 16px;
 }
 
 .combatant {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  gap: 6px;
+  --fighter-img-h: min(390px, 38vh);
 }
 
-.combatant-sprite-wrap {
-  position: relative;
-  width: 132px;
-  height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.combatant-glow {
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  opacity: 0.7;
-}
-
-.hero-glow {
-  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.3) 0%, transparent 70%);
-  animation: glowPulse 2.5s ease-in-out infinite;
-}
-
-.monster-glow {
-  background: radial-gradient(circle, rgba(200, 180, 160, 0.25) 0%, rgba(100, 80, 60, 0.15) 50%, transparent 70%);
-  animation: glowPulse 2.5s ease-in-out infinite 0.5s;
-}
-
-@keyframes glowPulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.12); }
-}
-
-.combatant-sprite {
-  width: auto;
-  height: 128px;
-  max-width: 128px;
-  object-fit: contain;
-  position: relative;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
-}
-
-.monster-side .combatant-sprite {
-  filter: brightness(1.15) drop-shadow(0 2px 8px rgba(200, 180, 160, 0.4));
-}
-
-.monster-emoji-large {
-  font-size: 5rem;
-  position: relative;
-}
-
-/* Character entrance animations */
-.hero-entrance {
-  animation: heroSlideIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.monster-entrance {
-  animation: monsterSlideIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards;
-  opacity: 0;
-}
-
-@keyframes heroSlideIn {
-  0% { transform: translateX(-60px) scale(0.7); opacity: 0; }
-  60% { transform: translateX(8px) scale(1.05); opacity: 1; }
-  100% { transform: translateX(0) scale(1); opacity: 1; }
-}
-
-@keyframes monsterSlideIn {
-  0% { transform: translateX(60px) scale(0.7); opacity: 0; }
-  60% { transform: translateX(-8px) scale(1.05); opacity: 1; }
-  100% { transform: translateX(0) scale(1); opacity: 1; }
-}
-
-/* Idle breathing */
-.hero-idle, .monster-idle {
-  animation: characterIdle 2s ease-in-out infinite;
-}
-
-.monster-idle {
-  animation-delay: 0.5s;
-}
-
-@keyframes characterIdle {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-3px) scale(1.02); }
-}
-
-/* Victory/Defeat/Draw reactions */
-.hero-victory {
-  animation: victoryCelebration 0.8s ease-out forwards;
-}
-
-@keyframes victoryCelebration {
-  0% { transform: scale(1); filter: brightness(1); }
-  30% { transform: scale(1.18) translateY(-10px); filter: brightness(1.4); }
-  60% { transform: scale(1.08) translateY(-5px); filter: brightness(1.2); }
-  100% { transform: scale(1.1) translateY(-3px); filter: brightness(1.15); }
-}
-
-.hero-defeat {
-  animation: defeatRecoil 0.7s ease-out;
-}
-
-@keyframes defeatRecoil {
-  0%, 100% { transform: translateX(0); filter: brightness(1); }
-  15% { transform: translateX(-10px) rotate(-5deg); filter: brightness(0.7); }
-  35% { transform: translateX(6px) rotate(3deg); filter: brightness(0.85); }
-  55% { transform: translateX(-3px); filter: brightness(0.9); }
-}
-
-.hero-draw, .monster-draw {
-  animation: drawPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes drawPulse {
-  0%, 100% { filter: brightness(1) saturate(1); }
-  50% { filter: brightness(1.15) saturate(1.2); }
-}
-
-.monster-victory {
-  animation: monsterTriumph 0.8s ease-out forwards;
-}
-
-@keyframes monsterTriumph {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.15); filter: brightness(1.3); }
-  100% { transform: scale(1.1); filter: brightness(1.15); }
-}
-
-.monster-defeat {
-  animation: monsterDefeat 0.7s ease-out forwards;
-}
-
-@keyframes monsterDefeat {
-  0% { transform: scale(1); opacity: 1; filter: brightness(1); }
-  40% { transform: scale(0.9) rotate(5deg); opacity: 0.7; filter: brightness(0.6); }
-  100% { transform: scale(0.85); opacity: 0.5; filter: brightness(0.5) grayscale(0.5); }
-}
-
-/* Damage Bar (centered above arena) */
-.damage-bar-center {
-  width: 100%;
-  max-width: 200px;
-  margin: 0 auto 2px;
-  position: relative;
-}
-
-.hp-bar-reveal {
-  animation: hpBarReveal 0.4s ease-out;
-}
-
-@keyframes hpBarReveal {
-  from { opacity: 0.5; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.hp-bar-track {
-  height: 16px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  position: relative;
-}
-
-.hp-bar-fill {
-  height: 100%;
-  border-radius: 8px;
-  transition: width 0.8s ease-out 0.1s;
-  min-width: 0;
-}
-
-/* Bar color = damage result */
-.hp-bar-fill.bar-win {
-  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.5);
-}
-
-.hp-bar-fill.bar-lose {
-  background: linear-gradient(90deg, #c62828 0%, #ef5350 100%);
-}
-
-.hp-bar-fill.bar-draw {
-  background: linear-gradient(90deg, #e65100 0%, #ffa726 100%);
-  box-shadow: 0 0 6px rgba(255, 152, 0, 0.4);
-}
-
-.hp-bar-text {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  pointer-events: none;
-}
-
-.dealt-hidden {
-  opacity: 0;
-}
-
-.hp-dealt {
-  font-weight: 800;
-}
-
-.hp-dealt.dealt-win { color: var(--color-primary-hover); }
-.hp-dealt.dealt-lose { color: #ef9a9a; }
-.hp-dealt.dealt-draw { color: #ffcc80; }
-
-.hp-separator {
-  opacity: 0.5;
-  font-size: 0.6rem;
-}
-
-.hp-total {
-  opacity: 0.7;
-}
-
-/* Player HP */
 .hero-hp {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-align: center;
+  display: inline-flex;
+  gap: 3px;
 }
 
-.hero-hp.hp-loss {
-  color: #ef5350;
-  animation: hpShake 0.4s ease-out;
+.hp-heart {
+  color: var(--color-danger);
+  fill: rgba(217, 69, 42, 0.1);
+}
+
+.hp-heart.filled {
+  fill: var(--color-danger);
+}
+
+.hp-loss {
+  animation: hpShake 0.5s ease-in-out 2;
 }
 
 @keyframes hpShake {
@@ -2113,58 +1825,91 @@ const potentialRewardTip = computed(() => {
   80% { transform: translateX(2px); }
 }
 
-/* Hero weapon bonuses */
-.hero-bonuses {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
 .monster-name-label {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-secondary);
 }
 
-/* ============================================
-   VS SEPARATOR
-   ============================================ */
-.vs-separator {
+.roll-centre {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 0 8px;
+  gap: 14px;
 }
 
-.vs-energy-line {
-  width: 2px;
-  height: 10px;
-  background: linear-gradient(180deg, transparent, rgba(var(--accent-rgb), 0.5), transparent);
+.dice-stage {
+  min-height: 72px;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
 }
 
-.vs-badge {
-  font-size: 1.6rem;
-  font-weight: 900;
-  line-height: 1;
-  padding: 4px;
+.dice-stage.dice-visible {
+  opacity: 1;
 }
 
-.vs-pulse {
-  animation: vsPulse 0.8s infinite ease-in-out;
+.dice-container {
+  display: flex;
+  gap: 16px;
+  perspective: 400px;
 }
 
-.vs-text {
-  background: linear-gradient(135deg, var(--color-secondary-hover), var(--color-primary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: none;
-  font-size: 1.2rem;
-  letter-spacing: 3px;
+.score {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 20px;
+}
+
+.score > .score__side:only-child {
+  grid-column: 1 / -1;
+}
+
+.score__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+}
+
+.score__num {
+  font-family: var(--font-display);
+  font-size: 144px;
+  line-height: 0.85;
+  color: var(--text-heading);
+  transition: color var(--transition-normal);
+}
+
+.score__num--hero.dealt-hidden {
+  color: var(--text-muted);
+}
+
+.score__num--hero.dealt-win {
+  color: var(--text-heading);
+  text-shadow: 0 0 22px rgba(var(--ember-rgb), 0.55);
+}
+
+.score__num--hero.dealt-lose {
+  color: #b7a588;
+}
+
+.score__num--foe {
+  color: #ff7a2a;
+  text-shadow: 0 0 16px rgba(255, 90, 20, 0.6);
+}
+
+.score__vs {
+  margin-top: 48px;
+  font-family: var(--font-display);
+  font-size: 40px;
+  color: var(--text-muted);
+}
+
+.battle-overlay--rolling .score__vs {
+  animation: vsPulse 1s ease-in-out infinite;
 }
 
 @keyframes vsPulse {
@@ -2172,128 +1917,19 @@ const potentialRewardTip = computed(() => {
   50% { transform: scale(1.15); opacity: 1; }
 }
 
-
-/* ============================================
-   DICE STAGE
-   ============================================ */
-.dice-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
+.score__detail {
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  animation: bonusesSlideIn 0.4s ease-out;
 }
 
-.dice-stage.dice-visible {
-  opacity: 1;
-  transform: translateY(0);
+.score__detail span {
+  white-space: nowrap;
 }
 
-.dice-container {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  perspective: 1000px;
-  min-height: 40px;
-}
-
-.dice-face {
-  width: 40px;
-  height: 40px;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, transparent 50%),
-    linear-gradient(145deg, #fafafa 0%, #d8d8d8 50%, #c0c0c0 100%);
-  border: 2px solid #888;
-  border-radius: 10px;
-  display: grid;
-  padding: 4px;
-  box-shadow:
-    0 4px 8px rgba(0,0,0,0.4),
-    inset 0 2px 4px rgba(255,255,255,0.8),
-    inset 0 -2px 4px rgba(0,0,0,0.2);
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.dice-face.rolling-dice {
-  animation:
-    rollDice3D 0.3s infinite linear,
-    floatDice 0.8s infinite ease-in-out;
-  box-shadow:
-    0 4px 12px rgba(var(--accent-rgb), 0.4),
-    0 0 20px rgba(var(--accent-rgb), 0.2),
-    inset 0 2px 4px rgba(255,255,255,0.8);
-}
-
-.dice-face.dice-landed {
-  animation: diceLand 0.3s ease-out;
-}
-
-@keyframes diceLand {
-  0% { transform: scale(1.15); box-shadow: 0 0 20px rgba(255, 255, 255, 0.5); }
-  50% { transform: scale(0.95); }
-  100% { transform: scale(1); }
-}
-
-@keyframes rollDice3D {
-  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-  25% { transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg); }
-  50% { transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg); }
-  75% { transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg); }
-  100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg); }
-}
-
-@keyframes floatDice {
-  0%, 100% { transform: translateY(0) scale(1); }
-  25% { transform: translateY(-6px) scale(1.05); }
-  50% { transform: translateY(0) scale(1); }
-  75% { transform: translateY(-3px) scale(1.02); }
-}
-
-/* Pips */
-.pip {
-  width: 6px;
-  height: 6px;
-  background: radial-gradient(circle at 30% 30%, #444 0%, #111 100%);
-  border-radius: 50%;
-  position: absolute;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.1);
-}
-
-/* Pip positions for each dice value */
-.dice-face[data-value="1"] .pip { top: 50%; left: 50%; transform: translate(-50%, -50%); }
-
-.dice-face[data-value="2"] .pip-2-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
-.dice-face[data-value="2"] .pip-2-2 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
-
-.dice-face[data-value="3"] .pip-3-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
-.dice-face[data-value="3"] .pip-3-2 { top: 50%; left: 50%; transform: translate(-50%, -50%); }
-.dice-face[data-value="3"] .pip-3-3 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
-
-.dice-face[data-value="4"] .pip-4-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
-.dice-face[data-value="4"] .pip-4-2 { top: 25%; right: 25%; transform: translate(50%, -50%); }
-.dice-face[data-value="4"] .pip-4-3 { bottom: 25%; left: 25%; transform: translate(-50%, 50%); }
-.dice-face[data-value="4"] .pip-4-4 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
-
-.dice-face[data-value="5"] .pip-5-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
-.dice-face[data-value="5"] .pip-5-2 { top: 25%; right: 25%; transform: translate(50%, -50%); }
-.dice-face[data-value="5"] .pip-5-3 { top: 50%; left: 50%; transform: translate(-50%, -50%); }
-.dice-face[data-value="5"] .pip-5-4 { bottom: 25%; left: 25%; transform: translate(-50%, 50%); }
-.dice-face[data-value="5"] .pip-5-5 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
-
-.dice-face[data-value="6"] .pip-6-1 { top: 25%; left: 25%; transform: translate(-50%, -50%); }
-.dice-face[data-value="6"] .pip-6-2 { top: 25%; right: 25%; transform: translate(50%, -50%); }
-.dice-face[data-value="6"] .pip-6-3 { top: 50%; left: 25%; transform: translate(-50%, -50%); }
-.dice-face[data-value="6"] .pip-6-4 { top: 50%; right: 25%; transform: translate(50%, -50%); }
-.dice-face[data-value="6"] .pip-6-5 { bottom: 25%; left: 25%; transform: translate(-50%, 50%); }
-.dice-face[data-value="6"] .pip-6-6 { bottom: 25%; right: 25%; transform: translate(50%, 50%); }
-
-.bonuses-reveal {
-  animation: bonusesSlideIn 0.3s ease-out;
+.score__part--accent {
+  color: var(--text-accent);
 }
 
 @keyframes bonusesSlideIn {
@@ -2301,132 +1937,194 @@ const potentialRewardTip = computed(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.bonus-chip {
+.damage-bar-center {
+  width: min(320px, 90%);
+  opacity: 0.5;
+}
+
+.hp-bar-reveal {
+  opacity: 1;
+  animation: hpBarReveal 0.4s ease-out;
+}
+
+@keyframes hpBarReveal {
+  from { opacity: 0.5; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hp-bar-track {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(234, 220, 192, 0.2);
+  overflow: hidden;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bar-win { background: var(--color-primary); box-shadow: 0 0 10px rgba(var(--ember-rgb), 0.7); }
+.bar-lose { background: var(--color-danger); }
+.bar-draw { background: var(--text-primary); }
+
+.verdicts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.first-roll-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid rgba(156, 195, 234, 0.5);
+  background: rgba(40, 70, 110, 0.25);
+  font-size: 15px;
+  color: #cfe2f5;
+  text-align: center;
+  animation: sectionFadeIn 0.4s ease-out both;
+}
+
+.first-roll-note b {
+  font-weight: 600;
+}
+
+.first-roll-note--curse {
+  border-color: rgba(201, 139, 217, 0.5);
+  background: rgba(70, 40, 80, 0.3);
+  color: #e6cdee;
+}
+
+.first-roll-note__icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* ===== The choice plaque ===== */
+.choice-plaque {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 20px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: linear-gradient(180deg, rgba(20, 12, 8, 0.94) 0%, rgba(12, 7, 5, 0.94) 100%);
+  border: 1px solid rgba(var(--ember-rgb), 0.4);
+  box-shadow: 0 0 40px rgba(var(--ember-rgb), 0.18), 0 12px 30px rgba(0, 0, 0, 0.85);
+}
+
+.section-reveal {
+  animation: sectionFadeIn 0.4s ease-out;
+}
+
+@keyframes sectionFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.choice-plaque__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.choice-plaque__title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--text-heading);
+}
+
+.choice-plaque__hint {
+  font-style: italic;
+  font-size: 14px;
+  color: #a8957a;
+}
+
+.consumable-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.items-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.items-section-title {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.item-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: rgba(var(--accent-rgb), 0.15);
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
-  color: var(--color-primary-hover);
-}
-
-.bonus-chip.spell-chip {
-  background: rgba(156, 39, 176, 0.15);
-  border-color: rgba(156, 39, 176, 0.3);
-  color: #ce93d8;
-}
-
-.bonus-chip-img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-}
-
-.bonus-value {
-  font-weight: 700;
-}
-
-/* ============================================
-   REWARD SECTION
-   ============================================ */
-/* Combined reward + consumable row */
-.reward-consumable-row {
-  display: flex;
   gap: 8px;
-  margin-bottom: 6px;
-  align-items: stretch;
-}
-
-.reward-compact {
-  flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.08);
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
-  display: flex;
-  align-items: center;
-}
-
-.reward-compact.category-weapon { border-color: rgba(255, 87, 34, 0.4); background: rgba(255, 87, 34, 0.06); }
-.reward-compact.category-key { border-color: rgba(255, 193, 7, 0.4); background: rgba(255, 193, 7, 0.06); }
-.reward-compact.category-spell { border-color: rgba(156, 39, 176, 0.4); background: rgba(156, 39, 176, 0.06); }
-.reward-compact.category-treasure { border-color: rgba(255, 193, 7, 0.4); background: rgba(255, 193, 7, 0.06); }
-
-.reward-compact-inner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.reward-icon-compact {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.reward-img-sm {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
-}
-
-.reward-emoji-sm {
-  font-size: 1.6rem;
-}
-
-.reward-compact-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.reward-compact-name {
-  font-weight: 600;
-  font-size: 0.85rem;
+  min-height: 44px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  border: 1px solid rgba(234, 220, 192, 0.2);
+  background: rgba(0, 0, 0, 0.35);
   color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
 }
 
-.badge-sm {
-  font-size: 0.65rem;
-  padding: 1px 6px;
+button.item-chip {
+  cursor: pointer;
 }
 
-.consumable-compact {
-  flex: 0 0 auto;
-  padding: 8px;
-  border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.06);
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
+.item-chip.inventory-replace.selected {
+  border-color: rgba(217, 69, 42, 0.8);
+  background: rgba(217, 69, 42, 0.15);
+}
+
+.consumable-kept {
+  border-color: rgba(156, 195, 234, 0.5);
+}
+
+.chip-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.chip-damage,
+.chip-value {
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--text-heading);
+}
+
+.chip-value {
+  color: #d9c08a;
+}
+
+.choice-plaque__bottom {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
-.consumable-compact-label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-}
-
-.consumable-compact-list {
+.reward-row {
   display: flex;
-  gap: 6px;
-}
-
-.reward-section {
-  position: relative;
-  margin-bottom: 4px;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
 }
 
 .reward-rise {
-  animation: rewardRise 0.6s ease-out;
+  animation: rewardRise 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes rewardRise {
@@ -2435,152 +2133,69 @@ const potentialRewardTip = computed(() => {
   100% { transform: translateY(0); opacity: 1; }
 }
 
-.reward-card {
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.1) 0%, rgba(var(--accent-rgb), 0.05) 100%);
-  border: 1px solid rgba(var(--accent-rgb), 0.4);
+.reward-row--potential .reward-row__icon {
+  outline: 1px solid var(--color-primary);
+  outline-offset: 3px;
+  animation: pulseBorder 1.4s ease-in-out infinite;
 }
 
-.reward-card.category-weapon { border-color: rgba(255, 87, 34, 0.5); }
-.reward-card.category-key { border-color: rgba(255, 193, 7, 0.5); }
-.reward-card.category-spell { border-color: rgba(156, 39, 176, 0.5); }
-.reward-card.category-treasure { border-color: rgba(255, 193, 7, 0.5); }
-
-/* Inline reward layout (compact) */
-.reward-item-inline {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+@keyframes pulseBorder {
+  0%, 100% { outline-color: rgba(var(--ember-rgb), 0.9); }
+  50% { outline-color: rgba(var(--ember-rgb), 0.25); }
 }
 
-.reward-inline-img {
-  width: 40px;
-  height: 40px;
+.reward-row__label {
+  color: var(--text-secondary);
+}
+
+.reward-row__icon {
+  position: relative;
+  display: inline-flex;
+  color: #d9c08a;
+}
+
+.reward-row__img {
+  width: 30px;
+  height: 30px;
   object-fit: contain;
-  flex-shrink: 0;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
 }
 
-.reward-inline-emoji {
-  font-size: 1.8rem;
-  flex-shrink: 0;
-}
-
-.reward-inline-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.reward-monster-img {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.potential-badge {
-  position: absolute;
-  top: -4px;
-  right: -6px;
-  background: #ff9800;
-  color: white;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: bold;
-  border: 2px solid var(--bg-secondary);
-}
-
-.reward-details {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.reward-item-name {
-  font-weight: 700;
-  font-size: 0.95rem;
+.reward-row__name {
   color: var(--text-primary);
-}
-
-.reward-badges {
-  display: flex;
-  gap: 6px;
 }
 
 .stat-badge {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 10px;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.badge-damage {
-  background: rgba(255, 87, 34, 0.15);
-  color: #FF8A65;
-  border: 1px solid rgba(255, 87, 34, 0.3);
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-heading);
 }
 
 .badge-value {
-  background: rgba(255, 193, 7, 0.15);
-  color: #FFD54F;
-  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: #d9c08a;
 }
 
 .reward-note {
-  font-size: 0.72rem;
   font-style: italic;
+  color: var(--text-accent);
 }
 
-.reward-note.success { color: var(--color-primary); }
-.reward-note.potential { color: #ff9800; }
-
-.no-reward {
-  color: var(--text-muted);
-  font-style: italic;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-.generic-reward {
-  border-left: 3px dashed #ffd700;
-  background: rgba(255, 215, 0, 0.06);
-  padding: 8px 12px;
-  border-radius: 6px;
-  animation: pulseBorder 2s infinite;
-}
-
-@keyframes pulseBorder {
-  0%, 100% { border-color: #ffd700; }
-  50% { border-color: #ff9800; }
-}
-
-/* Victory sparkles */
 .victory-sparkles {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  inset: 50% auto auto 50%;
   pointer-events: none;
-  z-index: 1;
 }
 
 .sparkle {
   position: absolute;
-  width: 6px;
-  height: 6px;
-  background: #ffd700;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  box-shadow: 0 0 6px #ffd700, 0 0 12px rgba(255, 215, 0, 0.5);
-  animation: sparkleFloat 1.2s ease-out forwards;
+  background: var(--text-accent);
+  box-shadow: 0 0 6px var(--color-primary);
+  animation: sparkleFloat 1.1s ease-out forwards;
 }
 
 @keyframes sparkleFloat {
@@ -2589,170 +2204,13 @@ const potentialRewardTip = computed(() => {
   100% { transform: translate(var(--sparkle-x), var(--sparkle-y)) scale(1.2); opacity: 0; }
 }
 
-/* ============================================
-   ITEMS SECTION (Consumables / Inventory)
-   ============================================ */
-.items-section {
-  margin-bottom: 6px;
-  padding: 8px;
-  border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.06);
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
-  max-height: 120px;
-  overflow-y: auto;
-}
-
-.section-reveal {
-  animation: sectionFadeIn 0.3s ease-out;
-}
-
-@keyframes sectionFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.items-section-title {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.items-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.sacrifice-chip.selected {
-  border-color: #e53935;
-  box-shadow: 0 0 8px rgba(229, 57, 53, 0.6);
-}
-
-.item-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 16px;
-  font-size: 0.82rem;
-  color: var(--text-primary);
-  background: rgba(var(--accent-rgb), 0.12);
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-}
-
-.item-chip.consumable-used {
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2) 0%, rgba(99, 102, 241, 0.15) 100%);
-  border-color: rgba(var(--accent-rgb), 0.4);
-}
-
-/* Wizard "Magical Affinity": the spell was used but not consumed */
-.item-chip.consumable-kept {
-  background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(99, 102, 241, 0.15) 100%);
-  border-color: rgba(250, 204, 21, 0.5);
-}
-
-.chip-emoji {
-  font-size: 1rem;
-}
-
-.chip-img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-
-.chip-name {
-  font-weight: 500;
-  font-size: 0.8rem;
-}
-
-.chip-damage {
-  color: var(--color-primary-hover);
-  font-weight: 600;
-  font-size: 0.75rem;
-}
-
-.chip-value {
-  color: #ffd700;
-  font-weight: 600;
-  font-size: 0.75rem;
-}
-
-/* Selectable items */
-.item-chip.selectable {
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.item-chip.selectable:hover {
-  background: rgba(var(--accent-rgb), 0.2);
-  border-color: rgba(var(--accent-rgb), 0.5);
-  transform: translateY(-1px);
-}
-
-.item-chip.selectable.selected {
-  background: rgba(var(--accent-rgb), 0.2);
-  border-color: rgba(var(--accent-rgb), 0.5);
-  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.2);
-}
-
-/* Inventory replacement items */
-.item-chip.inventory-replace {
-  border: 2px solid rgba(244, 67, 54, 0.4);
-  background: rgba(244, 67, 54, 0.08);
-  transition: all 0.2s ease;
-}
-
-.item-chip.inventory-replace:hover {
-  background: rgba(244, 67, 54, 0.15);
-  border-color: rgba(244, 67, 54, 0.6);
-  transform: scale(1.03);
-}
-
-.item-chip.inventory-replace.selected {
-  background: rgba(244, 67, 54, 0.25);
-  border-color: #ff6b6b;
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
-  transform: scale(1.05);
-}
-
-.item-chip.inventory-replace.selected::after {
-  content: '✓';
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background: var(--color-primary);
-  color: white;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: bold;
-  border: 2px solid var(--bg-secondary);
-}
-
-.item-chip.inventory-replace {
-  position: relative;
-}
-
-/* ============================================
-   FOOTER & BUTTONS
-   ============================================ */
+/* ===== Buttons ===== */
 .battle-footer {
-  padding: 8px 12px;
-  border-top: 1px solid rgba(var(--accent-rgb), 0.2);
-  background: linear-gradient(180deg, rgba(26, 24, 48, 0.8) 0%, rgba(15, 14, 28, 0.9) 100%);
-  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .footer-reveal {
-  animation: footerSlideIn 0.4s ease-out 0.2s both;
+  animation: footerSlideIn 0.4s ease-out;
 }
 
 @keyframes footerSlideIn {
@@ -2760,256 +2218,118 @@ const potentialRewardTip = computed(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.footer-locked {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .button-group {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.button-group .btn {
+  min-height: 48px;
   gap: 6px;
-  align-items: center;
-  width: 100%;
 }
 
-.button-group button {
-  width: 90%;
-  max-width: 360px;
+.btn-strike {
+  padding: 0 28px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  box-shadow: 0 0 18px rgba(var(--ember-rgb), 0.35);
 }
 
-/* Primary button (theme gradient) */
-.btn-primary {
-  background: var(--gradient-primary);
-  color: #fff;
-  border: none;
-  padding: 9px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.35);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.5);
-}
-
-.btn-primary:disabled {
-  background: rgba(var(--accent-rgb), 0.3);
-  cursor: not-allowed;
-  opacity: 0.5;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Secondary button */
-.btn-secondary {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-  padding: 9px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: rgba(var(--accent-rgb), 0.1);
-  transform: translateY(-2px);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Draw button */
-/* Warrior "Double Attack" reroll */
-.btn-reroll {
-  background: linear-gradient(135deg, #4a2590, #836eff);
-  color: #fff;
-  border: none;
-  padding: 9px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(var(--accent-light-rgb), 0.35);
-}
-
-.btn-reroll:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(var(--accent-light-rgb), 0.5);
-}
-
-.btn-reroll:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.first-roll-note {
-  margin-top: 6px;
-  text-align: center;
-  font-size: 0.8rem;
-  color: #c9c2e6;
-}
-
-.first-roll-note s {
-  color: #ff8a80;
-  margin: 0 4px;
-}
-
-.btn-draw {
-  background: linear-gradient(135deg, #e65100, #ff9800);
-  color: #fff;
-  border: none;
-  padding: 9px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(255, 152, 0, 0.3);
-}
-
-.btn-draw:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
-}
-
-.btn-draw:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Defeat/Retreat button */
-.btn-defeat {
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid rgba(156, 163, 175, 0.25);
-  padding: 9px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.btn-defeat:hover:not(:disabled) {
-  background: rgba(244, 67, 54, 0.08);
-  border-color: rgba(244, 67, 54, 0.3);
-  transform: translateY(-2px);
-}
-
-.btn-defeat:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Danger button (cancel) */
-.btn-danger {
-  background: linear-gradient(135deg, #d32f2f, #f44336);
-  color: #fff;
-  border: none;
-  padding: 9px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(244, 67, 54, 0.3);
-}
-
-.btn-danger:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
-}
-
-.btn-danger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* ============================================
-   KBD HINTS
-   ============================================ */
 .kbd-hint {
-  font-size: 0.75em;
-  opacity: 0.5;
-  margin-left: 4px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.6;
 }
 
-@media (hover: none) {
-  .kbd-hint { display: none; }
-}
-
-/* ============================================
-   RESPONSIVE
-   ============================================ */
-@media (max-width: 480px) {
+/* ===== Phones and low screens: fighters smaller, side by side, the plaque full width ===== */
+@media (max-width: 768px), (max-height: 500px) {
   .battle-card {
-    width: 100%;
-    max-width: 100vw;
-    border-radius: 10px;
+    padding: 16px 12px 16px;
   }
 
-  .battle-arena {
-    padding: 10px 4px;
+  .header-label {
+    font-size: 11px;
   }
 
-  .combatant-sprite-wrap {
-    width: 56px;
-    height: 56px;
+  .scene-title {
+    font-size: 26px;
+    padding: 0 48px;
   }
 
-  .combatant-sprite {
-    width: 48px;
-    height: 48px;
+  .result-title {
+    font-size: 22px;
   }
 
-  .damage-bar-center {
-    max-width: 160px;
-  }
-
-  .vs-badge {
-    font-size: 1.2rem;
-  }
-
-  .dice-face {
-    width: 40px;
-    height: 40px;
-  }
-
-  .pip {
-    width: 6px;
-    height: 6px;
-  }
-
-  .reward-inline-img {
-    width: 32px;
-    height: 32px;
-  }
-
-  .battle-header {
-    padding: 8px 12px;
+  .close-btn {
+    top: 12px;
+    right: 12px;
   }
 
   .battle-body {
-    padding: 8px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "hero foe" "roll roll";
+    padding: 8px 0 12px;
+    gap: 8px;
   }
 
-  .battle-footer {
-    padding: 10px 12px;
+  .hero-side { grid-area: hero; }
+  .monster-side { grid-area: foe; }
+  .roll-centre { grid-area: roll; gap: 10px; }
+
+  .combatant {
+    --fighter-w: 100%;
+    --fighter-img-w: 120px;
+    --fighter-img-h: 150px;
+    --fighter-name: 20px;
+  }
+
+  .dice-container {
+    --die-size: 44px;
+  }
+
+  .score__num {
+    font-size: 76px;
+  }
+
+  .score {
+    gap: 10px;
+  }
+
+  .score__detail span {
+    white-space: normal;
+  }
+
+  .score__vs {
+    margin-top: 22px;
+    font-size: 26px;
+  }
+
+  .choice-plaque {
+    padding: 14px;
+  }
+
+  .battle-footer,
+  .button-group {
+    width: 100%;
+  }
+
+  .button-group .btn {
+    flex: 1 1 auto;
   }
 }
-.battle-footer.footer-locked {
-  pointer-events: none;
-  opacity: 0.45;
+
+@media (max-height: 500px) and (min-width: 600px) {
+  .battle-body {
+    grid-template-columns: 1fr minmax(240px, 320px) 1fr;
+    grid-template-areas: "hero roll foe";
+  }
 }
 </style>
