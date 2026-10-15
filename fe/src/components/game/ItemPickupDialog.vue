@@ -59,7 +59,7 @@
           class="pickup-btn pickup-btn--ghost btn-leave"
           @click="skipItem"
         >
-          {{ $t('dialogs.leaveIt') }}
+          {{ leaveEndsTurn ? $t('dialogs.leaveEndTurn') : $t('dialogs.leaveKeepMoving') }}
           <span class="kbd-hint">Esc</span>
         </button>
         <button
@@ -67,7 +67,7 @@
           class="pickup-btn pickup-btn--ember btn-pickup"
           @click="pickupItem"
         >
-          {{ $t('dialogs.pickUp') }}
+          {{ $t('dialogs.pickUpEndTurn') }}
           <span class="kbd-hint">Enter</span>
         </button>
       </div>
@@ -90,6 +90,11 @@ const props = defineProps({
   item: {
     type: Object,
     default: () => ({})
+  },
+  /** true when the hero has no move left: leaving the item ends the turn too (taking it always does) */
+  leaveEndsTurn: {
+    type: Boolean,
+    default: false
   }
 });
 

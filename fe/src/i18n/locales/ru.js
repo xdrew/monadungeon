@@ -429,6 +429,9 @@ export default {
     pickUpPrompt: 'Взять этот предмет?',
     pickUp: 'Взять',
     leaveIt: 'Не брать',
+    pickUpEndTurn: 'Взять и завершить ход',
+    leaveEndTurn: 'Не брать и завершить ход',
+    leaveKeepMoving: 'Не брать и идти дальше',
     inventoryFull: 'Рюкзак полон',
     consumable: 'Расходуется',
     replaceFrom: {

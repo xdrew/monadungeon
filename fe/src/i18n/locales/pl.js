@@ -429,6 +429,9 @@ export default {
     pickUpPrompt: 'Podnieść ten przedmiot?',
     pickUp: 'Podnieś',
     leaveIt: 'Nie bierz',
+    pickUpEndTurn: 'Podnieś i zakończ turę',
+    leaveEndTurn: 'Nie bierz i zakończ turę',
+    leaveKeepMoving: 'Nie bierz i idź dalej',
     inventoryFull: 'Pełny ekwipunek',
     consumable: 'Jednorazowe',
     replaceFrom: {

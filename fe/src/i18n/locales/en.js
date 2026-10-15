@@ -430,6 +430,9 @@ export default {
     pickUpPrompt: 'Pick up this item?',
     pickUp: 'Pick Up',
     leaveIt: 'Leave It',
+    pickUpEndTurn: 'Pick Up and end turn',
+    leaveEndTurn: 'Leave It and end turn',
+    leaveKeepMoving: 'Leave It and keep moving',
     inventoryFull: 'Inventory Full',
     consumable: 'Consumable',
     replaceFrom: {

@@ -486,6 +486,7 @@
         v-if="showItemPickupDialog"
         :show="showItemPickupDialog"
         :item="tileItem"
+        :leave-ends-turn="pickupLeaveEndsTurn"
         @pickup="handleAutoItemPickup"
         @skip="skipItemAndEndTurn"
       />
@@ -5133,6 +5134,12 @@ const dismissItemPickupDialog = () => {
 // Function to dismiss item pickup dialog when player skips item.
 // If the player has used all their moves (pendingItemPickup), auto-ends the turn.
 // Otherwise, the player can continue moving.
+// Leaving the item ends the turn only when the hero has no move left (the backend marks the turn pendingItemPickup)
+const pickupLeaveEndsTurn = computed(() => {
+  const turnId = itemPickupTurnId.value || gameData.value?.state?.currentTurnId;
+  return gameTurns.value?.find((turn) => turn.turnId === turnId)?.pendingItemPickup === true;
+});
+
 const skipItemAndEndTurn = async () => {
 
 
