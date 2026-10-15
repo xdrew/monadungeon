@@ -61,7 +61,7 @@ Authority: user answers > e2e contract > canvas board > existing code.
   - Delete `HealingNotification.vue`, `PlayerSwitchNotification.vue` and their commented references in GameView; prune unused blocks of `fe/src/styles/components/modals.css` (grep each selector first), re-colour what stays with tokens.
 
 ### Phase 3: Docs
-- [ ] Task 7: Verify and docs (depends on 1-6)
+- [x] Task 7: Verify and docs (depends on 1-6)
   - `npm run i18n:check`, build + `NODE_ENV=production` build, ESLint on touched files (no new errors; the 5 old errors of BattleReportModal should be gone or not increased), grep of the e2e selector list against the new templates.
   - Host Chrome pass over all dialogs in the plaque and the scene states (en, ru, pl spot check), console clean.
   - CLAUDE.md Theme bullet: the fight scene (`BattleReportModal` + `components/game/fight/`), dialogs live in the decision plaque; README if it mentions the battle modal. Update memory `torchlight-redesign.md`.
