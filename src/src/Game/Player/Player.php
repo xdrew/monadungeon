@@ -328,6 +328,15 @@ class Player extends AggregateRoot
         $maxItems = $this->getMaxItemsForCategory($category);
         $currentCount = \count($this->inventory[$category->value] ?? []);
 
+        // Hanna "Dagger Throwing": with the weapon slots full a dagger goes into a free spell slot
+        $throwsDagger = $item->type === ItemType::DAGGER && $this->getHero()?->throwsDaggers() === true;
+        if ($throwsDagger && $maxItems !== null && $currentCount >= $maxItems
+            && \count($this->inventory[ItemCategory::SPELL->value] ?? []) < self::MAX_SPELLS) {
+            $category = ItemCategory::SPELL;
+            $maxItems = self::MAX_SPELLS;
+            $currentCount = \count($this->inventory[ItemCategory::SPELL->value] ?? []);
+        }
+
         if ($maxItems === null || $currentCount < $maxItems) {
             // Add the item to the appropriate category
             $this->inventory[$category->value][] = $item;
@@ -347,7 +356,10 @@ class Player extends AggregateRoot
                 item: $item,
                 category: $category,
                 maxItems: $maxItems ?? 0,
-                currentInventory: $this->inventory[$category->value] ?? [],
+                // Hanna "Dagger Throwing": a dagger may replace a weapon or anything in the spell slots
+                currentInventory: $throwsDagger
+                    ? array_merge($this->inventory[ItemCategory::WEAPON->value] ?? [], $this->inventory[ItemCategory::SPELL->value] ?? [])
+                    : $this->inventory[$category->value] ?? [],
             );
         }
     }
@@ -431,19 +443,34 @@ class Player extends AggregateRoot
         if (isset($this->inventory[ItemCategory::WEAPON->value])) {
             foreach ($this->inventory[ItemCategory::WEAPON->value] as $weapon) {
                 $weapon = Item::fromAnything($weapon);
-                $totalDamage += $weapon->type->getDamage();
+                $totalDamage += $this->itemStrength($weapon);
             }
         }
 
-        // Add damage from spells
+        // Add damage from spells (Hanna "Dagger Throwing": daggers in the spell slots count while she can throw them)
         if (isset($this->inventory[ItemCategory::SPELL->value])) {
             foreach ($this->inventory[ItemCategory::SPELL->value] as $spell) {
                 $spell = Item::fromAnything($spell);
-                $totalDamage += $spell->type->getDamage();
+                if ($spell->type === ItemType::DAGGER && $this->getHero()?->throwsDaggers() !== true) {
+                    continue;
+                }
+                $totalDamage += $this->itemStrength($spell);
             }
         }
 
         return $totalDamage;
+    }
+
+    /**
+     * Strength of an item in this hero's hands (Baron Markul "Sword Master": a sword has strength 3).
+     */
+    public function itemStrength(Item $item): int
+    {
+        if ($item->type === ItemType::SWORD && $this->getHero()?->masterOfSword() === true) {
+            return 3;
+        }
+
+        return $item->type->getDamage();
     }
 
     /**
@@ -458,8 +485,13 @@ class Player extends AggregateRoot
         if (isset($this->inventory[ItemCategory::WEAPON->value])) {
             foreach ($this->inventory[ItemCategory::WEAPON->value] as $weapon) {
                 $weapon = Item::fromAnything($weapon);
-                $totalDamage += $weapon->type->getDamage();
+                $totalDamage += $this->itemStrength($weapon);
             }
+        }
+
+        // Hanna "Dagger Throwing": daggers kept in the spell slots are weapons too
+        foreach ($this->getSlotDaggers() as $dagger) {
+            $totalDamage += $this->itemStrength($dagger);
         }
 
         return $totalDamage;
@@ -479,7 +511,7 @@ class Player extends AggregateRoot
             foreach ($items as $item) {
                 $item = Item::fromAnything($item);
                 if (\in_array($item->itemId->toString(), $itemIds, true) && $item->type->getDamage() > 0) {
-                    $totalDamage += $item->type->getDamage();
+                    $totalDamage += $this->itemStrength($item);
                 }
             }
         }
@@ -503,7 +535,30 @@ class Player extends AggregateRoot
             }
         }
 
-        return $weaponItems;
+        // Hanna "Dagger Throwing": daggers kept in the spell slots are always used too
+        return array_merge($weaponItems, $this->getSlotDaggers());
+    }
+
+    /**
+     * Hanna "Dagger Throwing": daggers lying in the spell slots, while she can throw them (not cursed).
+     *
+     * @return list<Item>
+     */
+    public function getSlotDaggers(): array
+    {
+        if ($this->getHero()?->throwsDaggers() !== true) {
+            return [];
+        }
+
+        $daggers = [];
+        foreach ($this->inventory[ItemCategory::SPELL->value] ?? [] as $item) {
+            $item = Item::fromAnything($item);
+            if ($item->type === ItemType::DAGGER) {
+                $daggers[] = $item;
+            }
+        }
+
+        return $daggers;
     }
 
     /**
@@ -514,10 +569,13 @@ class Player extends AggregateRoot
     {
         $consumableItems = [];
 
-        // Collect spells (which are consumable)
+        // Collect spells (which are consumable); Hanna's daggers in the spell slots are never consumed
         if (isset($this->inventory[ItemCategory::SPELL->value])) {
             foreach ($this->inventory[ItemCategory::SPELL->value] as $spell) {
                 $spell = Item::fromAnything($spell);
+                if ($spell->type->getCategory() !== ItemCategory::SPELL) {
+                    continue;
+                }
                 $consumableItems[] = $spell;
             }
         }
@@ -569,13 +627,14 @@ class Player extends AggregateRoot
         if (isset($this->inventory[ItemCategory::SPELL->value])) {
             foreach ($this->inventory[ItemCategory::SPELL->value] as $spell) {
                 $spell = Item::fromAnything($spell);
-                if ($spell->type->getDamage() > 0) {
+                if ($spell->type->getCategory() === ItemCategory::SPELL && $spell->type->getDamage() > 0) {
                     $damageItems[] = $spell;
                 }
             }
         }
 
-        return $damageItems;
+        // Hanna "Dagger Throwing": daggers in the spell slots
+        return array_merge($damageItems, $this->getSlotDaggers());
     }
 
     /**
@@ -640,6 +699,12 @@ class Player extends AggregateRoot
     {
         $category = $this->getInventoryCategoryForItemType($type);
         $maxItems = $this->getMaxItemsForCategory($category);
+
+        // Hanna "Dagger Throwing": a dagger also fits a free spell slot
+        if ($type === ItemType::DAGGER && $this->getHero()?->throwsDaggers() === true
+            && \count($this->inventory[ItemCategory::SPELL->value] ?? []) < self::MAX_SPELLS) {
+            return true;
+        }
 
         return $maxItems === null || \count($this->inventory[$category->value] ?? []) < $maxItems;
     }
@@ -719,6 +784,8 @@ class Player extends AggregateRoot
         $replaced = false;
         $oldItem = null;
 
+        $replacedCategory = null;
+
         // First, find and remove the existing item
         foreach ($this->inventory as $category => $items) {
             foreach ($items as $index => $item) {
@@ -726,6 +793,7 @@ class Player extends AggregateRoot
                 if ($item->itemId->equals($itemIdToReplace)) {
                     // Store the old item for event dispatching
                     $oldItem = $item;
+                    $replacedCategory = $category;
 
                     // Remove the item from this category
                     unset($this->inventory[$category][$index]);
@@ -741,6 +809,12 @@ class Player extends AggregateRoot
         if ($replaced && $oldItem !== null) {
             // Determine which category this item belongs to
             $category = $this->getInventoryCategoryForItemType($command->newItem->type);
+
+            // Hanna "Dagger Throwing": a dagger that replaces something in the spell slots takes that slot
+            if ($command->newItem->type === ItemType::DAGGER && $replacedCategory === ItemCategory::SPELL->value
+                && $this->getHero()?->throwsDaggers() === true) {
+                $category = ItemCategory::SPELL;
+            }
 
             // Add the item to the appropriate category
             $this->inventory[$category->value][] = $command->newItem;

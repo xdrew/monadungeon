@@ -62,18 +62,18 @@ Constraints carried over from part 1 and the earlier heroes: every skill is a `H
   - Files: TurnAction.php, GameTurn.php, ContinueAfterVictory.php (new), Field.php, Movement.php.
 
 ### Phase 2: Markul, Hanna, Lorraine (backend)
-- [ ] Task 4: Sword Master and Lightning Attack with retreat (depends on 1)
+- [x] Task 4: Sword Master and Lightning Attack with retreat (depends on 1)
   - `Player.php`: `itemStrength(Item)`, used in the three damage sums.
   - `TurnAction.php`: `LIGHTNING_ATTACK = 'lightning_attack'` (moveCost 4, counted; allowed only first, like MAGIC_SWAP; after it only FIGHT_MONSTER-driven actions, PICK_ITEM, END_TURN), `RETREAT = 'retreat'` (bookkeeping: always allowed, never counted, skipped by `getLastAction`). `GameTurn::performAction`: no auto-end on LIGHTNING_ATTACK; RETREAT in `isBookkeepingAction`.
   - `src/src/Game/Movement/LightningAttack.php` (command) + `Movement::lightningAttack` handler per the table.
   - `StartBattle.php`: `public bool $lightning = false`; `Battle.php`: column `lightning` (bool default false), non-WIN branch of `processBattleResult` per the table; FIGHT_MONSTER `lightningAttack: true`, `heroAbility` part `lightning_attack`. New event `src/src/Game/Battle/RetreatRequired.php`.
   - `Field.php`: column `pendingRetreat` (jsonb nullable), `getPendingRetreat()`, `#[Handler] onRetreatRequired`, `#[Handler] chooseRetreat(ChooseRetreat)`, `onTurnEnded` fallback, `getAvailablePlacesForPlayer` guard, `lastBattleInfo.retreatOptions`. New command `src/src/Game/Field/ChooseRetreat.php`.
   - Files: Player.php, TurnAction.php, GameTurn.php, LightningAttack.php (new), Movement.php, StartBattle.php, Battle.php, RetreatRequired.php (new), Field.php, ChooseRetreat.php (new).
-- [ ] Task 5: Dagger Throwing and Sprint (depends on 4)
+- [x] Task 5: Dagger Throwing and Sprint (depends on 4)
   - `Player.php`: placement in `addItem`, `replaceInventoryItem`, `hasRoomFor`, slot-dagger helpers, `getConsumableItems` filter, damage/weapon lists per the table. Grep `getConsumableItems`/`getDamageItems`/`getWeaponItems` callers (`Battle.php`, `Duel.php`, `Field.php`) and confirm none treats a slot dagger as a spell.
   - `TurnAction.php`: `SPRINT = 'sprint'`; `GameTurn.php`: column `sprint`, `maxMoves()`, the tile-action guard, `isSprint()`; `src/src/Game/Movement/DeclareSprint.php` + `Movement::declareSprint`; `Field::getAvailablePlacesForPlayer` sprint guard (`GetCurrentTurn` → `GetTurn`, only when the turn belongs to the queried player).
   - Files: Player.php, TurnAction.php, GameTurn.php, DeclareSprint.php (new), Movement.php, Field.php.
-- [ ] Task 6: Bear Attack, Listening, migration (depends on 5)
+- [x] Task 6: Bear Attack, Listening, migration (depends on 5)
   - `Battle.php`: Bear Attack in `rollDice`, column `onesAsSixes`, payloads (`BattleCompleted::$onesAsSixes`, `DuelSideCompleted::$onesAsSixes`, `lastBattleInfo.onesAsSixes`, FIGHT_MONSTER data).
   - `TurnAction.php`: `LISTEN = 'listen'` (moveCost 1, counted); `src/src/Game/Field/Listen.php` + `Field::listen` per the table.
   - Migration (php container): `php bin/console doctrine:migrations:diff` → keep `player.player ADD heal_limit INT DEFAULT NULL`, `battle.battle ADD berserk_bonus INT DEFAULT 0 NOT NULL, ADD lightning BOOLEAN DEFAULT false NOT NULL, ADD ones_as_sixes INT DEFAULT 0 NOT NULL`, `game_turn.game_turn ADD sprint BOOLEAN DEFAULT false NOT NULL`, `field.field ADD pending_retreat JSONB DEFAULT NULL`; strip the known `unique_player_wallet` drift; description "Karak: Regent heroes — Berserk, heal limit, Lightning Attack retreat, Sprint, Bear Attack"; migrate; `doctrine:schema:validate` (only the known drift).

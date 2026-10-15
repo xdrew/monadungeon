@@ -19,6 +19,8 @@ use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
 use App\Game\Movement\Commands\MagicSwap;
+use App\Game\Movement\Commands\DeclareSprint;
+use App\Game\Movement\Commands\LightningAttack;
 use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Movement\Commands\ResetPlayerPosition;
 use App\Game\Movement\Commands\TeleportPlayer;
@@ -361,6 +363,145 @@ class Movement extends AggregateRoot
             ],
             at: new \DateTimeImmutable(),
             deferTurnEnd: self::hasPickableItemAt($field->getItems(), $playerTo->toString()),
+        ));
+    }
+
+    /**
+     * Baron Markul "Lightning Attack": teleport onto any tile with a monster and fight it. Costs all 4 moves,
+     * so only as the first action of the turn; a fight that is not won leaves him to choose a retreat (Field).
+     *
+     * @throws GameAlreadyFinishedException
+     * @throws NotYourTurnException
+     * @throws InvalidMovementException
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function lightningAttack(LightningAttack $command, MessageContext $context): void
+    {
+        $game = $context->dispatch(new GetGame($command->gameId));
+        if ($game->getStatus()->isFinished()) {
+            throw new GameAlreadyFinishedException();
+        }
+
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
+        if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId)) {
+            throw new NotYourTurnException();
+        }
+
+        $currentTurnId = $context->dispatch(new GetCurrentTurn($command->gameId));
+        if ($currentTurnId === null || !$currentTurnId->equals($command->turnId)) {
+            throw new InvalidMovementException('Invalid turn ID');
+        }
+
+        $player = $context->dispatch(new GetPlayer($command->playerId));
+        if ($player->getHero()?->lightningAttack() !== true) {
+            throw new \DomainException('Only Baron Markul can strike like lightning (Lightning Attack)');
+        }
+        if ($player->getHP() <= 0) {
+            throw new InvalidMovementException('A stunned hero cannot attack');
+        }
+
+        $playerId = $command->playerId->toString();
+        $from = $this->playerPositions[$playerId] ?? null;
+        if ($from === null) {
+            throw new InvalidMovementException('Player position not found');
+        }
+
+        $turn = $context->dispatch(new GetTurn($command->turnId));
+        if ($turn === null || $turn->getActions() !== []) {
+            throw new InvalidMovementException('Lightning Attack costs 4 moves and is only possible at the beginning of the turn');
+        }
+
+        $targetKey = $command->targetPosition->toString();
+        if ($targetKey === $from->toString()) {
+            throw new InvalidMovementException('Lightning Attack needs another tile');
+        }
+        $items = $context->dispatch(new GetField($this->gameId))->getItems();
+        $monster = isset($items[$targetKey]) ? Item::fromAnything($items[$targetKey]) : null;
+        if ($monster === null || $monster->guardHP <= 0 || $monster->guardDefeated) {
+            throw new InvalidMovementException('There is no monster on that tile');
+        }
+
+        $this->playerPositions[$playerId] = $command->targetPosition;
+        $context->dispatch(new PlayerMoved(
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            fromPosition: $from,
+            toPosition: $command->targetPosition,
+            movedAt: new \DateTimeImmutable(),
+        ));
+
+        $context->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::LIGHTNING_ATTACK,
+            tileId: null,
+            additionalData: [
+                'from' => $from->toString(),
+                'to' => $targetKey,
+                'monster' => ['name' => $monster->name->value, 'type' => $monster->type->value, 'hp' => $monster->guardHP],
+                'heroAbility' => 'lightning_attack',
+            ],
+            at: new \DateTimeImmutable(),
+        ));
+
+        $context->dispatch(new StartBattle(
+            battleId: Uuid::v7(),
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            turnId: $command->turnId,
+            monster: $monster,
+            fromPosition: $from,
+            toPosition: $command->targetPosition,
+            lightning: true,
+        ));
+    }
+
+    /**
+     * Hanna "Sprint": declared as the first action of the turn; the turn then allows 8 moves and no tile exploration.
+     *
+     * @throws GameAlreadyFinishedException
+     * @throws NotYourTurnException
+     * @throws InvalidMovementException
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function declareSprint(DeclareSprint $command, MessageContext $context): void
+    {
+        $game = $context->dispatch(new GetGame($command->gameId));
+        if ($game->getStatus()->isFinished()) {
+            throw new GameAlreadyFinishedException();
+        }
+
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
+        if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId)) {
+            throw new NotYourTurnException();
+        }
+
+        $currentTurnId = $context->dispatch(new GetCurrentTurn($command->gameId));
+        if ($currentTurnId === null || !$currentTurnId->equals($command->turnId)) {
+            throw new InvalidMovementException('Invalid turn ID');
+        }
+
+        $player = $context->dispatch(new GetPlayer($command->playerId));
+        if ($player->getHero()?->sprints() !== true) {
+            throw new \DomainException('Only Hanna can sprint (Sprint)');
+        }
+
+        $turn = $context->dispatch(new GetTurn($command->turnId));
+        if ($turn === null || $turn->getActions() !== []) {
+            throw new InvalidMovementException('Sprint is declared at the beginning of the turn');
+        }
+
+        $context->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::SPRINT,
+            tileId: null,
+            additionalData: ['heroAbility' => 'sprint', 'maxMoves' => 8],
+            at: new \DateTimeImmutable(),
         ));
     }
 

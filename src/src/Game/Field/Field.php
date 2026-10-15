@@ -10,6 +10,7 @@ use App\Game\Bag\GetBag;
 use App\Game\Battle\BattleCompleted;
 use App\Game\Battle\BattleFinalized;
 use App\Game\Battle\BattleResult;
+use App\Game\Battle\RetreatRequired;
 use App\Game\Battle\MonsterDefeated;
 use App\Game\Deck\Error\NoTilesLeftInDeck;
 use App\Game\Deck\GetDeck;
@@ -168,6 +169,14 @@ class Field extends AggregateRoot
 
     #[Column(type: JsonType::class, columnDefinition: 'jsonb')]
     private array $lastBattleInfo = [];
+
+    /**
+     * Baron Markul "Lightning Attack" not won: where he may retreat to, until he chooses.
+     *
+     * @var array{playerId: string, turnId: string, position: string, options: list<string>}|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $pendingRetreat = null;
 
     /**
      * @var array<string>
@@ -1100,6 +1109,163 @@ class Field extends AggregateRoot
     }
 
     /**
+     * Lady Lorraine "Listening": the tile she just placed next to her is explored (its token was drawn on placement)
+     * but not entered, so a Battle Arena or a Cursed Room there is not triggered. Costs one move (GameTurn).
+     *
+     * @throws GameAlreadyFinishedException
+     * @throws NotYourTurnException
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function listen(Listen $command, MessageContext $context): void
+    {
+        $game = $context->dispatch(new GetGame($command->gameId));
+        if ($game->getStatus()->isFinished()) {
+            throw new GameAlreadyFinishedException();
+        }
+
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
+        $currentTurnId = $context->dispatch(new GetCurrentTurn($command->gameId));
+        if ($currentPlayerId === null || !$command->playerId->equals($currentPlayerId)
+            || $currentTurnId === null || !$command->turnId->equals($currentTurnId)) {
+            throw new NotYourTurnException();
+        }
+
+        $player = $context->dispatch(new GetPlayer($command->playerId));
+        if ($player->getHero()?->listens() !== true) {
+            throw new \DomainException('Only Lady Lorraine can listen at a tile (Listening)');
+        }
+        if ($this->pendingFateweaver !== null) {
+            throw new \DomainException('Choose the Fateweaver token first');
+        }
+
+        $key = $command->position->toString();
+        if (!isset($this->tiles[$key])) {
+            throw new \DomainException('There is no tile to listen at');
+        }
+        $playerPosition = FieldPlace::fromAnything($context->dispatch(new GetPlayerPosition($command->gameId, $command->playerId)));
+        $adjacent = array_map(static fn(FieldPlace $place): string => $place->toString(), array_values($playerPosition->getAllSiblingsBySides()));
+        if (!\in_array($key, $adjacent, true)) {
+            throw new \DomainException('Listening works only on an adjacent tile');
+        }
+
+        $item = isset($this->items[$key]) ? Item::fromAnything($this->items[$key]) : null;
+        $tileId = $this->tiles[$key];
+        $tile = $this->getTile(\is_string($tileId) ? Uuid::fromString($tileId) : $tileId, $context);
+
+        $context->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::LISTEN,
+            additionalData: [
+                'position' => $key,
+                'item' => $item !== null ? ['name' => $item->name->value, 'type' => $item->type->value, 'hp' => $item->guardHP] : null,
+                'features' => array_map(static fn(TileFeature $feature): string => $feature->value, $tile->getFeatures()),
+                'heroAbility' => 'listening',
+            ],
+        ));
+    }
+
+    /**
+     * Baron Markul "Lightning Attack" not won: he may retreat onto an opened neighbour reachable through a door
+     * and free of monsters; with none, back to the tile he teleported from.
+     */
+    #[Handler]
+    public function onRetreatRequired(RetreatRequired $event): void
+    {
+        $options = [];
+        foreach ($event->position->getAllSiblingsBySides() as $neighbour) {
+            $key = $neighbour->toString();
+            if (!isset($this->tiles[$key]) || !$this->canTransition($event->position, $neighbour)) {
+                continue;
+            }
+            if (isset($this->items[$key])) {
+                $item = Item::fromAnything($this->items[$key]);
+                if ($item->guardHP > 0 && !$item->guardDefeated) {
+                    continue;
+                }
+            }
+            $options[] = $key;
+        }
+        if ($options === []) {
+            $options[] = $event->teleportedFrom->toString();
+        }
+
+        $this->pendingRetreat = [
+            'playerId' => $event->playerId->toString(),
+            'turnId' => $event->turnId->toString(),
+            'position' => $event->position->toString(),
+            'options' => $options,
+        ];
+        $this->lastBattleInfo['retreatOptions'] = $options;
+    }
+
+    /**
+     * @return array{playerId: string, turnId: string, position: string, options: list<string>}|null
+     */
+    public function getPendingRetreat(): ?array
+    {
+        return $this->pendingRetreat;
+    }
+
+    /**
+     * Baron Markul retreats onto the chosen tile; the turn ends (as after any fight that is not won).
+     *
+     * @throws NotYourTurnException
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function chooseRetreat(ChooseRetreat $command, MessageContext $context): void
+    {
+        $pending = $this->pendingRetreat;
+        if ($pending === null || $pending['turnId'] !== $command->turnId->toString()) {
+            throw new \DomainException('No retreat pending');
+        }
+        if ($pending['playerId'] !== $command->playerId->toString()) {
+            throw new NotYourTurnException();
+        }
+        $target = $command->position->toString();
+        if (!\in_array($target, $pending['options'], true)) {
+            throw new \DomainException('You cannot retreat there');
+        }
+
+        $this->retreat($command->gameId, $command->playerId, $command->turnId, FieldPlace::fromString($pending['position']), $command->position, $context);
+        unset($this->lastBattleInfo['retreatOptions']);
+
+        $context->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::RETREAT,
+            additionalData: ['from' => $pending['position'], 'to' => $target, 'heroAbility' => 'lightning_attack'],
+        ));
+        $context->dispatch(new EndTurn(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            at: new \DateTimeImmutable(),
+        ));
+    }
+
+    /**
+     * Move the hero off the monster tile like a battle return (a fountain heals, a Cursed Room rolls).
+     */
+    private function retreat(Uuid $gameId, Uuid $playerId, Uuid $turnId, FieldPlace $from, FieldPlace $to, MessageContext $context): void
+    {
+        $this->pendingRetreat = null;
+        $context->dispatch(new ResetPlayerPosition(gameId: $gameId, playerId: $playerId, position: $to));
+        $context->dispatch(new PlayerMoved(
+            gameId: $gameId,
+            playerId: $playerId,
+            fromPosition: $from,
+            toPosition: $to,
+            movedAt: new \DateTimeImmutable(),
+            isBattleReturn: true,
+        ));
+    }
+
+    /**
      * @return list<FieldPlace>
      */
     public function getAllMoveableSiblingsBySides(FieldPlace $fieldPlace, MessageContext $messageContext): array
@@ -1486,8 +1652,8 @@ class Field extends AggregateRoot
             throw new \RuntimeException('MessageBus is required to query Movement context');
         }
 
-        // Oracle "Fateweaver": nothing can be done until the token of the new room is chosen
-        if ($this->pendingFateweaver !== null) {
+        // Oracle "Fateweaver" / Markul's retreat: nothing can be done until the choice is made
+        if ($this->pendingFateweaver !== null || $this->pendingRetreat !== null) {
             return [
                 'moveTo' => [],
                 'placeTile' => [],
@@ -1531,6 +1697,15 @@ class Field extends AggregateRoot
 
         // Always get tile placement places - remove deck empty check (doors only, even for the Wizard)
         $placeTilePlaces = $this->getAvailablePlaceTilePlaces($positionX, $positionY, $playerId, $messageBus);
+
+        // Hanna "Sprint": the run goes over discovered tiles only
+        if ($hero?->sprints() === true) {
+            $currentTurnId = $messageBus->dispatch(new GetCurrentTurn($this->gameId));
+            $turn = $currentTurnId !== null ? $messageBus->dispatch(new GetTurn($currentTurnId)) : null;
+            if ($turn !== null && $turn->isSprint() && $turn->getPlayerId()->equals($playerId)) {
+                $placeTilePlaces = [];
+            }
+        }
 
         // Wizard "Astral Walking": every adjacent placed tile is reachable, door or not
         if ($hero?->walksThroughWalls() === true) {
@@ -2093,6 +2268,19 @@ class Field extends AggregateRoot
                 duelId: Uuid::fromString($this->duelInfo['duelId']),
                 gameId: $event->gameId,
             ));
+        }
+
+        // Baron Markul: a retreat never chosen goes to the first option
+        if ($this->pendingRetreat !== null && $this->pendingRetreat['turnId'] === $event->turnId->toString()) {
+            $pendingRetreat = $this->pendingRetreat;
+            $this->retreat(
+                $event->gameId,
+                Uuid::fromString($pendingRetreat['playerId']),
+                $event->turnId,
+                FieldPlace::fromString($pendingRetreat['position']),
+                FieldPlace::fromString($pendingRetreat['options'][0]),
+                $messageContext,
+            );
         }
 
         // Oracle "Fateweaver": a choice that was never made is settled with the first drawn token

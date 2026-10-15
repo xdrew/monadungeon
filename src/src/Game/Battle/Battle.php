@@ -125,6 +125,12 @@ class Battle extends AggregateRoot
     private int $onesAsSixes = 0;
 
     /**
+     * Baron Markul "Lightning Attack": he teleported in, a fight that is not won ends in a retreat he chooses.
+     */
+    #[Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $lightning = false;
+
+    /**
      * Karak: Regent — the Battle Arena duel this Battle is one side of (null for a monster fight).
      */
     #[Column(type: UuidType::class, nullable: true)]
@@ -192,6 +198,8 @@ class Battle extends AggregateRoot
                 $battle->farseeing = $turn !== null && $turn->getPerformedActionsCount() === 0;
             }
         }
+
+        $battle->lightning = $command->lightning;
 
         // Valduk "Berserk": the HP he has when the dice are rolled decides the bonus (monster fight or duel side)
         $roller = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
@@ -1087,6 +1095,7 @@ class Battle extends AggregateRoot
                 'farseeing' => $this->farseeing,
                 'berserk' => $this->berserkBonus,
                 'onesAsSixes' => $this->onesAsSixes,
+                'lightningAttack' => $this->lightning,
                 'heroAbility' => implode('+', array_filter([
                     $this->rerollUsed ? 'double_attack' : null,
                     $this->onesRerolled > 0 ? 'combat_training' : null,
@@ -1097,6 +1106,7 @@ class Battle extends AggregateRoot
                     $this->farseeing ? 'farseeing' : null,
                     $this->berserkBonus > 0 ? 'berserk' : null,
                     $this->onesAsSixes > 0 ? 'bear_attack' : null,
+                    $this->lightning ? 'lightning_attack' : null,
                 ])) ?: null,
             ],
             at: new \DateTimeImmutable(),
@@ -1127,31 +1137,43 @@ class Battle extends AggregateRoot
                 $awaitingReincarnation = $messageContext->dispatch(new GetPlayer($this->playerId))->isAwaitingReincarnation();
             }
 
-            // THEN move player back to previous position
-            // This ensures HP is reduced before checking healing fountain
-            // Use ResetPlayerPosition to forcefully set the position
-            $messageContext->dispatch(new ResetPlayerPosition(
-                gameId: $this->gameId,
-                playerId: $this->playerId,
-                position: $fromPosition,
-            ));
+            if ($this->lightning) {
+                // Baron Markul "Lightning Attack": no way back, he chooses an opened tile to retreat to (Field)
+                $messageContext->dispatch(new RetreatRequired(
+                    gameId: $this->gameId,
+                    playerId: $this->playerId,
+                    turnId: $this->turnId,
+                    position: $toPosition,
+                    teleportedFrom: $fromPosition,
+                ));
+            } else {
+                // THEN move player back to previous position
+                // This ensures HP is reduced before checking healing fountain
+                // Use ResetPlayerPosition to forcefully set the position
+                $messageContext->dispatch(new ResetPlayerPosition(
+                    gameId: $this->gameId,
+                    playerId: $this->playerId,
+                    position: $fromPosition,
+                ));
 
-            // Also dispatch PlayerMoved event for tracking/UI purposes
-            $messageContext->dispatch(new PlayerMoved(
-                gameId: $this->gameId,
-                playerId: $this->playerId,
-                fromPosition: $toPosition,
-                toPosition: $fromPosition,
-                movedAt: new \DateTimeImmutable(),
-                isBattleReturn: true, // Mark this as a battle return movement
-            ));
+                // Also dispatch PlayerMoved event for tracking/UI purposes
+                $messageContext->dispatch(new PlayerMoved(
+                    gameId: $this->gameId,
+                    playerId: $this->playerId,
+                    fromPosition: $toPosition,
+                    toPosition: $fromPosition,
+                    movedAt: new \DateTimeImmutable(),
+                    isBattleReturn: true, // Mark this as a battle return movement
+                ));
+            }
         }
 
         // Only end the turn for LOSE or DRAW results
         // For WIN, the turn continues so the player can pick up the item
         // For a reincarnating hero, the turn ends after the healing fountain was chosen (Field::reincarnate)
         // For an Unstoppable Swordsman the turn goes on (he may even fight the same monster again)
-        if ($awaitingReincarnation || $unstoppable) {
+        // For Markul's Lightning Attack the turn ends once he has chosen where to retreat (Field::chooseRetreat)
+        if ($awaitingReincarnation || $unstoppable || ($this->lightning && $result !== BattleResult::WIN)) {
             $this->battleCompleted = true;
         } elseif (!$this->battleCompleted && $result !== BattleResult::WIN) {
             $messageContext->dispatch(new EndTurn(

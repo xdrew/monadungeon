@@ -28,5 +28,9 @@ final readonly class StartBattle implements Message
          * Karak: Regent — this Battle is one side of a Battle Arena duel (null for a monster fight).
          */
         public ?DuelSide $duel = null,
+        /**
+         * Baron Markul "Lightning Attack": he teleported in, so a fight that is not won ends in a chosen retreat.
+         */
+        public bool $lightning = false,
     ) {}
 }
