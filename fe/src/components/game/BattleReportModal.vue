@@ -443,7 +443,11 @@
           @choose="(target) => emit('curse', target)"
         />
 
-        <div class="choice-plaque__bottom">
+        <!-- the reward and the buttons wait until the Curse of Karak has a victim (one step at a time, the plaque stays low) -->
+        <div
+          v-show="!curseChoicePending"
+          class="choice-plaque__bottom"
+        >
           <!-- The reward the foe guards -->
           <div
             v-if="showRewardRow"
