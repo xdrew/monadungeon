@@ -41,8 +41,10 @@ const props = defineProps({
   landed: { type: Boolean, default: false },
   /** the die lies a little askew on the table, in degrees */
   tilt: { type: Number, default: 0 },
-  /** stagger between dice, in seconds: out of step while rolling, the next one lands a little later */
-  delay: { type: Number, default: 0 }
+  /** stagger between dice, in seconds: the next one lands a little later */
+  delay: { type: Number, default: 0 },
+  /** where the throw comes from, in die sizes to the left (a little different per die) */
+  throwFrom: { type: Number, default: 1 }
 });
 
 const L = 26;
@@ -77,14 +79,16 @@ const SHOW = {
   6: [0, 180]
 };
 
-// While rolling the style stays fixed (the faces flicker by themselves as the cube turns);
-// the value only decides the final orientation once the die lands
+// The value is known from the start: the throw ends on it. `throwFrom` varies the path per die
 const dieStyle = computed(() => {
-  if (props.rolling) {
-    return { '--rx': '0deg', '--ry': '0deg', '--tilt': `${props.tilt}deg`, '--delay': `${-props.delay * 2.2}s` };
-  }
   const [rx, ry] = SHOW[props.value] || SHOW[1];
-  return { '--rx': `${rx}deg`, '--ry': `${ry}deg`, '--tilt': `${props.tilt}deg`, '--delay': `${props.delay * 0.4}s` };
+  return {
+    '--rx': `${rx}deg`,
+    '--ry': `${ry}deg`,
+    '--tilt': `${props.tilt}deg`,
+    '--from': props.throwFrom,
+    '--delay': `${props.delay}s`
+  };
 });
 </script>
 
@@ -147,73 +151,65 @@ const dieStyle = computed(() => {
   background: radial-gradient(ellipse, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 70%);
 }
 
-/* Rolling: the die hops along the table and tumbles over all its axes */
+/* The throw: one motion, not a loop — the die flies in from the side, hits the table, bounces twice
+   lower each time and rolls to a stop on its value. About one and a half turns in all, slowing down. */
 .rolling-dice .die-hop {
-  animation: dieHop 0.42s cubic-bezier(0.33, 0, 0.66, 1) infinite;
+  animation: dieThrowPath 0.85s linear both;
   animation-delay: var(--delay);
 }
 
 .rolling-dice .die-cube {
-  animation: dieTumble 0.42s linear infinite;
+  animation: dieThrowSpin 0.85s cubic-bezier(0.2, 0.7, 0.3, 1) both;
   animation-delay: var(--delay);
 }
 
 .rolling-dice .die-shadow {
-  animation: dieShadow 0.42s cubic-bezier(0.33, 0, 0.66, 1) infinite;
+  animation: dieThrowShadow 0.85s linear both;
   animation-delay: var(--delay);
 }
 
-/* Landing: a last fall, the cube slows down onto its value, one small bounce, the die settles askew */
-.dice-landed .die-hop {
-  animation: dieDrop 0.6s cubic-bezier(0.3, 0.7, 0.35, 1) both;
-  animation-delay: var(--delay);
+@keyframes dieThrowPath {
+  0% {
+    transform: translate(calc(var(--from) * -1.1 * var(--s)), -42px) rotate(calc(var(--tilt) - 150deg));
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
+  }
+  28% {
+    transform: translate(calc(var(--from) * -0.45 * var(--s)), 0) rotate(calc(var(--tilt) - 70deg));
+    animation-timing-function: cubic-bezier(0, 0, 0.5, 1);
+  }
+  44% {
+    transform: translate(calc(var(--from) * -0.25 * var(--s)), -16px) rotate(calc(var(--tilt) - 38deg));
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
+  }
+  60% {
+    transform: translate(calc(var(--from) * -0.1 * var(--s)), 0) rotate(calc(var(--tilt) - 16deg));
+    animation-timing-function: cubic-bezier(0, 0, 0.5, 1);
+  }
+  70% {
+    transform: translate(calc(var(--from) * -0.04 * var(--s)), -5px) rotate(calc(var(--tilt) - 7deg));
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
+  }
+  80% {
+    transform: translate(0, 0) rotate(calc(var(--tilt) - 2deg));
+    animation-timing-function: ease-out;
+  }
+  100% {
+    transform: translate(0, 0) rotate(var(--tilt));
+  }
 }
 
-.dice-landed .die-cube {
-  animation: dieSettle 0.6s cubic-bezier(0.2, 0.55, 0.3, 1) both;
-  animation-delay: var(--delay);
-}
-
-.dice-landed .die-shadow {
-  animation: dieShadowLand 0.6s cubic-bezier(0.3, 0.7, 0.35, 1) both;
-  animation-delay: var(--delay);
-}
-
-@keyframes dieHop {
-  0%, 100% { transform: translateY(0) rotate(var(--tilt)); }
-  50% { transform: translateY(-34px) rotate(var(--tilt)); }
-}
-
-@keyframes dieTumble {
-  from { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-  to { transform: rotateX(360deg) rotateY(270deg) rotateZ(90deg); }
-}
-
-@keyframes dieShadow {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.55); opacity: 0.45; }
-}
-
-/* the last hop from mid-air (the rolling hop peaks at -34px), a soft bounce, then the die slides to rest */
-@keyframes dieDrop {
-  0% { transform: translateY(-20px) rotate(calc(var(--tilt) - 30deg)); }
-  35% { transform: translateY(0) rotate(calc(var(--tilt) - 12deg)); }
-  52% { transform: translateY(-6px) rotate(calc(var(--tilt) - 5deg)); }
-  68% { transform: translateY(0) rotate(calc(var(--tilt) - 1deg)); }
-  100% { transform: translateY(0) rotate(var(--tilt)); }
-}
-
-/* the tumble slows down onto the value: fast at first (like the roll), easing out over the bounce */
-@keyframes dieSettle {
-  0% { transform: rotateX(calc(var(--rx) + 450deg)) rotateY(calc(var(--ry) + 300deg)); }
+@keyframes dieThrowSpin {
+  0% { transform: rotateX(calc(var(--rx) + 450deg)) rotateY(calc(var(--ry) + 180deg)); }
   100% { transform: rotateX(var(--rx)) rotateY(var(--ry)); }
 }
 
-@keyframes dieShadowLand {
-  0% { transform: scale(0.7); opacity: 0.6; }
-  35% { transform: scale(1); opacity: 1; }
-  52% { transform: scale(0.9); opacity: 0.85; }
-  68%, 100% { transform: scale(1); opacity: 1; }
+@keyframes dieThrowShadow {
+  0% { transform: translateX(calc(var(--from) * -1.1 * var(--s))) scale(0.5); opacity: 0.3; }
+  28% { transform: translateX(calc(var(--from) * -0.45 * var(--s))) scale(1); opacity: 1; }
+  44% { transform: translateX(calc(var(--from) * -0.25 * var(--s))) scale(0.8); opacity: 0.7; }
+  60% { transform: translateX(calc(var(--from) * -0.1 * var(--s))) scale(1); opacity: 1; }
+  70% { transform: translateX(0) scale(0.92); opacity: 0.9; }
+  80%, 100% { transform: translateX(0) scale(1); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

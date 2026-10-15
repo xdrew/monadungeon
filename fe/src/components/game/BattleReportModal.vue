@@ -83,13 +83,14 @@
           >
             <div class="dice-container">
               <DieFace
-                v-for="(value, index) in (isRolling ? rollingValues : battleInfo.diceResults)"
-                :key="index"
+                v-for="(value, index) in battleInfo.diceResults"
+                :key="`${battleInfo.battleId}-${battleInfo.rerolled ? 'r' : ''}-${index}`"
                 :value="value"
-                :rolling="isRolling"
+                :rolling="isRolling && showDice"
                 :landed="!isRolling"
                 :tilt="index % 2 ? 8 : -12"
-                :delay="index * 0.1"
+                :delay="index * 0.07"
+                :throw-from="index % 2 ? 0.7 : 1"
               />
             </div>
           </div>
@@ -751,7 +752,6 @@ const showResults = ref(false);
 const showDice = ref(false);
 const showFlash = ref(false);
 const showResultSlam = ref(false);
-const rollingValues = ref([1, 1]);
 
 // Sparkle position helper for victory particles
 const sparkleStyle = (i) => {
@@ -775,11 +775,6 @@ const startRollingAnimation = () => {
   showFlash.value = false;
   showResultSlam.value = false;
 
-  // Initialize with same number of dice as actual roll
-  if (props.battleInfo.diceResults) {
-    rollingValues.value = props.battleInfo.diceResults.map(() => 1);
-  }
-
   // Phase 1: Entrance animations (0-400ms)
   // Characters slide in via CSS (0.35s duration), let them finish
 
@@ -789,16 +784,10 @@ const startRollingAnimation = () => {
     showDice.value = true;
   }, 400);
 
-  const rollInterval = setInterval(() => {
-    rollingValues.value = rollingValues.value.map(() => Math.floor(Math.random() * 6) + 1);
-  }, 90);
-
-  // Dice roll for 0.6s, then land (400 + 600 = 1000ms)
+  // The dice are thrown at 400ms and rest about 0.92s later (DieFace: a 0.85s throw, the second die 0.07s behind);
+  // the result is told only after that: 400 + 1200 + 200 = 1800ms
   setTimeout(() => {
-    clearInterval(rollInterval);
-    rollingValues.value = [...props.battleInfo.diceResults];
-
-    // Pause to let dice values register visually (250ms)
+    // A beat with the dice at rest before the result
     setTimeout(() => {
       isRolling.value = false;
 
@@ -815,8 +804,8 @@ const startRollingAnimation = () => {
       setTimeout(() => {
         showResults.value = true;
       }, 300);
-    }, 250);
-  }, 1000);
+    }, 200);
+  }, 1200);
 };
 
 // Start animation when component mounts or battle info changes
