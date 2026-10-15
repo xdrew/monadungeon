@@ -58,7 +58,7 @@ export const hasRoomForItem = (player, type) => {
 export const isWorthOffering = (player, item) => {
   if (!item?.type || hasRoomForItem(player, item.type)) return true;
   const category = getInventoryCategory(item.type);
-  // a full set of scrolls is never offered another one: the hero picks it up by hand if he wants
+  // a full set of scrolls is never offered another one: the player picks it up by hand if they want
   if (category === 'spells') return false;
   const held = player?.inventory?.[category] || [];
   const flags = player?.heroFlags || {};
