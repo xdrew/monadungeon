@@ -22,6 +22,10 @@ final readonly class Action
     public function __invoke(#[MapRequestPayload] Request $request, MessageBus $messageBus): Response|Error
     {
         try {
+            // The battle the field remembers before this move: a hero who keeps playing after a fight
+            // (Unstoppable, Tireless) still has it as the last battle, and it must not come back with every step
+            $battleIdBefore = self::battleId($messageBus->dispatch(new GetField($request->gameId))->getLastBattleInfo());
+
             $messageBus->dispatch(new MovePlayer(
                 gameId: $request->gameId,
                 playerId: $request->playerId,
@@ -43,10 +47,11 @@ final readonly class Action
                 return new Response($request->gameId, arenaChoice: $arenaChoice);
             }
 
-            // Only return battle info if it's for the current player and position
+            // Only return battle info for a battle this move started, fought by the moving player
             if ($battleInfo !== null
                 && isset($battleInfo['player'])
-                && Uuid::fromString((string) $battleInfo['player'])->equals($request->playerId)) {
+                && Uuid::fromString((string) $battleInfo['player'])->equals($request->playerId)
+                && self::battleId($battleInfo) !== $battleIdBefore) {
                 /** @var array<string, mixed> $battleInfo */
                 return new Response($request->gameId, $battleInfo);
             }
@@ -138,5 +143,15 @@ final readonly class Action
         }
 
         return true;
+    }
+
+    /**
+     * @param array<array-key, mixed>|null $battleInfo
+     */
+    private static function battleId(?array $battleInfo): ?string
+    {
+        $battleId = $battleInfo['battleId'] ?? null;
+
+        return \is_string($battleId) ? $battleId : null;
     }
 }
