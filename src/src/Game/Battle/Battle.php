@@ -497,7 +497,9 @@ class Battle extends AggregateRoot
                 && $messageContext->dispatch(new GetPlayer($command->playerId))->isAwaitingReincarnation();
             // HP has already been reduced by processBattleResult
             $unstoppable = $this->turnContinuesAfterBattle($finalResult, 0, $messageContext);
-            if (!$awaitingReincarnation && !$unstoppable) {
+            // Baron Markul "Lightning Attack" not won: the turn ends once he has chosen where to retreat
+            $retreatPending = $this->lightning && $finalResult !== BattleResult::WIN;
+            if (!$awaitingReincarnation && !$unstoppable && !$retreatPending) {
                 $messageContext->dispatch(new EndTurn(
                     turnId: $this->turnId,
                     gameId: $this->gameId,

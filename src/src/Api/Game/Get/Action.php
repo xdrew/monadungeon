@@ -70,6 +70,7 @@ final readonly class Action
                         // Curse of Karak: no skill flags while cursed (getHero() is null then)
                         'heroFlags' => $player->getHero()?->flags() ?? [],
                         'awaitingReincarnation' => $player->isAwaitingReincarnation(),
+                        'healLimit' => $player->getHealLimit(), // Valduk "Berserk": heal only up to N HP
                         'cursed' => $player->isCursed(),
                         'inventory' => [
                             'keys' => $this->formatInventoryItems($inventory['key'] ?? []),

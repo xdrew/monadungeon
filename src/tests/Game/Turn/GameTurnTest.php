@@ -1051,6 +1051,133 @@ final class GameTurnTest extends TestCase
         self::assertSame('duel', $actions[\count($actions) - 1]['action']);
     }
 
+    // Karak: Regent heroes — Sprint, Listening, Tireless, Lightning Attack and the retreat
+
+    #[Test]
+    public function aSprintAllowsEightMovesAndNoExploration(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::SPRINT));
+        self::assertTrue($turn->isSprint());
+        self::assertSame(8, $turn->maxMoves());
+
+        for ($move = 1; $move <= 7; ++$move) {
+            $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+        }
+        self::assertFalse($turn->isEnded());
+
+        try {
+            $tester->handle($turn->performAction(...), $this->action(TurnAction::PICK_TILE));
+            self::fail('No tile exploration while sprinting');
+        } catch (InvalidTurnActionException) {
+        }
+
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+        self::assertTrue($turn->isEnded(), 'The 8th move ends the sprint');
+    }
+
+    #[Test]
+    public function aSprintOnlyOpensTheTurn(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+        self::assertSame(4, $turn->maxMoves());
+
+        $this->expectException(InvalidTurnActionException::class);
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::SPRINT));
+    }
+
+    #[Test]
+    public function listeningFollowsATilePlacementAndCostsAMove(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        foreach ([TurnAction::PICK_TILE, TurnAction::PLACE_TILE, TurnAction::LISTEN, TurnAction::PICK_TILE, TurnAction::PLACE_TILE, TurnAction::LISTEN] as $action) {
+            $tester->handle($turn->performAction(...), $this->action($action));
+        }
+        self::assertSame(2, $turn->getPerformedActionsCount(), 'Each listening costs one move');
+
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+        $this->expectException(InvalidTurnActionException::class);
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::LISTEN));
+    }
+
+    #[Test]
+    public function tirelessReopensTheTurnAfterAWonFight(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, ['result' => 'WIN']));
+        self::assertTrue($turn->hasBattleInTurn());
+
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::TIRELESS));
+        self::assertFalse($turn->hasBattleInTurn());
+        self::assertSame(2, $turn->getPerformedActionsCount(), 'The step into the fight is paid');
+
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+        self::assertFalse($turn->isEnded());
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+        self::assertTrue($turn->isEnded(), 'The moves run out as usual');
+    }
+
+    #[Test]
+    public function theLootLeftByTirelessCannotBePickedUp(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, ['result' => 'WIN']));
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::TIRELESS));
+
+        $this->expectException(InvalidTurnActionException::class);
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::PICK_ITEM));
+    }
+
+    #[Test]
+    public function tirelessOnlyFollowsAFight(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+
+        $this->expectException(InvalidTurnActionException::class);
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::TIRELESS));
+    }
+
+    #[Test]
+    public function aLightningAttackLeavesTheTurnToTheFight(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::LIGHTNING_ATTACK));
+        self::assertSame(4, $turn->getPerformedActionsCount());
+        self::assertFalse($turn->isEnded(), 'The fight that follows decides');
+
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, ['result' => 'LOSE']));
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::RETREAT));
+        self::assertSame(4, $turn->getPerformedActionsCount(), 'The retreat is not a move');
+
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::END_TURN));
+        self::assertTrue($turn->isEnded());
+    }
+
+    #[Test]
+    public function aLightningAttackOnlyOpensTheTurn(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+
+        $this->expectException(InvalidTurnActionException::class);
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::LIGHTNING_ATTACK));
+    }
+
+    /**
+     * A started turn whose TurnActionPerformed events reach the move counter, like on the real bus.
+     *
+     * @return array{GameTurn, MessageBusTester}
+     */
+    private function countedTurn(): array
+    {
+        $turn = $this->regentTurn();
+
+        return [$turn, MessageBusTester::create(static fn(TurnActionPerformed $event) => $turn->updateActionCounter($event))];
+    }
+
     private function regentTurn(): GameTurn
     {
         [$turn] = handle(GameTurn::start(...), new StartTurn(

@@ -80,11 +80,12 @@ Constraints carried over from part 1 and the earlier heroes: every skill is a `H
   - Files: Battle.php, BattleCompleted.php, DuelSideCompleted.php, Duel.php, Field.php, TurnAction.php, Listen.php (new), new migration under src/migrations/2026/10/.
 
 ### Phase 3: API and PHPUnit
-- [ ] Task 7: API endpoints and response fields (depends on 6)
+- [x] Task 7: API endpoints and response fields (depends on 6)
   - New invokable actions with Request/Response DTOs (all ids `NotBlank` + `Uuid`, errors → `Error($gameId, 'Failed to …: ' . $e->getMessage())`, modelled on `MagicSwap`/`Fateweaver`): `POST /game/hero/heal-limit` (`hp` nullable int 1..5), `POST /game/tireless`, `POST /game/lightning-attack` (`targetPosition` "x,y" → `{gameId, battleInfo}` from `GetField->getLastBattleInfo()` like MovePlayer), `POST /game/retreat` (`position`), `POST /game/sprint`, `POST /game/listen` (`position` → `{gameId, position, item}`).
   - `src/src/Api/Game/Get/Response.php`: `players[].healLimit`, `state.retreatChoice` (`getPendingRetreat()`), `state.sprint` (current turn).
   - Files: `src/src/Api/Game/Hero/HealLimit/*`, `Tireless/*`, `LightningAttack/*`, `Retreat/*`, `Sprint/*`, `Listen/*` (new), Get/Response.php.
-- [ ] Task 8: PHPUnit (depends on 7)
+- [x] Task 8: PHPUnit (depends on 7)
+  - Implemented as fewer, per-aggregate files: `tests/Game/Player/RegentHeroPlayerTest.php` (pickHero gate, heal limit, Sword Master, Dagger Throwing), `tests/Game/GameLifecycle/RegentHeroGateTest.php`, `tests/Game/Battle/RegentHeroBattleTest.php` (Berserk, Bear Attack, Sword Master in a fight, Lightning retreat), `tests/Game/Field/RegentHeroFieldTest.php` (Tireless, retreat options/choice/turn-end fallback, Listening), `tests/Game/Movement/RegentHeroMovementTest.php` (Lightning Attack, Sprint, Tireless unlock), `GameTurnTest` additions, `HeroTest` data provider. The scenarios below are covered there.
   - `src/tests/Game/Player/HeroTest.php`: `values()` lists the four new cases; one `…SkillsAreDescribed()` per new hero (label, own flags true, all others false, `isRegent()`, skill names); `berserkBonus` for HP 5..0 (0, 1, 1, 2, 2, 0).
   - `src/tests/Game/GameLifecycle/RegentHeroGateTest.php`: `addPlayer(hero: ranger)` in a non-Regent game throws, in a Regent game passes; `pickHero` the same via a `GetGame` stub; a base hero passes in both.
   - `src/tests/Game/Battle/BarbarianBerserkTest.php` (harness of `OracleFarseeingTest`): (a) HP 4, dice [2,2] vs giant rat (5) → WIN, total 5, `berserk` 1, `itemDamage` 0; (b) HP 2 → +2; (c) HP 5 → 0; (d) cursed (`getHero()` null) at HP 1 → 0; finalize path keeps the bonus.

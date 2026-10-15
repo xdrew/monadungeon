@@ -105,6 +105,11 @@ final readonly class Response
             }
         }
 
+        // Hanna "Sprint" declared in the turn being played
+        $openTurns = array_filter($recentTurns, static fn(array $t) => $t['end_time'] === null);
+        $openTurn = reset($openTurns);
+        $currentTurnSprint = $openTurn !== false && (bool) ($openTurn['sprint'] ?? false);
+
         // Format turns data
         $formattedTurns = self::formatTurns($recentTurns);
 
@@ -178,6 +183,8 @@ final readonly class Response
                 'roomEvent' => $field?->getRoomEvent(), // Karak: Regent — the last Cursed Room roll
                 'arenaChoice' => $field?->getArenaChoice($game->getPlayers()), // Karak: Regent — a Battle Arena rival to choose
                 'duel' => $field?->getDuelInfo(), // Karak: Regent — the current (or last) Battle Arena duel
+                'retreatChoice' => $field?->getPendingRetreat(), // Baron Markul — where he may retreat after a Lightning Attack
+                'sprint' => $currentTurnSprint, // Hanna "Sprint": this turn allows 8 moves and no exploration
             ],
             players: self::formatGameLifecyclePlayers($game->getPlayers(), $playerData, $messageBus),
             settings: [], // Add any settings if available in GameLifecycleGame
@@ -230,7 +237,7 @@ final readonly class Response
                     $playerFormattedData['username'] = $playerData[$playerIdStr]['username'];
                 }
                 // Hero data (null hero is meaningful, so use array_key_exists)
-                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation', 'cursed'] as $heroKey) {
+                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation', 'cursed', 'healLimit'] as $heroKey) {
                     if (\array_key_exists($heroKey, $playerData[$playerIdStr])) {
                         $playerFormattedData[$heroKey] = $playerData[$playerIdStr][$heroKey];
                     }
@@ -254,6 +261,7 @@ final readonly class Response
                     $playerFormattedData['heroFlags'] = $player->getHero()?->flags() ?? [];
                     $playerFormattedData['awaitingReincarnation'] = $player->isAwaitingReincarnation();
                     $playerFormattedData['cursed'] = $player->isCursed();
+                    $playerFormattedData['healLimit'] = $player->getHealLimit();
                 } catch (\Throwable) {
                     // Unable to get player data, continue with what we have
                 }

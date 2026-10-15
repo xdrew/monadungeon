@@ -20,7 +20,7 @@ final readonly class GameTurnRepository
     {
         $rows = $this->connection->fetchAllAssociative(
             <<<'SQL'
-                select turn_id, actions, player_id, turn_number, start_time, end_time, pending_item_pickup
+                select turn_id, actions, player_id, turn_number, start_time, end_time, pending_item_pickup, sprint
                 from game_turn.game_turn
                 where game_id = :game_id
                 order by turn_number desc
