@@ -179,6 +179,7 @@ export default {
       cursedRoomCursed: 'Проклятая комната — {who}: выпало {roll}, проклятие!',
       cursedRoomSafe: 'Проклятая комната — {who}: выпало {roll}, обошлось',
       darkThornHit: 'Тёмный шип — {who} теряет 1 ОЗ',
+      notWorthTaking: '{item}: не лучше ваших вещей — чтобы взять, нажмите на находку',
       magicSwapTooLate: 'Волшебный обмен возможен только в начале хода, до первого шага.',
       cursedYou: 'На вас пало проклятие Карака',
       cursedOther: 'Проклятие Карака пало на: {who}'

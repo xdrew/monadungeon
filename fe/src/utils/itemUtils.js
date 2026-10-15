@@ -48,6 +48,24 @@ export const hasRoomForItem = (player, type) => {
 };
 
 /**
+ * Whether a found item is worth offering: it fits, or a full pack holds something it would improve on.
+ * Not worth it when every item it could replace is the same or stronger (a second key, a dagger against
+ * two swords, a fireball against fireballs). Spells that do different things (a teleport against fireballs)
+ * do not compare, so they are offered.
+ * @param {Object} player - player data from the game state ({ inventory, heroFlags })
+ * @param {Object} item - the item lying on the tile
+ * @returns {boolean}
+ */
+export const isWorthOffering = (player, item) => {
+  if (!item?.type || hasRoomForItem(player, item.type)) return true;
+  const held = player?.inventory?.[getInventoryCategory(item.type)] || [];
+  const flags = player?.heroFlags || {};
+  const strength = getItemStrength(item, flags);
+  return held.some((own) => own.type !== item.type
+    && (strength === 0 || getItemStrength(own, flags) === 0 || getItemStrength(own, flags) < strength));
+};
+
+/**
  * Strength of an item in this hero's hands (Baron Markul "Sword Master": a sword has strength 3).
  * @param {Object} item
  * @param {Object} [heroFlags] - the holder's hero skill flags

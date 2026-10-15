@@ -179,6 +179,7 @@ export default {
       cursedRoomCursed: 'Przeklęta komnata — {who}: wypadło {roll}, klątwa!',
       cursedRoomSafe: 'Przeklęta komnata — {who}: wypadło {roll}, bez klątwy',
       darkThornHit: 'Kolec ciemności — {who} traci 1 PW',
+      notWorthTaking: '{item}: nie lepsze niż twoje rzeczy — kliknij znalezisko, by je wziąć',
       magicSwapTooLate: 'Magiczna zamiana jest możliwa tylko na początku tury, przed pierwszym ruchem.',
       cursedYou: 'Spada na ciebie klątwa Karak',
       cursedOther: 'Klątwa Karak spada na: {who}'

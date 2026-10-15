@@ -949,13 +949,13 @@ import JournalDrawer from '@/components/game/hud/JournalDrawer.vue';
 import { chronicleTail, chronicleTurns } from '@/utils/chronicle';
 import { useTurnOrder, joinNames } from '@/composables/useTurnOrder';
 import { useI18n } from 'vue-i18n';
-import { heroName, monsterName, skillText } from '@/i18n/names';
+import { heroName, monsterName, skillText, itemName } from '@/i18n/names';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';
-import { getItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES, hasRoomForItem } from '@/utils/itemUtils';
+import { getItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES, hasRoomForItem, isWorthOffering } from '@/utils/itemUtils';
 
 // Import field utility functions
 import { TILE_SIZE, calculateScrollPosition, playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
@@ -3713,8 +3713,14 @@ const handlePlaceClick = async (position) => {
         console.error('Failed to end turn after missing key:', err);
       }
     } else {
-      // Only show the dialog if it's still the player's turn
-      if (isPlayerTurn.value) {
+      // Only show the dialog if it's still the player's turn — and not for a find a full pack
+      // has nothing worse to give up for: the hero walks over it (a click on the item still offers it)
+      if (isPlayerTurn.value && !isWorthOffering(getCurrentPlayerData.value, tileItem.value)) {
+        showActionNotice(t('game.notice.notWorthTaking', { item: itemName(tileItem.value?.type) }));
+        tileItem.value = null;
+        itemPickupTurnId.value = null;
+        await loadGameData(false);
+      } else if (isPlayerTurn.value) {
         showItemPickupDialog.value = true;
       } else {
 

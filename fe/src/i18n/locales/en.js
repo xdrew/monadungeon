@@ -180,6 +180,7 @@ export default {
       cursedRoomCursed: 'Cursed Room — {who} rolled {roll}: cursed!',
       cursedRoomSafe: 'Cursed Room — {who} rolled {roll}: safe',
       darkThornHit: 'Dark Thorn — {who} loses 1 HP',
+      notWorthTaking: '{item}: no better than what you carry — click it to take it anyway',
       magicSwapTooLate: 'Magic Swap is only possible at the beginning of the turn, before any move.',
       cursedYou: 'The Curse of Karak falls on you',
       cursedOther: 'The Curse of Karak falls on {who}'
