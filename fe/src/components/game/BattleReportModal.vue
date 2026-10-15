@@ -160,9 +160,7 @@
                 keypath="battle.notes.doubleAttack"
                 tag="span"
               >
-                <template #skill>
-                  <b>{{ $t('skills.double_attack.name') }}</b>
-                </template>
+                <template #skill><b>{{ $t('skills.double_attack.name') }}</b></template>
                 <template #roll>
                   <s>{{ battleInfo.firstDiceResults.join(' + ') }}</s>
                 </template>
@@ -173,56 +171,109 @@
               class="first-roll-note"
               data-testid="backstab-note"
             >
-              {{ $t('battle.notes.backstab', { skill: $t('skills.backstab.name') }) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.backstab"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.backstab.name') }}</b></template>
+              </I18nT>
             </div>
             <div
               v-if="battleInfo.onesRerolled > 0"
               class="first-roll-note"
               data-testid="combat-training-note"
             >
-              {{ $t('battle.notes.combatTraining', { skill: $t('skills.combat_training.name'), n: battleInfo.onesRerolled }) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.combatTraining"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.combat_training.name') }}</b></template>
+                <template #n>{{ battleInfo.onesRerolled }}</template>
+              </I18nT>
             </div>
             <div
               v-if="battleInfo.hpSacrificed"
               class="first-roll-note"
               data-testid="sacrifice-note"
             >
-              {{ $t('battle.notes.sacrifice', { skill: $t('skills.sacrifice.name') }) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.sacrifice"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.sacrifice.name') }}</b></template>
+              </I18nT>
             </div>
             <div
               v-if="battleInfo.spellsKept"
               class="first-roll-note"
               data-testid="affinity-note"
             >
-              {{ $t('battle.notes.affinity', { skill: $t('skills.magical_affinity.name') }) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.affinity"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.magical_affinity.name') }}</b></template>
+              </I18nT>
             </div>
             <div
               v-if="battleInfo.farseeing"
               class="first-roll-note"
               data-testid="farseeing-note"
             >
-              {{ $t('battle.notes.farseeing', { skill: $t('skills.farseeing.name') }) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.farseeing"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.farseeing.name') }}</b></template>
+              </I18nT>
             </div>
             <div
               v-if="battleInfo.berserk > 0"
               class="first-roll-note"
               data-testid="berserk-note"
             >
-              {{ $t('battle.notes.berserk', { skill: $t('skills.berserk.name'), bonus: battleInfo.berserk, range: battleInfo.berserk === 2 ? '1–2' : '3–4' }) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.berserk"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.berserk.name') }}</b></template>
+                <template #bonus>{{ battleInfo.berserk }}</template>
+                <template #range>{{ battleInfo.berserk === 2 ? '1–2' : '3–4' }}</template>
+              </I18nT>
             </div>
             <div
               v-if="battleInfo.onesAsSixes > 0"
               class="first-roll-note"
               data-testid="bear-attack-note"
             >
-              {{ $t('battle.notes.bearAttack', { skill: $t('skills.bear_attack.name'), n: battleInfo.onesAsSixes }, battleInfo.onesAsSixes) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.bearAttack"
+                tag="span"
+                :plural="battleInfo.onesAsSixes"
+              >
+                <template #skill><b>{{ $t('skills.bear_attack.name') }}</b></template>
+                <template #n>{{ battleInfo.onesAsSixes }}</template>
+              </I18nT>
             </div>
             <div
               v-if="battleInfo.retreatOptions?.length"
               class="first-roll-note"
               data-testid="lightning-retreat-note"
             >
-              {{ $t('battle.notes.lightningRetreat', { skill: $t('skills.lightning_attack.name') }) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.lightningRetreat"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.lightning_attack.name') }}</b></template>
+              </I18nT>
             </div>
             <div
               v-if="battleInfo.curseResolvedLabel"
@@ -240,7 +291,13 @@
               class="first-roll-note"
               data-testid="unstoppable-note"
             >
-              {{ $t('battle.notes.unstoppable', { skill: $t('skills.unstoppable.name') }) }}
+              <I18nT
+                scope="global"
+                keypath="battle.notes.unstoppable"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.unstoppable.name') }}</b></template>
+              </I18nT>
             </div>
           </div>
         </div>
@@ -1970,27 +2027,59 @@ if (import.meta.env.DEV) {
   gap: 8px;
 }
 
+/* What a hero's skill did to the roll, told like a line from a chronicle: the skill in ember display type,
+   the rest in italic bone, a thin ember rule on each side; no box */
 .first-roll-note {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border: 1px solid rgba(156, 195, 234, 0.5);
-  background: rgba(40, 70, 110, 0.25);
-  font-size: 15px;
-  color: #cfe2f5;
+  justify-content: center;
+  gap: 10px;
+  max-width: 100%;
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--text-primary);
   text-align: center;
+  text-shadow: 0 2px 6px #000;
   animation: sectionFadeIn 0.4s ease-out both;
 }
 
+.first-roll-note::before,
+.first-roll-note::after {
+  content: '';
+  flex: 0 0 24px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(var(--ember-rgb), 0) 0%, rgba(var(--ember-rgb), 0.7) 100%);
+}
+
+.first-roll-note::after {
+  background: linear-gradient(90deg, rgba(var(--ember-rgb), 0.7) 0%, rgba(var(--ember-rgb), 0) 100%);
+}
+
+.first-roll-note :deep(b),
 .first-roll-note b {
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  color: var(--text-accent);
+  text-shadow: 0 0 10px rgba(var(--ember-rgb), 0.45), 0 2px 4px #000;
+}
+
+.first-roll-note s {
+  color: var(--text-muted);
 }
 
 .first-roll-note--curse {
-  border-color: rgba(201, 139, 217, 0.5);
-  background: rgba(70, 40, 80, 0.3);
   color: #e6cdee;
+}
+
+.first-roll-note--curse::before {
+  background: linear-gradient(90deg, rgba(201, 139, 217, 0) 0%, rgba(201, 139, 217, 0.7) 100%);
+}
+
+.first-roll-note--curse::after {
+  background: linear-gradient(90deg, rgba(201, 139, 217, 0.7) 0%, rgba(201, 139, 217, 0) 100%);
 }
 
 .first-roll-note__icon {
