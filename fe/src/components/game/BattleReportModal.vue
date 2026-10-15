@@ -87,7 +87,7 @@
                 :key="index"
                 :value="value"
                 :rolling="isRolling"
-                :landed="!isRolling && showResults"
+                :landed="!isRolling"
                 :tilt="index % 2 ? 8 : -12"
                 :delay="index * 0.1"
               />

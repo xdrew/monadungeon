@@ -84,7 +84,7 @@ const dieStyle = computed(() => {
     return { '--rx': '0deg', '--ry': '0deg', '--tilt': `${props.tilt}deg`, '--delay': `${-props.delay * 3.3}s` };
   }
   const [rx, ry] = SHOW[props.value] || SHOW[1];
-  return { '--rx': `${rx}deg`, '--ry': `${ry}deg`, '--tilt': `${props.tilt}deg`, '--delay': `${props.delay * 1.6}s` };
+  return { '--rx': `${rx}deg`, '--ry': `${ry}deg`, '--tilt': `${props.tilt}deg`, '--delay': `${props.delay * 0.8}s` };
 });
 </script>
 
@@ -165,17 +165,17 @@ const dieStyle = computed(() => {
 
 /* Landing: a last fall, the cube slows down onto its value, one small bounce, the die settles askew */
 .dice-landed .die-hop {
-  animation: dieDrop 0.9s cubic-bezier(0.25, 0.9, 0.3, 1) both;
+  animation: dieDrop 1.2s cubic-bezier(0.3, 0.7, 0.35, 1) both;
   animation-delay: var(--delay);
 }
 
 .dice-landed .die-cube {
-  animation: dieSettle 0.9s cubic-bezier(0.15, 0.75, 0.25, 1) both;
+  animation: dieSettle 1.2s cubic-bezier(0.2, 0.55, 0.3, 1) both;
   animation-delay: var(--delay);
 }
 
 .dice-landed .die-shadow {
-  animation: dieShadowLand 0.9s cubic-bezier(0.25, 0.9, 0.3, 1) both;
+  animation: dieShadowLand 1.2s cubic-bezier(0.3, 0.7, 0.35, 1) both;
   animation-delay: var(--delay);
 }
 
@@ -194,24 +194,26 @@ const dieStyle = computed(() => {
   50% { transform: scale(0.55); opacity: 0.45; }
 }
 
+/* the last hop from mid-air (the rolling hop peaks at -34px), a soft bounce, then the die slides to rest */
 @keyframes dieDrop {
-  0% { transform: translateY(-46px) rotate(calc(var(--tilt) - 40deg)); }
-  45% { transform: translateY(0) rotate(calc(var(--tilt) - 8deg)); }
-  62% { transform: translateY(-9px) rotate(calc(var(--tilt) - 2deg)); }
-  78% { transform: translateY(0) rotate(var(--tilt)); }
+  0% { transform: translateY(-20px) rotate(calc(var(--tilt) - 30deg)); }
+  35% { transform: translateY(0) rotate(calc(var(--tilt) - 12deg)); }
+  52% { transform: translateY(-6px) rotate(calc(var(--tilt) - 5deg)); }
+  68% { transform: translateY(0) rotate(calc(var(--tilt) - 1deg)); }
   100% { transform: translateY(0) rotate(var(--tilt)); }
 }
 
+/* the tumble slows down onto the value: fast at first (like the roll), easing out over the bounce */
 @keyframes dieSettle {
-  0% { transform: rotateX(calc(var(--rx) + 540deg)) rotateY(calc(var(--ry) + 360deg)); }
+  0% { transform: rotateX(calc(var(--rx) + 450deg)) rotateY(calc(var(--ry) + 300deg)); }
   100% { transform: rotateX(var(--rx)) rotateY(var(--ry)); }
 }
 
 @keyframes dieShadowLand {
-  0% { transform: scale(0.45); opacity: 0.35; }
-  45% { transform: scale(1); opacity: 1; }
-  62% { transform: scale(0.85); opacity: 0.8; }
-  78%, 100% { transform: scale(1); opacity: 1; }
+  0% { transform: scale(0.7); opacity: 0.6; }
+  35% { transform: scale(1); opacity: 1; }
+  52% { transform: scale(0.9); opacity: 0.85; }
+  68%, 100% { transform: scale(1); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
