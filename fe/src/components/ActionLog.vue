@@ -226,6 +226,7 @@ const getActionIcon = (actionType) => {
     'tireless': '🪓',
     'lightning_attack': '⚡',
     'retreat': '↩️',
+    'lord_karak': '👑',
     'sprint': '🏃',
     'listen': '👂',
     'pick_item': '',
@@ -371,6 +372,18 @@ const formatActionText = (action) => {
 
     case 'sprint':
       return '🏃 Sprint — up to 8 moves, no exploring';
+
+    // Karak: Regent, Lord Karak variant — the weakest hero transformed at the fifth Lord Karak room
+    case 'lord_karak': {
+      const who = `player ${String(details?.player || '').slice(-4)}`;
+      const why = {
+        treasure: 'fewest treasures',
+        weapons: 'weakest weapons',
+        items: 'fewest items',
+        roll: 'lowest roll'
+      }[details?.criterion] || 'weakest hero';
+      return `👑 ${who} becomes Lord Karak — ${why}`;
+    }
 
     case 'listen': {
       const heard = details?.item ? `${details.item.name.replace(/_/g, ' ')}${details.item.hp > 0 ? ` (HP ${details.item.hp})` : ''}` : 'nothing';

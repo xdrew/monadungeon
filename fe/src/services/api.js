@@ -32,12 +32,14 @@ export const gameApi = {
    * @param {string} [gameId] - Optional game ID, will generate a random ID if not provided
    * @param {Object} [options]
    * @param {boolean} [options.regent] - Karak: Regent expansion (Lord Karak rooms, Giant Bats, Skeleton Mages)
+   * @param {boolean} [options.lordKarak] - Karak: Regent, Lord Karak variant (needs regent)
    * @returns {Promise<GameResponse>} Promise with game response data
    */
-  createGame: async (gameId = null, { regent = false } = {}) => {
+  createGame: async (gameId = null, { regent = false, lordKarak = false } = {}) => {
     const payload = {
       gameId: gameId || generateRandomId(),
-      regent
+      regent,
+      lordKarak: regent && lordKarak
     };
     
     try {

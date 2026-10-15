@@ -109,6 +109,14 @@
               <span>Lord Karak rooms, Giant Bats and Skeleton Mages</span>
             </span>
           </label>
+          <!-- Lord Karak variant: the weakest hero becomes Lord Karak when the fifth Lord Karak room is discovered -->
+          <label v-if="regentExpansion" class="regent-toggle lord-karak-toggle" data-testid="lord-karak-toggle">
+            <input v-model="lordKarakVariant" type="checkbox" data-testid="lord-karak-toggle-input">
+            <span class="regent-toggle-text">
+              <strong>👑 Lord Karak variant</strong>
+              <span>At the fifth Lord Karak room the weakest hero becomes Lord Karak</span>
+            </span>
+          </label>
         </div>
 
         <button
@@ -255,6 +263,22 @@ const regentExpansion = ref(readStoredRegent());
 watch(regentExpansion, (enabled) => {
   try {
     localStorage.setItem('regentExpansion', enabled ? '1' : '0');
+  } catch (e) {
+    // localStorage unavailable (private mode) - the switch still works for this page
+  }
+});
+// Lord Karak variant switch (inside the expansion), remembered per browser ('1' / '0')
+const readStoredLordKarak = () => {
+  try {
+    return localStorage.getItem('lordKarakVariant') === '1';
+  } catch (e) {
+    return false;
+  }
+};
+const lordKarakVariant = ref(readStoredLordKarak());
+watch(lordKarakVariant, (enabled) => {
+  try {
+    localStorage.setItem('lordKarakVariant', enabled ? '1' : '0');
   } catch (e) {
     // localStorage unavailable (private mode) - the switch still works for this page
   }
@@ -1057,7 +1081,10 @@ const createNewGame = async () => {
     loadingMessage.value = 'Creating your adventure...';
 
     // Call the API to create a new game
-    const response = await gameApi.createGame(null, { regent: regentExpansion.value });
+    const response = await gameApi.createGame(null, {
+      regent: regentExpansion.value,
+      lordKarak: regentExpansion.value && lordKarakVariant.value
+    });
     console.log('Game created with ID:', response.gameId);
 
     // Generate a player ID for the current user
@@ -1512,6 +1539,10 @@ const createNewGame = async () => {
   cursor: pointer;
   font-size: 13px;
   line-height: 1.35;
+}
+
+.lord-karak-toggle {
+  margin-left: 16px;
 }
 
 .regent-toggle input {

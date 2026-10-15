@@ -54,6 +54,8 @@ export default {
     barbarian: { name: 'Valduk, the Barbarian', emoji: '🪓', image: `${HERO_IMAGES}/barbarian.webp` },
     battle_mage: { name: 'Baron Markul, the Battle Mage', emoji: '⚡', image: `${HERO_IMAGES}/battle_mage.webp` },
     acrobat: { name: 'Hanna, the Acrobat', emoji: '🤸', image: `${HERO_IMAGES}/acrobat.webp` },
-    ranger: { name: 'Lady Lorraine, the Ranger', emoji: '🐻', image: `${HERO_IMAGES}/ranger.webp` }
+    ranger: { name: 'Lady Lorraine, the Ranger', emoji: '🐻', image: `${HERO_IMAGES}/ranger.webp` },
+    // Karak: Regent, Lord Karak variant — the weakest hero transformed
+    lord_karak: { name: 'Lord Karak', emoji: '👑', image: `${HERO_IMAGES}/lord_karak.webp` }
   }
 };

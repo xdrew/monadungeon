@@ -115,6 +115,12 @@
       "subject": "Lady Lorraine the Ranger: a noble ranger in a russet-brown hooded cloak (never green) and leather armour, a longbow on her back, one hand cupped to her ear listening, a great brown bear at her side"
     },
     {
+      "id": "lord_karak",
+      "kind": "hero",
+      "out": "fe/public/themes/base/heroes/lord_karak.webp",
+      "subject": "Lord Karak, the ancient regent of the dungeon risen again: a tall stern sovereign with a long silver beard, a horned iron crown, heavy black-and-gold plate under a crimson cloak, a rune-carved staff in one hand, the other gauntlet wreathed in violet flame, imposing and regal (no green)"
+    },
+    {
       "id": "lobby_bg",
       "kind": "background",
       "out": "fe/public/themes/base/lobby-bg.webp",

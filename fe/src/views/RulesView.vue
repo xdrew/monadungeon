@@ -275,6 +275,16 @@
             <li><strong>Lady Lorraine, the Ranger</strong> — <em>Bear Attack</em>: a die showing 1 counts as 6. <em>Listening</em>: place an adjacent tile without entering it, for one move (its token is drawn; an arena or a cursed room there is not triggered).</li>
           </ul>
         </div>
+
+        <div class="mechanic" data-testid="rules-lord-karak">
+          <h3>👑 Lord Karak variant <span class="regent-chip">Regent</span></h3>
+          <p>An optional switch in the lobby. When the <strong>fifth Lord Karak room</strong> (Battle Arena or Cursed Room) is placed, the weakest hero becomes Lord Karak — before anyone enters that room.</p>
+          <ul>
+            <li>The weakest hero: the fewest treasures (by value); tie → the weakest weapons (token strength, no hero bonus); tie → the fewest keys and spells; tie → the lowest die, rerolled until one is lowest. Virtual players can be chosen too.</li>
+            <li>Lord Karak is fully healed (even from 0 HP, whatever Valduk's heal limit), the curse is removed, he loses his own abilities and gains those of every other hero in the game. With two players he keeps his own abilities as well.</li>
+            <li>Otherwise nothing changes: 4 moves, he can be cursed again, he collects treasure and the game still ends with the dragon. There is only one Lord Karak per game.</li>
+          </ul>
+        </div>
       </section>
 
       <!-- Turn Structure -->

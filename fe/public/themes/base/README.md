@@ -36,3 +36,4 @@ If a file is missing the UI shows the emoji from `fe/src/theme/base.js` instead 
 | `battle_mage.webp` | Baron Markul, the Battle Mage (Karak: Regent) |
 | `acrobat.webp` | Hanna, the Acrobat (Karak: Regent) |
 | `ranger.webp` | Lady Lorraine, the Ranger (Karak: Regent) |
+| `lord_karak.webp` | Lord Karak (Karak: Regent, Lord Karak variant) |

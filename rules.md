@@ -107,7 +107,7 @@ When entering an undiscovered zone:
 - Single-player games have no curse ✅
 
 ### Karak: Regent (expansion) ✅
-- **Switch in the lobby** ("Karak: Regent expansion"): the deck gets 18 more tiles (6 Battle Arenas, 4 Cursed Rooms, 8 rooms) and the bag 6 Giant Bats and 2 Skeleton Mages. The four Regent heroes can only be picked with the switch on (see Heroes); the Lord Karak variant comes later ✅
+- **Switch in the lobby** ("Karak: Regent expansion"): the deck gets 18 more tiles (6 Battle Arenas, 4 Cursed Rooms, 8 rooms) and the bag 6 Giant Bats and 2 Skeleton Mages. The four Regent heroes can only be picked with the switch on (see Heroes); the Lord Karak variant is a second switch shown under it ✅
 - **Battle Arena** (a corridor) ✅
   - The first hero to enter it on their own turn chooses another hero; that hero's figure is moved onto the arena and they fight a duel
   - The challenger rolls and decides first (spells, Sacrifice, Double Attack); then the summoned hero rolls; the strength to beat is the other hero's total
@@ -122,6 +122,18 @@ When entering an undiscovered zone:
   - Several heroes may be cursed at once; the mummy token is still single. A healing fountain or the Portal of Healing lifts every curse of that hero
 - **Monsters**: Giant Bat (6 HP) drops Dark Thorn; Skeleton Mage (11 HP) drops Frost Fist ✅
 - **Spells**: a Warrior losing his last HP to a Dark Thorn or in a duel reincarnates at the nearest discovered fountain automatically ✅
+
+### Lord Karak variant (Karak: Regent) ✅
+- **Switch in the lobby** ("Lord Karak variant", only with the expansion on; the server refuses it in a base game)
+- **When**: the fifth Lord Karak room (Battle Arena or Cursed Room) is placed — Lady Lorraine's Listening counts. Placing comes before entering, so when the fifth room is an arena the transformation happens first, then the duel. Once per game, only with 2+ players
+- **The weakest hero** (every player, virtual ones included):
+  1. the lowest treasure value (the same number that scores the game)
+  2. tie → the weakest weapons: token strength of every dagger, sword and axe carried (Hanna's daggers in spell slots count; Sword Master does not)
+  3. tie → the fewest other items (keys and spells)
+  4. tie → a die for each tied hero; the lowest of them roll again until one is lowest
+- **Transformation**: fully healed (from 0 HP too; Valduk's heal limit does not apply), any curse removed (mummy token and Cursed Room), loses his own abilities and gains those of every other hero in the game (a cursed rival still lends his). With 2 players he keeps his own abilities as well. When no other hero is in play he has no abilities
+- **Otherwise unchanged**: 4 moves, can be cursed again (losing all those abilities until healed), collects treasure; the game still ends with the dragon. A virtual Lord Karak benefits from passive abilities only
+- **Shown** as a one-time dialog with the standings and in the action log; his card shows the Lord Karak portrait, 👑 and the hero he was
 
 ### Stunning/Defeat ✅
 When a player's HP reaches 0:

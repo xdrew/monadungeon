@@ -414,12 +414,17 @@
                       {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : player.username || 'Player' }}
                     </span>
                     <span
-                      v-if="player.hero"
+                      v-if="player.hero || player.lordKarak"
                       class="hero-badge"
-                      :class="{ 'awaiting-reincarnation': player.awaitingReincarnation, cursed: player.cursed }"
+                      :class="{ 'awaiting-reincarnation': player.awaitingReincarnation, cursed: player.cursed, 'lord-karak': player.lordKarak }"
                       :title="heroTooltip(player)"
                       data-testid="hero-badge"
-                    >{{ player.awaitingReincarnation ? '💀' : player.cursed ? '☠️' : '⚔️' }} {{ heroShortName(player) }}</span>
+                    >{{ player.awaitingReincarnation ? '💀' : player.cursed ? '☠️' : player.lordKarak ? '👑' : '⚔️' }} {{ badgeName(player) }}</span>
+                    <span
+                      v-if="player.lordKarak && player.hero"
+                      class="lord-karak-was"
+                      data-testid="lord-karak-was"
+                    >was {{ heroShortName(player) }}</span>
                     <span
                       v-if="gameData?.state?.currentPlayerId === player.id"
                       class="turn-badge"
@@ -897,7 +902,7 @@
       v-if="showBattleReportModal"
       ref="battleReportModalRef"
       :battle-info="battleInfo"
-      :hero-key="battleRoller?.hero ?? null"
+      :hero-key="figureHeroKey(battleRoller)"
       :has-inventory-space="hasInventorySpaceForReward"
       :player-hp="battleRoller?.hp ?? 5"
       :curse-choice="curseChoice"
@@ -1015,6 +1020,14 @@
         </button>
       </div>
     </div>
+
+    <!-- Karak: Regent, Lord Karak variant — shown once per browser when the weakest hero is transformed -->
+    <LordKarakRevealModal
+      v-if="visibleLordKarak"
+      :reveal="visibleLordKarak"
+      :players="duelPanelPlayers"
+      @close="dismissLordKarak"
+    />
   </div>
 </template>
 
@@ -1046,6 +1059,7 @@ import FateweaverChoiceDialog from '@/components/game/FateweaverChoiceDialog.vue
 import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
 import DuelOpponentPanel from '@/components/game/DuelOpponentPanel.vue';
 import DuelResultPanel from '@/components/game/DuelResultPanel.vue';
+import LordKarakRevealModal from '@/components/game/LordKarakRevealModal.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import ActionLog from '@/components/ActionLog.vue';
 import MusicToggle from '@/components/game/MusicToggle.vue';
@@ -1303,17 +1317,20 @@ const HERO_SHORT_NAMES = { warrior: 'Warrior', thief: 'Thief', swordsman: 'Sword
 // Swordsman "Unstoppable": the backend keeps the turn open after a battle with a 6, so the client must not end it
 const lastBattleUnstoppable = () => battleInfo.value?.unstoppable === true;
 const heroShortName = (player) => HERO_SHORT_NAMES[player?.hero] || player?.heroLabel || player?.hero || '';
+// Karak: Regent, Lord Karak variant — a transformed hero is drawn as Lord Karak (the chosen hero stays in `hero`)
+const figureHeroKey = (player) => (player?.lordKarak ? 'lord_karak' : player?.hero || null);
+const badgeName = (player) => (player?.lordKarak ? 'Lord Karak' : heroShortName(player));
 
 // Hero per player id for the tile figures (theme portraits); AI players have no hero
 const playerHeroes = computed(() => Object.fromEntries(
-  (gameData.value?.players || []).map((p) => [p.id, p.hero || null])
+  (gameData.value?.players || []).map((p) => [p.id, figureHeroKey(p)])
 ));
 
 const defaultAvatar = (player) =>
   (isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? '/images/player.webp' : '/images/ai.webp');
 
 // Sidebar avatar: the theme's hero portrait when the player has a hero and the theme has an image
-const playerAvatar = (player) => (player.hero && getHero(player.hero).image) || defaultAvatar(player);
+const playerAvatar = (player) => (figureHeroKey(player) && getHero(figureHeroKey(player)).image) || defaultAvatar(player);
 
 const onAvatarError = (event, player) => {
   const fallback = defaultAvatar(player);
@@ -1323,8 +1340,11 @@ const onAvatarError = (event, player) => {
   }
 };
 const heroTooltip = (player) => {
-  if (!player?.hero) return '';
+  if (!player?.hero && !player?.lordKarak) return '';
   const lines = [player.heroLabel || heroShortName(player)];
+  if (player.lordKarak) {
+    lines.push(player.hero ? `Once ${heroShortName(player)}; now has the abilities of the heroes he took over` : 'Has the abilities of the heroes he took over');
+  }
   for (const skill of player.heroSkills || []) {
     lines.push(`${skill.name}: ${skill.description}`);
   }
@@ -1370,7 +1390,7 @@ const playerChoiceLabel = (player) => (player?.hero ? `${playerLabel(player)} ($
 const battleRoller = computed(() => playerById(battleInfo.value?.player) || getCurrentPlayerData.value);
 const duelRival = computed(() => {
   const rival = playerById(battleInfo.value?.duel?.opponentId);
-  return rival ? { label: playerChoiceLabel(rival), heroKey: rival.hero || null } : null;
+  return rival ? { label: playerChoiceLabel(rival), heroKey: figureHeroKey(rival) } : null;
 });
 
 // Battle Arena: the first entry asks this player to choose a rival
@@ -1387,6 +1407,23 @@ const duelOpponentCandidates = computed(() => (arenaChoiceForMe.value?.candidate
     treasures: (player.inventory?.treasures || []).length
   })));
 const duelPanelPlayers = computed(() => (gameData.value?.players || []).map((p) => ({ id: p.id, label: playerChoiceLabel(p) })));
+
+// Lord Karak reveal: one dialog per game and browser (state.lordKarak stays set for the rest of the game)
+const lordKarakSeen = ref(false);
+try {
+  lordKarakSeen.value = localStorage.getItem(`lordKarakSeen:${route.params.id}`) === '1';
+} catch (e) {
+  lordKarakSeen.value = false;
+}
+const visibleLordKarak = computed(() => (lordKarakSeen.value ? null : gameData.value?.state?.lordKarak || null));
+const dismissLordKarak = () => {
+  lordKarakSeen.value = true;
+  try {
+    localStorage.setItem(`lordKarakSeen:${id.value}`, '1');
+  } catch (e) {
+    // localStorage unavailable - the dialog is hidden for this page only
+  }
+};
 
 // The duel result stays in the sidebar until dismissed (remembered per game and duel)
 const dismissedDuelId = ref(null);
@@ -6891,6 +6928,18 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .hero-badge.cursed {
   color: #a5e8a5;
   border-color: rgba(120, 220, 120, 0.6);
+}
+
+/* Karak: Regent, Lord Karak variant */
+.hero-badge.lord-karak {
+  color: #f3d27a;
+  border-color: rgba(243, 210, 122, 0.7);
+}
+
+.lord-karak-was {
+  font-size: 11px;
+  opacity: 0.75;
+  font-style: italic;
 }
 
 /* Portal of Healing target */
