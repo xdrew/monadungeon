@@ -34,6 +34,7 @@ use App\Game\Turn\GetCurrentTurn;
 use App\Game\Turn\GetTurn;
 use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\TurnAction;
+use App\Game\Turn\TurnActionPerformed;
 use App\Game\Turn\TurnStarted;
 use App\Infrastructure\Doctrine\AggregateRoot;
 use App\Infrastructure\Uuid\DoctrineDBAL\UuidType;
@@ -396,6 +397,17 @@ class Movement extends AggregateRoot
         if ($event->monsterHP > 0 && !$event->unstoppable) {
             // Mark that the player has battled this turn
             $this->hasMovedAfterBattle[$event->playerId->toString()] = true;
+        }
+    }
+
+    /**
+     * Valduk "Tireless": leaving the loot of a won fight unlocks the rest of the turn.
+     */
+    #[Handler]
+    public function onTurnActionPerformed(TurnActionPerformed $event): void
+    {
+        if ($event->action === TurnAction::TIRELESS) {
+            $this->hasMovedAfterBattle[$event->playerId->toString()] = false;
         }
     }
 

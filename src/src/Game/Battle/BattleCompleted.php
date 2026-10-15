@@ -26,6 +26,8 @@ final readonly class BattleCompleted implements Event
      * @param bool $canSacrificeHp Warlock "Sacrifice": the hero may still pay 1 HP for +1 strength
      * @param bool $hpSacrificed Warlock "Sacrifice": 1 HP was paid for +1 strength in this battle
      * @param bool $farseeing Oracle "Farseeing": +1 was added to this roll (battle on the first move of the turn)
+     * @param int $berserkBonus Valduk "Berserk": strength added for his HP when the dice were rolled
+     * @param int $onesAsSixes Lady Lorraine "Bear Attack": dice showing 1 that were counted as 6
      * @param bool $curseChoiceRequired Curse of Karak: a mummy was beaten, the (human) slayer must choose whom to curse
      * @param string|null $cursedPlayerId Curse of Karak: the player carrying the token right now
      * @param array{duelId: string, role: string, opponentId: string, toBeat: ?int}|null $duel Karak: Regent — a Battle Arena duel side
@@ -54,6 +56,8 @@ final readonly class BattleCompleted implements Event
         public bool $hpSacrificed = false,
         public bool $spellsKept = false,
         public bool $farseeing = false,
+        public int $berserkBonus = 0,
+        public int $onesAsSixes = 0,
         public bool $curseChoiceRequired = false,
         public ?string $cursedPlayerId = null,
         public \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),

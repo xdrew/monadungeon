@@ -49,6 +49,12 @@ class GameTurn extends AggregateRoot
     #[Column(type: Types::BOOLEAN, nullable: false, options: ['default' => false])]
     private bool $pendingItemPickup = false;
 
+    /**
+     * Hanna "Sprint": this turn has up to 8 moves and no tile exploration.
+     */
+    #[Column(type: Types::BOOLEAN, nullable: false, options: ['default' => false])]
+    private bool $sprint = false;
+
     private int $actionsRemaining = 0;
 
     private int $maxActions = 0;
@@ -116,6 +122,8 @@ class GameTurn extends AggregateRoot
             TurnAction::CURSED_ROOM->value,
             TurnAction::DUEL->value,
             TurnAction::DUEL_LOOT->value,
+            TurnAction::SPRINT->value,
+            TurnAction::RETREAT->value,
         ], true);
     }
 
@@ -210,6 +218,7 @@ class GameTurn extends AggregateRoot
             TurnAction::CURSED_ROOM,
             TurnAction::DUEL,
             TurnAction::DUEL_LOOT,
+            TurnAction::RETREAT,
         ], true)) {
             // Player tried to do something else — auto-end the turn
             $this->endTurn($command->at);
@@ -221,6 +230,16 @@ class GameTurn extends AggregateRoot
             ));
 
             return;
+        }
+
+        // Hanna "Sprint": the run goes over discovered tiles only
+        if ($this->sprint && \in_array($command->action, [
+            TurnAction::PICK_TILE,
+            TurnAction::ROTATE_TILE,
+            TurnAction::PLACE_TILE,
+            TurnAction::DISCOVER_TILE,
+        ], true)) {
+            throw new InvalidTurnActionException($command->action, TurnAction::SPRINT);
         }
 
         // Check if the action is allowed based on turn action rules
@@ -235,6 +254,9 @@ class GameTurn extends AggregateRoot
             'additionalData' => $command->additionalData,
             'performedAt' => $command->at->format(\DateTimeInterface::ATOM),
         ];
+        if ($command->action === TurnAction::SPRINT) {
+            $this->sprint = true;
+        }
 
         $messageContext->dispatch(new TurnActionPerformed(
             turnId: $this->turnId,
@@ -250,12 +272,14 @@ class GameTurn extends AggregateRoot
         $hasBattleInTurn = $this->hasBattleInTurn();
 
         // If turn end was deferred for item pickup, mark it
-        if ($command->deferTurnEnd && $this->performedActionsCount >= self::MAX_ACTIONS_PER_TURN) {
+        if ($command->deferTurnEnd && $this->performedActionsCount >= $this->maxMoves()) {
             $this->pendingItemPickup = true;
         }
 
         // Only use action count to end turn if no battle occurred and turn end is not deferred (e.g. pickable item at destination)
-        if ((!$hasBattleInTurn && !$command->deferTurnEnd && $this->performedActionsCount >= self::MAX_ACTIONS_PER_TURN) || $command->action->isEndOfTurn()) {
+        // Markul "Lightning Attack" spends all moves but the fight that follows decides how the turn ends
+        $movesRunOut = $this->performedActionsCount >= $this->maxMoves() && $command->action !== TurnAction::LIGHTNING_ATTACK;
+        if ((!$hasBattleInTurn && !$command->deferTurnEnd && $movesRunOut) || $command->action->isEndOfTurn()) {
             $this->endTurn($command->at);
             $messageContext->dispatch(new TurnEnded(
                 turnId: $this->turnId,
@@ -402,13 +426,34 @@ class GameTurn extends AggregateRoot
      */
     public function hasBattleInTurn(): bool
     {
+        $battleLocksTurn = false;
         foreach ($this->actions as $action) {
             if ($action['action'] === TurnAction::FIGHT_MONSTER->value && !self::isUnstoppableBattle($action)) {
-                return true;
+                $battleLocksTurn = true;
+            }
+            // Valduk "Tireless": leaving the loot unlocks the rest of the turn again
+            if ($action['action'] === TurnAction::TIRELESS->value) {
+                $battleLocksTurn = false;
             }
         }
 
-        return false;
+        return $battleLocksTurn;
+    }
+
+    /**
+     * Moves this turn may spend: 4, or 8 for Hanna's "Sprint".
+     */
+    public function maxMoves(): int
+    {
+        return $this->sprint ? 8 : self::MAX_ACTIONS_PER_TURN;
+    }
+
+    /**
+     * Hanna "Sprint" was declared this turn (no tile exploration).
+     */
+    public function isSprint(): bool
+    {
+        return $this->sprint;
     }
 
     // Test mode methods - only for use in tests

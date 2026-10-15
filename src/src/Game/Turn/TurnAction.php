@@ -35,6 +35,18 @@ enum TurnAction: string
     case DUEL = 'duel';
     case DUEL_LOOT = 'duel_loot';
 
+    // Karak: Regent heroes
+    // Valduk "Tireless": left the loot of a won fight and keeps moving (the step into the fight is paid now)
+    case TIRELESS = 'tireless';
+    // Baron Markul "Lightning Attack": teleport onto a monster for all 4 moves
+    case LIGHTNING_ATTACK = 'lightning_attack';
+    // Baron Markul: the retreat chosen after a Lightning Attack that was not won (bookkeeping, never a move)
+    case RETREAT = 'retreat';
+    // Hanna "Sprint": up to 8 moves this turn, no tile exploration (bookkeeping, never a move)
+    case SPRINT = 'sprint';
+    // Lady Lorraine "Listening": explored the adjacent tile just placed without entering it (one move)
+    case LISTEN = 'listen';
+
     // Item interactions
     case PICK_UP_EQUIPMENT = 'pick_up_equipment';
     case UNLOCK_CHEST = 'unlock_chest';
@@ -72,15 +84,18 @@ enum TurnAction: string
             self::DISCOVER_TILE,
             self::USE_TELEPORT,
             self::MAGIC_SWAP,
+            self::TIRELESS,
+            self::LIGHTNING_ATTACK,
+            self::LISTEN,
         ], true);
     }
 
     /**
-     * How many of the turn's moves the action spends (Warlock "Magic Swap" costs all 4).
+     * How many of the turn's moves the action spends (Warlock "Magic Swap" and Markul "Lightning Attack" cost all 4).
      */
     public function moveCost(): int
     {
-        return $this === self::MAGIC_SWAP ? 4 : 1;
+        return $this === self::MAGIC_SWAP || $this === self::LIGHTNING_ATTACK ? 4 : 1;
     }
 
     public function isIncreasesActionCounter(): bool
@@ -89,6 +104,9 @@ enum TurnAction: string
             self::MOVE,
             self::USE_TELEPORT,
             self::MAGIC_SWAP,
+            self::TIRELESS,
+            self::LIGHTNING_ATTACK,
+            self::LISTEN,
             // Note: PICK_TILE, PLACE_TILE, ROTATE_TILE do NOT increase action counter as they are part of exploration
             // Note: Combat and item actions don't count - they end the turn instead
         ], true);
@@ -128,6 +146,36 @@ enum TurnAction: string
         // Oracle "Fateweaver" settles the token of the room that was just placed
         if ($this === self::FATEWEAVER) {
             return $previousAction === self::PLACE_TILE;
+        }
+
+        // Markul "Lightning Attack" costs all 4 moves and Hanna "Sprint" replaces the normal movement: both open the turn
+        if ($this === self::LIGHTNING_ATTACK || $this === self::SPRINT) {
+            return $previousAction === null;
+        }
+
+        // Markul's retreat after a Lightning Attack: bookkeeping, the Field checks that a retreat is pending
+        if ($this === self::RETREAT) {
+            return true;
+        }
+
+        // Valduk "Tireless": only right after a fight (the Field checks that it was won and the loot is left)
+        if ($this === self::TIRELESS) {
+            return $previousAction === self::FIGHT_MONSTER;
+        }
+
+        // Lady Lorraine "Listening": explores the tile that was just placed (after its Fateweaver choice, if any)
+        if ($this === self::LISTEN) {
+            return $previousAction === self::PLACE_TILE || $previousAction === self::FATEWEAVER;
+        }
+
+        // After a Lightning Attack the moves are spent: only the reward on the monster tile or ending the turn is left
+        if ($previousAction === self::LIGHTNING_ATTACK) {
+            return $this === self::PICK_ITEM || $this === self::END_TURN;
+        }
+
+        // After Tireless the loot stays on the tile: the turn goes on like after a move
+        if ($previousAction === self::TIRELESS) {
+            return $this !== self::PICK_ITEM;
         }
 
         // No previous action means it's the start of the turn

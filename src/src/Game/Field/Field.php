@@ -1044,6 +1044,62 @@ class Field extends AggregateRoot
     }
 
     /**
+     * Valduk "Tireless": after a won fight he leaves the loot on the tile and continues his remaining moves.
+     * The step into the fight is paid now (a move onto a monster is never recorded as a MOVE).
+     *
+     * @throws GameAlreadyFinishedException
+     * @throws NotYourTurnException
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function continueAfterVictory(ContinueAfterVictory $command, MessageContext $context): void
+    {
+        $game = $context->dispatch(new GetGame($command->gameId));
+        if ($game->getStatus()->isFinished()) {
+            throw new GameAlreadyFinishedException();
+        }
+
+        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
+        $currentTurnId = $context->dispatch(new GetCurrentTurn($command->gameId));
+        if ($currentPlayerId === null || !$command->playerId->equals($currentPlayerId)
+            || $currentTurnId === null || !$command->turnId->equals($currentTurnId)) {
+            throw new NotYourTurnException();
+        }
+
+        $player = $context->dispatch(new GetPlayer($command->playerId));
+        if ($player->getHero()?->tireless() !== true) {
+            throw new \DomainException('Only Valduk can keep moving after a victory (Tireless)');
+        }
+
+        $position = FieldPlace::fromAnything($context->dispatch(new GetPlayerPosition($command->gameId, $command->playerId)))->toString();
+        $battle = $this->lastBattleInfo;
+        $reward = $battle['reward'] ?? null;
+        $leftItem = isset($this->items[$position]) ? Item::fromAnything($this->items[$position]) : null;
+        if (($battle['result'] ?? null) !== BattleResult::WIN->value
+            || ($battle['player'] ?? null) !== $command->playerId->toString()
+            || ($battle['position'] ?? null) !== $position
+            || !\is_array($reward)
+            || ($reward['autoCollected'] ?? false) === true
+            || $leftItem === null
+            || !$leftItem->guardDefeated) {
+            throw new \DomainException('No won fight with loot left on this tile');
+        }
+
+        $context->dispatch(new PerformTurnAction(
+            turnId: $command->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            action: TurnAction::TIRELESS,
+            additionalData: [
+                'position' => $position,
+                'leftItem' => ['name' => $leftItem->name->value, 'type' => $leftItem->type->value],
+                'heroAbility' => 'tireless',
+            ],
+        ));
+        $this->lastBattleInfo['tireless'] = true;
+    }
+
+    /**
      * @return list<FieldPlace>
      */
     public function getAllMoveableSiblingsBySides(FieldPlace $fieldPlace, MessageContext $messageContext): array
@@ -1538,6 +1594,9 @@ class Field extends AggregateRoot
             'spellsKept' => $event->spellsKept,
             // Oracle "Farseeing"
             'farseeing' => $event->farseeing,
+            // Karak: Regent — Valduk "Berserk" bonus, Lady Lorraine "Bear Attack" dice
+            'berserk' => $event->berserkBonus,
+            'onesAsSixes' => $event->onesAsSixes,
             // Curse of Karak: the slayer of a mummy picks the victim before the turn ends
             'curseChoiceRequired' => $event->curseChoiceRequired,
             'cursedPlayerId' => $event->cursedPlayerId,

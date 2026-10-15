@@ -108,6 +108,12 @@ class Player extends AggregateRoot
 
     private int $maxHp = self::MAX_HP;
 
+    /**
+     * Valduk "Berserk": heal only up to this many HP (null = heal fully), so he can stay in his rage.
+     */
+    #[Column(type: Types::INTEGER, nullable: true)]
+    private ?int $healLimit = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -147,6 +153,11 @@ class Player extends AggregateRoot
     {
         if ($this->ready) {
             throw new \DomainException('Cannot change hero after the player is ready');
+        }
+
+        // Karak: Regent heroes come with the expansion only
+        if ($command->hero->isRegent() && !$messageContext->dispatch(new GetGame($command->gameId))->isRegent()) {
+            throw new \DomainException($command->hero->label() . ' needs the Karak: Regent expansion');
         }
 
         $this->hero = $command->hero;
@@ -259,7 +270,37 @@ class Player extends AggregateRoot
 
             return;
         }
+
+        // Valduk "Berserk": he chooses how many HP to heal; healing never takes HP away (cursed: full heal)
+        if ($this->healLimit !== null && $this->getHero()?->choosesHealing() === true) {
+            $this->hp = max($this->hp, min(self::MAX_HP, $this->healLimit));
+
+            return;
+        }
         $this->hp = self::MAX_HP;
+    }
+
+    /**
+     * Valduk "Berserk": set how many HP a heal restores at most (null = heal fully).
+     *
+     * @throws \DomainException
+     */
+    #[Handler]
+    public function setHealLimit(SetHealLimit $command): void
+    {
+        if ($this->hero?->choosesHealing() !== true) {
+            throw new \DomainException('Only Valduk chooses how many HP to heal (Berserk)');
+        }
+        if ($command->hp !== null && ($command->hp < 1 || $command->hp > self::MAX_HP)) {
+            throw new \DomainException(\sprintf('Heal limit must be between 1 and %d HP', self::MAX_HP));
+        }
+
+        $this->healLimit = $command->hp;
+    }
+
+    public function getHealLimit(): ?int
+    {
+        return $this->healLimit;
     }
 
     /**

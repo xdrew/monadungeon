@@ -1,7 +1,9 @@
 import { APIRequestContext } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
 
-export type HeroType = 'warrior' | 'thief' | 'swordsman' | 'warlock' | 'wizard' | 'oracle';
+export type HeroType = 'warrior' | 'thief' | 'swordsman' | 'warlock' | 'wizard' | 'oracle'
+  // Karak: Regent heroes (need `regent: true`)
+  | 'barbarian' | 'battle_mage' | 'acrobat' | 'ranger';
 
 export interface PlayerTestConfig {
   maxHp?: number;
@@ -21,6 +23,8 @@ export interface TestGameConfig {
   tileSequence?: string[];
   itemSequence?: string[];
   playerConfigs?: { [playerId: string]: PlayerTestConfig };
+  /** Karak: Regent expansion on (needed for the Regent heroes). */
+  regent?: boolean;
 }
 
 export class TestGameSetup {
@@ -57,6 +61,7 @@ export class TestGameSetup {
         tileSequence: config.tileSequence || [],
         itemSequence: config.itemSequence || [],
         playerConfigs: config.playerConfigs || {},
+        regent: config.regent ?? false,
       }
     });
     

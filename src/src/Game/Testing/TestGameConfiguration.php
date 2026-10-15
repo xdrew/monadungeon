@@ -11,11 +11,13 @@ final readonly class TestGameConfiguration
      * @param array<string> $tileSequence Fixed order of tiles to be drawn
      * @param array<string> $itemSequence Fixed order of items in bag
      * @param array<string, PlayerTestConfig> $playerConfigs Player-specific test configurations
+     * @param bool $regent Karak: Regent expansion on (needed for the Regent heroes)
      */
     public function __construct(
         public array $diceRolls = [],
         public array $tileSequence = [],
         public array $itemSequence = [],
         public array $playerConfigs = [],
+        public bool $regent = false,
     ) {}
 }

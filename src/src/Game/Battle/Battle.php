@@ -113,6 +113,18 @@ class Battle extends AggregateRoot
     private bool $farseeing = false;
 
     /**
+     * Valduk "Berserk": +1 at 3–4 HP, +2 at 1–2 HP, fixed when the dice are rolled.
+     */
+    #[Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $berserkBonus = 0;
+
+    /**
+     * Lady Lorraine "Bear Attack": how many dice showing 1 were counted as 6.
+     */
+    #[Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $onesAsSixes = 0;
+
+    /**
      * Karak: Regent — the Battle Arena duel this Battle is one side of (null for a monster fight).
      */
     #[Column(type: UuidType::class, nullable: true)]
@@ -180,6 +192,11 @@ class Battle extends AggregateRoot
                 $battle->farseeing = $turn !== null && $turn->getPerformedActionsCount() === 0;
             }
         }
+
+        // Valduk "Berserk": the HP he has when the dice are rolled decides the bonus (monster fight or duel side)
+        $roller = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
+        $rollerHero = $roller->getHero();
+        $battle->berserkBonus = $rollerHero?->berserk() === true ? $rollerHero->berserkBonus($roller->getHP()) : 0;
 
         // Roll the dice immediately
         $battle->rollDice($messageContext);
@@ -366,7 +383,7 @@ class Battle extends AggregateRoot
 
         // Update battle data
         $this->usedItems = $finalUsedItems;
-        $this->totalDamage = array_sum($this->diceResults) + $totalItemDamage + $this->sacrificeBonus() + $this->farseeingBonus();
+        $this->totalDamage = array_sum($this->diceResults) + $totalItemDamage + $this->sacrificeBonus() + $this->farseeingBonus() + $this->berserkBonus();
 
         // Calculate final damage breakdown for the event
         $diceRollDamage = array_sum($this->diceResults);
@@ -435,6 +452,8 @@ class Battle extends AggregateRoot
                 hpSacrificed: $this->hpSacrificed,
                 spellsKept: $this->spellsKept,
                 farseeing: $this->farseeing,
+                berserkBonus: $this->berserkBonus,
+                onesAsSixes: $this->onesAsSixes,
                 curseChoiceRequired: $curse['required'],
                 cursedPlayerId: $curse['holder'],
             ));
@@ -579,6 +598,14 @@ class Battle extends AggregateRoot
     }
 
     /**
+     * Valduk "Berserk": strength bonus for the HP he had when the dice were rolled.
+     */
+    private function berserkBonus(): int
+    {
+        return $this->berserkBonus;
+    }
+
+    /**
      * Warlock "Sacrifice": pay 1 HP for +1 strength, once per combat. Paying the last HP knocks the hero out
      * for his next turn (Player::reduceHP dispatches PlayerStunned).
      *
@@ -653,7 +680,7 @@ class Battle extends AggregateRoot
     ): void {
         // Calculate dice roll and item damage separately
         $diceRollDamage = array_sum($this->diceResults);
-        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus();
+        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus() - $this->berserkBonus();
 
         // Check initial battle result (weapons only)
         $initialResult = $this->resolveResult($monster, $messageContext);
@@ -687,6 +714,8 @@ class Battle extends AggregateRoot
                 hpSacrificed: $this->hpSacrificed,
                 spellsKept: $this->spellsKept,
                 farseeing: $this->farseeing,
+                berserkBonus: $this->berserkBonus,
+                onesAsSixes: $this->onesAsSixes,
                 duel: $this->duelPayload($monster),
             ));
             $this->completeDuelSide($messageContext);
@@ -717,6 +746,8 @@ class Battle extends AggregateRoot
                 hpSacrificed: $this->hpSacrificed,
                 spellsKept: $this->spellsKept,
                 farseeing: $this->farseeing,
+                berserkBonus: $this->berserkBonus,
+                onesAsSixes: $this->onesAsSixes,
                 curseChoiceRequired: $curse['required'],
                 cursedPlayerId: $curse['holder'],
             ));
@@ -761,6 +792,8 @@ class Battle extends AggregateRoot
             hpSacrificed: $this->hpSacrificed,
             spellsKept: $this->spellsKept,
             farseeing: $this->farseeing,
+            berserkBonus: $this->berserkBonus,
+            onesAsSixes: $this->onesAsSixes,
             duel: $this->duelPayload($monster),
         ));
     }
@@ -829,7 +862,7 @@ class Battle extends AggregateRoot
             result: $result,
             diceResults: $this->diceResults,
             diceRollDamage: $diceRollDamage,
-            itemDamage: $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus(),
+            itemDamage: $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus() - $this->berserkBonus(),
             totalDamage: $this->totalDamage,
             monsterHP: $monster->guardHP,
             usedItems: $this->usedItems,
@@ -842,6 +875,8 @@ class Battle extends AggregateRoot
             hpSacrificed: $this->hpSacrificed,
             spellsKept: $this->spellsKept,
             farseeing: $this->farseeing,
+            berserkBonus: $this->berserkBonus,
+            onesAsSixes: $this->onesAsSixes,
             duel: $this->duelPayload($monster),
         ));
 
@@ -867,10 +902,12 @@ class Battle extends AggregateRoot
             playerId: $this->playerId,
             total: $this->totalDamage,
             diceResults: array_values($this->diceResults),
-            itemDamage: $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus(),
+            itemDamage: $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus() - $this->berserkBonus(),
             usedItems: array_values(array_map(static fn(Item|array $item): array => Item::fromAnything($item)->toArray(), $this->usedItems ?? [])),
             hpSacrificed: $this->hpSacrificed,
             farseeing: $this->farseeing,
+            berserkBonus: $this->berserkBonus,
+            onesAsSixes: $this->onesAsSixes,
             rerolled: $this->rerollUsed,
             onesRerolled: $this->onesRerolled,
             tieIsWin: $this->playerWinsTies($messageContext),
@@ -941,7 +978,18 @@ class Battle extends AggregateRoot
             }
         }
 
-        $this->totalDamage = array_sum($this->diceResults) + $this->farseeingBonus();
+        // Lady Lorraine "Bear Attack": a die showing 1 counts as 6
+        $this->onesAsSixes = 0;
+        if ($player->getHero()?->bearAttack() === true) {
+            foreach ($this->diceResults as $index => $value) {
+                if ($value === 1) {
+                    ++$this->onesAsSixes;
+                    $this->diceResults[$index] = 6;
+                }
+            }
+        }
+
+        $this->totalDamage = array_sum($this->diceResults) + $this->farseeingBonus() + $this->berserkBonus();
     }
 
     /**
@@ -970,7 +1018,7 @@ class Battle extends AggregateRoot
     private function calculateBattleWithConsumables(MessageContext $messageContext): void
     {
         // Reset to base dice damage (plus the Oracle "Farseeing" bonus, which belongs to the roll)
-        $this->totalDamage = array_sum($this->diceResults) + $this->farseeingBonus();
+        $this->totalDamage = array_sum($this->diceResults) + $this->farseeingBonus() + $this->berserkBonus();
 
         // Get player instance
         $player = $messageContext->dispatch(new GetPlayer(
@@ -1005,7 +1053,7 @@ class Battle extends AggregateRoot
 
         // Calculate dice roll and item damage separately
         $diceRollDamage = array_sum($this->diceResults);
-        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus();
+        $itemDamage = $this->totalDamage - $diceRollDamage - $this->sacrificeBonus() - $this->farseeingBonus() - $this->berserkBonus();
 
         // Record the FIGHT_MONSTER action FIRST (before any HP changes that might trigger stunning)
         // We use a standard format for the monster data to ensure compatibility
@@ -1037,6 +1085,8 @@ class Battle extends AggregateRoot
                 'hpSacrificed' => $this->hpSacrificed,
                 'spellsKept' => $this->spellsKept,
                 'farseeing' => $this->farseeing,
+                'berserk' => $this->berserkBonus,
+                'onesAsSixes' => $this->onesAsSixes,
                 'heroAbility' => implode('+', array_filter([
                     $this->rerollUsed ? 'double_attack' : null,
                     $this->onesRerolled > 0 ? 'combat_training' : null,
@@ -1045,6 +1095,8 @@ class Battle extends AggregateRoot
                     $this->hpSacrificed ? 'sacrifice' : null,
                     $this->spellsKept ? 'magical_affinity' : null,
                     $this->farseeing ? 'farseeing' : null,
+                    $this->berserkBonus > 0 ? 'berserk' : null,
+                    $this->onesAsSixes > 0 ? 'bear_attack' : null,
                 ])) ?: null,
             ],
             at: new \DateTimeImmutable(),

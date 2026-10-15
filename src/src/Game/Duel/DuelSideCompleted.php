@@ -34,6 +34,8 @@ final readonly class DuelSideCompleted implements Event
         public int $onesRerolled = 0,
         public bool $tieIsWin = false,
         public bool $spellsKept = false,
+        public int $berserkBonus = 0,
+        public int $onesAsSixes = 0,
     ) {}
 
     /**
@@ -51,6 +53,8 @@ final readonly class DuelSideCompleted implements Event
             'onesRerolled' => $this->onesRerolled,
             'tieIsWin' => $this->tieIsWin,
             'spellsKept' => $this->spellsKept,
+            'berserk' => $this->berserkBonus,
+            'onesAsSixes' => $this->onesAsSixes,
         ];
     }
 }

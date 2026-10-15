@@ -74,6 +74,7 @@ final readonly class SetupTestGameHandler
         $this->messageBus->dispatch(new CreateGame(
             gameId: $gameId,
             at: new \DateTimeImmutable(),
+            regent: $config->regent,
         ));
 
         // Add players if specified in configuration

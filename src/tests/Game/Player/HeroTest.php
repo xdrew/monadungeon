@@ -19,6 +19,7 @@ use App\Game\Player\ReducePlayerHP;
 use App\Game\Player\ReincarnationRequired;
 use App\Infrastructure\Uuid\Uuid;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Telephantast\MessageBus\MessageContext;
@@ -31,6 +32,13 @@ use function App\Tests\Infrastructure\MessageBus\handle;
 #[CoversClass(HeroType::class)]
 final class HeroTest extends TestCase
 {
+    private const array FLAG_KEYS = [
+        'canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix',
+        'sacrificesHp', 'canMagicSwap', 'keepsSpellsInCombat', 'walksThroughWalls', 'fightsBetterOnFirstMove',
+        'drawsTwoTokens', 'berserk', 'choosesHealing', 'tireless', 'masterOfSword', 'lightningAttack',
+        'throwsDaggers', 'sprints', 'bearAttack', 'listens',
+    ];
+
     private Uuid $gameId;
 
     private Uuid $playerId;
@@ -175,7 +183,7 @@ final class HeroTest extends TestCase
     #[Test]
     public function warriorSkillsAreDescribed(): void
     {
-        self::assertSame(['warrior', 'thief', 'swordsman', 'warlock', 'wizard', 'oracle'], HeroType::values());
+        self::assertSame(['warrior', 'thief', 'swordsman', 'warlock', 'wizard', 'oracle', 'barbarian', 'battle_mage', 'acrobat', 'ranger'], HeroType::values());
         self::assertTrue(HeroType::WARRIOR->canRerollBattle());
         self::assertTrue(HeroType::WARRIOR->reincarnates());
         self::assertSame(['Double Attack', 'Reincarnation'], array_column(HeroType::WARRIOR->skills(), 'name'));
@@ -198,7 +206,7 @@ final class HeroTest extends TestCase
             self::assertFalse($other->continuesTurnOnSix(), $other->value);
         }
         self::assertSame(
-            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix', 'sacrificesHp', 'canMagicSwap', 'keepsSpellsInCombat', 'walksThroughWalls', 'fightsBetterOnFirstMove', 'drawsTwoTokens'],
+            self::FLAG_KEYS,
             array_keys(HeroType::SWORDSMAN->flags()),
         );
     }
@@ -274,7 +282,7 @@ final class HeroTest extends TestCase
         self::assertTrue(HeroType::ORACLE->flags()['fightsBetterOnFirstMove']);
         self::assertTrue(HeroType::ORACLE->flags()['drawsTwoTokens']);
         self::assertSame(
-            ['canRerollBattle', 'reincarnates', 'winsTies', 'canSneakPastMonsters', 'rerollsOnes', 'continuesTurnOnSix', 'sacrificesHp', 'canMagicSwap', 'keepsSpellsInCombat', 'walksThroughWalls', 'fightsBetterOnFirstMove', 'drawsTwoTokens'],
+            self::FLAG_KEYS,
             array_keys(HeroType::ORACLE->flags()),
         );
     }
@@ -304,5 +312,51 @@ final class HeroTest extends TestCase
         }
 
         return null;
+    }
+
+    /**
+     * @return iterable<string, array{HeroType, string, list<string>, list<string>}>
+     */
+    public static function regentHeroes(): iterable
+    {
+        yield 'barbarian' => [HeroType::BARBARIAN, 'Valduk, the Barbarian', ['berserk', 'choosesHealing', 'tireless'], ['Berserk', 'Tireless']];
+        yield 'battle mage' => [HeroType::BATTLE_MAGE, 'Baron Markul, the Battle Mage', ['masterOfSword', 'lightningAttack'], ['Sword Master', 'Lightning Attack']];
+        yield 'acrobat' => [HeroType::ACROBAT, 'Hanna, the Acrobat', ['throwsDaggers', 'sprints'], ['Dagger Throwing', 'Sprint']];
+        yield 'ranger' => [HeroType::RANGER, 'Lady Lorraine, the Ranger', ['bearAttack', 'listens'], ['Bear Attack', 'Listening']];
+    }
+
+    /**
+     * @param list<string> $ownFlags
+     * @param list<string> $skillNames
+     */
+    #[Test]
+    #[DataProvider('regentHeroes')]
+    public function regentHeroSkillsAreDescribed(HeroType $hero, string $label, array $ownFlags, array $skillNames): void
+    {
+        self::assertSame($label, $hero->label());
+        self::assertTrue($hero->isRegent());
+        self::assertSame(self::FLAG_KEYS, array_keys($hero->flags()));
+        foreach ($hero->flags() as $flag => $value) {
+            self::assertSame(\in_array($flag, $ownFlags, true), $value, $flag);
+        }
+        self::assertSame($skillNames, array_column($hero->skills(), 'name'));
+    }
+
+    #[Test]
+    public function baseHeroesAreNotRegent(): void
+    {
+        foreach ([HeroType::WARRIOR, HeroType::THIEF, HeroType::SWORDSMAN, HeroType::WARLOCK, HeroType::WIZARD, HeroType::ORACLE] as $hero) {
+            self::assertFalse($hero->isRegent(), $hero->value);
+            foreach (['berserk', 'choosesHealing', 'tireless', 'masterOfSword', 'lightningAttack', 'throwsDaggers', 'sprints', 'bearAttack', 'listens'] as $flag) {
+                self::assertFalse($hero->flags()[$flag], $hero->value . ' ' . $flag);
+            }
+        }
+    }
+
+    #[Test]
+    public function berserkBonusDependsOnHp(): void
+    {
+        self::assertSame([0, 1, 1, 2, 2, 0], array_map(static fn(int $hp): int => HeroType::BARBARIAN->berserkBonus($hp), [5, 4, 3, 2, 1, 0]));
+        self::assertSame(0, HeroType::WARRIOR->berserkBonus(2));
     }
 }

@@ -39,6 +39,7 @@ final readonly class Action
                 tileSequence: $request->tileSequence,
                 itemSequence: $request->itemSequence,
                 playerConfigs: $playerConfigs,
+                regent: $request->regent,
             );
 
             $messageBus->dispatch(new SetupTestGame(

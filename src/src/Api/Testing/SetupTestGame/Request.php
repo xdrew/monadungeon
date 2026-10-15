@@ -26,5 +26,9 @@ final readonly class Request
         public array $itemSequence = [],
         #[Assert\Type('array')]
         public array $playerConfigs = [],
+        /**
+         * Karak: Regent expansion on (needed for the Regent heroes).
+         */
+        public bool $regent = false,
     ) {}
 }

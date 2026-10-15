@@ -158,6 +158,11 @@ class Game extends AggregateRoot
         if (!$this->status->isPreparing()) {
             throw new CannotAddPlayerToAlreadyPreparedGame();
         }
+
+        // Karak: Regent heroes come with the expansion only
+        if ($command->hero?->isRegent() === true && !$this->regent) {
+            throw new \DomainException($command->hero->label() . ' needs the Karak: Regent expansion');
+        }
         $this->players = $players;
 
         // Check TestMode for player HP configuration
