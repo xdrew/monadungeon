@@ -132,7 +132,7 @@ When entering an undiscovered zone:
   3. tie → the fewest other items (keys and spells)
   4. tie → a die for each tied hero; the lowest of them roll again until one is lowest
 - **Transformation**: fully healed (from 0 HP too; Valduk's heal limit does not apply), any curse removed (mummy token and Cursed Room), loses his own abilities and gains those of every other hero in the game (a cursed rival still lends his). With 2 players he keeps his own abilities as well. When no other hero is in play he has no abilities
-- **Otherwise unchanged**: 4 moves, can be cursed again (losing all those abilities until healed), collects treasure; the game still ends with the dragon. A virtual Lord Karak benefits from passive abilities only
+- **Otherwise unchanged**: 4 moves, can be cursed again (losing all those abilities until healed), collects treasure; the game still ends with the dragon. A virtual Lord Karak uses all the abilities he took over, like any AI hero
 - **Shown** as a one-time dialog with the standings and in the action log; his card shows the Lord Karak portrait, 👑 and the hero he was
 
 ### Stunning/Defeat ✅
@@ -145,7 +145,10 @@ When a player's HP reaches 0:
 
 ### Heroes ✅
 All hero skills below are switched off while the hero carries the Curse of Karak (see above).
-Each player may pick a hero before the game starts (lobby); a player without a hero has no special skills. AI players have no hero. ✅
+Heroes are dealt at random, as in the board game: the lobby switch **Random heroes** is on by default and every player gets a different hero (the Karak: Regent heroes only with the expansion). With the switch off you pick your hero yourself (or none — no special skills) and the AI is dealt one of the others. ✅
+- The AI player is always dealt a hero and is drawn with it (portrait, figure, badge) ✅
+- The AI uses its skills: the odds of a fight count Backstab, Combat Training, Bear Attack, Berserk, Farseeing, Sword Master, Double Attack, Sacrifice and its spells; after the roll it rerolls (Double Attack) only when spells cannot win, spends the cheapest spells (+ Sacrifice, never the last HP) only when they turn the fight into a victory; it reincarnates at the fountain nearest to its goal, sets Valduk's heal limit to 4, leaves unwanted loot with Tireless, keeps going after an Unstoppable 6, sneaks past fights it would rather avoid (Stealth), walks through walls (Astral Walking), listens at a new room holding a bad fight (Listening), uses Lightning Attack on the most valuable monster it beats often enough (never at 1 HP), Magic Swap onto a rival on a fountain when low or next to a dragon worth fighting, Sprint to a goal 5–8 moves away ✅
+- AI spells: every Dark Thorn on its turn (a rival at 1 HP who would be knocked out first, otherwise the one with the most treasure), Portal of Healing to the nearest fountain at 2 HP or less or when cursed ✅
 
 #### Horan, the Warrior ✅
 - **Double Attack** ✅

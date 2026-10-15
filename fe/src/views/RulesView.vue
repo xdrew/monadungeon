@@ -266,6 +266,15 @@
           </ul>
         </div>
 
+        <div class="mechanic" data-testid="rules-hero-dealing">
+          <h3>🎲 Dealing heroes</h3>
+          <ul>
+            <li>Heroes are dealt at random, as in the board game: with the lobby switch <strong>Random heroes</strong> on (the default) you and the AI each get a different hero; Regent heroes only with the expansion.</li>
+            <li>Switch it off to pick your hero yourself; the AI is then dealt one of the others.</li>
+            <li>The AI plays its hero: its fight odds include the hero's skills, and it uses Double Attack, Sacrifice, Reincarnation, Stealth, Astral Walking, Tireless, Lightning Attack, Magic Swap, Sprint, Listening, Valduk's heal limit, Dark Thorn and the Portal of Healing on its own. A virtual Lord Karak uses every ability he took over.</li>
+          </ul>
+        </div>
+
         <div class="mechanic" data-testid="rules-regent-heroes">
           <h3>🦸 Regent heroes <span class="regent-chip">Regent</span></h3>
           <ul>
