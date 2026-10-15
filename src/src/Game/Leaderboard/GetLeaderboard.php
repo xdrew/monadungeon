@@ -16,6 +16,5 @@ final readonly class GetLeaderboard implements Message
         public int $limit = 20,
         public string $sortBy = 'victories', // 'victories' or 'totalGames'
         public string $sortOrder = 'DESC', // 'ASC' or 'DESC'
-        public ?string $currentPlayerWallet = null,
     ) {}
 }

@@ -70,22 +70,16 @@ class Player extends AggregateRoot
     private bool $ready = false;
 
     /**
-     * External ID from authentication provider (e.g., Privy user ID).
+     * External identity of the player, if the client sends one.
      */
     #[Column(type: Types::STRING, nullable: true)]
     private ?string $externalId = null;
 
     /**
-     * Username from Monad Games ID.
+     * Display name of the player.
      */
     #[Column(type: Types::STRING, nullable: true)]
     private ?string $username = null;
-
-    /**
-     * Wallet address from authentication provider.
-     */
-    #[Column(type: Types::STRING, nullable: true)]
-    private ?string $walletAddress = null;
 
     /**
      * Whether this player is controlled by AI.
@@ -156,7 +150,6 @@ class Player extends AggregateRoot
         );
         $player->externalId = $event->externalId;
         $player->username = $event->username ?? null;
-        $player->walletAddress = $event->walletAddress ?? null;
         $player->isAi = $event->isAi;
         $player->hero = $event->hero;
 
@@ -926,7 +919,7 @@ class Player extends AggregateRoot
     }
 
     /**
-     * Get the external ID (e.g., Privy user ID) for this player.
+     * Get the external identity of this player, if the client sent one.
      */
     public function getExternalId(): ?string
     {
@@ -934,16 +927,11 @@ class Player extends AggregateRoot
     }
 
     /**
-     * Get the username from Monad Games ID.
+     * Get the display name of the player.
      */
     public function getUsername(): ?string
     {
         return $this->username;
-    }
-
-    public function getWalletAddress(): ?string
-    {
-        return $this->walletAddress;
     }
 
     #[Handler]

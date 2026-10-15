@@ -37,9 +37,7 @@
         "telephantast/message-bus": "^0.1@dev",
         "telephantast/telephantast-bundle": "^0.1@dev",
         "telephantast/thesis-amqp-transport": "^0.1@dev",
-        "vaimo/composer-patches": "^5.1",
-        "web3p/ethereum-tx": "^0.4.3",
-        "web3p/web3.php": "^0.1.6"
+        "vaimo/composer-patches": "^5.1"
     },
     "require-dev": {
         "bamarni/composer-bin-plugin": "^1.8",

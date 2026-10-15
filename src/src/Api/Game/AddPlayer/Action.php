@@ -27,7 +27,6 @@ final readonly class Action
                 playerId: $request->playerId,
                 externalId: $request->externalId,
                 username: $request->username,
-                walletAddress: $request->walletAddress,
                 isAi: $request->isAi,
                 hero: $request->hero !== null ? HeroType::from($request->hero) : null,
             ));

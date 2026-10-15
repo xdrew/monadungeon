@@ -20,7 +20,6 @@ final readonly class PlayerAdded implements Event
         public int $hp = Player::MAX_HP,
         public ?string $externalId = null,
         public ?string $username = null,
-        public ?string $walletAddress = null,
         public bool $isAi = false,
         public ?HeroType $hero = null,
     ) {}

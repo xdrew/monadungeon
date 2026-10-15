@@ -19,7 +19,6 @@ final readonly class Request
         public Uuid $playerId,
         public ?string $externalId = null,
         public ?string $username = null,
-        public ?string $walletAddress = null,
         public bool $isAi = false,
         #[Assert\Choice(callback: [HeroType::class, 'values'])]
         public ?string $hero = null,

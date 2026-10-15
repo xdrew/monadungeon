@@ -43,8 +43,6 @@ class Leaderboard
         #[Column(type: Types::STRING)]
         private string $username,
         #[Column(type: Types::STRING, nullable: true)]
-        private ?string $walletAddress = null,
-        #[Column(type: Types::STRING, nullable: true)]
         private ?string $externalId = null,
     ) {
         $this->id = Uuid::v7();
@@ -60,11 +58,6 @@ class Leaderboard
     public function getUsername(): string
     {
         return $this->username;
-    }
-
-    public function getWalletAddress(): ?string
-    {
-        return $this->walletAddress;
     }
 
     public function getExternalId(): ?string

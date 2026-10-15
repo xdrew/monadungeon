@@ -20,7 +20,6 @@ final readonly class AddPlayer implements Message
         public Uuid $playerId,
         public ?string $externalId = null,
         public ?string $username = null,
-        public ?string $walletAddress = null,
         public bool $isAi = false,
         public ?HeroType $hero = null,
     ) {}

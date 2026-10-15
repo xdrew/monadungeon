@@ -10,6 +10,5 @@ final readonly class Response
         public array $entries,
         public array $pagination,
         public array $sorting,
-        public ?array $currentPlayer = null,
     ) {}
 }

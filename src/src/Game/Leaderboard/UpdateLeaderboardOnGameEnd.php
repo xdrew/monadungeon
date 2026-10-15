@@ -33,7 +33,6 @@ final readonly class UpdateLeaderboardOnGameEnd
 
         foreach ($players as $player) {
             $username = $player->getUsername();
-            $walletAddress = $player->getWalletAddress();
             $externalId = $player->getExternalId();
 
             // Skip players without username (username is required for identification)
@@ -51,24 +50,18 @@ final readonly class UpdateLeaderboardOnGameEnd
 
             $leaderboardEntry = null;
 
-            // Try to find existing entry by wallet address if available
-            if (!empty($walletAddress)) {
-                $leaderboardEntry = $leaderboardRepository->findOneBy(['walletAddress' => $walletAddress]);
-            }
-
-            // If not found by wallet, try by username and externalId combination
-            if (!$leaderboardEntry && !empty($externalId)) {
+            // Try by username and externalId combination
+            if (!empty($externalId)) {
                 $leaderboardEntry = $leaderboardRepository->findOneBy([
                     'username' => $username,
                     'externalId' => $externalId,
                 ]);
             }
 
-            // For AI players without wallet/externalId, use username only
-            if (!$leaderboardEntry && empty($walletAddress) && empty($externalId)) {
+            // Players without externalId are identified by username only
+            if (!$leaderboardEntry && empty($externalId)) {
                 $leaderboardEntry = $leaderboardRepository->findOneBy([
                     'username' => $username,
-                    'walletAddress' => null,
                     'externalId' => null,
                 ]);
             }
@@ -90,7 +83,6 @@ final readonly class UpdateLeaderboardOnGameEnd
                 // Create new leaderboard entry
                 $leaderboardEntry = new Leaderboard(
                     username: $username,
-                    walletAddress: $walletAddress,
                     externalId: $externalId,
                 );
                 $leaderboardEntry->updateStats($isWinner);
@@ -101,12 +93,11 @@ final readonly class UpdateLeaderboardOnGameEnd
                 'gameId' => $event->gameId->toString(),
                 'playerId' => $playerId->toString(),
                 'username' => $username,
-                'walletAddress' => $walletAddress,
                 'externalId' => $externalId,
                 'isWinner' => $isWinner,
                 'victories' => $leaderboardEntry->getVictories(),
                 'totalGames' => $leaderboardEntry->getTotalGames(),
-                'isAIPlayer' => empty($walletAddress) && empty($externalId),
+                'isAIPlayer' => $player->isAi(),
             ]);
         }
     }

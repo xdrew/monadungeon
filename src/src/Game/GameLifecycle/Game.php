@@ -288,7 +288,6 @@ class Game extends AggregateRoot
             hp: $hp,
             externalId: $command->externalId,
             username: $command->username,
-            walletAddress: $command->walletAddress,
             isAi: $command->isAi,
             hero: $hero,
         ));
