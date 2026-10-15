@@ -32,7 +32,7 @@
         {{ displayOrientationSymbol }}
       </div>
       <div
-        v-if="isPlacingTile"
+        v-if="isPlacingTile && canRotate"
         class="ghost-tile-controls"
       >
         <button
@@ -101,6 +101,11 @@ const props = defineProps({
   isPlacingTile: {
     type: Boolean,
     default: false
+  },
+  /** false when turning gives nothing new (a straight corridor, a four-way crossing): no rotate button */
+  canRotate: {
+    type: Boolean,
+    default: true
   },
   minX: {
     type: Number,

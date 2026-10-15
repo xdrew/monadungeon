@@ -611,6 +611,7 @@
                     :orientation-class="ghostTileOrientationClass"
                     :is-room="pickedTile.room"
                     :is-placing-tile="isPlacingTile"
+                    :can-rotate="ghostCanRotate"
                     :min-x="gameData.field.size.minX || 0"
                     :min-y="gameData.field.size.minY || 0"
                     :tile-size="tileSize"
@@ -3734,8 +3735,25 @@ const getRequiredOpenSideLocal = (position) => {
   return getRequiredOpenSide(position, gameData.value, currentPlayerId.value);
 };
 
+// Turning the tile only makes sense when it has two different ways to lie with a door towards the hero:
+// a straight corridor (one way) and a four-way crossing (all the same) offer nothing to turn
+const GHOST_SIDES = ['T', 'R', 'B', 'L'];
+const ghostCanRotate = computed(() => {
+  const orientation = ghostTileOrientation.value;
+  if (!orientation) return true;
+  const open = GHOST_SIDES.map((side) => hasOpening(orientation, side));
+  const required = getRequiredOpenSide(ghostTilePosition.value, gameData.value, currentPlayerId.value);
+  const ways = new Set();
+  for (let turn = 0; turn < 4; turn++) {
+    const turned = GHOST_SIDES.map((_, i) => open[(i - turn + 4) % 4]);
+    if (required === null || turned[required]) ways.add(turned.join());
+  }
+  return ways.size > 1;
+});
+
 // Use the imported rotateGhostTile function with necessary parameters
 const rotateGhostTileLocal = async () => {
+  if (!ghostCanRotate.value) return;
   if (!pickedTileId.value || !pickedTile.value || !isPlacingTile.value || !ghostTilePosition.value) return;
 
   // Ensure we're using the correct player ID from the game state
