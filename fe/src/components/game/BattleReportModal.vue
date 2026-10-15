@@ -241,7 +241,7 @@
             class="first-roll-note"
             data-testid="lightning-retreat-note"
           >
-            ⚡ Lightning Attack — choose where to retreat in the sidebar
+            ⚡ Lightning Attack — choose where to retreat on the panel by the action rings
           </div>
           <!-- Curse of Karak: the victim was chosen -->
           <div

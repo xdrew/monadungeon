@@ -278,7 +278,7 @@
         <div class="mechanic" data-testid="rules-regent-heroes">
           <h3>🦸 Regent heroes <span class="regent-chip">Regent</span></h3>
           <ul>
-            <li><strong>Valduk, the Barbarian</strong> — <em>Berserk</em>: +1 strength at 3–4 HP, +2 at 1–2 HP; he sets in the sidebar how many HP a heal restores at most. <em>Tireless</em>: after a won fight he may leave the loot on the tile and keep moving (the step into the fight counts as a move).</li>
+            <li><strong>Valduk, the Barbarian</strong> — <em>Berserk</em>: +1 strength at 3–4 HP, +2 at 1–2 HP; he sets with the <em>Heal limit</em> ring how many HP a heal restores at most. <em>Tireless</em>: after a won fight he may leave the loot on the tile and keep moving (the step into the fight counts as a move).</li>
             <li><strong>Baron Markul, the Battle Mage</strong> — <em>Sword Master</em>: a sword has strength 3. <em>Lightning Attack</em>: as the first action, for all 4 moves, teleport onto any monster and fight it; if he does not win he retreats onto an opened neighbouring tile with a door (or back where he came from), then the turn ends.</li>
             <li><strong>Hanna, the Acrobat</strong> — <em>Dagger Throwing</em>: once her weapon slots are full, daggers go into free spell slots; each adds +1 and is never used up (not while cursed). <em>Sprint</em>: as the first action, up to 8 moves over discovered tiles, no exploring.</li>
             <li><strong>Lady Lorraine, the Ranger</strong> — <em>Bear Attack</em>: a die showing 1 counts as 6. <em>Listening</em>: place an adjacent tile without entering it, for one move (its token is drawn; an arena or a cursed room there is not triggered).</li>
