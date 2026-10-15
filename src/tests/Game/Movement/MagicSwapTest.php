@@ -198,6 +198,13 @@ final class MagicSwapTest extends TestCase
             {
                 return $this->hero;
             }
+
+            public function getSkills(): ?\App\Game\Player\HeroSkills
+            {
+                $hero = $this->getHero();
+
+                return $hero instanceof \App\Game\Player\HeroType ? \App\Game\Player\HeroSkills::of($hero) : null;
+            }
         };
 
         $turn = GameTurn::start(new StartTurn(

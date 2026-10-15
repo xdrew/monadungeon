@@ -45,6 +45,9 @@ enum TurnAction: string
     // Baron Markul: the retreat chosen after a Lightning Attack that was not won (bookkeeping, never a move)
     case RETREAT = 'retreat';
 
+    // Karak: Regent, Lord Karak variant — the weakest hero became Lord Karak (bookkeeping, never a move)
+    case LORD_KARAK = 'lord_karak';
+
     // Hanna "Sprint": up to 8 moves this turn, no tile exploration (bookkeeping, never a move)
     case SPRINT = 'sprint';
 
@@ -159,6 +162,11 @@ enum TurnAction: string
 
         // Markul's retreat after a Lightning Attack: bookkeeping, the Field checks that a retreat is pending
         if ($this === self::RETREAT) {
+            return true;
+        }
+
+        // Lord Karak is revealed whenever the fifth Lord Karak room is placed: bookkeeping
+        if ($this === self::LORD_KARAK) {
             return true;
         }
 

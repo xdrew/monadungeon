@@ -17,7 +17,7 @@ final readonly class Action
     public function __invoke(#[MapRequestPayload] Request $request, MessageBus $messageBus): Response|Error
     {
         try {
-            $messageBus->dispatch(new CreateGame($request->gameId, regent: $request->regent));
+            $messageBus->dispatch(new CreateGame($request->gameId, regent: $request->regent, lordKarak: $request->lordKarak));
         } catch (\Throwable $e) {
             // Log the full error for debugging
             error_log('Game creation error: ' . $e->getMessage() . ' - ' . $e->getTraceAsString());

@@ -8,6 +8,7 @@ use App\Game\Bag\DoctrineDBAL\InventoryJsonType;
 use App\Game\Battle\MonsterDefeated;
 use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
+use App\Game\GameLifecycle\LordKarakRevealed;
 use App\Game\GameLifecycle\PlayerAdded;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
@@ -114,6 +115,20 @@ class Player extends AggregateRoot
     #[Column(type: Types::INTEGER, nullable: true)]
     private ?int $healLimit = null;
 
+    /**
+     * Karak: Regent, Lord Karak variant — this player became Lord Karak.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $lordKarak = false;
+
+    /**
+     * Karak: Regent, Lord Karak variant — the heroes whose abilities Lord Karak has (hero values).
+     *
+     * @var list<string>
+     */
+    #[Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $lordKarakHeroes = [];
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -200,7 +215,7 @@ class Player extends AggregateRoot
 
         if ($oldHp > 0 && $this->hp === 0) {
             // Warrior "Reincarnation": instead of being stunned the hero chooses a healing fountain (not while cursed)
-            if ($this->getHero()?->reincarnates() === true) {
+            if ($this->getSkills()?->reincarnates() === true) {
                 $this->awaitingReincarnation = true;
 
                 $messageContext->dispatch(new ReincarnationRequired(
@@ -262,6 +277,19 @@ class Player extends AggregateRoot
         $this->cursed = false;
     }
 
+    /**
+     * Karak: Regent, Lord Karak variant — this hero became Lord Karak: fully healed (the heal limit does not apply,
+     * a stunned hero is back on his feet) with the abilities of the heroes he took over. The Game lifts the curse.
+     */
+    #[Handler]
+    public function onLordKarakRevealed(LordKarakRevealed $event): void
+    {
+        $this->lordKarak = true;
+        $this->lordKarakHeroes = array_map(static fn(HeroType $hero): string => $hero->value, $event->heroes);
+        $this->hp = self::MAX_HP;
+        $this->awaitingReincarnation = false;
+    }
+
     #[Handler]
     public function resetHP(ResetPlayerHP $command): void
     {
@@ -272,7 +300,7 @@ class Player extends AggregateRoot
         }
 
         // Valduk "Berserk": he chooses how many HP to heal; healing never takes HP away (cursed: full heal)
-        if ($this->healLimit !== null && $this->getHero()?->choosesHealing() === true) {
+        if ($this->healLimit !== null && $this->getSkills()?->choosesHealing() === true) {
             $this->hp = max($this->hp, min(self::MAX_HP, $this->healLimit));
 
             return;
@@ -329,7 +357,7 @@ class Player extends AggregateRoot
         $currentCount = \count($this->inventory[$category->value] ?? []);
 
         // Hanna "Dagger Throwing": with the weapon slots full a dagger goes into a free spell slot
-        $throwsDagger = $item->type === ItemType::DAGGER && $this->getHero()?->throwsDaggers() === true;
+        $throwsDagger = $item->type === ItemType::DAGGER && $this->getSkills()?->throwsDaggers() === true;
         if ($throwsDagger && $maxItems !== null && $currentCount >= $maxItems
             && \count($this->inventory[ItemCategory::SPELL->value] ?? []) < self::MAX_SPELLS) {
             $category = ItemCategory::SPELL;
@@ -451,7 +479,7 @@ class Player extends AggregateRoot
         if (isset($this->inventory[ItemCategory::SPELL->value])) {
             foreach ($this->inventory[ItemCategory::SPELL->value] as $spell) {
                 $spell = Item::fromAnything($spell);
-                if ($spell->type === ItemType::DAGGER && $this->getHero()?->throwsDaggers() !== true) {
+                if ($spell->type === ItemType::DAGGER && $this->getSkills()?->throwsDaggers() !== true) {
                     continue;
                 }
                 $totalDamage += $this->itemStrength($spell);
@@ -466,7 +494,7 @@ class Player extends AggregateRoot
      */
     public function itemStrength(Item $item): int
     {
-        if ($item->type === ItemType::SWORD && $this->getHero()?->masterOfSword() === true) {
+        if ($item->type === ItemType::SWORD && $this->getSkills()?->masterOfSword() === true) {
             return 3;
         }
 
@@ -546,7 +574,7 @@ class Player extends AggregateRoot
      */
     public function getSlotDaggers(): array
     {
-        if ($this->getHero()?->throwsDaggers() !== true) {
+        if ($this->getSkills()?->throwsDaggers() !== true) {
             return [];
         }
 
@@ -671,12 +699,39 @@ class Player extends AggregateRoot
     }
 
     /**
-     * The hero whose skills apply right now: null while the player carries the Curse of Karak.
-     * Every skill check goes through this method, so a cursed hero loses all skills at once.
+     * The hero card in play: null while the player carries the Curse of Karak.
+     * Skill checks use getSkills(), which also covers Lord Karak.
      */
     public function getHero(): ?HeroType
     {
         return $this->cursed ? null : $this->hero;
+    }
+
+    /**
+     * The skills that apply right now: null while cursed (a cursed hero loses all skills at once).
+     * Lord Karak has the skills of the heroes he took over; everyone else those of the chosen hero.
+     */
+    public function getSkills(): ?HeroSkills
+    {
+        if ($this->lordKarak) {
+            return $this->cursed ? null : new HeroSkills($this->getLordKarakHeroes());
+        }
+        $hero = $this->getHero();
+
+        return $hero !== null ? HeroSkills::of($hero) : null;
+    }
+
+    public function isLordKarak(): bool
+    {
+        return $this->lordKarak;
+    }
+
+    /**
+     * @return list<HeroType>
+     */
+    public function getLordKarakHeroes(): array
+    {
+        return array_values(array_map(static fn(string $hero): HeroType => HeroType::from($hero), $this->lordKarakHeroes));
     }
 
     /**
@@ -701,7 +756,7 @@ class Player extends AggregateRoot
         $maxItems = $this->getMaxItemsForCategory($category);
 
         // Hanna "Dagger Throwing": a dagger also fits a free spell slot
-        if ($type === ItemType::DAGGER && $this->getHero()?->throwsDaggers() === true
+        if ($type === ItemType::DAGGER && $this->getSkills()?->throwsDaggers() === true
             && \count($this->inventory[ItemCategory::SPELL->value] ?? []) < self::MAX_SPELLS) {
             return true;
         }
@@ -812,7 +867,7 @@ class Player extends AggregateRoot
 
             // Hanna "Dagger Throwing": a dagger that replaces something in the spell slots takes that slot
             if ($command->newItem->type === ItemType::DAGGER && $replacedCategory === ItemCategory::SPELL->value
-                && $this->getHero()?->throwsDaggers() === true) {
+                && $this->getSkills()?->throwsDaggers() === true) {
                 $category = ItemCategory::SPELL;
             }
 

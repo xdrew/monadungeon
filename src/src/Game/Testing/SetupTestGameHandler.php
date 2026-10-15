@@ -75,6 +75,7 @@ final readonly class SetupTestGameHandler
             gameId: $gameId,
             at: new \DateTimeImmutable(),
             regent: $config->regent,
+            lordKarak: $config->lordKarak,
         ));
 
         // Add players if specified in configuration

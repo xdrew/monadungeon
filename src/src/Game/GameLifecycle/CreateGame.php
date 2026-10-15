@@ -22,5 +22,9 @@ final readonly class CreateGame implements Message
          * Karak: Regent expansion — adds the Lord Karak rooms, the new monsters and heroes.
          */
         public bool $regent = false,
+        /**
+         * Karak: Regent, Lord Karak variant — the weakest hero becomes Lord Karak (needs the expansion).
+         */
+        public bool $lordKarak = false,
     ) {}
 }

@@ -20,5 +20,9 @@ final readonly class GameCreated implements Event
          * Karak: Regent expansion enabled for this game.
          */
         public bool $regent = false,
+        /**
+         * Karak: Regent, Lord Karak variant enabled for this game.
+         */
+        public bool $lordKarak = false,
     ) {}
 }

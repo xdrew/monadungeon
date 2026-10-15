@@ -40,6 +40,7 @@ final readonly class Action
                 itemSequence: $request->itemSequence,
                 playerConfigs: $playerConfigs,
                 regent: $request->regent,
+                lordKarak: $request->lordKarak,
             );
 
             $messageBus->dispatch(new SetupTestGame(

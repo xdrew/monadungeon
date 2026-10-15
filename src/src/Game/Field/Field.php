@@ -79,6 +79,7 @@ use App\Infrastructure\Doctrine\AggregateRoot;
 use App\Infrastructure\Uuid\DoctrineDBAL\UuidType;
 use App\Infrastructure\Uuid\Uuid;
 use Doctrine\DBAL\Types\JsonType;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\Id;
@@ -230,6 +231,12 @@ class Field extends AggregateRoot
      */
     #[Column(type: FieldPlaceArrayJsonType::class, options: ['default' => '[]'])]
     private array $activatedArenas = [];
+
+    /**
+     * Karak: Regent — Lord Karak rooms (Battle Arenas and Cursed Rooms) placed so far.
+     */
+    #[Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $lordKarakRooms = 0;
 
     /**
      * Karak: Regent — a human hero activated an arena and still has to choose a rival (dropped at the turn end).
@@ -428,6 +435,11 @@ class Field extends AggregateRoot
             firstStep: $pending['firstStep'],
             context: $context,
         );
+    }
+
+    public function getLordKarakRooms(): int
+    {
+        return $this->lordKarakRooms;
     }
 
     /**
@@ -857,6 +869,17 @@ class Field extends AggregateRoot
             orientation: $tile->getOrientation(),
         ));
 
+        // Karak: Regent — count the Lord Karak rooms (the Lord Karak variant reveals him at the fifth)
+        if ($tile->hasFeature(TileFeature::BATTLE_ARENA) || $tile->hasFeature(TileFeature::CURSED_ROOM)) {
+            ++$this->lordKarakRooms;
+            $messageContext->dispatch(new LordKarakRoomDiscovered(
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                position: $command->fieldPlace,
+                count: $this->lordKarakRooms,
+            ));
+        }
+
         // Record this action for the turn and end the turn
         $messageContext->dispatch(new PerformTurnAction(
             turnId: $command->turnId,
@@ -954,7 +977,7 @@ class Field extends AggregateRoot
             $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($event->gameId));
             if ($currentPlayerId !== null) {
                 $player = $messageContext->dispatch(new GetPlayer($currentPlayerId));
-                $hero = $player->getHero();
+                $hero = $player->getSkills();
                 $isAi = $player->isAi();
             }
         } catch (\Throwable) {
@@ -1076,7 +1099,7 @@ class Field extends AggregateRoot
         }
 
         $player = $context->dispatch(new GetPlayer($command->playerId));
-        if ($player->getHero()?->tireless() !== true) {
+        if ($player->getSkills()?->tireless() !== true) {
             throw new \DomainException('Only Valduk can keep moving after a victory (Tireless)');
         }
 
@@ -1132,7 +1155,7 @@ class Field extends AggregateRoot
         }
 
         $player = $context->dispatch(new GetPlayer($command->playerId));
-        if ($player->getHero()?->listens() !== true) {
+        if ($player->getSkills()?->listens() !== true) {
             throw new \DomainException('Only Lady Lorraine can listen at a tile (Listening)');
         }
         if ($this->pendingFateweaver !== null) {
@@ -1660,7 +1683,7 @@ class Field extends AggregateRoot
                     'placeTile' => [],
                 ];
             }
-            $hero = $player->getHero();
+            $hero = $player->getSkills();
         } catch (\Throwable) {
         }
 

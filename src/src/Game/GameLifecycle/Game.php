@@ -6,6 +6,7 @@ namespace App\Game\GameLifecycle;
 
 use App\Game\Battle\MummyDefeated;
 use App\Game\Field\CursedRoomEntered;
+use App\Game\Field\LordKarakRoomDiscovered;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyFullGame;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyPreparedGame;
 use App\Game\Item\Item;
@@ -13,6 +14,7 @@ use App\Game\Item\ItemCategory;
 use App\Game\Player\CurseLifted;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\HeroType;
 use App\Game\Player\ItemAddedToInventory;
 use App\Game\Player\Player;
 use App\Game\Player\PlayerCursed;
@@ -48,6 +50,13 @@ class Game extends AggregateRoot
 {
     // Karak comes with 5 hero stands
     private const int MAX_PLAYERS_COUNT = 5;
+
+    /**
+     * Karak: Regent, Lord Karak variant — he enters when this many Lord Karak rooms are discovered.
+     */
+    private const int LORD_KARAK_ROOMS = 5;
+
+    private const int LORD_KARAK_MAX_REROLLS = 20;
 
     #[Column(type: Types::STRING, enumType: GameStatus::class)]
     private GameStatus $status = GameStatus::LOBBY;
@@ -106,6 +115,26 @@ class Game extends AggregateRoot
     private bool $regent = false;
 
     /**
+     * Karak: Regent, Lord Karak variant — the weakest hero becomes Lord Karak when the fifth Lord Karak room is placed.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $lordKarak = false;
+
+    /**
+     * Karak: Regent, Lord Karak variant — the player who became Lord Karak (once per game).
+     */
+    #[Column(type: UuidType::class, nullable: true)]
+    private ?Uuid $lordKarakPlayerId = null;
+
+    /**
+     * Karak: Regent, Lord Karak variant — how Lord Karak was chosen, for the reveal dialog.
+     *
+     * @var array{playerId: string, turnNumber: int, criterion: string, heroes: list<string>, keepsOwn: bool, standings: list<array{playerId: string, treasure: int, weapons: int, items: int, rolls: list<int>}>}|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $lordKarakReveal = null;
+
+    /**
      * Karak: Regent — heroes cursed by a Cursed Room; independent of the mummy token, several at once.
      * (The default matters: the column is NOT NULL and existing games must migrate.).
      *
@@ -123,18 +152,80 @@ class Game extends AggregateRoot
     #[Handler]
     public static function create(CreateGame $command, MessageContext $messageContext): self
     {
+        if ($command->lordKarak && !$command->regent) {
+            throw new \DomainException('The Lord Karak variant needs the Karak: Regent expansion');
+        }
         $game = new self(
             gameId: $command->gameId,
         );
         $game->regent = $command->regent;
+        $game->lordKarak = $command->lordKarak;
         $messageContext->dispatch(new GameCreated(
             gameId: $command->gameId,
             gameCreateTime: $command->at,
             deckSize: $command->deckSize,
             regent: $command->regent,
+            lordKarak: $command->lordKarak,
         ));
 
         return $game;
+    }
+
+    /**
+     * Lord Karak ranking keys: treasure value (the score), raw strength of every weapon carried (Hanna's slot
+     * daggers too, no hero bonus), number of other items (keys and spells).
+     *
+     * @return array{treasure: int, weapons: int, items: int}
+     */
+    private static function strength(Player $player): array
+    {
+        $strength = ['treasure' => 0, 'weapons' => 0, 'items' => 0];
+        foreach ($player->getInventory() as $items) {
+            foreach ($items as $item) {
+                $item = Item::fromAnything($item);
+                match ($item->type->getCategory()) {
+                    ItemCategory::TREASURE => $strength['treasure'] += $item->treasureValue,
+                    ItemCategory::WEAPON => $strength['weapons'] += $item->type->getDamage(),
+                    default => ++$strength['items'],
+                };
+            }
+        }
+
+        return $strength;
+    }
+
+    /**
+     * Lord Karak: the weakest hero — fewest treasures, then the weakest weapons, then the fewest items, then the
+     * lowest die (the tied players reroll until one is lowest).
+     *
+     * @param array<string, array{playerId: string, treasure: int, weapons: int, items: int, rolls: list<int>}> $standings
+     *
+     * @return array{string, string, array<string, array{playerId: string, treasure: int, weapons: int, items: int, rolls: list<int>}>}
+     */
+    private static function findWeakest(array $standings): array
+    {
+        $tied = array_keys($standings);
+        foreach (['treasure', 'weapons', 'items'] as $key) {
+            $lowest = min(array_map(static fn(string $id): int => $standings[$id][$key], $tied));
+            $tied = array_values(array_filter($tied, static fn(string $id): bool => $standings[$id][$key] === $lowest));
+            if (\count($tied) === 1) {
+                return [$tied[0], $key, $standings];
+            }
+        }
+
+        // Every key tied: roll a die, the tied lowest roll again (bounded: the test dice queue may repeat forever)
+        for ($round = 0; $round < self::LORD_KARAK_MAX_REROLLS && \count($tied) > 1; ++$round) {
+            $rolls = [];
+            foreach ($tied as $id) {
+                $roll = TestMode::getInstance()->isEnabled() ? TestMode::getInstance()->getNextDiceRoll(1, 6) : random_int(1, 6);
+                $standings[$id]['rolls'][] = $roll;
+                $rolls[$id] = $roll;
+            }
+            $lowest = min($rolls);
+            $tied = array_values(array_filter($tied, static fn(string $id): bool => $rolls[$id] === $lowest));
+        }
+
+        return [$tied[0], 'roll', $standings];
     }
 
     #[Handler]
@@ -318,22 +409,89 @@ class Game extends AggregateRoot
     #[Handler]
     public function onPlayerHealedAtFountain(PlayerHealedAtFountain $event, MessageContext $messageContext): void
     {
-        if (!$this->isPlayerCursed($event->playerId)) {
+        $this->liftCurse($event->playerId, $messageContext);
+    }
+
+    /**
+     * Karak: Regent, Lord Karak variant — when the fifth Lord Karak room is discovered, the weakest hero becomes
+     * Lord Karak: fully healed, the curse removed, the abilities of all other heroes (his own kept with 2 players).
+     */
+    #[Handler]
+    public function onLordKarakRoomDiscovered(LordKarakRoomDiscovered $event, MessageContext $messageContext): void
+    {
+        if (!$this->lordKarak || $this->lordKarakPlayerId !== null || $event->count < self::LORD_KARAK_ROOMS) {
+            return;
+        }
+        if (!$this->status->isInProgress() || \count($this->players) < 2) {
             return;
         }
 
-        if ($this->cursedPlayerId?->equals($event->playerId) === true) {
-            $this->cursedPlayerId = null;
+        $standings = [];
+        $chosen = [];
+        foreach ($this->players as $playerId) {
+            $player = $messageContext->dispatch(new GetPlayer($playerId));
+            $standings[$playerId->toString()] = [
+                'playerId' => $playerId->toString(),
+                ...self::strength($player),
+                'rolls' => [],
+            ];
+            $chosen[$playerId->toString()] = $player->getChosenHero();
         }
-        $this->roomCursedPlayerIds = array_values(array_filter(
-            $this->roomCursedPlayerIds,
-            static fn(Uuid $id): bool => !$id->equals($event->playerId),
+
+        [$weakestId, $criterion, $standings] = self::findWeakest($standings);
+        $weakest = Uuid::fromString($weakestId);
+
+        $keepsOwn = \count($this->players) === 2;
+        $heroes = [];
+        foreach ($chosen as $playerId => $hero) {
+            if ($hero === null || ($playerId === $weakestId && !$keepsOwn) || \in_array($hero, $heroes, true)) {
+                continue;
+            }
+            $heroes[] = $hero;
+        }
+
+        $this->lordKarakPlayerId = $weakest;
+        $this->lordKarakReveal = [
+            'playerId' => $weakestId,
+            'turnNumber' => $this->currentTurnNumber,
+            'criterion' => $criterion,
+            'heroes' => array_map(static fn(HeroType $hero): string => $hero->value, $heroes),
+            'keepsOwn' => $keepsOwn,
+            'standings' => array_values($standings),
+        ];
+
+        $this->liftCurse($weakest, $messageContext);
+
+        $messageContext->dispatch(new LordKarakRevealed(
+            gameId: $this->gameId,
+            playerId: $weakest,
+            heroes: $heroes,
+            keepsOwn: $keepsOwn,
+            criterion: $criterion,
+            turnId: $this->currentTurnId,
         ));
 
-        $messageContext->dispatch(new CurseLifted(
-            gameId: $this->gameId,
-            playerId: $event->playerId,
-        ));
+        if ($this->currentTurnId === null || $this->currentPlayerId === null) {
+            return;
+        }
+
+        try {
+            $messageContext->dispatch(new PerformTurnAction(
+                turnId: $this->currentTurnId,
+                gameId: $this->gameId,
+                playerId: $this->currentPlayerId,
+                action: TurnAction::LORD_KARAK,
+                additionalData: [
+                    'player' => $weakestId,
+                    'criterion' => $criterion,
+                    'heroes' => $this->lordKarakReveal['heroes'],
+                    'keepsOwn' => $keepsOwn,
+                    'heroAbility' => null,
+                ],
+            ));
+        } catch (\RuntimeException) {
+            // The turn may already be over: the transformation still counts
+        }
     }
 
     /**
@@ -377,12 +535,33 @@ class Game extends AggregateRoot
         return $this->cursedPlayerId;
     }
 
+    public function getLordKarakPlayerId(): ?Uuid
+    {
+        return $this->lordKarakPlayerId;
+    }
+
+    /**
+     * @return array{playerId: string, turnNumber: int, criterion: string, heroes: list<string>, keepsOwn: bool, standings: list<array{playerId: string, treasure: int, weapons: int, items: int, rolls: list<int>}>}|null
+     */
+    public function getLordKarakReveal(): ?array
+    {
+        return $this->lordKarakReveal;
+    }
+
     /**
      * Karak: Regent expansion enabled for this game.
      */
     public function isRegent(): bool
     {
         return $this->regent;
+    }
+
+    /**
+     * Karak: Regent, Lord Karak variant enabled for this game.
+     */
+    public function isLordKarak(): bool
+    {
+        return $this->lordKarak;
     }
 
     /**
@@ -574,6 +753,29 @@ class Game extends AggregateRoot
      * Karak: the dice decide who starts (highest 2d6, a tie goes to the first of the tied players in seating order).
      * In test mode the first player starts and no dice are spent, so scripted games stay predictable.
      */
+    /**
+     * Curse of Karak: lift the curse from a player — the mummy token and a Cursed Room curse alike.
+     */
+    private function liftCurse(Uuid $playerId, MessageContext $messageContext): void
+    {
+        if (!$this->isPlayerCursed($playerId)) {
+            return;
+        }
+
+        if ($this->cursedPlayerId?->equals($playerId) === true) {
+            $this->cursedPlayerId = null;
+        }
+        $this->roomCursedPlayerIds = array_values(array_filter(
+            $this->roomCursedPlayerIds,
+            static fn(Uuid $id): bool => !$id->equals($playerId),
+        ));
+
+        $messageContext->dispatch(new CurseLifted(
+            gameId: $this->gameId,
+            playerId: $playerId,
+        ));
+    }
+
     private function rollForStartingPlayer(): Uuid
     {
         $this->startingRolls = [];

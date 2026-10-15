@@ -306,6 +306,13 @@ final class RegentHeroFieldTest extends TestCase
                 {
                     return $this->hero;
                 }
+
+                public function getSkills(): ?\App\Game\Player\HeroSkills
+                {
+                    $hero = $this->getHero();
+
+                    return $hero instanceof \App\Game\Player\HeroType ? \App\Game\Player\HeroSkills::of($hero) : null;
+                }
             },
             fn(GetCurrentPlayer $_query): Uuid => $this->playerId,
             fn(GetCurrentTurn $_query): Uuid => $this->turnId,

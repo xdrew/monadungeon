@@ -209,7 +209,7 @@ class Duel extends AggregateRoot
                 duelId: $this->duelId,
                 role: DuelSide::CHALLENGER,
                 toBeat: null,
-                farseeing: $this->firstStep && $challenger->getHero()?->fightsBetterOnFirstMove() === true,
+                farseeing: $this->firstStep && $challenger->getSkills()?->fightsBetterOnFirstMove() === true,
                 auto: $this->challengerIsAi,
                 opponentId: $this->opponentId,
             ),
@@ -242,7 +242,7 @@ class Duel extends AggregateRoot
                     duelId: $this->duelId,
                     role: DuelSide::OPPONENT,
                     toBeat: $event->total,
-                    farseeing: $opponent->getHero()?->fightsBetterOnFirstMove() === true,
+                    farseeing: $opponent->getSkills()?->fightsBetterOnFirstMove() === true,
                     // A human summoned inside a virtual player's turn cannot answer: he is rolled automatically
                     auto: $this->opponentIsAi || $this->challengerIsAi,
                     opponentId: $this->challengerId,

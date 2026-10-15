@@ -124,6 +124,7 @@ class GameTurn extends AggregateRoot
             TurnAction::DUEL_LOOT->value,
             TurnAction::SPRINT->value,
             TurnAction::RETREAT->value,
+            TurnAction::LORD_KARAK->value,
         ], true);
     }
 
@@ -219,6 +220,7 @@ class GameTurn extends AggregateRoot
             TurnAction::DUEL,
             TurnAction::DUEL_LOOT,
             TurnAction::RETREAT,
+            TurnAction::LORD_KARAK,
         ], true)) {
             // Player tried to do something else — auto-end the turn
             $this->endTurn($command->at);

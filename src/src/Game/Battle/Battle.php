@@ -193,7 +193,7 @@ class Battle extends AggregateRoot
         } else {
             // Oracle "Farseeing": +1 when no move of the turn has been spent yet (placing a tile is not a move)
             $player = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
-            if ($player->getHero()?->fightsBetterOnFirstMove() === true) {
+            if ($player->getSkills()?->fightsBetterOnFirstMove() === true) {
                 $turn = $messageContext->dispatch(new GetTurn($command->turnId));
                 $battle->farseeing = $turn !== null && $turn->getPerformedActionsCount() === 0;
             }
@@ -203,7 +203,7 @@ class Battle extends AggregateRoot
 
         // Valduk "Berserk": the HP he has when the dice are rolled decides the bonus (monster fight or duel side)
         $roller = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
-        $rollerHero = $roller->getHero();
+        $rollerHero = $roller->getSkills();
         $battle->berserkBonus = $rollerHero?->berserk() === true ? $rollerHero->berserkBonus($roller->getHP()) : 0;
 
         // Roll the dice immediately
@@ -263,7 +263,7 @@ class Battle extends AggregateRoot
         }
 
         $player = $messageContext->dispatch(new GetPlayer(playerId: $command->playerId));
-        if ($player->getHero()?->canRerollBattle() !== true) {
+        if ($player->getSkills()?->canRerollBattle() !== true) {
             throw new \DomainException('Only the Warrior can reroll the dice (Double Attack)');
         }
 
@@ -371,7 +371,7 @@ class Battle extends AggregateRoot
 
         // Wizard "Magical Affinity": fireballs and Frost Fists still add their bonus but are not consumed
         $keptConsumableIds = [];
-        if ($player->getHero()?->keepsSpellsInCombat() === true) {
+        if ($player->getSkills()?->keepsSpellsInCombat() === true) {
             foreach ($selectedConsumables as $selectedConsumable) {
                 $selectedConsumable = Item::fromAnything($selectedConsumable);
                 if ($selectedConsumable->type === ItemType::FIREBALL || $selectedConsumable->type === ItemType::FROST_FIST) {
@@ -502,7 +502,7 @@ class Battle extends AggregateRoot
             // Valduk "Tireless": a win whose loot he did not take keeps the turn open, he may leave the loot and
             // keep moving (the client ends the turn itself when he leaves the loot without Tireless)
             $tirelessChoice = $finalResult === BattleResult::WIN && !$command->pickupItem
-                && $messageContext->dispatch(new GetPlayer($command->playerId))->getHero()?->tireless() === true;
+                && $messageContext->dispatch(new GetPlayer($command->playerId))->getSkills()?->tireless() === true;
             if (!$awaitingReincarnation && !$unstoppable && !$retreatPending && !$tirelessChoice) {
                 $messageContext->dispatch(new EndTurn(
                     turnId: $this->turnId,
@@ -570,7 +570,7 @@ class Battle extends AggregateRoot
     {
         $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
 
-        return $player->getHero()?->winsTies() === true;
+        return $player->getSkills()?->winsTies() === true;
     }
 
     /**
@@ -628,7 +628,7 @@ class Battle extends AggregateRoot
     private function sacrificeHp(Uuid $turnId, MessageContext $messageContext): void
     {
         $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
-        if ($player->getHero()?->sacrificesHp() !== true) {
+        if ($player->getSkills()?->sacrificesHp() !== true) {
             throw new \DomainException('Only the Warlock can sacrifice HP (Sacrifice)');
         }
         if ($this->hpSacrificed) {
@@ -656,7 +656,7 @@ class Battle extends AggregateRoot
     private function turnContinuesAfterBattle(BattleResult $result, int $hpLoss, MessageContext $messageContext): bool
     {
         $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
-        if ($player->getHero()?->continuesTurnOnSix() !== true) {
+        if ($player->getSkills()?->continuesTurnOnSix() !== true) {
             return false;
         }
 
@@ -776,9 +776,9 @@ class Battle extends AggregateRoot
         // Don't process the battle result yet, just send the initial result to frontend
         $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
         $availableConsumables = $player->getConsumableItems();
-        $canReroll = !$this->rerollUsed && $player->getHero()?->canRerollBattle() === true;
+        $canReroll = !$this->rerollUsed && $player->getSkills()?->canRerollBattle() === true;
         // Warlock "Sacrifice": offered once per combat while the hero still has HP to pay
-        $canSacrificeHp = !$this->hpSacrificed && $player->getHero()?->sacrificesHp() === true && $player->getHP() > 0;
+        $canSacrificeHp = !$this->hpSacrificed && $player->getSkills()?->sacrificesHp() === true && $player->getHP() > 0;
 
         // Dispatch battle completed event with consumable selection data
         // The frontend will show the consumable selection interface
@@ -982,7 +982,7 @@ class Battle extends AggregateRoot
         // Swordsman "Combat Training": a die showing 1 is rerolled until it shows something better
         $this->onesRerolled = 0;
         $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
-        if ($player->getHero()?->rerollsOnes() === true) {
+        if ($player->getSkills()?->rerollsOnes() === true) {
             foreach ($this->diceResults as $index => $value) {
                 while ($value === 1) {
                     ++$this->onesRerolled;
@@ -994,7 +994,7 @@ class Battle extends AggregateRoot
 
         // Lady Lorraine "Bear Attack": a die showing 1 counts as 6
         $this->onesAsSixes = 0;
-        if ($player->getHero()?->bearAttack() === true) {
+        if ($player->getSkills()?->bearAttack() === true) {
             foreach ($this->diceResults as $index => $value) {
                 if ($value === 1) {
                     ++$this->onesAsSixes;

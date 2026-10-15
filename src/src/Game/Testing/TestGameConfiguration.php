@@ -12,6 +12,7 @@ final readonly class TestGameConfiguration
      * @param array<string> $itemSequence Fixed order of items in bag
      * @param array<string, PlayerTestConfig> $playerConfigs Player-specific test configurations
      * @param bool $regent Karak: Regent expansion on (needed for the Regent heroes)
+     * @param bool $lordKarak Karak: Regent, Lord Karak variant on (needs $regent)
      */
     public function __construct(
         public array $diceRolls = [],
@@ -19,5 +20,6 @@ final readonly class TestGameConfiguration
         public array $itemSequence = [],
         public array $playerConfigs = [],
         public bool $regent = false,
+        public bool $lordKarak = false,
     ) {}
 }

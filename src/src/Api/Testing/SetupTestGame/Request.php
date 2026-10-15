@@ -30,5 +30,9 @@ final readonly class Request
          * Karak: Regent expansion on (needed for the Regent heroes).
          */
         public bool $regent = false,
+        /**
+         * Karak: Regent, Lord Karak variant on (needs regent).
+         */
+        public bool $lordKarak = false,
     ) {}
 }

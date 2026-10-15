@@ -17,5 +17,9 @@ final readonly class Request
          * Karak: Regent expansion.
          */
         public bool $regent = false,
+        /**
+         * Karak: Regent, Lord Karak variant (needs regent).
+         */
+        public bool $lordKarak = false,
     ) {}
 }

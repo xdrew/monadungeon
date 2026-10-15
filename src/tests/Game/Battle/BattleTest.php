@@ -126,6 +126,13 @@ final class BattleTest extends TestCase
                 return null; // No hero skills for testing
             }
 
+            public function getSkills(): ?\App\Game\Player\HeroSkills
+            {
+                $hero = $this->getHero();
+
+                return $hero instanceof \App\Game\Player\HeroType ? \App\Game\Player\HeroSkills::of($hero) : null;
+            }
+
             public function isAwaitingReincarnation(): bool
             {
                 return false;

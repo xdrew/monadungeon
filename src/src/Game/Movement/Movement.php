@@ -184,7 +184,7 @@ class Movement extends AggregateRoot
         // the sneak is then recorded as a regular move and no battle starts
         $sneakedPastMonster = null;
         if ($command->ignoreMonster && $destinationHasMonster && $monsterItem !== null) {
-            if ($player->getHero()?->canSneakPastMonsters() !== true) {
+            if ($player->getSkills()?->canSneakPastMonsters() !== true) {
                 throw new InvalidMovementException('Only the Thief can sneak past a monster (Stealth)');
             }
             $sneakedPastMonster = $monsterItem;
@@ -194,7 +194,7 @@ class Movement extends AggregateRoot
         // Wizard "Astral Walking": without a door, a hero who walks through walls may still step onto an adjacent placed tile
         $canTransition = $movementService->canTransition($currentPosition, $command->toPosition);
         $throughWall = !$canTransition
-            && $player->getHero()?->walksThroughWalls() === true
+            && $player->getSkills()?->walksThroughWalls() === true
             && $movementService->canWalkThroughWallTo($currentPosition, $command->toPosition);
 
         // Validate movement
@@ -314,7 +314,7 @@ class Movement extends AggregateRoot
         }
 
         $player = $context->dispatch(new GetPlayer($command->playerId));
-        if ($player->getHero()?->canMagicSwap() !== true) {
+        if ($player->getSkills()?->canMagicSwap() !== true) {
             throw new \DomainException('Only the Warlock can swap places (Magic Swap)');
         }
 
@@ -394,7 +394,7 @@ class Movement extends AggregateRoot
         }
 
         $player = $context->dispatch(new GetPlayer($command->playerId));
-        if ($player->getHero()?->lightningAttack() !== true) {
+        if ($player->getSkills()?->lightningAttack() !== true) {
             throw new \DomainException('Only Baron Markul can strike like lightning (Lightning Attack)');
         }
         if ($player->getHP() <= 0) {
@@ -485,7 +485,7 @@ class Movement extends AggregateRoot
         }
 
         $player = $context->dispatch(new GetPlayer($command->playerId));
-        if ($player->getHero()?->sprints() !== true) {
+        if ($player->getSkills()?->sprints() !== true) {
             throw new \DomainException('Only Hanna can sprint (Sprint)');
         }
 

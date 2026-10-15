@@ -25,6 +25,8 @@ export interface TestGameConfig {
   playerConfigs?: { [playerId: string]: PlayerTestConfig };
   /** Karak: Regent expansion on (needed for the Regent heroes). */
   regent?: boolean;
+  /** Karak: Regent, Lord Karak variant (needs `regent: true`). */
+  lordKarak?: boolean;
 }
 
 export class TestGameSetup {
@@ -62,6 +64,7 @@ export class TestGameSetup {
         itemSequence: config.itemSequence || [],
         playerConfigs: config.playerConfigs || {},
         regent: config.regent ?? false,
+        lordKarak: config.lordKarak ?? false,
       }
     });
     
