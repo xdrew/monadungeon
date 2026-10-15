@@ -13,6 +13,8 @@ use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\HeroSkills;
+use App\Game\Player\HeroType;
 use App\Game\Player\Player;
 use App\Game\Player\QueryPlayerInventory;
 use App\Game\Turn\Repository\GameTurnRepository;
@@ -65,10 +67,15 @@ final readonly class Action
                         'username' => $player->getUsername(),
                         'maxHp' => Player::MAX_HP,
                         'hero' => $player->getChosenHero()?->value,
-                        'heroLabel' => $player->getChosenHero()?->label(),
-                        'heroSkills' => $player->getChosenHero()?->skills() ?? [],
-                        // Curse of Karak: no skill flags while cursed (getHero() is null then)
-                        'heroFlags' => $player->getHero()?->flags() ?? [],
+                        'heroLabel' => $player->isLordKarak() ? 'Lord Karak' : $player->getChosenHero()?->label(),
+                        'heroSkills' => $player->isLordKarak()
+                            ? (new HeroSkills($player->getLordKarakHeroes()))->skills()
+                            : $player->getChosenHero()?->skills() ?? [],
+                        // Curse of Karak: no skill flags while cursed (getSkills() is null then)
+                        'heroFlags' => $player->getSkills()?->flags() ?? [],
+                        // Karak: Regent, Lord Karak variant — the hero became Lord Karak with these heroes' abilities
+                        'lordKarak' => $player->isLordKarak(),
+                        'lordKarakHeroes' => array_map(static fn(HeroType $hero): string => $hero->value, $player->getLordKarakHeroes()),
                         'awaitingReincarnation' => $player->isAwaitingReincarnation(),
                         'healLimit' => $player->getHealLimit(), // Valduk "Berserk": heal only up to N HP
                         'cursed' => $player->isCursed(),

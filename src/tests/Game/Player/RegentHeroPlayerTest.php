@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Game\Player;
 
+use App\Game\Player\CurseLifted;
+use App\Game\GameLifecycle\LordKarakRevealed;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\GameLifecycle\PlayerAdded;
 use App\Game\Item\Item;
@@ -213,6 +215,43 @@ final class RegentHeroPlayerTest extends TestCase
         $other = $this->createPlayer(HeroType::THIEF, 5);
         $this->setInventory($other, weapons: [$this->sword(), $this->dagger()]);
         self::assertFalse($other->hasRoomFor(ItemType::DAGGER));
+    }
+
+    #[Test]
+    public function lordKarakIsFullyHealedWithTheSkillsHeTookOver(): void
+    {
+        $player = $this->createPlayer(HeroType::BARBARIAN, 0);
+        $player->setHealLimit(new SetHealLimit($this->gameId, $this->playerId, 3));
+
+        $player->onLordKarakRevealed(new LordKarakRevealed($this->gameId, $this->playerId, [HeroType::RANGER, HeroType::THIEF], false, 'treasure'));
+
+        self::assertTrue($player->isLordKarak());
+        self::assertSame(Player::MAX_HP, $player->getHP(), 'Fully healed: a stunned hero is back, the heal limit does not apply');
+        self::assertSame([HeroType::RANGER, HeroType::THIEF], $player->getLordKarakHeroes());
+        self::assertSame(HeroType::BARBARIAN, $player->getChosenHero(), 'The chosen hero stays for display');
+        $skills = $player->getSkills();
+        self::assertNotNull($skills);
+        self::assertTrue($skills->bearAttack());
+        self::assertTrue($skills->winsTies());
+        self::assertFalse($skills->berserk(), 'His own abilities are gone');
+        self::assertSame('Lord Karak', $skills->label());
+
+        $player->onPlayerCursed(new PlayerCursed($this->gameId, $this->playerId, Uuid::v7()));
+        self::assertNull($player->getSkills(), 'Lord Karak can be cursed like anyone');
+        $player->onCurseLifted(new CurseLifted($this->gameId, $this->playerId));
+        self::assertTrue($player->getSkills()?->bearAttack() ?? false);
+    }
+
+    #[Test]
+    public function aLordKarakWithoutHeroesHasNoSkills(): void
+    {
+        $player = $this->createPlayer(null, 2);
+        self::assertNull($player->getSkills());
+
+        $player->onLordKarakRevealed(new LordKarakRevealed($this->gameId, $this->playerId, [], false, 'roll'));
+
+        self::assertSame([], $player->getSkills()?->skills());
+        self::assertNotContains(true, $player->getSkills()?->flags() ?? []);
     }
 
     private function createPlayer(?HeroType $hero, int $hp): Player

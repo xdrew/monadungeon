@@ -16,6 +16,7 @@ use App\Game\Field\GetField;
 use App\Game\GameLifecycle\GameCreated;
 use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
+use App\Game\GameLifecycle\LordKarakRevealed;
 use App\Game\GameLifecycle\PlayerAdded;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
@@ -142,6 +143,32 @@ final class RegentHeroBattleTest extends TestCase
         self::assertInstanceOf(PerformTurnAction::class, $fight);
         self::assertSame('bear_attack', $fight->additionalData['heroAbility'] ?? null);
         self::assertSame(1, $fight->additionalData['onesAsSixes'] ?? null);
+    }
+
+    #[Test]
+    public function lordKarakFightsWithTheSkillsHeTookOver(): void
+    {
+        $this->field->setTestDiceRolls([1, 3]);
+        $lordKarak = $this->createPlayer(HeroType::THIEF, 2);
+        $lordKarak->onLordKarakRevealed(new LordKarakRevealed($this->gameId, $this->playerId, [HeroType::RANGER, HeroType::WARRIOR], false, 'treasure'));
+
+        [, $messages] = $this->createTester($lordKarak)->handle(Battle::start(...), $this->startBattle(Item::createGiantRat()));
+
+        $completed = $this->lastBattleCompleted($messages);
+        self::assertSame([6, 3], $completed->diceResults, 'The Ranger\'s Bear Attack');
+        self::assertSame(1, $completed->onesAsSixes);
+    }
+
+    #[Test]
+    public function lordKarakLosesHisOwnSkillsWithMoreThanTwoPlayers(): void
+    {
+        $this->field->setTestDiceRolls([1, 3]);
+        $lordKarak = $this->createPlayer(HeroType::RANGER, 5);
+        $lordKarak->onLordKarakRevealed(new LordKarakRevealed($this->gameId, $this->playerId, [HeroType::WARRIOR, HeroType::THIEF], false, 'treasure'));
+
+        [, $messages] = $this->createTester($lordKarak)->handle(Battle::start(...), $this->startBattle(Item::createGiantRat()));
+
+        self::assertSame([1, 3], $this->lastBattleCompleted($messages)->diceResults);
     }
 
     #[Test]

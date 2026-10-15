@@ -1132,6 +1132,21 @@ final class GameTurnTest extends TestCase
         $tester->handle($turn->performAction(...), $this->action(TurnAction::LIGHTNING_ATTACK));
     }
 
+    #[Test]
+    public function lordKarakIsBookkeepingBetweenPlacementAndTheMove(): void
+    {
+        [$turn, $tester] = $this->countedTurn();
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::PICK_TILE));
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::PLACE_TILE));
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::LORD_KARAK));
+        self::assertSame(0, $turn->getPerformedActionsCount(), 'The reveal is not a move');
+
+        // The move onto the placed room still follows PLACE_TILE
+        $tester->handle($turn->performAction(...), $this->action(TurnAction::MOVE));
+        self::assertSame(1, $turn->getPerformedActionsCount());
+        self::assertFalse($turn->isEnded());
+    }
+
     private function startTurn(): StartTurn
     {
         return new StartTurn(

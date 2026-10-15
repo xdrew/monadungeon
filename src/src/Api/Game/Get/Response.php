@@ -14,6 +14,8 @@ use App\Game\Field\TileFeature;
 use App\Game\GameLifecycle\Game as GameLifecycleGame;
 use App\Game\Movement\GetAllPlayerPositions;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\HeroSkills;
+use App\Game\Player\HeroType;
 use App\Game\Player\Player;
 use App\Infrastructure\Uuid\Uuid;
 use Telephantast\MessageBus\MessageBus;
@@ -180,6 +182,8 @@ final readonly class Response
                     'roomCursedPlayerIds' => array_map(static fn(Uuid $id): string => $id->toString(), $game->getRoomCursedPlayerIds()),
                 ],
                 'regent' => $game->isRegent(), // Karak: Regent expansion on
+                'lordKarakVariant' => $game->isLordKarak(), // Karak: Regent — the Lord Karak variant is on
+                'lordKarak' => $game->getLordKarakReveal(), // Karak: Regent — who became Lord Karak and why (null until then)
                 'roomEvent' => $field?->getRoomEvent(), // Karak: Regent — the last Cursed Room roll
                 'arenaChoice' => $field?->getArenaChoice($game->getPlayers()), // Karak: Regent — a Battle Arena rival to choose
                 'duel' => $field?->getDuelInfo(), // Karak: Regent — the current (or last) Battle Arena duel
@@ -255,10 +259,15 @@ final readonly class Response
                     $playerFormattedData['username'] = $player->getUsername();
                     $playerFormattedData['maxHp'] = Player::MAX_HP;
                     $playerFormattedData['hero'] = $player->getChosenHero()?->value;
-                    $playerFormattedData['heroLabel'] = $player->getChosenHero()?->label();
-                    $playerFormattedData['heroSkills'] = $player->getChosenHero()?->skills() ?? [];
-                    // Curse of Karak: no skill flags while cursed (getHero() is null then)
-                    $playerFormattedData['heroFlags'] = $player->getHero()?->flags() ?? [];
+                    $playerFormattedData['heroLabel'] = $player->isLordKarak() ? 'Lord Karak' : $player->getChosenHero()?->label();
+                    $playerFormattedData['heroSkills'] = $player->isLordKarak()
+                        ? (new HeroSkills($player->getLordKarakHeroes()))->skills()
+                        : $player->getChosenHero()?->skills() ?? [];
+                    // Curse of Karak: no skill flags while cursed (getSkills() is null then)
+                    $playerFormattedData['heroFlags'] = $player->getSkills()?->flags() ?? [];
+                    // Karak: Regent, Lord Karak variant — the hero became Lord Karak with these heroes' abilities
+                    $playerFormattedData['lordKarak'] = $player->isLordKarak();
+                    $playerFormattedData['lordKarakHeroes'] = array_map(static fn(HeroType $hero): string => $hero->value, $player->getLordKarakHeroes());
                     $playerFormattedData['awaitingReincarnation'] = $player->isAwaitingReincarnation();
                     $playerFormattedData['cursed'] = $player->isCursed();
                     $playerFormattedData['healLimit'] = $player->getHealLimit();
