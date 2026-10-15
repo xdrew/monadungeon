@@ -47,14 +47,9 @@ const centerOnAvailablePlaces = () => {
 </script>
 
 <style scoped>
-/* A column of small iron rings; the rings come from .btn--iron */
+/* A row of small iron rings in the HUD's top-right corner; the rings come from .btn--iron */
 .zoom-controls {
-  position: absolute;
-  top: 14px;
-  right: 14px;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  z-index: 30;
+  gap: 10px;
 }
 </style>

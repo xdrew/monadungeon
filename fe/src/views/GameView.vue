@@ -16,15 +16,51 @@
       class="game-interface"
       :class="{ 'game-finished': gameData?.state?.status === 'finished' }"
     >
-      <!-- Transient notice for a rejected action (the game stays on screen) -->
-      <transition name="action-notice">
-        <div
-          v-if="actionNotice"
-          class="action-notice"
-          role="status"
-          data-testid="action-notice"
-        >{{ actionNotice }}</div>
-      </transition>
+      <!-- The HUD over the full-bleed dungeon. It comes first in the DOM: its banner <h3> "Turn: N" must be the page's first h3 -->
+      <GameHud>
+        <template #banner>
+          <TurnBanner
+            :turn="gameData?.state?.turn || null"
+            :headline="bannerHeadline"
+            :sub="bannerSub"
+            :regent="!!gameData?.state?.regent"
+          />
+        </template>
+        <template #notice>
+          <!-- Transient notice for a rejected action (the game stays on screen) -->
+          <transition name="action-notice">
+            <div
+              v-if="actionNotice"
+              class="action-notice"
+              role="status"
+              data-testid="action-notice"
+            >{{ actionNotice }}</div>
+          </transition>
+        </template>
+        <template
+          v-if="gameStarted || ['started', 'turn_in_progress', 'finished'].includes(gameData?.state?.status)"
+          #rail
+        >
+          <PartyRail
+            :entries="turnOrder.entries.value"
+            :portrait="playerAvatar"
+            :hero-tooltip="heroTooltip"
+            :hero-short-name="heroShortName"
+            :treasure="calculatePlayerTreasure"
+            :starting-roll="startingRollShown"
+            :is-ai="(player) => isVirtualPlayer(player.id)"
+            @portrait-error="onAvatarError"
+          />
+        </template>
+        <template #tools>
+          <ZoomControls
+            @center-map="centerViewOnMiddle"
+            @center-player="centerViewOnCurrentPlayer"
+            @center-available="centerViewOnAvailablePlaces"
+          />
+          <MusicToggle />
+        </template>
+      </GameHud>
 
       <!-- Game finished banner -->
       <div
@@ -101,13 +137,6 @@
         <div class="game-main-area">
           <div class="game-board">
             <div class="game-visualization">
-              <ZoomControls 
-                @center-map="centerViewOnMiddle"
-                @center-player="centerViewOnCurrentPlayer"
-                @center-available="centerViewOnAvailablePlaces"
-              />
-              <MusicToggle />
-
               <!-- Render field and tiles if available -->
               <div 
                 v-if="gameData && gameData.field" 
@@ -370,207 +399,8 @@
 
         <!-- Game sidebar on the right -->
         <div class="game-sidebar">
-          <div class="sidebar-header">
-            <ThemeLogo size="small" />
-            <!-- The first <h3> on the page reads "Turn: N" (the e2e reads it) -->
-            <h3 v-if="gameData?.state?.turn">
-              Turn: {{ gameData.state.turn }}
-            </h3>
-            <h3 v-else>
-              Game Setup
-            </h3>
-            <span
-              v-if="gameData?.state?.regent"
-              class="regent-badge"
-              data-testid="regent-badge"
-              title="Karak: Regent expansion — Lord Karak rooms, Giant Bats and Skeleton Mages"
-            ><GameIcon name="crown" :size="14" /> Regent</span>
-          </div>
-
           <div class="sidebar-content">
             <!-- Player Setup and Game Controls sections removed for cleaner UI -->
-
-            <!-- Both Players' Inventories -->
-            <div
-              v-if="(gameStarted || gameData?.state?.status === 'started' || gameData?.state?.status === 'turn_in_progress' || gameData?.state?.status === 'finished') && gameData?.players" 
-              class="sidebar-section inventory-section both-players"
-              :class="{ 'active-game': gameStarted || gameData?.state?.status === 'started' }"
-            >
-              <div class="inventory-header">
-                <h3>Players' Inventories</h3>
-              </div>
-
-              <!-- Show inventory for each player -->
-              <div
-                v-for="player in gameData.players"
-                :key="player.id"
-                class="player-inventory-section"
-                :class="{ 
-                  'current-turn': gameData?.state?.currentPlayerId === player.id,
-                  'is-current-user': isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })
-                }"
-              >
-                <!-- Player card: hero figure on the left, name / stats / inventory on the right -->
-                <div class="player-card-figure">
-                  <img
-                    :src="playerAvatar(player)"
-                    :alt="(isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'Player' : 'AI Player') + (player.hero ? ` — ${heroShortName(player)}` : '')"
-                    class="player-figure-image"
-                    :class="{ 'is-ai': !isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) }"
-                    @error="onAvatarError($event, player)"
-                  />
-                </div>
-                <div class="player-card-body">
-                  <div class="player-inventory-header">
-                    <span class="player-name">
-                      {{ isVirtualPlayer(player.id) ? 'AI' : isCurrentUserEntry({ playerId: player.id, externalId: player.externalId }) ? 'You' : player.username || 'Player' }}
-                    </span>
-                    <span
-                      v-if="player.hero || player.lordKarak"
-                      class="hero-badge"
-                      :class="{ 'awaiting-reincarnation': player.awaitingReincarnation, cursed: player.cursed, 'lord-karak': player.lordKarak }"
-                      :title="heroTooltip(player)"
-                      data-testid="hero-badge"
-                    ><img
-                      v-if="player.cursed && !player.awaitingReincarnation"
-                      src="/images/curse.webp"
-                      alt="Cursed"
-                      class="curse-token-icon"
-                      data-testid="curse-token"
-                    ><GameIcon v-else :name="player.awaitingReincarnation ? 'skull' : player.lordKarak ? 'crown' : 'sword'" :size="13" /> {{ badgeName(player) }}</span>
-                    <span
-                      v-if="player.lordKarak && player.hero"
-                      class="lord-karak-was"
-                      data-testid="lord-karak-was"
-                    >was {{ heroShortName(player) }}</span>
-                    <span
-                      v-if="gameData?.state?.currentPlayerId === player.id"
-                      class="turn-badge"
-                      title="Current turn"
-                    ><GameIcon name="pin" :size="16" title="Current turn" /></span>
-                  </div>
-                  <div class="player-card-stats">
-                    <span
-                      class="hp-indicator"
-                      :title="`HP ${player.hp !== undefined ? player.hp : 5}/${player.maxHp ?? 5}`"
-                      :aria-label="`HP ${player.hp !== undefined ? player.hp : 5} of ${player.maxHp ?? 5}`"
-                    >
-                      <GameIcon
-                        v-for="n in (player.maxHp ?? 5)"
-                        :key="n"
-                        name="heart"
-                        :size="14"
-                        class="hp-heart"
-                        :class="{ filled: n <= (player.hp !== undefined ? player.hp : 5) }"
-                      />
-                    </span>
-                    <span class="player-treasure-total" title="Victory points">
-                      <GameIcon name="treasure" :size="14" /> {{ calculatePlayerTreasure(player) }}
-                    </span>
-                    <span
-                      v-if="gameData?.state?.startingRolls?.[player.id] && (gameData.state.turn || 0) <= (gameData.players?.length || 1)"
-                      class="starting-roll"
-                      title="Roll for the starting player"
-                      data-testid="starting-roll"
-                    ><GameIcon name="dice" :size="14" /> {{ gameData.state.startingRolls[player.id] }}</span>
-                  </div>
-
-              <div class="inventory-container">
-                <div class="unified-inventory-grid compact">
-                  <!-- Keys -->
-                  <div
-                    v-for="item in (player.inventory?.keys || [])"
-                    :key="item.itemId" 
-                    class="inventory-item key-item compact" 
-                    :title="getItemTooltip(item)"
-                  >
-                    <div class="item-icon">
-                      <img
-                        v-if="getInventoryItemImage(item)"
-                        :src="getInventoryItemImage(item)"
-                        :alt="formatItemName(item.type)"
-                        class="item-image-icon"
-                      />
-                      <span v-else>{{ getInventoryItemEmoji(item) }}</span>
-                    </div>
-                  </div>
-
-                  <!-- Weapons -->
-                  <div
-                    v-for="item in (player.inventory?.weapons || [])"
-                    :key="item.itemId" 
-                    class="inventory-item weapon-item compact"
-                    :title="getItemTooltip(item)"
-                  >
-                    <div class="item-icon">
-                      <img
-                        v-if="getInventoryItemImage(item)"
-                        :src="getInventoryItemImage(item)"
-                        :alt="formatItemName(item.type)"
-                        class="item-image-icon"
-                      />
-                      <span v-else>{{ getInventoryItemEmoji(item) }}</span>
-                    </div>
-                    <div class="item-damage-small">
-                      +{{ getItemStrength(item, player.heroFlags) }}
-                    </div>
-                  </div>
-
-                  <!-- Spells -->
-                  <div
-                    v-for="item in (player.inventory?.spells || [])"
-                    :key="item.itemId" 
-                    class="inventory-item spell-item compact"
-                    :class="{ 
-                      'clickable': isCastableSpell(item) && isPlayerTurn && player.id === currentPlayerId,
-                      'teleport-active': (isTeleportMode && selectedTeleportSpell?.itemId === item.itemId) || (isDarkThornMode && selectedDarkThornSpell?.itemId === item.itemId)
-                    }"
-                    :title="getItemTooltip(item)"
-                    :data-testid="item.type === 'dark_thorn' ? `dark-thorn-${item.itemId}` : undefined"
-                    @click="isCastableSpell(item) && isPlayerTurn && player.id === currentPlayerId && handleSpellClick(item)"
-                  >
-                    <div class="item-icon">
-                      <img
-                        v-if="getInventoryItemImage(item)"
-                        :src="getInventoryItemImage(item)"
-                        :alt="formatItemName(item.type)"
-                        class="item-image-icon"
-                      />
-                      <span v-else>{{ getInventoryItemEmoji(item) }}</span>
-                    </div>
-                    <div class="item-damage-small">
-                      +{{ getItemStrength(item, player.heroFlags) }}
-                    </div>
-                  </div>
-
-                  <!-- Treasures -->
-                  <div
-                    v-for="item in (player.inventory?.treasures || [])"
-                    :key="item.itemId" 
-                    class="inventory-item treasure-item compact"
-                    :title="getItemTooltip(item)"
-                  >
-                    <div class="item-icon">
-                      <img
-                        v-if="getInventoryItemImage(item)"
-                        :src="getInventoryItemImage(item)"
-                        :alt="formatItemName(item.type)"
-                        class="item-image-icon"
-                      />
-                      <span v-else>{{ getInventoryItemEmoji(item) }}</span>
-                    </div>
-                    <div
-                      v-if="item.treasureValue > 0"
-                      class="item-value-small"
-                    >
-                      {{ item.treasureValue }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              </div>
-              </div>
-            </div>
 
             <!-- Teleport Mode Controls -->
             <div
@@ -1063,7 +893,6 @@ import { gameApi } from '@/services/api';
 
 // Import the components
 import LoadingScreen from '@/components/game/LoadingScreen.vue';
-import ThemeLogo from '@/components/ThemeLogo.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { getHero } from '@/theme';
 import LoadingOverlay from '@/components/game/LoadingOverlay.vue';
@@ -1089,6 +918,10 @@ import DuelResultPanel from '@/components/game/DuelResultPanel.vue';
 import LordKarakRevealModal from '@/components/game/LordKarakRevealModal.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import ActionLog from '@/components/ActionLog.vue';
+import GameHud from '@/components/game/hud/GameHud.vue';
+import TurnBanner from '@/components/game/hud/TurnBanner.vue';
+import PartyRail from '@/components/game/hud/PartyRail.vue';
+import { useTurnOrder, heroPersonalName, joinNames } from '@/composables/useTurnOrder';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
@@ -1106,7 +939,7 @@ import { dismissNotification as dismissNotificationUtil, showPlayerSwitchNotific
 import { selectInventoryItem as selectInventoryItemUtil, selectItemToReplace as selectItemToReplaceUtil, replaceItem as replaceItemUtil, skipItem as skipItemUtil, handleInventoryFullResponse as handleInventoryFullResponseUtil } from '@/utils/inventoryUtils';
 
 // Import monster utility functions
-import { getMonsterEmoji as getMonsterEmojiUtil } from '@/utils/monsterUtils';
+import { getMonsterEmoji as getMonsterEmojiUtil, getMonsterDisplayName } from '@/utils/monsterUtils';
 
 // Import battle utility functions
 import { closeBattleReportAndEndTurn as closeBattleReportAndEndTurnUtil, predictBattleResult } from '@/utils/battleUtils';
@@ -1417,6 +1250,57 @@ const curseChoicePendingForMe = computed(() => !!currentPlayerId.value && gameDa
 
 const playerById = (playerId) => (gameData.value?.players || []).find((p) => p.id === playerId) || null;
 const playerChoiceLabel = (player) => (player?.hero ? `${playerLabel(player)} (${heroShortName(player)})` : playerLabel(player));
+
+// ===== HUD: turn order, banner =====
+
+const isHumanPlayer = (player) => isCurrentUserEntry({ playerId: player.id, externalId: player.externalId });
+const turnOrder = useTurnOrder(gameData, isHumanPlayer);
+const heroNameById = (playerId) => {
+  const player = playerById(playerId);
+  return player ? heroPersonalName(player, playerLabel(player)) : 'Someone';
+};
+
+// The starting-player roll stays on the rail through the first round
+const startingRollShown = (player) => {
+  const roll = gameData.value?.state?.startingRolls?.[player.id];
+  return roll && (gameData.value?.state?.turn || 0) <= (gameData.value?.players?.length || 1) ? roll : null;
+};
+
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+const COUNTS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+// "third of five" under the turn number once the company is bigger than two
+const bannerSub = computed(() => {
+  const entries = turnOrder.entries.value;
+  const index = entries.findIndex((e) => e.state === 'acting');
+  if (entries.length < 3 || index < 0) return '';
+  return `${ORDINALS[index] || index + 1} of ${COUNTS[entries.length - 1] || entries.length}`;
+});
+
+// The banner's headline: who acts and what they are about
+const bannerHeadline = computed(() => {
+  const status = gameData.value?.state?.status;
+  if (status === 'finished') return 'The dungeon falls silent';
+  const acting = turnOrder.acting.value;
+  if (!acting || !gameData.value?.state?.turn) return 'The company gathers';
+  const who = acting.name;
+  if (isAiPlayingBack.value) {
+    const action = aiPlayback.currentAction.value;
+    switch (action?.type) {
+      case 'battle': return action.monsterType ? `${who} faces the ${getMonsterDisplayName(action.monsterType)}` : `${who} fights`;
+      case 'move_player': return `${who} moves on`;
+      case 'place_tile': return `${who} seeks a path`;
+      case 'end_turn': return `${who} rests`;
+      case undefined: return `${who} ponders`;
+      default: return `${who} gathers the loot`;
+    }
+  }
+  if (showBattleReportModal.value && battleInfo.value?.monsterType) {
+    return `${who} faces the ${getMonsterDisplayName(battleInfo.value.monsterType)}`;
+  }
+  if (acting.isYou || !isVirtualPlayer(acting.player.id)) return `${who} seeks a path`;
+  return `${who} ponders`;
+});
 
 // The hero rolling in the battle modal: the summoned rival rolls in this browser during a duel
 const battleRoller = computed(() => playerById(battleInfo.value?.player) || getCurrentPlayerData.value);
@@ -6067,83 +5951,15 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 </script>
 
 <style>
-/* Both players inventory styles */
-.player-inventory-section {
-  display: flex;
-  gap: 10px;
-  align-items: stretch;
-  margin-bottom: 8px;
-  padding: 8px 10px 10px 8px;
-  background:
-    radial-gradient(ellipse at 0% 100%, rgba(207, 113, 40, 0.10) 0%, transparent 60%),
-    rgba(var(--accent-rgb), 0.05);
-  border-radius: 8px;
-  border: 1px solid rgba(var(--accent-rgb), 0.15);
-  transition: all 0.3s ease;
-}
-
-.player-card-figure {
-  flex: 0 0 64px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.player-figure-image {
-  height: 96px;
-  width: auto;
-  max-width: 64px;
-  object-fit: contain;
-  display: block;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.25));
-}
-
-.player-figure-image.is-ai {
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 6px rgba(79, 122, 156, 0.35));
-}
-
-.player-card-body {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.player-card-stats {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.player-card-stats .hp-indicator {
-  margin-left: 0;
-}
-
-.player-card-stats .player-treasure-total {
-  font-size: 0.75em;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(79, 122, 156, 0.14);
-  border: 1px solid rgba(79, 122, 156, 0.3);
-  color: var(--text-primary);
-}
-
 .action-notice {
-  position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1200;
   max-width: min(520px, calc(100vw - 32px));
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: var(--bg-modal);
-  border: 1px solid rgba(var(--accent-light-rgb), 0.5);
+  padding: 8px 18px;
+  background: var(--bg-panel);
+  border: 1px solid rgba(var(--ember-rgb), 0.45);
+  box-shadow: 0 0 18px rgba(255, 100, 20, 0.2), 0 8px 20px rgba(0, 0, 0, 0.7);
   color: var(--text-primary);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  font-size: 0.9rem;
+  font-style: italic;
+  font-size: 0.95rem;
 }
 
 .action-notice-enter-active,
@@ -6154,151 +5970,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .action-notice-enter-from,
 .action-notice-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(-6px);
-}
-
-.player-inventory-section.current-turn {
-  border-color: rgba(255, 215, 0, 0.4);
-  box-shadow: 0 0 12px rgba(255, 215, 0, 0.15);
-}
-
-.player-inventory-section.is-current-user {
-  border-color: rgba(var(--accent-rgb), 0.4);
-  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.1);
-}
-
-.player-inventory-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-}
-
-.player-emoji {
-  font-size: 1.5rem;
-}
-
-.player-name {
-  flex: 1;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-}
-
-.turn-badge {
-  animation: turnPulse 2s infinite;
-}
-
-@keyframes turnPulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-.unified-inventory-grid.compact {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
-  gap: 4px;
-}
-
-/* nothing carried yet: no empty strip under the stats */
-.player-card-body .inventory-container:has(.unified-inventory-grid.compact:empty) {
-  display: none;
-}
-
-.inventory-item.compact {
-  width: 46px;
-  height: 46px;
-  padding: 3px;
-  position: relative;
-  border: 1px solid rgba(var(--accent-rgb), 0.12) !important;
-  background: rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.inventory-item.compact:hover {
-  border-color: rgba(var(--accent-rgb), 0.3) !important;
-  background: rgba(var(--accent-rgb), 0.08);
-}
-
-.inventory-item.key-item.compact {
-  border-color: rgba(255, 193, 7, 0.2) !important;
-}
-
-.inventory-item.weapon-item.compact {
-  border-color: rgba(255, 87, 34, 0.15) !important;
-  background: rgba(255, 87, 34, 0.04);
-}
-
-.inventory-item.spell-item.compact {
-  border-color: rgba(156, 39, 176, 0.15) !important;
-  background: rgba(156, 39, 176, 0.04);
-}
-
-.inventory-item.treasure-item.compact {
-  border-color: rgba(255, 193, 7, 0.15) !important;
-  background: rgba(255, 193, 7, 0.04);
-}
-
-.inventory-item.compact .item-icon {
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
-.item-image-icon {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
-}
-
-.weapon-item .item-image-icon {
-  width: 38px;
-  height: 38px;
-}
-
-.item-damage-small {
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  background: rgba(255, 87, 34, 0.85);
-  color: #fff;
-  font-size: 0.6rem;
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-weight: 700;
-  z-index: 2;
-}
-
-.item-value-small {
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  background: rgba(255, 193, 7, 0.9);
-  color: #000;
-  font-size: 0.55rem;
-  padding: 1px 3px;
-  border-radius: 4px;
-  font-weight: 700;
-}
-
-.player-treasure-total {
-  grid-column: 1 / -1;
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: #FFD54F;
-  padding: 4px;
-  background: rgba(255, 215, 0, 0.06);
-  border: 1px solid rgba(255, 215, 0, 0.15);
-  border-radius: 6px;
-  margin-top: 4px;
+  transform: translateY(-6px);
 }
 
 /* ============================================
@@ -6553,53 +6225,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   transform: translateY(-2px);
 }
 
-.hp-indicator {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  vertical-align: middle;
-  color: var(--color-danger);
-  transition: all 0.3s ease;
-}
-
-/* HP as a row of hearts: filled = remaining, hollow = lost */
-.hp-heart {
-  fill: rgba(217, 69, 42, 0.1);
-}
-
-.hp-heart.filled {
-  fill: currentColor;
-}
-
-.hp-indicator.hp-reduced {
-  animation: hp-flash 0.5s ease-in-out;
-}
-
-/* Hero badge (Warrior etc.) in the player panel header */
-.hero-badge {
-  font-size: 0.72em;
-  padding: 2px 8px;
-  margin-left: 6px;
-  background: rgba(var(--accent-light-rgb), 0.14);
-  border: 1px solid rgba(var(--accent-light-rgb), 0.35);
-  border-radius: 10px;
-  color: #c9c2e6;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  white-space: nowrap;
-  cursor: help;
-}
-
-.hero-badge.awaiting-reincarnation {
-  background: rgba(244, 67, 54, 0.18);
-  border-color: rgba(244, 67, 54, 0.45);
-  color: #ff8a80;
-  animation: hp-flash 1s ease-in-out infinite;
-}
-
 /* Reincarnation target markers pulse so the choice is obvious */
 .reincarnation-marker .healing-fountain-indicator {
   animation: reincarnation-pulse 1.2s ease-in-out infinite;
@@ -6608,11 +6233,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 @keyframes reincarnation-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.12); }
-}
-
-@keyframes hp-flash {
-  0%, 100% { background: rgba(244, 67, 54, 0.12); }
-  50% { background: rgba(244, 67, 54, 0.4); }
 }
 
 /* Game finished styles */
@@ -6629,7 +6249,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   justify-content: center;
   gap: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 100;
+  z-index: 850; /* over the HUD, under overlays (part 4 restyles it) */
   animation: slideDown 0.5s ease-out;
 }
 
@@ -6893,19 +6513,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 /* Active teleport spell indicator */
 /* Karak: Regent */
-.regent-badge {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #ffe9c7;
-  background: rgba(181, 84, 28, 0.55);
-  border: 1px solid rgba(224, 122, 42, 0.6);
-  vertical-align: middle;
-}
-
 .inventory-item.spell-item.teleport-active {
   animation: pulse-glow 1.5s ease-in-out infinite;
   box-shadow: 0 0 15px rgba(138, 43, 226, 0.8), inset 0 0 0 2px #8a2be2;
@@ -7010,30 +6617,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 @media (hover: none) {
   .kbd-hint { display: none; }
 }
-/* Curse of Karak */
-.hero-badge.cursed {
-  color: #a5e8a5;
-  border-color: rgba(120, 220, 120, 0.6);
-}
-
-.curse-token-icon {
-  width: 16px;
-  height: 16px;
-  vertical-align: -3px;
-}
-
-/* Karak: Regent, Lord Karak variant */
-.hero-badge.lord-karak {
-  color: #f3d27a;
-  border-color: rgba(243, 210, 122, 0.7);
-}
-
-.lord-karak-was {
-  font-size: 11px;
-  opacity: 0.75;
-  font-style: italic;
-}
-
 /* Portal of Healing target */
 .portal-targets {
   display: flex;

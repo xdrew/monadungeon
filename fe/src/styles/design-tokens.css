@@ -80,9 +80,10 @@
   --z-modal: 1000;
   --z-overlay: 900;
   --z-dropdown: 50;
+  --z-hud: 800; /* the game HUD: over the field and its marks, under overlays and modals */
   
   /* Game Specific */
   --tile-size: 150px; /* TILE_SIZE in utils/fieldUtils.js */
   --field-padding: 150px; /* one tile: room for the marks and the ghost tile beyond the field edge */
-  --sidebar-width: 350px;
+  --rail-width: 300px; /* the turn-order rail and its scrim (components/game/hud) */
 } 

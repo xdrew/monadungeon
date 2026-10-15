@@ -24,22 +24,9 @@ const toggleMusic = () => {
 </script>
 
 <style scoped>
-/* Small iron ring in the corner; the ring itself comes from .btn--iron */
-.music-toggle {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
-}
-
+/* Small iron ring in the HUD's top-right row; the ring itself comes from .btn--iron */
 .music-toggle.music-off {
   color: var(--text-muted);
 }
 
-@media (max-width: 768px) {
-  .music-toggle {
-    bottom: 15px;
-    right: 15px;
-  }
-}
 </style>

@@ -48,5 +48,8 @@ export const ICONS = {
     path('M12 14v3M8 20h8M9.5 17h5')
   ],
   home: [path('M3.5 11L12 4l8.5 7'), path('M5.5 9.5V20h13V9.5'), path('M10 20v-5.5h4V20')],
+  lightning: [path('M13 2.5L5 13.5h6l-1 8 8-11h-6z')],
+  sprint: [path('M14.5 4.5a1.8 1.8 0 1 0 0 .1'), path('M8 21l3-6 3 2v4'), path('M11 15l1.5-5.5L9 11l-2 3'), path('M12.5 9.5l3 2.5 3-1'), path('M3 9h4M2 13h3')],
+  listen: [path('M7 9a5 5 0 0 1 10 0c0 3-3 4-3 7a3 3 0 0 1-5.5 1.5'), path('M10 9.5a2 2 0 0 1 4 0c0 1.2-1 1.6-1.5 2.5')],
   eye: [path('M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z'), circle(12, 12, 3)]
 };
