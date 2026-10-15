@@ -111,8 +111,6 @@ const dieStyle = computed(() => {
   width: var(--s);
   height: var(--s);
   perspective: 520px;
-  /* the eye is above the table: a die shows its top while it turns, its bottom face never */
-  perspective-origin: 50% -80%;
 }
 
 .die-hop {
@@ -185,6 +183,18 @@ const dieStyle = computed(() => {
   animation-delay: var(--delay);
 }
 
+/* while the die rolls to a stop the other faces fade out, so no sliver of a side, top or bottom
+   is left at the edge as it settles — only the face that came up */
+.rolling-dice .die-side:not(.die-side--value) {
+  animation: dieSideFade 0.85s linear both;
+  animation-delay: var(--delay);
+}
+
+@keyframes dieSideFade {
+  0%, 70% { opacity: 1; }
+  88%, 100% { opacity: 0; }
+}
+
 .rolling-dice .die-shadow {
   animation: dieThrowShadow 0.85s linear both;
   animation-delay: var(--delay);
@@ -237,6 +247,7 @@ const dieStyle = computed(() => {
 @media (prefers-reduced-motion: reduce) {
   .die-hop,
   .die-cube,
+  .die-side,
   .die-shadow {
     animation: none !important;
   }
