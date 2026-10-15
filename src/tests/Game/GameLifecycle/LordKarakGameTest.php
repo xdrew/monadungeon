@@ -7,6 +7,7 @@ namespace App\Tests\Game\GameLifecycle;
 use App\Game\Battle\MummyDefeated;
 use App\Game\Field\CursedRoomEntered;
 use App\Game\Field\FieldPlace;
+use App\Game\Field\GetField;
 use App\Game\Field\LordKarakRoomDiscovered;
 use App\Game\GameLifecycle\AddPlayer;
 use App\Game\GameLifecycle\CreateGame;
@@ -23,7 +24,6 @@ use App\Game\Player\CurseLifted;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\HeroType;
 use App\Game\Player\Player;
-use App\Game\Testing\TestMode;
 use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\TurnAction;
 use App\Infrastructure\Uuid\Uuid;
@@ -44,17 +44,14 @@ final class LordKarakGameTest extends TestCase
     /** @var array<string, Player> */
     private array $players = [];
 
+    /** @var list<int> the Field's next dice */
+    private array $dice = [];
+
     protected function setUp(): void
     {
         $this->gameId = Uuid::v7();
         $this->players = [];
-        TestMode::getInstance()->reset();
-    }
-
-    protected function tearDown(): void
-    {
-        TestMode::getInstance()->reset();
-        TestMode::getInstance()->disable();
+        $this->dice = [];
     }
 
     #[Test]
@@ -168,9 +165,8 @@ final class LordKarakGameTest extends TestCase
     #[Test]
     public function aFullTieIsSettledByTheDiceAndAVirtualPlayerCanBeChosen(): void
     {
-        TestMode::getInstance()->enable();
-        // Round 1: 4, 2, 2 → p2 and p3 roll again; round 2: 5, 1 → p3
-        TestMode::getInstance()->setDiceRolls([4, 2, 2, 5, 1]);
+        // The Field's dice (scripted in test games): round 1: 4, 2, 2 → p2 and p3 roll again; round 2: 5, 1 → p3
+        $this->dice = [4, 2, 2, 5, 1];
         $p1 = $this->player(HeroType::WARRIOR);
         $p2 = $this->player(HeroType::THIEF);
         $p3 = $this->player(null, isAi: true);
@@ -259,9 +255,21 @@ final class LordKarakGameTest extends TestCase
     private function tester(): MessageBusTester
     {
         $players = $this->players;
+        $dice = &$this->dice;
 
         return MessageBusTester::create(
             static fn(GetPlayer $query): Player => $players[$query->playerId->toString()],
+            static fn(GetField $_query): object => new class ($dice) {
+                /**
+                 * @param list<int> $dice
+                 */
+                public function __construct(private array &$dice) {}
+
+                public function getNextDiceRoll(int $min, int $max): int
+                {
+                    return array_shift($this->dice) ?? random_int($min, $max);
+                }
+            },
         );
     }
 

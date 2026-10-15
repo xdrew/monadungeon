@@ -241,7 +241,7 @@ final readonly class Response
                     $playerFormattedData['username'] = $playerData[$playerIdStr]['username'];
                 }
                 // Hero data (null hero is meaningful, so use array_key_exists)
-                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation', 'cursed', 'healLimit'] as $heroKey) {
+                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation', 'cursed', 'healLimit', 'lordKarak', 'lordKarakHeroes'] as $heroKey) {
                     if (\array_key_exists($heroKey, $playerData[$playerIdStr])) {
                         $playerFormattedData[$heroKey] = $playerData[$playerIdStr][$heroKey];
                     }

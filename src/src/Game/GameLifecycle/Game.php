@@ -6,6 +6,7 @@ namespace App\Game\GameLifecycle;
 
 use App\Game\Battle\MummyDefeated;
 use App\Game\Field\CursedRoomEntered;
+use App\Game\Field\GetField;
 use App\Game\Field\LordKarakRoomDiscovered;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyFullGame;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyPreparedGame;
@@ -199,10 +200,11 @@ class Game extends AggregateRoot
      * lowest die (the tied players reroll until one is lowest).
      *
      * @param array<string, array{playerId: string, treasure: int, weapons: int, items: int, rolls: list<int>}> $standings
+     * @param callable(): int $rollDie
      *
      * @return array{string, string, array<string, array{playerId: string, treasure: int, weapons: int, items: int, rolls: list<int>}>}
      */
-    private static function findWeakest(array $standings): array
+    private static function findWeakest(array $standings, callable $rollDie): array
     {
         $tied = array_keys($standings);
         foreach (['treasure', 'weapons', 'items'] as $key) {
@@ -217,7 +219,7 @@ class Game extends AggregateRoot
         for ($round = 0; $round < self::LORD_KARAK_MAX_REROLLS && \count($tied) > 1; ++$round) {
             $rolls = [];
             foreach ($tied as $id) {
-                $roll = TestMode::getInstance()->isEnabled() ? TestMode::getInstance()->getNextDiceRoll(1, 6) : random_int(1, 6);
+                $roll = $rollDie();
                 $standings[$id]['rolls'][] = $roll;
                 $rolls[$id] = $roll;
             }
@@ -438,7 +440,9 @@ class Game extends AggregateRoot
             $chosen[$playerId->toString()] = $player->getChosenHero();
         }
 
-        [$weakestId, $criterion, $standings] = self::findWeakest($standings);
+        // Tie-break dice come from the Field, like the battle dice (test games script them there)
+        $field = $messageContext->dispatch(new GetField($this->gameId));
+        [$weakestId, $criterion, $standings] = self::findWeakest($standings, static fn(): int => $field->getNextDiceRoll(1, 6));
         $weakest = Uuid::fromString($weakestId);
 
         $keepsOwn = \count($this->players) === 2;

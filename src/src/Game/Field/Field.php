@@ -869,17 +869,6 @@ class Field extends AggregateRoot
             orientation: $tile->getOrientation(),
         ));
 
-        // Karak: Regent — count the Lord Karak rooms (the Lord Karak variant reveals him at the fifth)
-        if ($tile->hasFeature(TileFeature::BATTLE_ARENA) || $tile->hasFeature(TileFeature::CURSED_ROOM)) {
-            ++$this->lordKarakRooms;
-            $messageContext->dispatch(new LordKarakRoomDiscovered(
-                gameId: $command->gameId,
-                playerId: $command->playerId,
-                position: $command->fieldPlace,
-                count: $this->lordKarakRooms,
-            ));
-        }
-
         // Record this action for the turn and end the turn
         $messageContext->dispatch(new PerformTurnAction(
             turnId: $command->turnId,
@@ -889,6 +878,17 @@ class Field extends AggregateRoot
             tileId: $command->tileId,
             additionalData: ['fieldPlace' => $command->fieldPlace->toString()],
         ));
+
+        // Karak: Regent — count the Lord Karak rooms after the placement is recorded (the variant reveals Lord Karak at the fifth)
+        if ($tile->hasFeature(TileFeature::BATTLE_ARENA) || $tile->hasFeature(TileFeature::CURSED_ROOM)) {
+            ++$this->lordKarakRooms;
+            $messageContext->dispatch(new LordKarakRoomDiscovered(
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                position: $command->fieldPlace,
+                count: $this->lordKarakRooms,
+            ));
+        }
 
         // Clear the unplaced tile now that it has been successfully placed
         error_log('Field::placeTile - Clearing unplaced tile after successful placement');

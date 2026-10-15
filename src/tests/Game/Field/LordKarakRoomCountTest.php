@@ -22,6 +22,8 @@ use App\Game\GameLifecycle\GameStarted;
 use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Turn\GetCurrentTurn;
+use App\Game\Turn\PerformTurnAction;
+use App\Game\Turn\TurnAction;
 use App\Infrastructure\Uuid\Uuid;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -72,6 +74,15 @@ final class LordKarakRoomCountTest extends TestCase
                 continue;
             }
             self::assertCount(1, $discovered);
+            $order = array_values(array_filter(array_map(
+                static fn(object $message): ?string => match (true) {
+                    $message instanceof LordKarakRoomDiscovered => 'room',
+                    $message instanceof PerformTurnAction && $message->action === TurnAction::PLACE_TILE => 'place',
+                    default => null,
+                },
+                $messages,
+            )));
+            self::assertSame(['place', 'room'], $order, 'The placement is recorded before Lord Karak may be revealed');
             self::assertInstanceOf(LordKarakRoomDiscovered::class, $discovered[0]);
             self::assertTrue($discovered[0]->playerId->equals($playerId));
             self::assertTrue($discovered[0]->position->equals($place));
