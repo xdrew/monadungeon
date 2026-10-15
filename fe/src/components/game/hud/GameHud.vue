@@ -110,10 +110,13 @@
 
 .game-hud__rail {
   position: absolute;
-  top: 40px;
-  left: 28px;
-  width: calc(var(--rail-width) - 40px);
-  max-height: calc(100dvh - 190px);
+  /* the padding is room for the acting medallion's ring and glow, which the scroll box would clip */
+  top: 12px;
+  left: 0;
+  width: var(--rail-width);
+  max-height: calc(100dvh - 162px);
+  box-sizing: border-box;
+  padding: 28px 12px 36px 28px;
   overflow-y: auto;
   scrollbar-width: none;
 }
@@ -187,6 +190,7 @@
     right: 56px;
     width: auto;
     max-height: none;
+    padding: 0;
     overflow: visible;
   }
 
