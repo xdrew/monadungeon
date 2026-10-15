@@ -897,22 +897,30 @@ const onItemClick = () => {
   /* background-color: #423426; */
 }
 
-/* Animation for tile placement */
+/* A new room comes out of the dark: light opens from the centre, the stone settles down a little
+   and loses its shadow, and a puff of warm dust rises at the edges (≤ 0.8s; the flag is cleared at 1s) */
 .tile-placing-animation {
-  animation: placeTile 0.8s ease-out;
   z-index: 15;
+  animation: roomReveal 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
-@keyframes placeTile {
+@keyframes roomReveal {
   0% {
-    transform: translate(calc(var(--start-x) - var(--end-x)), calc(var(--start-y) - var(--end-y))) scale(0.3);
-    opacity: 0.3;
+    clip-path: circle(0% at 50% 50%);
+    transform: translateY(-6px) scale(1.04);
+    filter: brightness(0.25) sepia(0.4);
+  }
+  45% {
+    clip-path: circle(72% at 50% 50%);
+    filter: brightness(0.7) sepia(0.2);
   }
   70% {
-    opacity: 1;
+    transform: translateY(1px) scale(0.995);
   }
   100% {
-    transform: translate(0, 0) scale(1);
+    clip-path: circle(75% at 50% 50%);
+    transform: translateY(0) scale(1);
+    filter: brightness(1) sepia(0);
   }
 }
 
@@ -931,32 +939,28 @@ const onItemClick = () => {
   box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 255, 255, 0.5);
 }
 
-/* Add trail effect for tile placement animation */
+/* the dust of the opening: a ring of warm haze running out over the stone and fading */
 .tile.tile-placing-animation::before {
   content: '';
   position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%);
+  inset: 0;
+  z-index: 2;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 190, 120, 0) 35%, rgba(255, 170, 90, 0.35) 55%, rgba(var(--ember-rgb), 0) 72%);
   pointer-events: none;
-  z-index: -1;
-  opacity: 0.8;
-  animation: trailFade 0.8s ease-out forwards;
+  animation: roomDust 0.8s ease-out forwards;
 }
 
-@keyframes trailFade {
-  0% {
-    transform: scale(1.2);
-    opacity: 0.7;
-  }
-  60% {
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(3);
-    opacity: 0;
+@keyframes roomDust {
+  0% { transform: scale(0.4); opacity: 0; }
+  35% { opacity: 0.9; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-placing-animation,
+  .tile.tile-placing-animation::before {
+    animation: none;
   }
 }
 
