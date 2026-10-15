@@ -784,7 +784,6 @@ const onItemClick = () => {
 /* A reward the hero can pick up: a pool of torchlight on the floor under it, no frame */
 .tile-items.pickable {
   cursor: pointer;
-  animation: rewardGleam 2.4s ease-in-out infinite;
 }
 
 .tile-items.pickable::before {
@@ -795,12 +794,8 @@ const onItemClick = () => {
   border-radius: 50%;
   background: radial-gradient(circle at 50% 50%, rgba(255, 170, 70, 0.38) 0%, rgba(var(--ember-rgb), 0.14) 40%, rgba(var(--ember-rgb), 0) 70%);
   animation: lightPool 2.4s ease-in-out infinite;
+  will-change: opacity, transform;
   pointer-events: none;
-}
-
-@keyframes rewardGleam {
-  0%, 100% { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.9)) brightness(1); }
-  50% { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 8px rgba(255, 170, 70, 0.45)) brightness(1.15); }
 }
 
 @keyframes lightPool {
@@ -809,7 +804,6 @@ const onItemClick = () => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile-items.pickable,
   .tile-items.pickable::before {
     animation: none;
   }

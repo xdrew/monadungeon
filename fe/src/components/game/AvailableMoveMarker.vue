@@ -123,25 +123,31 @@ const handleClick = () => {
 }
 
 /* An unexplored doorway: the dark beyond the door — a faint ember edge that breathes like a far torch,
-   mist drifting inside; neighbours breathe out of step (--phase from the position) */
+   mist drifting inside; neighbours breathe out of step (--phase from the position).
+   Only opacity and transform are animated (a glow layer fades in and out), so it runs on the compositor. */
 .move-marker.place-tile {
   overflow: hidden;
-  border: 1px solid rgba(var(--ember-rgb), 0.18);
+  border: 1px solid rgba(var(--ember-rgb), 0.14);
   background-color: rgba(5, 3, 2, 0.72);
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85);
+}
+
+.move-marker.place-tile::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  border: 1px solid rgba(var(--ember-rgb), 0.4);
+  box-shadow: inset 0 0 26px rgba(var(--ember-rgb), 0.16);
+  opacity: 0;
   animation: farTorch 4.5s ease-in-out infinite;
   animation-delay: var(--phase, 0s);
+  will-change: opacity;
 }
 
 @keyframes farTorch {
-  0%, 100% {
-    border-color: rgba(var(--ember-rgb), 0.14);
-    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85), inset 0 0 0 rgba(var(--ember-rgb), 0);
-  }
-  50% {
-    border-color: rgba(var(--ember-rgb), 0.38);
-    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.75), inset 0 0 26px rgba(var(--ember-rgb), 0.16);
-  }
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 
 .unexplored-mist {
@@ -154,6 +160,7 @@ const handleClick = () => {
     radial-gradient(ellipse 30% 40% at 50% 30%, rgba(var(--ember-rgb), 0.05) 0%, rgba(var(--ember-rgb), 0) 70%);
   animation: mistDrift 7s ease-in-out infinite alternate;
   animation-delay: var(--phase, 0s);
+  will-change: opacity, transform;
 }
 
 @keyframes mistDrift {
@@ -164,7 +171,7 @@ const handleClick = () => {
 
 @media (prefers-reduced-motion: reduce) {
   .unexplored-mist,
-  .move-marker.place-tile {
+  .move-marker.place-tile::after {
     animation: none;
   }
 }
@@ -207,8 +214,9 @@ const handleClick = () => {
 }
 
 /* the breathing stops under the pointer so the hover light holds */
-.move-marker.place-tile.clickable:hover {
+.move-marker.place-tile.clickable:hover::after {
   animation: none;
+  opacity: 0;
 }
 
 /* hovering the dark: the compass catches the light and its needle swings */

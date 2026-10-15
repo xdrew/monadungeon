@@ -1643,6 +1643,36 @@ const battleInfo = ref(null);
 const battleReportModalRef = ref(null);
 const skipBattleModalReshow = ref(false);
 const lastProcessedBattleId = ref(null);
+// localStorage.currentPlayerId is shared by all tabs: a game started in another tab overwrites it.
+// When it names nobody in this game, take the player the lobby remembered for this game.
+const adoptThisGamesPlayer = (data) => {
+  const players = data?.players || [];
+  if (!players.length) return;
+  // the AI of this game, the same way: a stale virtualPlayerId from another game would hide whose turn it is
+  try {
+    const storedAi = localStorage.getItem('virtualPlayerId');
+    const ai = players.find((p) => p.isAi);
+    if (ai && storedAi !== ai.id && !players.some((p) => p.id === storedAi)) {
+      localStorage.setItem('virtualPlayerId', ai.id);
+    }
+  } catch { /* no storage: nothing to fix */ }
+  if (players.some((p) => p.id === currentPlayerId.value)) return;
+  let remembered = null;
+  try {
+    remembered = localStorage.getItem(`humanPlayer:${id.value}`);
+  } catch {
+    return;
+  }
+  if (!remembered || !players.some((p) => p.id === remembered)) return;
+  console.debug('[game] the shared player id belongs to another game; using this game\'s player', remembered);
+  currentPlayerId.value = remembered;
+  humanPlayerId.value = remembered;
+  try {
+    localStorage.setItem('currentPlayerId', remembered);
+    localStorage.setItem('humanPlayerId', remembered);
+  } catch { /* the refs above still hold it for this page */ }
+};
+
 // The pending post-fight decision is restored at most once per page load (see loadGameData)
 const pendingBattleRestored = ref(false);
 // The fight still waits for the player: the current turn's last action is the fight itself (not a duel, the turn is open)
@@ -2347,6 +2377,7 @@ const loadGameData = async (showLoading = true) => {
       loading.value = true;
     }
     const fetchedGameData = await gameApi.getGame(id.value);
+    adoptThisGamesPlayer(fetchedGameData);
 
 
     // Initialize gameData if it doesn't exist yet

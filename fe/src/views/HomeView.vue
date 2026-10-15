@@ -434,6 +434,9 @@ const createNewGame = async () => {
     localStorage.setItem('currentPlayerId', playerId);
     // Store human player ID separately so it doesn't change
     localStorage.setItem('humanPlayerId', playerId);
+    // ...and per game: another game started in another tab overwrites the keys above,
+    // GameView then finds this game's own player here
+    localStorage.setItem(`humanPlayer:${response.gameId}`, playerId);
 
     // The hero shown in the roster: a Regent hero remembered from an earlier game is dropped when the switch is off;
     // with random heroes the backend deals one
