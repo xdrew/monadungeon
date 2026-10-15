@@ -25,10 +25,10 @@
 
       <div v-if="itemDamage > 0 || itemValue > 0" class="stat-badges">
         <span v-if="itemDamage > 0" class="badge badge-damage">
-          ⚔️ +{{ itemDamage }}
+          <GameIcon name="sword" :size="14" /> +{{ itemDamage }}
         </span>
         <span v-if="itemValue > 0" class="badge badge-value">
-          💎 {{ itemValue }} VP
+          <GameIcon name="treasure" :size="14" /> {{ itemValue }} VP
         </span>
       </div>
 
@@ -39,7 +39,7 @@
           class="btn-pickup"
           @click="pickupItem"
         >
-          🎒 Pick Up <span class="kbd-hint">(Enter)</span>
+          Pick Up <span class="kbd-hint">(Enter)</span>
         </button>
         <button
           class="btn-leave"
@@ -53,6 +53,7 @@
 </template>
 
 <script setup>
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, formatItemName } from '@/utils/itemUtils';
 

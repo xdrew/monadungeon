@@ -31,7 +31,7 @@
         v-if="gameData?.state?.status === 'finished'"
         class="game-finished-banner"
       >
-        <span class="trophy-icon">🏆</span>
+        <span class="trophy-icon"><GameIcon name="trophy" :size="24" /></span>
         <span class="finished-text">Game Over - {{ isCurrentUserWinner() ? 'You Win!' : winnerId ? `${getPlayerEmoji(winnerId)} Wins!` : 'View Results' }}</span>
         <button
           class="view-results-button"
@@ -173,7 +173,7 @@
                     @click="handleTeleportClick(tile.position)"
                   >
                     <div class="healing-fountain-indicator">
-                      <span class="fountain-emoji">🌿</span>
+                      <span class="fountain-emoji"><GameIcon name="heart" :size="40" /></span>
                     </div>
                   </div>
 
@@ -197,7 +197,7 @@
                     @click="handleReincarnationClick(tile.position)"
                   >
                     <div class="healing-fountain-indicator">
-                      <span class="fountain-emoji">🌿</span>
+                      <span class="fountain-emoji"><GameIcon name="heart" :size="40" /></span>
                     </div>
                   </div>
                   </template>
@@ -361,18 +361,19 @@
         <div class="game-sidebar">
           <div class="sidebar-header">
             <ThemeLogo size="small" />
+            <!-- The first <h3> on the page reads "Turn: N" (the e2e reads it) -->
             <h3 v-if="gameData?.state?.turn">
               Turn: {{ gameData.state.turn }}
+            </h3>
+            <h3 v-else>
+              Game Setup
             </h3>
             <span
               v-if="gameData?.state?.regent"
               class="regent-badge"
               data-testid="regent-badge"
               title="Karak: Regent expansion — Lord Karak rooms, Giant Bats and Skeleton Mages"
-            >👑 Regent</span>
-            <h3 v-else>
-              Game Setup
-            </h3>
+            ><GameIcon name="crown" :size="14" /> Regent</span>
           </div>
 
           <div class="sidebar-content">
@@ -425,7 +426,7 @@
                       alt="Cursed"
                       class="curse-token-icon"
                       data-testid="curse-token"
-                    ><template v-else>{{ player.awaitingReincarnation ? '💀' : player.lordKarak ? '👑' : '⚔️' }}</template> {{ badgeName(player) }}</span>
+                    ><GameIcon v-else :name="player.awaitingReincarnation ? 'skull' : player.lordKarak ? 'crown' : 'sword'" :size="13" /> {{ badgeName(player) }}</span>
                     <span
                       v-if="player.lordKarak && player.hero"
                       class="lord-karak-was"
@@ -435,21 +436,32 @@
                       v-if="gameData?.state?.currentPlayerId === player.id"
                       class="turn-badge"
                       title="Current turn"
-                    >📍</span>
+                    ><GameIcon name="pin" :size="16" title="Current turn" /></span>
                   </div>
                   <div class="player-card-stats">
-                    <span class="hp-indicator">
-                      ❤️ {{ player.hp !== undefined ? player.hp : 5 }}/{{ player.maxHp ?? 5 }}
+                    <span
+                      class="hp-indicator"
+                      :title="`HP ${player.hp !== undefined ? player.hp : 5}/${player.maxHp ?? 5}`"
+                      :aria-label="`HP ${player.hp !== undefined ? player.hp : 5} of ${player.maxHp ?? 5}`"
+                    >
+                      <GameIcon
+                        v-for="n in (player.maxHp ?? 5)"
+                        :key="n"
+                        name="heart"
+                        :size="14"
+                        class="hp-heart"
+                        :class="{ filled: n <= (player.hp !== undefined ? player.hp : 5) }"
+                      />
                     </span>
                     <span class="player-treasure-total" title="Victory points">
-                      💎 {{ calculatePlayerTreasure(player) }}
+                      <GameIcon name="treasure" :size="14" /> {{ calculatePlayerTreasure(player) }}
                     </span>
                     <span
                       v-if="gameData?.state?.startingRolls?.[player.id] && (gameData.state.turn || 0) <= (gameData.players?.length || 1)"
                       class="starting-roll"
                       title="Roll for the starting player"
                       data-testid="starting-roll"
-                    >🎲 {{ gameData.state.startingRolls[player.id] }}</span>
+                    ><GameIcon name="dice" :size="14" /> {{ gameData.state.startingRolls[player.id] }}</span>
                   </div>
 
               <div class="inventory-container">
@@ -554,8 +566,8 @@
               v-if="isTeleportMode"
               class="sidebar-section teleport-controls"
             >
-              <h3>🌀 Portal of Healing</h3>
-              <p>Pick who is carried to the fountain, then click a healing fountain (🌿). The portal costs no move and the turn goes on.</p>
+              <h3>Portal of Healing</h3>
+              <p>Pick who is carried to the fountain, then click a healing fountain. The portal costs no move and the turn goes on.</p>
               <div class="portal-targets">
                 <button
                   v-for="player in gameData?.players || []"
@@ -583,7 +595,7 @@
               class="sidebar-section teleport-controls dark-thorn-controls"
               data-testid="dark-thorn-banner"
             >
-              <h3>🌑 Dark Thorn</h3>
+              <h3>Dark Thorn</h3>
               <p>Choose another hero: they lose 1 HP. The spell costs no move and the turn goes on.</p>
               <div class="portal-targets">
                 <button
@@ -595,7 +607,7 @@
                   :data-testid="`dark-thorn-target-${player.id}`"
                   @click="darkThornTargetId = player.id"
                 >
-                  {{ playerLabel(player) }} ❤️ {{ player.hp }}
+                  {{ playerLabel(player) }} <GameIcon name="heart" :size="13" /> {{ player.hp }}
                 </button>
               </div>
               <button
@@ -604,7 +616,7 @@
                 :disabled="!darkThornTargetId || loading || isRequestInProgress"
                 @click="castDarkThorn"
               >
-                🌑 Cast Dark Thorn
+                Cast Dark Thorn
               </button>
               <button
                 class="cancel-teleport-btn btn--block"
@@ -648,8 +660,8 @@
               class="sidebar-section teleport-controls reincarnation-controls"
               data-testid="reincarnation-banner"
             >
-              <h3>💀 Reincarnation</h3>
-              <p>The Warrior lost his last HP. Click a healing fountain (🌿) to return there with full HP. The turn ends afterwards.</p>
+              <h3>Reincarnation</h3>
+              <p>The Warrior lost his last HP. Click a healing fountain to return there with full HP. The turn ends afterwards.</p>
             </div>
 
             <!-- Curse of Karak: the choice is still open (for example after a page reload) -->
@@ -672,7 +684,7 @@
               class="sidebar-section teleport-controls magic-swap-controls"
               data-testid="magic-swap-banner"
             >
-              <h3>🔮 Magic Swap</h3>
+              <h3>Magic Swap</h3>
               <p>Click another hero's figure to trade places. It costs all 4 moves: the turn ends on the new tile (a chest or a fountain there still counts).</p>
               <button
                 class="end-turn-btn btn--block"
@@ -694,7 +706,7 @@
                 title="Warlock: trade places with any other hero (first action of the turn, costs all 4 moves)"
                 @click="isMagicSwapMode = true"
               >
-                🔮 Magic Swap
+                Magic Swap
               </button>
             </div>
 
@@ -704,7 +716,7 @@
               class="sidebar-section teleport-controls retreat-controls"
               data-testid="retreat-banner"
             >
-              <h3>⚡ Retreat</h3>
+              <h3>Retreat</h3>
               <p>The Lightning Attack was not won. Choose an opened tile to retreat to; the turn ends there.</p>
               <div class="portal-targets">
                 <button
@@ -727,7 +739,7 @@
               class="sidebar-section teleport-controls lightning-controls"
               data-testid="lightning-banner"
             >
-              <h3>⚡ Lightning Attack</h3>
+              <h3>Lightning Attack</h3>
               <p>Choose a monster to strike. It costs all 4 moves; if you do not win you pick where to retreat.</p>
               <div class="portal-targets">
                 <button
@@ -739,7 +751,7 @@
                   :disabled="loading || isRequestInProgress"
                   @click="handleLightningAttack(target.position)"
                 >
-                  {{ target.label }} ❤️ {{ target.hp }} — {{ target.position }}
+                  {{ target.label }} <GameIcon name="heart" :size="13" /> {{ target.hp }} — {{ target.position }}
                 </button>
               </div>
               <button
@@ -761,7 +773,7 @@
                 title="Baron Markul: teleport onto any monster and fight it (first action of the turn, costs all 4 moves)"
                 @click="isLightningMode = true"
               >
-                ⚡ Lightning Attack
+                Lightning Attack
               </button>
               <button
                 v-if="canSprintNow"
@@ -771,7 +783,7 @@
                 title="Hanna: up to 8 moves this turn over discovered tiles, no exploring"
                 @click="handleDeclareSprint"
               >
-                🏃 Sprint (8 moves)
+                Sprint (8 moves)
               </button>
               <button
                 v-if="canListenNow"
@@ -782,7 +794,7 @@
                 title="Lady Lorraine: the next tile you place is explored without entering it (one move)"
                 @click="isListenMode = !isListenMode"
               >
-                👂 {{ isListenMode ? 'Listening — place a tile' : 'Listen at the next tile' }}
+                {{ isListenMode ? 'Listening — place a tile' : 'Listen at the next tile' }}
               </button>
             </div>
             <div
@@ -790,14 +802,14 @@
               class="sidebar-section sprint-badge"
               data-testid="sprint-badge"
             >
-              🏃 Sprint — up to 8 moves, no exploring
+              Sprint — up to 8 moves, no exploring
             </div>
             <div
               v-if="getCurrentPlayerData?.heroFlags?.choosesHealing"
               class="sidebar-section heal-limit-section"
             >
               <label class="heal-limit-label">
-                🪓 Berserk — heal up to
+                Berserk — heal up to
                 <select
                   data-testid="heal-limit"
                   :value="getCurrentPlayerData.healLimit ?? ''"
@@ -831,36 +843,32 @@
               </button>
             </div>
             
-            <!-- Emergency AI Recovery Button (only shows when AI is stuck) -->
+            <!-- Dev-only debug plaques (dev builds only; the AI auto-forcing timer works in every build).
+                 They keep .end-turn-btn: the e2e runs against the dev server and its .first() resolution must not change. -->
             <div
-              v-if="aiStuckDetected && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
-              class="sidebar-section end-turn-section"
+              v-if="devAiLabels && aiStuckDetected && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
+              class="sidebar-section debug-plaque"
             >
               <button
-                class="end-turn-btn btn--block"
-                style="background-color: #ff6b6b;"
+                class="end-turn-btn btn--block debug-plaque-btn"
                 @click="forceAITurn"
                 :disabled="loading || isRequestInProgress"
               >
-                AI Stuck - Click to Continue
+                {{ devAiLabels.stuck }}
               </button>
-              <small style="color: #999; display: block; margin-top: 5px; text-align: center;">
-                AI hasn't moved for 10+ seconds
-              </small>
+              <small class="debug-plaque-note">{{ devAiLabels.stuckNote }}</small>
             </div>
-            
-            <!-- Temporary: Immediate AI Turn Button for Testing -->
+
             <div
-              v-if="!isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
-              class="sidebar-section end-turn-section"
+              v-if="devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
+              class="sidebar-section debug-plaque"
             >
               <button
-                class="end-turn-btn btn--block"
-                style="background-color: #ffa500;"
+                class="end-turn-btn btn--block debug-plaque-btn"
                 @click="forceAITurn"
                 :disabled="loading || isRequestInProgress"
               >
-                Execute AI Turn Now (Debug)
+                {{ devAiLabels.execute }}
               </button>
             </div>
 
@@ -937,7 +945,7 @@
 
         <!-- Result message -->
         <div
-          v-if="getCurrentUserPrivyId() || (humanPlayerId && !isVirtualPlayer(humanPlayerId))"
+          v-if="humanPlayerId && !isVirtualPlayer(humanPlayerId)"
           class="result-banner"
           :class="{
             'result-win': isCurrentUserWinner(),
@@ -945,7 +953,7 @@
           }"
         >
           <div v-if="isCurrentUserWinner()" class="result-text">
-            <span class="result-icon">🏆</span>
+            <span class="result-icon"><GameIcon name="trophy" :size="28" /></span>
             <span>Victory!</span>
           </div>
           <div v-else class="result-text">
@@ -967,8 +975,8 @@
             }"
           >
             <div class="lb-rank">
-              <span v-if="idx === 0" class="rank-medal">🥇</span>
-              <span v-else-if="idx === 1" class="rank-medal">🥈</span>
+              <span v-if="idx === 0" class="rank-medal rank-gold"><GameIcon name="trophy" :size="20" title="First place" /></span>
+              <span v-else-if="idx === 1" class="rank-medal rank-silver"><GameIcon name="trophy" :size="20" title="Second place" /></span>
               <span v-else class="rank-num">#{{ idx + 1 }}</span>
             </div>
             <div class="lb-player">
@@ -976,14 +984,14 @@
               <span
                 v-if="entry.playerId === winnerId"
                 class="lb-crown"
-              >👑</span>
+              ><GameIcon name="crown" :size="16" title="Winner" /></span>
               <span
                 v-if="isCurrentUserEntry(entry)"
                 class="lb-you-badge"
               >YOU</span>
             </div>
             <div class="lb-treasure">
-              💎 {{ entry.treasure }}
+              <GameIcon name="treasure" :size="16" /> {{ entry.treasure }}
             </div>
           </div>
         </div>
@@ -994,13 +1002,13 @@
             class="lb-btn-primary"
             @click="navigateToLobby"
           >
-            🏠 Return to Lobby <span class="kbd-hint">(Enter)</span>
+            <GameIcon name="home" :size="16" /> Return to Lobby <span class="kbd-hint">(Enter)</span>
           </button>
           <button
             class="lb-btn-secondary"
             @click="reloadPage"
           >
-            🔄 View Game Board <span class="kbd-hint">(Esc)</span>
+            <GameIcon name="eye" :size="16" /> View Game Board <span class="kbd-hint">(Esc)</span>
           </button>
         </div>
       </div>
@@ -1015,7 +1023,7 @@
         <div class="stunned-player-icon">
           {{ getPlayerEmoji(currentPlayerId) }}
         </div>
-        <h3>🚫 You are stunned! 🚫</h3>
+        <h3><GameIcon name="warning" :size="22" /> You are stunned!</h3>
         <p>You were defeated in battle and cannot move this turn.</p>
         <p>Your HP will be restored on your next turn.</p>
         <button
@@ -1045,6 +1053,7 @@ import { gameApi } from '@/services/api';
 // Import the components
 import LoadingScreen from '@/components/game/LoadingScreen.vue';
 import ThemeLogo from '@/components/ThemeLogo.vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { getHero } from '@/theme';
 import LoadingOverlay from '@/components/game/LoadingOverlay.vue';
 import ErrorDisplay from '@/components/game/ErrorDisplay.vue';
@@ -1147,6 +1156,11 @@ const currentPlayerId = ref(localStorage.getItem('currentPlayerId') || null);
 const secondPlayerId = ref(localStorage.getItem('secondPlayerId') || null);
 const humanPlayerId = ref(localStorage.getItem('humanPlayerId') || localStorage.getItem('currentPlayerId') || null);
 const virtualPlayerIdStored = computed(() => localStorage.getItem('virtualPlayerId') || null);
+// Debug UI (force the AI turn) shows only in dev builds: its texts live in this constant,
+// so a production build folds it to null and drops them from the bundle
+const devAiLabels = import.meta.env.DEV
+  ? { stuck: 'AI Stuck - Click to Continue', stuckNote: "AI hasn't moved for 10+ seconds", execute: 'Execute AI Turn Now (Debug)' }
+  : null;
 const aiStuckDetected = ref(false);
 let aiStuckTimer = null;
 const playerIsReady = ref(false);
@@ -1591,7 +1605,7 @@ const castDarkThorn = async () => {
       null,
       darkThornTargetId.value
     );
-    showActionNotice(`🌑 Dark Thorn — ${playerLabel(target)} loses 1 HP`);
+    showActionNotice(`Dark Thorn — ${playerLabel(target)} loses 1 HP`);
   } catch (err) {
     showActionNotice(`Dark Thorn failed: ${apiErrorMessage(err)}`);
   } finally {
@@ -1611,8 +1625,8 @@ watch(() => gameData.value?.state?.roomEvent, (event) => {
   shownRoomEventKey.value = key;
   const who = playerLabel(playerById(event.playerId));
   showActionNotice(event.cursed
-    ? `☠️ Cursed Room — ${who} rolled ${event.roll}: cursed!`
-    : `🎲 Cursed Room — ${who} rolled ${event.roll}: safe`);
+    ? `Cursed Room — ${who} rolled ${event.roll}: cursed!`
+    : `Cursed Room — ${who} rolled ${event.roll}: safe`);
 });
 const handleCurseChoice = async (targetPlayerId) => {
   try {
@@ -2725,7 +2739,7 @@ const addSecondPlayer = async () => {
 
 
     // Join the game with the second player (as Player 2)
-    await gameApi.joinGame(id.value, secondPlayerId.value, null, 'Player 2');
+    await gameApi.joinGame(id.value, secondPlayerId.value, 'Player 2');
 
     // Mark the second player as ready
     loadingStatus.value = 'Getting second player ready...';
@@ -5514,39 +5528,12 @@ const isVirtualPlayer = (playerId) => {
   return false;
 };
 
-// Helper to get the current user's Privy ID
-const getCurrentUserPrivyId = () => {
-  const storedPrivyUser = localStorage.getItem('privyUser');
-  if (storedPrivyUser) {
-    try {
-      const privyUser = JSON.parse(storedPrivyUser);
-      return privyUser.id;
-    } catch (e) {
-      console.error('Failed to parse stored Privy user:', e);
-    }
-  }
-  return null;
-};
-
 // Helper to check if current user is the winner
 const isCurrentUserWinner = () => {
   // First priority: Check if any entry in the leaderboard is the current user and is #1
   if (leaderboard.value?.length > 0) {
     const winner = leaderboard.value[0]; // First place
-    
-    // Check if this winner is the current user
-    const currentPrivyId = getCurrentUserPrivyId();
-    
 
-    
-    // If we have a Privy ID and the winner has an externalId, compare them
-    if (currentPrivyId && winner.externalId) {
-      const isWinner = winner.externalId === currentPrivyId;
-
-      return isWinner;
-    }
-    
-    // Fallback: compare playerId with humanPlayerId for non-authenticated users
     if (humanPlayerId.value && !isVirtualPlayer(humanPlayerId.value)) {
       const isWinner = winner.playerId === humanPlayerId.value;
 
@@ -5565,14 +5552,6 @@ const calculatePlayerTreasure = (player) => {
 
 // Helper to check if a leaderboard entry is the current user
 const isCurrentUserEntry = (entry) => {
-  const currentPrivyId = getCurrentUserPrivyId();
-  
-  // If we have a Privy ID, use that for comparison
-  if (currentPrivyId && entry.externalId) {
-    return entry.externalId === currentPrivyId;
-  }
-  
-  // Fallback to humanPlayerId for non-authenticated users
   if (humanPlayerId.value && !isVirtualPlayer(humanPlayerId.value)) {
     return entry.playerId === humanPlayerId.value;
   }
@@ -6048,9 +6027,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 </script>
 
 <style>
-/* Import centralized styles */
-@import '@/styles/index.css';
-
 /* Both players inventory styles */
 .player-inventory-section {
   display: flex;
@@ -6383,6 +6359,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .result-icon {
+  display: inline-flex;
   font-size: 1.8rem;
 }
 
@@ -6433,7 +6410,15 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .rank-medal {
-  font-size: 1.3rem;
+  display: inline-flex;
+}
+
+.rank-gold {
+  color: #e8b64c;
+}
+
+.rank-silver {
+  color: #b9b4ae;
 }
 
 .rank-num {
@@ -6461,8 +6446,9 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .lb-crown {
-  font-size: 16px;
-  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.5));
+  display: inline-flex;
+  color: #e8b64c;
+  filter: drop-shadow(0 0 4px rgba(var(--ember-rgb), 0.5));
 }
 
 .lb-you-badge {
@@ -6529,22 +6515,24 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .hp-indicator {
   margin-left: auto;
-  font-size: 0.75em;
-  padding: 2px 8px;
-  background: rgba(244, 67, 54, 0.12);
-  border: 1px solid rgba(244, 67, 54, 0.2);
-  border-radius: 10px;
-  color: #ff8a80;
-  font-weight: 600;
   display: inline-flex;
   align-items: center;
+  gap: 2px;
   vertical-align: middle;
+  color: var(--color-danger);
   transition: all 0.3s ease;
 }
 
+/* HP as a row of hearts: filled = remaining, hollow = lost */
+.hp-heart {
+  fill: rgba(217, 69, 42, 0.1);
+}
+
+.hp-heart.filled {
+  fill: currentColor;
+}
+
 .hp-indicator.hp-reduced {
-  background: rgba(244, 67, 54, 0.3);
-  border-color: rgba(244, 67, 54, 0.5);
   animation: hp-flash 0.5s ease-in-out;
 }
 
@@ -6803,8 +6791,10 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 .fountain-emoji {
-  font-size: 2.5rem;
-  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.8));
+  display: inline-flex;
+  color: var(--color-danger);
+  fill: rgba(217, 69, 42, 0.35);
+  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.8));
 }
 
 .current-position-label {
@@ -7042,5 +7032,39 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .starting-roll {
   font-size: 0.8rem;
   opacity: 0.8;
+}
+
+/* Dev-only debug plaque: small and dim, out of the way of the real controls */
+.debug-plaque {
+  padding: 6px;
+  margin-bottom: 8px;
+  border: 1px dashed var(--iron-dark);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  opacity: 0.55;
+}
+
+.debug-plaque:hover {
+  opacity: 0.9;
+}
+
+.debug-plaque .debug-plaque-btn {
+  margin-bottom: 0;
+  padding: 4px 8px;
+  border-color: var(--iron-dark);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-shadow: none;
+}
+
+.debug-plaque-note {
+  display: block;
+  margin-top: 4px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 </style>

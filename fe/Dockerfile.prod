@@ -3,10 +3,7 @@
 FROM node:18-alpine AS builder
 
 # Accept build arguments for environment variables
-ARG VITE_PRIVY_APP_ID
-ARG VITE_MONAD_GAMES_APP_ID
 ARG VITE_API_BASE_URL=https://monadungeon.avelent.work
-ARG VITE_THEME=base
 
 WORKDIR /app
 
@@ -21,10 +18,7 @@ COPY . .
 
 # Debug: Show that build arguments are received
 RUN echo "Build arguments received:" && \
-    echo "VITE_PRIVY_APP_ID=${VITE_PRIVY_APP_ID}" && \
-    echo "VITE_MONAD_GAMES_APP_ID=${VITE_MONAD_GAMES_APP_ID}" && \
-    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" && \
-    echo "VITE_THEME=${VITE_THEME}"
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}"
 
 # Get the git commit hash if available
 ARG GIT_COMMIT=unknown
@@ -33,37 +27,20 @@ ARG GIT_COMMIT=unknown
 RUN echo "Replacing environment variables directly in source files..." && \
     echo "Git commit: ${GIT_COMMIT}" && \
     find src -type f \( -name "*.js" -o -name "*.vue" -o -name "*.ts" \) -exec sed -i \
-        -e "s|import\.meta\.env\.VITE_PRIVY_APP_ID|'${VITE_PRIVY_APP_ID}'|g" \
-        -e "s|import\.meta\.env\.VITE_MONAD_GAMES_APP_ID|'${VITE_MONAD_GAMES_APP_ID}'|g" \
         -e "s|import\.meta\.env\.VITE_API_BASE_URL|'${VITE_API_BASE_URL}'|g" \
-        -e "s|import\.meta\.env\.VITE_THEME|'${VITE_THEME}'|g" \
         -e "s|import\.meta\.env\.VITE_BUILD_VERSION|'${GIT_COMMIT}'|g" {} \; && \
-    echo "Replacements done. Checking a sample file:" && \
-    grep -n "VITE_\|'cmeb207py01ikky0csyj8akos'\|'cmd8euall0037le0my79qpz42'" src/services/privy.js | head -5 || true
+    echo "Replacements done."
 
 # Build the application - now the values are hardcoded
 RUN npm run build
 
 # Verify the build worked
 RUN echo "Checking if environment variables were replaced in build..." && \
-    if grep -q "import\.meta\.env\.VITE_PRIVY_APP_ID" dist/assets/*.js; then \
-        echo "ERROR: import.meta.env.VITE_PRIVY_APP_ID still found in built files!" && \
+    if grep -q "import\.meta\.env\.VITE_API_BASE_URL" dist/assets/*.js; then \
+        echo "ERROR: import.meta.env.VITE_API_BASE_URL still found in built files!" && \
         exit 1; \
     else \
         echo "SUCCESS: No import.meta.env references found"; \
-    fi && \
-    echo "Checking for actual app IDs in built files..." && \
-    if grep -q "cmeb207py01ikky0csyj8akos" dist/assets/*.js; then \
-        echo "✓ Privy app ID found in built files"; \
-    else \
-        echo "✗ ERROR: Privy app ID NOT found in built files!" && \
-        exit 1; \
-    fi && \
-    if grep -q "cmd8euall0037le0my79qpz42" dist/assets/*.js; then \
-        echo "✓ Monad Games app ID found in built files"; \
-    else \
-        echo "✗ ERROR: Monad Games app ID NOT found in built files!" && \
-        exit 1; \
     fi
 
 # Final stage: Deploy the built files

@@ -83,17 +83,11 @@ export const gameApi = {
     }
   },
 
-  joinGame: async (gameId, playerId, externalId = null, username = null, walletAddress = null, isAi = false, hero = null) => {
+  joinGame: async (gameId, playerId, username = null, isAi = false, hero = null) => {
     try {
       const payload = {gameId: gameId, playerId: playerId, isAi: isAi};
-      if (externalId) {
-        payload.externalId = externalId;
-      }
       if (username) {
         payload.username = username;
-      }
-      if (walletAddress) {
-        payload.walletAddress = walletAddress;
       }
       if (hero) {
         payload.hero = hero;
@@ -817,7 +811,6 @@ export const gameApi = {
    * @param {number} [params.limit=20] - Items per page
    * @param {string} [params.sortBy='victories'] - Sort by 'victories' or 'totalGames'
    * @param {string} [params.sortOrder='DESC'] - Sort order 'ASC' or 'DESC'
-   * @param {string} [params.currentPlayerWallet] - Current player's wallet address
    * @returns {Promise<Object>} Promise with leaderboard data
    */
   getLeaderboard: async (params = {}) => {

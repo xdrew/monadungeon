@@ -11,7 +11,7 @@ Karak: a dark stone dungeon lit by wall torches, treasure chests full of gold, u
 - **Item icons** (`fe/public/images/key.webp`, `axe.webp`, `sword.webp`, `dagger.webp`, `chest-closed.webp`): 100×100 RGBA webp, a single object centred with padding, thin dark outline, soft painterly shading with a slightly pixel-art feel, warm highlight from the upper left. These are the **style references** for every sprite.
 - **Figures** (`player.webp`, `ai.webp`): 100×150 full-body characters, feet visible, same shading. Style references for heroes.
 - **Tiles** (`fe/public/assets/tiles/*.webp`): worn stone, moss, dark grout. Reference for the dungeon material.
-- **Lobby background** (`fe/public/themes/monad/lobby-bg.webp`, 1536×1024): painterly dungeon hall, open chest with glowing gold at the centre, torches, monsters gathered around. The base lobby art keeps this composition with Karak monsters instead of mascots.
+- **Lobby background** (`fe/public/themes/base/lobby-bg.webp`, 1536×1024): painterly dungeon hall, open chest with glowing gold at the centre, torches, Karak monsters gathered around. Regenerations keep this composition.
 
 ## Palette
 

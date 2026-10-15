@@ -23,15 +23,15 @@
               <span
                 v-if="getItemDamage(droppedItem) > 0"
                 class="stat-badge badge-damage"
-              >⚔️ +{{ getItemDamage(droppedItem) }}</span>
+              ><GameIcon name="sword" :size="13" /> +{{ getItemDamage(droppedItem) }}</span>
               <span
                 v-if="droppedItem.treasureValue > 0"
                 class="stat-badge badge-value"
-              >💰 {{ droppedItem.treasureValue }}</span>
+              ><GameIcon name="treasure" :size="13" /> {{ droppedItem.treasureValue }}</span>
               <span
                 v-if="['fireball', 'frost_fist', 'dark_thorn'].includes(droppedItem.type)"
                 class="stat-badge badge-spell"
-              >🔮 Consumable</span>
+              ><GameIcon name="spells" :size="13" /> Consumable</span>
             </div>
           </div>
         </div>
@@ -60,13 +60,13 @@
               <span
                 v-if="getItemDamage(item) > 0"
                 class="stat-badge badge-damage badge-sm"
-              >⚔️ +{{ getItemDamage(item) }}</span>
+              ><GameIcon name="sword" :size="12" /> +{{ getItemDamage(item) }}</span>
               <span
                 v-if="item.treasureValue > 0"
                 class="stat-badge badge-value badge-sm"
-              >💰 {{ item.treasureValue }}</span>
+              ><GameIcon name="treasure" :size="12" /> {{ item.treasureValue }}</span>
             </div>
-            <div v-if="selectedItemToReplace && selectedItemToReplace.itemId === item.itemId" class="selected-check">✓</div>
+            <div v-if="selectedItemToReplace && selectedItemToReplace.itemId === item.itemId" class="selected-check"><GameIcon name="check" :size="14" /></div>
           </div>
         </div>
       </div>
@@ -92,6 +92,7 @@
 </template>
 
 <script setup>
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { defineProps, defineEmits, ref, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, formatItemName, getItemDamage } from '@/utils/itemUtils';
 

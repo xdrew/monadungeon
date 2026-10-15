@@ -1,32 +1,42 @@
 /* Design Tokens - CSS Custom Properties */
 :root {
-  /* Colors */
-  /* Dungeon palette, tuned to the painted art: antique bronze accent, ember glow as the only
-     bright note, near-black warm stone surfaces, parchment text */
-  --color-primary: #8a6a2f;
-  --color-primary-hover: #a8853e;
-  --color-secondary: #b35a1c;
-  --color-secondary-hover: #cf7128;
-  --color-danger: #b8433a;
-  --color-warning: #c98f2a;
-  --color-warning-hover: #dba63f;
-  --color-info: #4f7a9c;
-  --color-info-hover: #6a94b5;
-  
+  /* Torchlight palette: near-black dungeon, ember (torch) as the only bright note,
+     bone/parchment text, iron for hardware, blood for danger, cold blue for "you" */
+  --color-primary: #ff8c28;
+  --color-primary-hover: #ffa24d;
+  --color-secondary: #c9762e;
+  --color-secondary-hover: #de8a3f;
+  --color-danger: #d9452a;
+  --color-warning: #e0a63a;
+  --color-warning-hover: #f0b852;
+  --color-info: #9cc3ea;
+  --color-info-hover: #b6d4f1;
+
+  /* Iron (frames, rings, hardware) */
+  --iron: #5b5653;
+  --iron-dark: #3b3735;
+  --iron-edge: #121010;
+
   /* Background Colors */
-  --bg-primary: #131110;
-  --bg-secondary: #1b1715;
-  --bg-tertiary: #262019;
-  --bg-field: #0b0a09;
-  --bg-modal: #171311;
-  --bg-overlay: rgba(0, 0, 0, 0.78);
-  
+  --bg-primary: #070504;
+  --bg-secondary: #120b07;
+  --bg-tertiary: #1c120c;
+  --bg-panel: rgba(20, 12, 8, 0.92);
+  --bg-field: #050302;
+  --bg-modal: #140c08;
+  --bg-overlay: rgba(4, 2, 1, 0.8);
+
   /* Text Colors */
-  --text-primary: #e2d7c3;
-  --text-secondary: #a89a84;
-  --text-muted: #6e655a;
-  --text-accent: #d4b36a;
-  
+  --text-primary: #eadcc0;
+  --text-heading: #f4e3c3;
+  --text-secondary: #c9b493;
+  --text-muted: #8f7a5c;
+  --text-accent: #ffb35c;
+
+  /* Fonts (self-hosted via @fontsource, imported in main.js) */
+  --font-display: 'Pirata One', 'Spectral', Georgia, serif;
+  --font-body: 'Spectral', Georgia, serif;
+
   /* Spacing */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -36,27 +46,29 @@
   --spacing-xxl: 50px;
   
   /* Border Radius */
-  --radius-sm: 3px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
+  /* Iron and parchment, not rounded web cards */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
   --radius-round: 50%;
   
   /* Shadows */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 10px rgba(207, 113, 40, 0.55);
-  --shadow-glow-strong: 0 0 30px rgba(207, 113, 40, 0.6);
+  --shadow-glow: 0 0 12px rgba(var(--ember-rgb), 0.5);
+  --shadow-glow-strong: 0 0 30px rgba(var(--ember-rgb), 0.55);
 
-  /* rgba() helpers for glows and tints: rgba(var(--accent-rgb), 0.3) — themes override them */
-  --accent-rgb: 168, 133, 62;
-  --accent-light-rgb: 212, 179, 106;
+  /* rgba() helpers for glows and tints: rgba(var(--accent-rgb), 0.3) */
+  --ember-rgb: 255, 140, 40;
+  --accent-rgb: var(--ember-rgb);
+  --accent-light-rgb: 255, 179, 92;
 
-  /* Gradients — themes override them */
+  /* Gradients */
   --gradient-primary: linear-gradient(180deg, var(--color-primary-hover) 0%, var(--color-primary) 100%);
   --gradient-secondary: linear-gradient(180deg, var(--color-secondary-hover) 0%, var(--color-secondary) 100%);
-  --gradient-dark: linear-gradient(135deg, #131110 0%, #1f1915 100%);
+  --gradient-dark: linear-gradient(135deg, #070504 0%, #1c120c 100%);
   
   /* Transitions */
   --transition-fast: 0.2s ease;

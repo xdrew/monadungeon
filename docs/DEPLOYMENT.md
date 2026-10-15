@@ -78,13 +78,10 @@ nano .env.prod
 # Required changes:
 # - APP_SECRET: Generate 64-character random string
 # - DATABASE_URL: Set secure password
-# - MONAD_PRIVATE_KEY: Your blockchain private key
-# - MONAD_WALLET: Your wallet address
 # - SERVER_NAME: Your domain name
 # - LETSENCRYPT_EMAIL: Your email
 # - DB_PASSWORD: Secure database password
 # - RABBITMQ_PASSWORD: Secure RabbitMQ password
-# - VITE_THEME (optional): UI theme baked into the frontend build — base (default, Karak look, no sign-in) or monad
 ```
 
 ### 2.3 SSL Certificate Setup

@@ -111,7 +111,7 @@
       ]
     },
     {
-      "path": "fe/public/themes/monad/lobby-bg.webp",
+      "path": "fe/public/themes/base/lobby-bg.webp",
       "role": "composition",
       "kinds": [
         "background"

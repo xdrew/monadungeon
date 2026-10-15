@@ -13,19 +13,6 @@
 
     <!-- Leaderboard table -->
     <div v-else class="leaderboard-table-container">
-      <!-- Show current player at top if not on current page and above -->
-      <table v-if="currentPlayerTop" class="leaderboard-table current-player-preview">
-        <tbody>
-          <tr class="current-player-row highlighted">
-            <td class="position">{{ currentPlayerTop.position }}</td>
-            <td class="username">{{ currentPlayerTop.username }} (You)</td>
-            <td class="victories">{{ currentPlayerTop.victories }}</td>
-            <td class="games">{{ currentPlayerTop.totalGames }}</td>
-            <td class="winrate">{{ currentPlayerTop.winRate }}%</td>
-          </tr>
-        </tbody>
-      </table>
-
       <!-- Main leaderboard table -->
       <table class="leaderboard-table">
         <thead>
@@ -61,33 +48,15 @@
           <tr 
             v-for="entry in entries" 
             :key="entry.position"
-            :class="{ 
-              'current-player-row': entry.isCurrentPlayer,
-              'highlighted': entry.isCurrentPlayer,
-              'faded': loading
-            }"
+            :class="{ 'faded': loading }"
           >
             <td class="position">{{ entry.position }}</td>
             <td class="username">
               {{ entry.username }}
-              <span v-if="entry.isCurrentPlayer" class="you-badge">(You)</span>
             </td>
             <td class="victories">{{ entry.victories }}</td>
             <td class="games">{{ entry.totalGames }}</td>
             <td class="winrate">{{ entry.winRate }}%</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Show current player at bottom if not on current page and below -->
-      <table v-if="currentPlayerBottom" class="leaderboard-table current-player-preview">
-        <tbody>
-          <tr class="current-player-row highlighted">
-            <td class="position">{{ currentPlayerBottom.position }}</td>
-            <td class="username">{{ currentPlayerBottom.username }} (You)</td>
-            <td class="victories">{{ currentPlayerBottom.victories }}</td>
-            <td class="games">{{ currentPlayerBottom.totalGames }}</td>
-            <td class="winrate">{{ currentPlayerBottom.winRate }}%</td>
           </tr>
         </tbody>
       </table>
@@ -153,33 +122,6 @@ export default {
     const sortBy = ref('victories');
     const sortOrder = ref('DESC');
     const limit = ref(20);
-    const currentPlayerInfo = ref(null);
-
-    // Computed property for current player display at top
-    const currentPlayerTop = computed(() => {
-      if (!currentPlayerInfo.value) return null;
-      const { position, isOnCurrentPage, entry } = currentPlayerInfo.value;
-      
-      // Show at top if player is above current page
-      const firstPositionOnPage = (currentPage.value - 1) * limit.value + 1;
-      if (!isOnCurrentPage && position < firstPositionOnPage) {
-        return entry;
-      }
-      return null;
-    });
-
-    // Computed property for current player display at bottom
-    const currentPlayerBottom = computed(() => {
-      if (!currentPlayerInfo.value) return null;
-      const { position, isOnCurrentPage, entry } = currentPlayerInfo.value;
-      
-      // Show at bottom if player is below current page
-      const lastPositionOnPage = currentPage.value * limit.value;
-      if (!isOnCurrentPage && position > lastPositionOnPage) {
-        return entry;
-      }
-      return null;
-    });
 
     // Computed property for visible page numbers
     const visiblePages = computed(() => {
@@ -214,24 +156,11 @@ export default {
           sortOrder: sortOrder.value
         };
         
-        // Only include wallet if user is logged in with a real account
-        const walletAddress = localStorage.getItem('walletAddress');
-        const username = localStorage.getItem('monadUsername');
-        const privyUser = localStorage.getItem('privyUser');
-        
-        // Only set currentPlayerWallet if user is actually logged in with authentication
-        // Don't set it for anonymous/AI players
-        if (walletAddress && username && privyUser) {
-          params.currentPlayerWallet = walletAddress;
-          params.currentPlayerUsername = username;
-        }
-        
         const response = await gameApi.getLeaderboard(params);
         
         entries.value = response.entries || [];
         totalPages.value = response.pagination?.totalPages || 1;
         totalCount.value = response.pagination?.totalCount || 0;
-        currentPlayerInfo.value = response.currentPlayer || null;
         
       } catch (err) {
         console.error('Failed to fetch leaderboard:', err);
@@ -304,8 +233,6 @@ export default {
       sortBy,
       sortOrder,
       limit,
-      currentPlayerTop,
-      currentPlayerBottom,
       visiblePages,
       fetchLeaderboard,
       toggleSort,
@@ -321,7 +248,6 @@ export default {
   max-width: 900px;
   margin: 0 auto;
   padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .header-section {
@@ -503,30 +429,6 @@ export default {
   text-align: center;
   font-weight: 500;
   color: #e0e0e0;
-}
-
-.current-player-row {
-  background: rgba(255, 215, 0, 0.15) !important;
-}
-
-.current-player-row.highlighted {
-  background: linear-gradient(90deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%) !important;
-  font-weight: 600;
-}
-
-.you-badge {
-  background: #4d3d00;
-  color: #998833;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.8em;
-  margin-left: 8px;
-  font-weight: 500;
-}
-
-.current-player-preview {
-  margin: 10px 0;
-  border: 2px solid #4d3d00;
 }
 
 .table-footer {

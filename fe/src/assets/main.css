@@ -6,10 +6,10 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-body);
   line-height: 1.6;
-  color: #333;
-  background-color: #121212;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
   height: 100vh;
   width: 100vw;
   overflow: auto;
@@ -20,15 +20,51 @@ body {
   width: 100%;
 }
 
-/* Typography */
+/* Typography: display face for h1-h3, body face for the rest */
 h1, h2, h3, h4, h5, h6 {
   margin-bottom: 0.5rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
+  color: var(--text-heading);
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
 }
 
 p {
   margin-bottom: 1rem;
+}
+
+::selection {
+  background: rgba(var(--ember-rgb), 0.35);
+  color: var(--text-heading);
+}
+
+/* Dark scrollbars */
+* {
+  scrollbar-color: var(--iron-dark) var(--bg-secondary);
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--iron-dark);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--iron);
 }
 /* Reset and base styles */
 *,
@@ -46,11 +82,8 @@ html, body {
 }
 
 body {
-  font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  color: #333;
-  background-color: #121212;
 }
 
 #app {
@@ -109,80 +142,27 @@ a {
   padding: 1.5rem;
 }
 
-/* Game specific styles */
-.btn {
-  display: inline-block;
-  font-weight: 600;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: middle;
-  user-select: none;
-  border: 1px solid transparent;
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  line-height: 1.5;
-  border-radius: 0.25rem;
-  transition: all 0.15s ease-in-out;
-}
-
-.btn-primary {
-  color: #fff;
-  background-color: #8B4513;
-  border-color: #8B4513;
-}
-
-.btn-primary:hover {
-  background-color: #A0522D;
-  border-color: #A0522D;
-}
-
-.btn-secondary {
-  color: #fff;
-  background-color: #6c757d;
-  border-color: #6c757d;
-}
-
-.btn-secondary:hover {
-  background-color: #5a6268;
-  border-color: #545b62;
-}
-
-.btn-success {
-  color: #fff;
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.btn-success:hover {
-  background-color: var(--color-primary-hover);
-  border-color: #1e7e34;
-}
-
-.btn-danger {
-  color: #fff;
-  background-color: #dc3545;
-  border-color: #dc3545;
-}
-
-.btn-danger:hover {
-  background-color: #c82333;
-  border-color: #bd2130;
-}
 /* Buttons */
+/* Unstyled buttons fall back to a dark iron plate (variants live in styles/components/buttons.css) */
 button {
   cursor: pointer;
   font-size: 1rem;
   padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  background-color: #3498db;
-  color: white;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  border: 1px solid var(--iron-dark);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
 button:hover:not(:disabled) {
-  background-color: #2980b9;
-  transform: translateY(-2px);
+  background-color: #2a1b12;
+  border-color: var(--iron);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 button:disabled {

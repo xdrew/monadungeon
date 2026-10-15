@@ -1,17 +1,10 @@
 import path from 'path'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import themeHtml from './vite-plugins/themeHtml.js'
 
-export default defineConfig(({ mode }) => {
-  // Theme (base | monad) is fixed at build time: VITE_THEME from the environment or .env files
-  const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const themeName = process.env.VITE_THEME || env.VITE_THEME || 'base'
-  console.info('[theme] building with theme:', themeName)
-
+export default defineConfig(() => {
   return {
     plugins: [
-      themeHtml(themeName),
       vue({
         template: {
           compilerOptions: {

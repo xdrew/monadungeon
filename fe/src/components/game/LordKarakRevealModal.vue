@@ -1,7 +1,7 @@
 <template>
   <div class="lord-karak-overlay" @click.self="emit('close')">
     <div class="lord-karak-modal" data-testid="lord-karak-modal" role="dialog" aria-modal="true">
-      <div class="lord-karak-header">👑 Lord Karak rises</div>
+      <div class="lord-karak-header"><GameIcon name="crown" :size="20" /> Lord Karak rises</div>
 
       <div class="lord-karak-body">
         <img v-if="portrait" :src="portrait" alt="Lord Karak" class="lord-karak-portrait">
@@ -18,10 +18,10 @@
         <thead>
           <tr>
             <th>Hero</th>
-            <th title="Treasure value">💎</th>
-            <th title="Weapon strength">⚔️</th>
-            <th title="Keys and spells">🎒</th>
-            <th v-if="hasRolls" title="Tie-break dice">🎲</th>
+            <th title="Treasure value"><GameIcon name="treasure" :size="16" title="Treasure value" /></th>
+            <th title="Weapon strength"><GameIcon name="sword" :size="16" title="Weapon strength" /></th>
+            <th title="Keys and spells"><GameIcon name="key" :size="16" title="Keys and spells" /></th>
+            <th v-if="hasRolls" title="Tie-break dice"><GameIcon name="dice" :size="16" title="Tie-break dice" /></th>
           </tr>
         </thead>
         <tbody>
@@ -55,6 +55,7 @@
 </template>
 
 <script setup>
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed } from 'vue';
 import { getHero } from '@/theme';
 

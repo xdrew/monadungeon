@@ -1,6 +1,6 @@
 <template>
   <div class="curse-panel" data-testid="curse-choice">
-    <div class="curse-header">☠️ Curse of Karak</div>
+    <div class="curse-header"><GameIcon name="skull" :size="18" /> Curse of Karak</div>
     <p class="curse-prompt">
       You defeated a mummy. Choose who carries the curse — their hero loses all skills until healed at a fountain.
     </p>
@@ -15,7 +15,7 @@
         :data-testid="`curse-player-${player.id}`"
         @click="emit('choose', player.id)"
       >
-        ☠️ {{ player.label }}<span v-if="player.id === cursedPlayerId" class="holder-hint"> (already cursed)</span>
+        <GameIcon name="skull" :size="16" /> {{ player.label }}<span v-if="player.id === cursedPlayerId" class="holder-hint"> (already cursed)</span>
       </button>
       <button
         v-if="cursedPlayerId"
@@ -32,6 +32,7 @@
 </template>
 
 <script setup>
+import GameIcon from '@/components/ui/GameIcon.vue';
 defineProps({
   /** The other players: [{ id, label }] */
   players: { type: Array, default: () => [] },

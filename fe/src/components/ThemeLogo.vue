@@ -10,8 +10,7 @@
 
 <script setup>
 /**
- * Brand logo of the active theme. Renders nothing when the theme has no logo (base theme).
- * The purple glow of the Monad theme is applied from styles/themes/monad.css.
+ * Brand logo of the theme. Renders nothing when the theme has no logo.
  */
 import { theme } from '@/theme';
 

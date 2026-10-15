@@ -15,15 +15,15 @@ export default {
 
 <style>
 body {
-  font-family: 'Arial', sans-serif;
+  font-family: var(--font-body);
   margin: 0;
   padding: 0;
-  background-color: #0a0a0a;
+  background-color: var(--bg-primary);
 }
 
 #app {
   width: 100%;
   min-height: 100vh;
-  color: white;
+  color: var(--text-primary);
 }
 </style>

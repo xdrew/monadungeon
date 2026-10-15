@@ -19,7 +19,7 @@
             alt="Treasure Chest"
             class="chest-icon"
           />
-          <span class="key-missing">🔑❌</span>
+          <span class="key-missing" aria-label="No key"><GameIcon name="key" :size="30" /><GameIcon name="close" :size="16" class="key-missing-cross" /></span>
         </div>
         
         <p>You cannot open this {{ formatChestType }} without a key!</p>
@@ -40,6 +40,7 @@
 
 <script setup>
 import { defineProps, defineEmits, computed, onMounted, onUnmounted } from 'vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
 
 const props = defineProps({
   chestType: {
@@ -170,8 +171,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 }
 
 .key-missing {
-  display: inline-block;
+  display: inline-flex;
+  align-items: flex-end;
   position: relative;
+  color: var(--text-accent);
+}
+
+.key-missing-cross {
+  color: var(--color-danger);
+  margin-left: -6px;
 }
 
 .kbd-hint {

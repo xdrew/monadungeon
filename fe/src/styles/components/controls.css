@@ -1,44 +1,6 @@
 /* Game Controls Styles */
 
-/* Zoom Controls */
-.zoom-controls {
-  position: absolute;
-  top: var(--spacing-sm);
-  right: var(--spacing-sm);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  z-index: var(--z-tooltip);
-  background-color: rgba(34, 34, 34, 0.8);
-  border-radius: var(--radius-md);
-  padding: 6px;
-  box-shadow: var(--shadow-md);
-}
-
-.zoom-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  background-color: var(--bg-tertiary);
-  border: 1px solid #555;
-  cursor: pointer;
-  transition: var(--transition-fast);
-  color: #ddd;
-}
-
-.zoom-button:hover {
-  background-color: #444;
-  border-color: #666;
-  color: #fff;
-}
-
-.zoom-button:active {
-  background-color: #555;
-  transform: translateY(1px);
-}
+/* Zoom controls: iron rings, styled in ZoomControls.vue */
 
 .center-icon {
   font-size: 18px;
@@ -150,19 +112,7 @@
 
 /* Mobile Responsive Controls */
 @media (max-width: 768px) {
-  .zoom-controls {
-    top: 8px;
-    right: 8px;
-    gap: 6px;
-    padding: 4px;
-    background-color: rgba(34, 34, 34, 0.9);
-  }
 
-  .zoom-button {
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
-  }
 
   .center-icon {
     font-size: 16px;
@@ -180,18 +130,7 @@
 }
 
 @media (max-width: 480px) {
-  .zoom-controls {
-    top: 5px;
-    right: 5px;
-    gap: 4px;
-    padding: 3px;
-  }
 
-  .zoom-button {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
-  }
 
   .center-icon {
     font-size: 14px;

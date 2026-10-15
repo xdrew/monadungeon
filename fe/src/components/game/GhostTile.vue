@@ -38,9 +38,10 @@
         <button
           class="ghost-rotate-btn"
           title="Rotate tile (R)"
+          aria-label="Rotate tile"
           @click.stop="rotateGhostTile"
         >
-          🔄
+          <GameIcon name="rotate" :size="18" />
         </button>
       </div>
       <!-- Add visual indicators for openings in each direction -->
@@ -72,6 +73,7 @@
 
 <script setup>
 import { defineProps, defineEmits, computed, watch, ref, onMounted, onUpdated } from 'vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { getTileImageWithRotation } from '@/config/tileImageConfig';
 
 const props = defineProps({

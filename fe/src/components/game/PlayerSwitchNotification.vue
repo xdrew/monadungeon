@@ -1,7 +1,7 @@
 <template>
   <div class="player-switch-notification">
     <div class="notification-content">
-      <span class="notification-emoji">🔄</span>
+      <span class="notification-emoji"><GameIcon name="swap" :size="22" /></span>
       <span class="notification-text">Active player changed to: {{ formattedPlayerId }}</span>
       <button
         class="dismiss-btn"
@@ -15,6 +15,7 @@
 
 <script setup>
 import { defineProps, defineEmits, onMounted, onUnmounted } from 'vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
 
 const props = defineProps({
   playerId: {
@@ -70,7 +71,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 }
 
 .notification-emoji {
-  font-size: 1.5rem;
+  display: inline-flex;
+  color: var(--text-accent);
 }
 
 .notification-text {

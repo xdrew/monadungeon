@@ -1,7 +1,11 @@
 import { createApp, h, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import '@fontsource/pirata-one/400.css'
+import '@fontsource/spectral/400.css'
+import '@fontsource/spectral/600.css'
+import '@fontsource/spectral/400-italic.css'
 import './assets/main.css'
-import { applyTheme } from './theme'
+import '@/styles/index.css'
 import router from './router'
 import HomeView from './views/HomeView.vue'
 import GameView from './views/GameView.vue'
@@ -138,7 +142,6 @@ const App = {
 // ----------------
 // Create & Mount App
 // ----------------
-applyTheme()
 
 const app = createApp(App)
 

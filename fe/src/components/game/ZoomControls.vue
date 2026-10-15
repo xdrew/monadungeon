@@ -1,31 +1,35 @@
 <template>
   <div class="zoom-controls">
     <button
-      class="zoom-button"
+      class="zoom-button btn btn--iron btn--sm"
       title="Center Map"
+      aria-label="Center Map"
       @click="centerMap"
     >
-      <span class="center-icon">◎</span>
+      <GameIcon name="center" :size="18" />
     </button>
     <button
-      class="zoom-button"
+      class="zoom-button btn btn--iron btn--sm"
       title="Center on Player"
+      aria-label="Center on Player"
       @click="centerOnPlayer"
     >
-      <span class="center-icon">👤</span>
+      <GameIcon name="pin" :size="18" />
     </button>
     <button
-      class="zoom-button"
+      class="zoom-button btn btn--iron btn--sm"
       title="Center on Available Places"
+      aria-label="Center on Available Places"
       @click="centerOnAvailablePlaces"
     >
-      <span class="center-icon">⊕</span>
+      <GameIcon name="explore" :size="18" />
     </button>
   </div>
 </template>
 
 <script setup>
 import { defineEmits } from 'vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
 
 const emit = defineEmits(['center-map', 'center-player', 'center-available']);
 
@@ -43,47 +47,14 @@ const centerOnAvailablePlaces = () => {
 </script>
 
 <style scoped>
+/* A column of small iron rings; the rings come from .btn--iron */
 .zoom-controls {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 14px;
+  right: 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   z-index: 30;
-  background-color: rgba(34, 34, 34, 0.8);
-  border-radius: 4px;
-  padding: 6px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
-
-.zoom-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  background-color: #333;
-  border: 1px solid #555;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: #ddd;
-}
-
-.zoom-button:hover {
-  background-color: #444;
-  border-color: #666;
-  color: #fff;
-}
-
-.zoom-button:active {
-  background-color: #555;
-  transform: translateY(1px);
-}
-
-.center-icon {
-  font-size: 18px;
-  line-height: 1;
-}
-</style> 
+</style>

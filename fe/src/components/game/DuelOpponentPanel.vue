@@ -1,6 +1,6 @@
 <template>
   <div class="duel-panel" data-testid="duel-opponent-choice">
-    <div class="duel-header">⚔️ Battle Arena</div>
+    <div class="duel-header"><GameIcon name="sword" :size="18" /> Battle Arena</div>
     <p class="duel-prompt">
       You are the first hero in this arena. Choose your opponent — their figure is moved here and the duel begins.
       You roll first; the loser loses 1 HP and the winner takes one item.
@@ -15,13 +15,14 @@
         :data-testid="`duel-opponent-${player.id}`"
         @click="emit('choose', player.id)"
       >
-        ⚔️ {{ player.label }}<span v-if="player.treasures" class="duel-hint"> · 💰 {{ player.treasures }}</span>
+        <GameIcon name="sword" :size="16" /> {{ player.label }}<span v-if="player.treasures" class="duel-hint"> · <GameIcon name="treasure" :size="14" /> {{ player.treasures }}</span>
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
+import GameIcon from '@/components/ui/GameIcon.vue';
 defineProps({
   /** The rivals: [{ id, label, treasures }] */
   players: { type: Array, default: () => [] },

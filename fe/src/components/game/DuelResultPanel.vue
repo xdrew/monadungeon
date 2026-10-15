@@ -1,6 +1,6 @@
 <template>
   <div class="duel-result" data-testid="duel-result">
-    <div class="duel-result-header">⚔️ Duel on the Battle Arena</div>
+    <div class="duel-result-header"><GameIcon name="sword" :size="18" /> Duel on the Battle Arena</div>
 
     <p v-if="phaseText" class="duel-phase">{{ phaseText }}</p>
 
@@ -15,7 +15,7 @@
         <template v-if="side.total !== null">
           <div class="duel-side-total">{{ side.total }}</div>
           <div class="duel-side-detail">
-            🎲 {{ side.dice }}<span v-if="side.itemDamage"> · ⚔️ +{{ side.itemDamage }}</span>
+            <GameIcon name="dice" :size="14" /> {{ side.dice }}<span v-if="side.itemDamage"> · <GameIcon name="sword" :size="14" /> +{{ side.itemDamage }}</span>
             <span v-if="side.bonuses.length"> · {{ side.bonuses.join(', ') }}</span>
           </div>
         </template>
@@ -58,6 +58,7 @@
 </template>
 
 <script setup>
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed } from 'vue';
 import { getItemImage } from '@/utils/itemUtils';
 
@@ -83,10 +84,10 @@ const winnerId = computed(() => {
 });
 
 const BONUS_LABELS = {
-  farseeing: '👁️ Farseeing',
-  hpSacrificed: '🩸 Sacrifice',
-  rerolled: '🎲 Double Attack',
-  spellsKept: '✨ Magical Affinity'
+  farseeing: 'Farseeing',
+  hpSacrificed: 'Sacrifice',
+  rerolled: 'Double Attack',
+  spellsKept: 'Magical Affinity'
 };
 
 const sideOf = (role) => {
@@ -132,7 +133,7 @@ const canPickLoot = computed(() => props.duel.phase === 'loot'
 
 const lootText = computed(() => {
   if (!props.duel.result || props.duel.result === 'tie') return '';
-  if (props.duel.loot) return `🎒 ${labelOf(winnerId.value)} takes the ${itemName(props.duel.loot)}`;
+  if (props.duel.loot) return `${labelOf(winnerId.value)} takes the ${itemName(props.duel.loot)}`;
   if (props.duel.phase === 'done') return 'Nothing to take';
   return '';
 });

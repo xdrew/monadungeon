@@ -1,13 +1,10 @@
 /**
- * Active theme — selected once at build time by VITE_THEME (base | monad, default base).
- * Everything flavour-related (monster/hero names and images, logo, app name, sign-in)
- * is read from here; nothing in the app reads VITE_THEME directly.
+ * The game's theme: monster/hero names and images, app name, page title.
+ * Everything flavour-related is read from here.
  */
-import { themes, resolveThemeName } from './themes';
+import base from './base';
 
-export const THEME_NAME = resolveThemeName(import.meta.env.VITE_THEME);
-
-export const theme = themes[THEME_NAME];
+export const theme = base;
 
 /**
  * Finds the monster entry for a backend item name. Matches by prefix/substring like the
@@ -43,12 +40,4 @@ export const getMonsterEmoji = (key, hp = 0) => getMonster(key, hp).emoji;
 export const getHero = (key) => {
   const heroKey = key && key in theme.heroes ? key : 'none';
   return { key: heroKey, ...theme.heroes[heroKey] };
-};
-
-/** Marks <html> with the theme (the Vite HTML plugin does it at build time; this covers dev/HMR). */
-export const applyTheme = () => {
-  if (typeof document !== 'undefined') {
-    document.documentElement.dataset.theme = THEME_NAME;
-  }
-  console.info('[theme] active theme:', THEME_NAME);
 };

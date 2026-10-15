@@ -6,7 +6,7 @@
   >
     <div class="stealth-card">
       <div class="stealth-header">
-        <span class="stealth-label">🗡️ Stealth</span>
+        <span class="stealth-label"><GameIcon name="eye" :size="16" /> Stealth</span>
       </div>
 
       <div class="stealth-monster">
@@ -18,7 +18,7 @@
           emoji-class="stealth-monster-emoji"
         />
         <div class="stealth-monster-name">{{ monsterName }}</div>
-        <div v-if="monsterHp" class="stealth-monster-hp">♥ {{ monsterHp }}</div>
+        <div v-if="monsterHp" class="stealth-monster-hp"><GameIcon name="heart" :size="14" /> {{ monsterHp }}</div>
       </div>
 
       <p class="stealth-prompt">The Thief can slip past this monster without a fight. What will she do?</p>
@@ -29,14 +29,14 @@
           data-testid="stealth-fight"
           @click="choose(false)"
         >
-          ⚔️ Fight <span class="kbd-hint">(Enter)</span>
+          <GameIcon name="sword" :size="16" /> Fight <span class="kbd-hint">(Enter)</span>
         </button>
         <button
           class="btn-sneak"
           data-testid="stealth-sneak"
           @click="choose(true)"
         >
-          🥷 Sneak past <span class="kbd-hint">(S)</span>
+          <GameIcon name="eye" :size="16" /> Sneak past <span class="kbd-hint">(S)</span>
         </button>
       </div>
     </div>
@@ -45,6 +45,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { getMonsterDisplayName, getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';
 import ThemedImage from '@/components/ThemedImage.vue';
 

@@ -6,7 +6,7 @@
   >
     <div class="fateweaver-card">
       <div class="fateweaver-header">
-        <span class="fateweaver-label">🔮 Fateweaver</span>
+        <span class="fateweaver-label"><GameIcon name="eye" :size="16" /> Fateweaver</span>
       </div>
 
       <p class="fateweaver-prompt">
@@ -29,8 +29,8 @@
           />
           <div class="fateweaver-token-name">{{ token.label }}</div>
           <div class="fateweaver-token-badges">
-            <span v-if="token.isMonster" class="badge badge-hp">👹 HP {{ token.hp }}</span>
-            <span v-if="token.value > 0" class="badge badge-value">💎 {{ token.value }} VP</span>
+            <span v-if="token.isMonster" class="badge badge-hp"><GameIcon name="heart" :size="13" /> HP {{ token.hp }}</span>
+            <span v-if="token.value > 0" class="badge badge-value"><GameIcon name="treasure" :size="13" /> {{ token.value }} VP</span>
           </div>
           <button
             class="btn-place"
@@ -46,6 +46,7 @@
 </template>
 
 <script setup>
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
 import { getItemEmoji, getItemImage, formatItemName } from '@/utils/itemUtils';
 import { getMonsterDisplayName, getMonsterImage, getMonsterEmoji } from '@/utils/monsterUtils';

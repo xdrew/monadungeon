@@ -1,10 +1,6 @@
 /**
- * Base theme — the Karak board game look: Karak monster and hero names, no brand logo,
- * no Monad Games ID sign-in. Image files live in fe/public/themes/base/ (see its README);
+ * Base theme — the Karak board game look: Karak monster and hero names, no brand logo. Image files live in fe/public/themes/base/ (see its README);
  * a missing file falls back to the emoji (ThemedImage.vue).
- *
- * Plain data only — this file is also imported by the Vite config (vite-plugins/themeHtml.js),
- * so it must not touch import.meta.env or the DOM.
  */
 const MONSTER_IMAGES = '/themes/base/monsters';
 const HERO_IMAGES = '/themes/base/heroes';
@@ -17,7 +13,6 @@ export default {
   logo: null,
   /** Lobby background art (null = plain dark background) */
   lobbyBackground: '/themes/base/lobby-bg.webp',
-  monadGamesId: false,
 
   /** Keyed by ItemName value from the backend. */
   monsters: {

@@ -66,10 +66,7 @@ services:
       context: ./fe
       dockerfile: Dockerfile.prod
       args:
-        VITE_PRIVY_APP_ID: "${VITE_PRIVY_APP_ID}"
-        VITE_MONAD_GAMES_APP_ID: "${VITE_MONAD_GAMES_APP_ID}"
         VITE_API_BASE_URL: "${VITE_API_BASE_URL:-https://monadungeon.avelent.work}"
-        VITE_THEME: "${VITE_THEME:-base}"
     volumes:
       - frontend_dist:/target
       - frontend_backup:/backup

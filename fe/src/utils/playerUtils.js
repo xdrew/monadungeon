@@ -151,10 +151,7 @@ export const joinGame = async (gameId, currentPlayerId, gameApi, updateGameDataC
 
     console.log('Joining game with ID:', gameId, 'as player:', currentPlayerId);
 
-    // Join the game with username if available
-    const username = localStorage.getItem('monadUsername') || null;
-    const externalId = localStorage.getItem('privyUserId') || null;
-    await gameApi.joinGame(gameId, currentPlayerId, externalId, username);
+    await gameApi.joinGame(gameId, currentPlayerId);
 
     // Refresh game data
     const updatedGameData = await gameApi.getGame(gameId);

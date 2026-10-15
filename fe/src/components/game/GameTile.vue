@@ -156,9 +156,10 @@
         <button 
           class="center-view-button" 
           title="Center view on this tile"
+          aria-label="Center view on this tile"
           @click.stop="centerView"
         >
-          🔍
+          <GameIcon name="center" :size="16" />
         </button>
       </div>
       <!-- Add visual indicators for openings in each direction -->
@@ -189,6 +190,7 @@
 </template>
 
 <script setup>
+import GameIcon from '@/components/ui/GameIcon.vue';
 import { defineProps, defineEmits, computed, ref, onMounted } from 'vue';
 import { getPlayerEmoji } from '@/utils/playerUtils';
 import { getItemDamage } from '@/utils/itemUtils';

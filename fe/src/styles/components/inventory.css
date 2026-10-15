@@ -762,7 +762,7 @@
   padding-bottom: var(--spacing-sm);
 }
 
-.join-button, .ready-button, .add-player-button, .start-button, .replay-button {
+.add-player-button {
   background-color: var(--color-primary);
   color: white;
   border: none;
@@ -776,22 +776,16 @@
   margin-bottom: var(--spacing-xs);
 }
 
-.join-button:hover, .ready-button:hover:not(:disabled), .add-player-button:hover:not(:disabled), 
-.start-button:hover:not(:disabled), .replay-button:hover:not(:disabled) {
+.add-player-button:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
 }
 
-.ready-button:disabled, .add-player-button:disabled, .start-button:disabled, .replay-button:disabled {
+.add-player-button:disabled {
   background-color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.6;
-}
-
-.ready-button:disabled {
-  background-color: var(--color-primary);
-  opacity: 0.8;
 }
 
 /* Player Setup specific styles */

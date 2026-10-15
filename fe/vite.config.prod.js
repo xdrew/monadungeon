@@ -1,18 +1,11 @@
 import path from 'path'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import themeHtml from './vite-plugins/themeHtml.js'
 
 // Production configuration with environment variables defined
-export default defineConfig(({ mode }) => {
-  // Theme (base | monad) is fixed at build time: VITE_THEME from the environment or .env files
-  const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const themeName = process.env.VITE_THEME || env.VITE_THEME || 'base'
-  console.info('[theme] building with theme:', themeName)
-
+export default defineConfig(() => {
   return {
     plugins: [
-      themeHtml(themeName),
       vue({
         template: {
           compilerOptions: {
@@ -52,10 +45,7 @@ export default defineConfig(({ mode }) => {
     },
     // Define environment variables explicitly for production build
     define: {
-      'import.meta.env.VITE_PRIVY_APP_ID': JSON.stringify(process.env.VITE_PRIVY_APP_ID || 'cmeb207py01ikky0csyj8akos'),
-      'import.meta.env.VITE_MONAD_GAMES_APP_ID': JSON.stringify(process.env.VITE_MONAD_GAMES_APP_ID || 'cmd8euall0037le0my79qpz42'),
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://monadungeon.avelent.work'),
-      'import.meta.env.VITE_THEME': JSON.stringify(themeName),
     },
     server: {
       host: '0.0.0.0',

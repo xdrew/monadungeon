@@ -1,7 +1,7 @@
 <template>
   <div class="healing-notification">
     <div class="notification-content">
-      <span class="notification-emoji">⛲</span>
+      <span class="notification-emoji"><GameIcon name="heart" :size="24" /></span>
       <span class="notification-text">{{ playerName }} healed at the fountain!</span>
       <span class="heal-amount">+{{ healAmount }} HP</span>
       <button
@@ -17,15 +17,15 @@
         :key="i"
         class="particle"
         :style="{ animationDelay: `${i * 0.1}s` }"
-      >
-        ✨
-      </span>
+        aria-hidden="true"
+      ></span>
     </div>
   </div>
 </template>
 
 <script setup>
 import { defineProps, defineEmits, onMounted, onUnmounted } from 'vue';
+import GameIcon from '@/components/ui/GameIcon.vue';
 
 const props = defineProps({
   playerId: {
@@ -101,8 +101,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 }
 
 .notification-emoji {
-  font-size: 1.8rem;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
+  display: inline-flex;
+  color: var(--color-danger);
+  filter: drop-shadow(0 0 4px rgba(var(--ember-rgb), 0.6));
 }
 
 .notification-text {
@@ -148,7 +149,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 .particle {
   position: absolute;
-  font-size: 1.2rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-accent);
+  box-shadow: 0 0 8px rgba(var(--ember-rgb), 0.9);
   animation: particleFloat 2s ease-out forwards;
   opacity: 0;
 }

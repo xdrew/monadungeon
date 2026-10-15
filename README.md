@@ -7,10 +7,8 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 
 ## Game Features
 
-### Authentication
+### No sign-in
 - **Guest Play**: Jump straight into the game without creating an account
-- **Privy Integration**: Secure Web3 authentication with wallet connection and social logins
-- **Multiple Login Options**: Connect via MetaMask, email, or social accounts through Privy
 
 ### Core Gameplay
 - **Multiplayer Support**: 1-5 players; the dice pick who starts, then turns go clockwise
@@ -50,29 +48,16 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 - **Message Bus Middleware**: Automatic logging, transactions, outbox pattern, and deduplication
 - **API Design**: RESTful endpoints with invokable controllers and type-safe DTOs
 - **Test Mode**: Backend supports controlled randomness for predictable E2E tests
-- **Build-time themes**: `VITE_THEME=base|monad` picks names, images, branding and sign-in (see [Themes](#themes))
+- **Theme: Torchlight**: fonts and palette in `fe/src/styles/design-tokens.css` (see [Theme](#theme))
 
-## Themes
+## Theme
 
-The flavour of the UI (monster and hero names and pictures, logo, app name, colour palette, sign-in) is a **build-time theme** selected with `VITE_THEME`:
+The game has one look, **Torchlight**: a dark dungeon lit by torches, Pirata One for headings and Spectral for text (self-hosted through `@fontsource`), an ember/bone palette, iron-ring buttons and line icons instead of emoji.
 
-| `VITE_THEME` | Look |
-|---|---|
-| `base` (default) | Karak board game: Giant Rat, Skeleton King, Dragon…, hero portraits, no sign-in |
-| `monad` | Monad Testnet flavour: Monad mascots as monsters, Monad logo, purple palette, Monad Games ID sign-in |
-
-```bash
-# base theme (default)
-cd fe && npm run build
-
-# Monad theme
-cd fe && VITE_THEME=monad npm run build
-
-# production image: VITE_THEME is a build arg of frontend-builder (compose.prod.yml / fe/Dockerfile.prod)
-VITE_THEME=monad docker compose -f compose.prod.yml build frontend-builder
-```
-
-Theme data lives in `fe/src/theme/` (`base.js`, `monad.js`); images in `fe/public/themes/<theme>/`. If a base-theme image is missing the UI falls back to an emoji (`ThemedImage.vue`).
+- Fonts, palette, radii and shadows: `fe/src/styles/design-tokens.css` (`--font-display`, `--font-body`, `--bg-*`, `--text-*`, `--color-primary` ember, `--iron*`)
+- Buttons: `fe/src/styles/components/buttons.css` (`.btn` + `.btn--ember` / `.btn--ghost` / `.btn--blood` / `.btn--iron`)
+- Icons: `fe/src/components/ui/GameIcon.vue` (`<GameIcon name="heart" />`, set in `gameIcons.js`)
+- Monster and hero names and images: `fe/src/theme/base.js`; images in `fe/public/themes/base/`. If an image is missing the UI falls back to an emoji (`ThemedImage.vue`).
 
 ### Art generation
 
