@@ -2049,6 +2049,9 @@ if (import.meta.env.DEV) {
   content: '';
   flex: 0 0 24px;
   height: 1px;
+  /* level with the skill heading */
+  align-self: flex-start;
+  margin-top: 13px;
   background: linear-gradient(90deg, rgba(var(--ember-rgb), 0) 0%, rgba(var(--ember-rgb), 0.7) 100%);
 }
 
@@ -2056,8 +2059,15 @@ if (import.meta.env.DEV) {
   background: linear-gradient(90deg, rgba(var(--ember-rgb), 0.7) 0%, rgba(var(--ember-rgb), 0) 100%);
 }
 
+/* the skill is a heading line of its own; the sentence follows below it, no punctuation glued to the display face */
+.first-roll-note > span {
+  display: block;
+}
+
 .first-roll-note :deep(b),
 .first-roll-note b {
+  display: block;
+  margin-bottom: 2px;
   font-family: var(--font-display);
   font-style: normal;
   font-weight: 400;
