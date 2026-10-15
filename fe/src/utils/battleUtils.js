@@ -3,6 +3,22 @@
  */
 
 /**
+ * Result of a fight for a total strength against the monster's HP ('loose' | 'draw' | 'win').
+ * battleInfo.monster is the monster's HP as a number (Field::lastBattleInfo['monster']).
+ * @param {number} totalDamage
+ * @param {number|Object} monster - HP, or an object with hp
+ * @param {boolean} tieIsWin - Thief "Backstab"
+ * @returns {string|null} null when the monster HP is unknown
+ */
+export const predictBattleResult = (totalDamage, monster, tieIsWin = false) => {
+  const monsterHp = typeof monster === 'number' ? monster : monster?.hp;
+  if (typeof monsterHp !== 'number') return null;
+  if (totalDamage < monsterHp) return 'loose';
+  if (totalDamage === monsterHp && !tieIsWin) return 'draw';
+  return 'win';
+};
+
+/**
  * Closes battle report and ends the turn
  * @param {Object} params - Parameters for closing battle report and ending turn
  * @param {Ref<boolean>} params.loading - Reference to loading state

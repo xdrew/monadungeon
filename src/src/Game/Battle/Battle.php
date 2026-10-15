@@ -499,7 +499,11 @@ class Battle extends AggregateRoot
             $unstoppable = $this->turnContinuesAfterBattle($finalResult, 0, $messageContext);
             // Baron Markul "Lightning Attack" not won: the turn ends once he has chosen where to retreat
             $retreatPending = $this->lightning && $finalResult !== BattleResult::WIN;
-            if (!$awaitingReincarnation && !$unstoppable && !$retreatPending) {
+            // Valduk "Tireless": a win whose loot he did not take keeps the turn open, he may leave the loot and
+            // keep moving (the client ends the turn itself when he leaves the loot without Tireless)
+            $tirelessChoice = $finalResult === BattleResult::WIN && !$command->pickupItem
+                && $messageContext->dispatch(new GetPlayer($command->playerId))->getHero()?->tireless() === true;
+            if (!$awaitingReincarnation && !$unstoppable && !$retreatPending && !$tirelessChoice) {
                 $messageContext->dispatch(new EndTurn(
                     turnId: $this->turnId,
                     gameId: $this->gameId,

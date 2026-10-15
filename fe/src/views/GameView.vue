@@ -1068,7 +1068,7 @@ import { selectInventoryItem as selectInventoryItemUtil, selectItemToReplace as 
 import { getMonsterEmoji as getMonsterEmojiUtil } from '@/utils/monsterUtils';
 
 // Import battle utility functions
-import { closeBattleReportAndEndTurn as closeBattleReportAndEndTurnUtil } from '@/utils/battleUtils';
+import { closeBattleReportAndEndTurn as closeBattleReportAndEndTurnUtil, predictBattleResult } from '@/utils/battleUtils';
 
 // Import keyboard utility functions
 import { handleKeyboardEvents as handleKeyboardEventsUtil } from '@/utils/keyboardUtils';
@@ -4762,8 +4762,8 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
     const sacrificeHp = finalizeBattleData.sacrificeHp === true; // Warlock "Sacrifice": +1 strength for 1 HP
     const totalDamage = (battleInfo.value?.totalDamage || 0) + (sacrificeHp ? 1 : 0);
     const tieIsWin = battleInfo.value?.tieIsWin === true; // Thief "Backstab"
-    const predictedResult = monster && totalDamage < monster.hp ? 'loose' :
-                          (monster && totalDamage === monster.hp && !tieIsWin ? 'draw' : 'win');
+    // battleInfo.monster is the monster's HP (a number); spells chosen in the modal are not in totalDamage yet
+    const predictedResult = predictBattleResult(totalDamage, monster, tieIsWin);
 
     // The sacrifice is paid whatever the result
     if (sacrificeHp && getCurrentPlayerData.value && getCurrentPlayerData.value.hp > 0) {
@@ -4797,10 +4797,14 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
     // The backend only automatically ends the turn for LOSE/DRAW results
     // For WIN results where the player doesn't pick up the item, we need to manually end the turn
     // (unless the Swordsman is Unstoppable: a 6 keeps his turn going)
-    if (predictedResult === 'win' && finalizeBattleData.tireless === true) {
+    // The real result comes from the final strength the backend computed (spells and Sacrifice included);
+    // a fight that is not won was already ended by the backend (or waits for Markul's retreat choice)
+    const finalResult = predictBattleResult(finalizeResult?.finalTotalDamage ?? totalDamage, monster, tieIsWin) ?? predictedResult;
+    console.log('[FIX] finalize result', { predictedResult, finalResult, finalTotalDamage: finalizeResult?.finalTotalDamage, monster, tireless: finalizeBattleData.tireless === true });
+    if (finalResult === 'win' && finalizeBattleData.tireless === true) {
       // Valduk "Tireless": the loot stays on the tile and the turn goes on
       await gameApi.continueAfterVictory({ gameId: id.value, playerId: currentPlayerId.value, turnId: currentTurnId });
-    } else if (predictedResult === 'win' && !finalizeResult?.awaitingReincarnation && !lastBattleUnstoppable()) {
+    } else if (finalResult === 'win' && !finalizeResult?.awaitingReincarnation && !lastBattleUnstoppable()) {
 
       await gameApi.endTurn({
         gameId: id.value,

@@ -211,6 +211,45 @@ final class RegentHeroBattleTest extends TestCase
         self::assertNull($this->findMessage($messages, EndTurn::class));
     }
 
+    #[Test]
+    public function valdukLeavingTheLootAfterASpellAssistedWinKeepsHisTurn(): void
+    {
+        // 2 + 2 = 4 is short of the rat (5); the Frost Fist (+2) wins the fight in the finalization
+        $this->field->setTestDiceRolls([2, 2]);
+        $valduk = $this->createPlayer(HeroType::BARBARIAN, 5);
+        $frostFist = new Item(ItemName::SKELETON_MAGE, ItemType::FROST_FIST, 11, 0, true);
+        $this->giveSpells($valduk, [$frostFist]);
+        $tester = $this->createTester($valduk);
+
+        [$battle] = $tester->handle(Battle::start(...), $this->startBattle(Item::createGiantRat()));
+        [, $messages] = $tester->handle(
+            static fn(FinalizeBattle $command, MessageContext $context) => $battle->finalizeBattle($command, $context),
+            $this->finalize([$frostFist->itemId->toString()]),
+        );
+
+        self::assertSame(BattleResult::WIN, $this->lastBattleCompleted($messages)->result);
+        self::assertNull($this->findMessage($messages, EndTurn::class), 'Tireless: he may still leave the loot and keep moving');
+    }
+
+    #[Test]
+    public function aSpellAssistedWinStillEndsTheTurnOfOtherHeroes(): void
+    {
+        $this->field->setTestDiceRolls([2, 2]);
+        $warrior = $this->createPlayer(HeroType::THIEF, 5);
+        $frostFist = new Item(ItemName::SKELETON_MAGE, ItemType::FROST_FIST, 11, 0, true);
+        $this->giveSpells($warrior, [$frostFist]);
+        $tester = $this->createTester($warrior);
+
+        [$battle] = $tester->handle(Battle::start(...), $this->startBattle(Item::createGiantRat()));
+        [, $messages] = $tester->handle(
+            static fn(FinalizeBattle $command, MessageContext $context) => $battle->finalizeBattle($command, $context),
+            $this->finalize([$frostFist->itemId->toString()]),
+        );
+
+        self::assertSame(BattleResult::WIN, $this->lastBattleCompleted($messages)->result);
+        self::assertInstanceOf(EndTurn::class, $this->findMessage($messages, EndTurn::class));
+    }
+
     private function startBattle(Item $monster, bool $lightning = false): StartBattle
     {
         return new StartBattle(
@@ -225,14 +264,17 @@ final class RegentHeroBattleTest extends TestCase
         );
     }
 
-    private function finalize(): FinalizeBattle
+    /**
+     * @param list<string> $selectedConsumableIds
+     */
+    private function finalize(array $selectedConsumableIds = []): FinalizeBattle
     {
         return new FinalizeBattle(
             battleId: $this->battleId,
             gameId: $this->gameId,
             playerId: $this->playerId,
             turnId: $this->turnId,
-            selectedConsumableIds: [],
+            selectedConsumableIds: $selectedConsumableIds,
             pickupItem: false,
         );
     }
@@ -258,6 +300,19 @@ final class RegentHeroBattleTest extends TestCase
             ItemCategory::KEY->value => [],
             ItemCategory::WEAPON->value => $weapons,
             ItemCategory::SPELL->value => [],
+            ItemCategory::TREASURE->value => [],
+        ]);
+    }
+
+    /**
+     * @param list<Item> $spells
+     */
+    private function giveSpells(Player $player, array $spells): void
+    {
+        (new \ReflectionProperty(Player::class, 'inventory'))->setValue($player, [
+            ItemCategory::KEY->value => [],
+            ItemCategory::WEAPON->value => [],
+            ItemCategory::SPELL->value => $spells,
             ItemCategory::TREASURE->value => [],
         ]);
     }
