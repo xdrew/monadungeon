@@ -2381,9 +2381,13 @@ button.item-chip {
 .battle-footer .btn {
   position: relative;
   min-height: 58px;
-  padding: 0 28px;
+  /* long labels ("Сразиться, победить и взять награду") wrap inside the button instead of spilling out */
+  padding: 8px 22px;
   gap: 12px;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.1;
+  overflow-wrap: break-word;
   border-radius: 2px;
   font-family: var(--font-display);
   font-size: 21px;
