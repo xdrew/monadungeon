@@ -432,13 +432,13 @@ export default {
     inventoryFull: 'Рюкзак полон',
     consumable: 'Расходуется',
     replaceFrom: {
-      keys: 'Заменить ключ:',
-      weapons: 'Заменить оружие:',
-      spells: 'Заменить заклинание:',
-      treasures: 'Заменить сокровище:',
-      other: 'Заменить из ячеек «{category}»:'
+      keys: 'Какой ключ выбросить?',
+      weapons: 'Какое оружие выбросить?',
+      spells: 'Какое заклинание выбросить?',
+      treasures: 'Какое сокровище выбросить?',
+      other: 'Что выбросить из «{category}»?'
     },
-    replaceSelected: 'Заменить выбранный предмет',
+    dropForFind: 'заменить находкой',
     leaveItem: 'Оставить предмет',
     missingKey: {
       title: 'Нет ключа',

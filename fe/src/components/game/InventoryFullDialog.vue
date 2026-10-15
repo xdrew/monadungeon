@@ -1,5 +1,5 @@
 <template>
-  <!-- A full pack: what goes to make room for the find. A centred plaque over the dimmed field, like the fight's
+  <!-- A full pack: one click on the item that goes swaps it for the find, or leave the find. A centred plaque over the dimmed field, like the fight's
        choice plaque; `.inventory-full-overlay` and `.replace-item` are e2e hooks -->
   <div class="inventory-full-overlay">
     <section
@@ -68,8 +68,8 @@
           type="button"
           class="replace-item"
           :class="{ selected: selectedItemToReplace && selectedItemToReplace.itemId === item.itemId }"
-          :aria-pressed="!!(selectedItemToReplace && selectedItemToReplace.itemId === item.itemId)"
-          @click="selectItemToReplace(item)"
+          :aria-label="`${getDisplayName(item)} — ${$t('dialogs.dropForFind')}`"
+          @click="dropAndTake(item)"
         >
           <img
             v-if="getItemImage(item)"
@@ -93,6 +93,7 @@
               v-else-if="item.treasureValue > 0"
               class="replace-item-stat replace-item-stat--gold"
             >{{ item.treasureValue }}</span>
+            <span class="replace-item-hint">{{ $t('dialogs.dropForFind') }}</span>
           </span>
         </button>
       </div>
@@ -105,15 +106,6 @@
         >
           {{ $t('dialogs.leaveItem') }}
           <span class="kbd-hint">Esc</span>
-        </button>
-        <button
-          type="button"
-          class="inv-btn inv-btn--ember btn-primary"
-          :disabled="!selectedItemToReplace"
-          @click="replaceItem"
-        >
-          {{ $t('dialogs.replaceSelected') }}
-          <span class="kbd-hint">Enter</span>
         </button>
       </div>
     </section>
@@ -189,10 +181,10 @@ const selectItemToReplace = (item) => {
   emit('select-item', item);
 };
 
-const replaceItem = () => {
-  if (selectedItemToReplace.value) {
-    emit('replace-item', selectedItemToReplace.value);
-  }
+// one click: the item goes, the find takes its place
+const dropAndTake = (item) => {
+  selectItemToReplace(item);
+  emit('replace-item', item);
 };
 
 const skipItem = () => {
@@ -200,13 +192,7 @@ const skipItem = () => {
 };
 
 const onKeyDown = (e) => {
-  if (e.key === 'Enter') {
-    if (selectedItemToReplace.value) {
-      replaceItem();
-    }
-    e.preventDefault();
-    e.stopPropagation();
-  } else if (e.key === 'Escape') {
+  if (e.key === 'Escape') {
     skipItem();
     e.preventDefault();
     e.stopPropagation();
@@ -364,7 +350,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 }
 
 .replace-item {
-  flex: 0 1 180px;
+  flex: 0 1 220px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -382,7 +368,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 .replace-item:hover,
 .replace-item:focus-visible {
   outline: none;
-  border-color: rgba(234, 220, 192, 0.5);
+  border-color: rgba(var(--ember-rgb), 0.85);
+  background: rgba(var(--ember-rgb), 0.12);
 }
 
 .replace-item.selected {
@@ -423,9 +410,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
   color: #d9c08a;
 }
 
+.replace-item-hint {
+  margin-top: 2px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.replace-item:hover .replace-item-hint,
+.replace-item:focus-visible .replace-item-hint {
+  color: var(--text-accent);
+}
+
 /* the buttons, as in the fight: bone-rimmed "leave", an ember plate to replace, keycaps under them */
 .inv-actions {
   display: flex;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 30px 12px;
   padding: 6px 0 24px;
@@ -433,7 +435,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown, true));
 
 .inv-btn {
   position: relative;
-  flex: 1 1 0;
+  flex: 0 1 320px;
   min-width: 200px;
   min-height: 56px;
   padding: 0 22px;

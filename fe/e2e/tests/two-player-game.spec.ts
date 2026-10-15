@@ -647,12 +647,9 @@ test.describe('Two Player Game', () => {
     // Wait for inventory full dialog
     await page.getByText('Inventory Full').waitFor();
     
-    // Click the first Dagger item to select it (previously showed "Giant Rat")
+    // Click the first Dagger: one click swaps it for the find (there is no separate confirm button)
     // Since there are 2 daggers, click the first one
     await page.locator('.replace-item').filter({ hasText: 'Dagger' }).first().click();
-    
-    // Click Replace Selected Item button
-    await page.getByRole('button', { name: 'Replace Selected Item' }).click();
     
     // Wait for turn change
     await waitForTurnChange(13, 14);

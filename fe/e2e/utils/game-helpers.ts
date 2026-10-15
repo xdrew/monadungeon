@@ -1018,19 +1018,11 @@ export class GameHelpers {
     const itemCount = await inventoryItems.count();
     console.log(`Found ${itemCount} items in inventory`);
     
+    // One click on the item that goes swaps it for the find (there is no separate confirm button)
     if (itemToReplaceIndex < itemCount) {
       await inventoryItems.nth(itemToReplaceIndex).click();
-      console.log(`Selected item at index ${itemToReplaceIndex} to replace`);
-      
-      // Wait for item to be selected
-      await page.waitForTimeout(TIMEOUTS.ANIMATION_WAIT / 2);
+      console.log(`Swapped the item at index ${itemToReplaceIndex} for the find`);
     }
-    
-    // Click replace button
-    const replaceButton = page.getByRole('button', { name: /Replace Selected Item/i }).first();
-    await replaceButton.waitFor({ state: 'visible' });
-    await replaceButton.click();
-    console.log('Clicked replace button');
     
     // Wait for dialog to close
     await page.waitForSelector('.inventory-full-overlay', { state: 'hidden', timeout: TIMEOUTS.MODAL_WAIT });

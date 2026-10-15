@@ -433,13 +433,13 @@ export default {
     inventoryFull: 'Inventory Full',
     consumable: 'Consumable',
     replaceFrom: {
-      keys: 'Replace from your Keys:',
-      weapons: 'Replace from your Weapons:',
-      spells: 'Replace from your Spells:',
-      treasures: 'Replace from your Treasures:',
-      other: 'Replace from your {category}:'
+      keys: 'Which key do you drop?',
+      weapons: 'Which weapon do you drop?',
+      spells: 'Which spell do you drop?',
+      treasures: 'Which treasure do you drop?',
+      other: 'What do you drop from {category}?'
     },
-    replaceSelected: 'Replace Selected Item',
+    dropForFind: 'swap for the find',
     leaveItem: 'Leave Item',
     missingKey: {
       title: 'Missing Key',

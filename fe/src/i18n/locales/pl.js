@@ -432,13 +432,13 @@ export default {
     inventoryFull: 'Pełny ekwipunek',
     consumable: 'Jednorazowe',
     replaceFrom: {
-      keys: 'Wymień klucz:',
-      weapons: 'Wymień broń:',
-      spells: 'Wymień zaklęcie:',
-      treasures: 'Wymień skarb:',
-      other: 'Wymień z miejsc „{category}”:'
+      keys: 'Który klucz wyrzucić?',
+      weapons: 'Którą broń wyrzucić?',
+      spells: 'Które zaklęcie wyrzucić?',
+      treasures: 'Który skarb wyrzucić?',
+      other: 'Co wyrzucić z „{category}”?'
     },
-    replaceSelected: 'Wymień wybrany przedmiot',
+    dropForFind: 'zamień na znalezisko',
     leaveItem: 'Zostaw przedmiot',
     missingKey: {
       title: 'Brak klucza',
