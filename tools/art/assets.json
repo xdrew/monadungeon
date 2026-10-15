@@ -102,6 +102,42 @@
         "giant_spider",
         "giant_rat"
       ]
+    },
+    {
+      "id": "giant_bat",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/giant_bat.webp",
+      "subject": "a giant dungeon bat swooping with tattered leathery wings spread wide, grey-brown fur, glowing red eyes, fangs bared"
+    },
+    {
+      "id": "skeleton_mage",
+      "kind": "monster",
+      "out": "fe/public/themes/base/monsters/skeleton_mage.webp",
+      "subject": "a skeleton mage in frayed ice-blue robes with a frost-rimmed hood, a crooked staff topped with a glowing ice crystal, pale blue frost magic swirling around its bony hand"
+    },
+    {
+      "id": "dark_thorn",
+      "kind": "icon",
+      "out": "fe/public/images/dark-thorn.webp",
+      "subject": "a dark magic scroll: an unrolled black parchment with a jagged violet-black thorn and a drop of blood drawn on it"
+    },
+    {
+      "id": "frost_fist",
+      "kind": "icon",
+      "out": "fe/public/images/frost-fist.webp",
+      "subject": "a frost magic scroll: an unrolled pale parchment with a clenched fist of ice and frost crystals drawn on it"
+    },
+    {
+      "id": "arena_marker",
+      "kind": "icon",
+      "out": "fe/public/images/arena.webp",
+      "subject": "a tile marker for a battle arena: two crossed swords over a round sand-coloured stone arena ring, torches at the edge"
+    },
+    {
+      "id": "cursed_room_marker",
+      "kind": "icon",
+      "out": "fe/public/images/cursed-room.webp",
+      "subject": "a tile marker for a cursed room: a cracked skull with glowing violet eyes inside a ring of purple curse runes"
     }
   ]
 }

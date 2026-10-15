@@ -10,7 +10,7 @@ from .config import ASSETS_FILE, ROOT, STYLE_FILE, rel
 
 LOG = logging.getLogger("art.manifest")
 
-KINDS = ("monster", "hero", "background")
+KINDS = ("monster", "hero", "background", "icon")
 REF_ROLES = ("style", "composition", "character")
 
 

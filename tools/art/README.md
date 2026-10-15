@@ -1,6 +1,6 @@
 # tools/art — base-theme art generator (Gemini)
 
-Generates the Karak (base theme) monsters, hero portraits and the lobby background with the Gemini image models, keeps the style consistent through a committed style bible and reference images, and records every generation for reproducibility.
+Generates the Karak (base theme) monsters, hero portraits, inventory/tile icons and the lobby background with the Gemini image models, keeps the style consistent through a committed style bible and reference images, and records every generation for reproducibility.
 
 ## Setup
 
@@ -31,9 +31,9 @@ Outputs go straight into `fe/public/themes/base/` (the paths the theme expects, 
 ## How it works
 
 1. **Style bible** `style/style.json` (+ `style/STYLE.md` for humans): the style prompt, negative prompt, palette, per-kind prompt frames, the reference images (existing item icons, figures, a tile, the Monad lobby painting as composition reference) and per-kind output settings (size, aspect ratio, model).
-2. **Manifest** `assets.json`: one entry per asset — `id` (= theme key), `kind` (`monster` | `hero` | `background`), `out`, `subject` prose, optional `character_refs` (ids of generated assets to attach).
+2. **Manifest** `assets.json`: one entry per asset — `id` (= theme key), `kind` (`monster` | `hero` | `background` | `icon`), `out`, `subject` prose, optional `character_refs` (ids of generated assets to attach).
 3. **Generation** in manifest order. Each call sends: the style references for the kind → up to 5 of the most recently generated sprites of the same kind (or the `character_refs`) → the prompt (`style_prompt` + frame + subject + `negative_prompt`). At most 14 references per call.
-4. **Post-processing**: sprites are generated on flat `#00FF00`, the green is keyed out (HSV mask, 2 px dilation, alpha snapped to 0/255), the subject is cropped, padded 6 % and resized (monsters 256×256, heroes 256×384) to a lossless RGBA webp. The background is cover-cropped to 1536×1024 and saved as webp q85.
+4. **Post-processing**: sprites are generated on flat `#00FF00`, the green is keyed out (HSV mask, 2 px dilation, alpha snapped to 0/255), the subject is cropped, padded 6 % and resized (monsters 256×256, heroes 256×384, icons 100×100) to a lossless RGBA webp. The background is cover-cropped to 1536×1024 and saved as webp q85.
 5. **Log** `generated.json` (committed): model, style version, prompt SHA-256, ordered references with roles, raw file, output, timestamp, duration and post-processing stats per asset.
 
 ## Troubleshooting

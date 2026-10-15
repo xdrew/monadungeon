@@ -1125,6 +1125,444 @@
         ]
       },
       "reprocessed_at": "2026-10-14T20:22:58+00:00"
+    },
+    "giant_bat": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "7e5e3a1580864e46c26d182398e6372e4a05938a2b0083551168a10ba9b4f398",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_turnkey.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_warrior.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_king.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/fallen.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/dragon.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/giant_bat.jpg",
+      "output": "fe/public/themes/base/monsters/giant_bat.webp",
+      "generated_at": "2026-10-15T07:40:23+00:00",
+      "duration_s": 20.9,
+      "interaction_id": "v1_ChdWSVBRYW8tZkJySGQ3TThQb0lTYS1RMBIXVklQUWFvLWZCckhkN004UG9JU2EtUTA",
+      "post": {
+        "bbox": [
+          19,
+          72,
+          993,
+          914
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.01,
+        "outline_removed_pct": 0.0,
+        "mirrored": true,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "skeleton_mage": {
+      "kind": "monster",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "6cd6f554e58bd0a255325ff20aff2ad8535ed5dbfc373a604f8043015a625a3f",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/assets/tiles/c-1111.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_warrior.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/skeleton_king.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/fallen.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/dragon.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/themes/base/monsters/giant_bat.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/skeleton_mage.jpg",
+      "output": "fe/public/themes/base/monsters/skeleton_mage.webp",
+      "generated_at": "2026-10-15T07:40:48+00:00",
+      "duration_s": 24.8,
+      "interaction_id": "v1_ChdaNFBRYXBIVVBOYmxrZFVQZ1piZTRBRRIXWjRQUWFwSFVQTmJsa2RVUGdaYmU0QUU",
+      "post": {
+        "bbox": [
+          116,
+          73,
+          910,
+          959
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.02,
+        "outline_removed_pct": 0.0,
+        "mirrored": true,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "dark_thorn": {
+      "kind": "icon",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "f28f4c91cfbdfd241ea8913d50a6412b46a946aeef9dad1259920d35a4b98081",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/fireball.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf-teleport.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf.webp",
+          "role": "style"
+        }
+      ],
+      "raw": "tools/art/out/raw/dark_thorn.jpg",
+      "output": "fe/public/images/dark-thorn.webp",
+      "generated_at": "2026-10-15T07:41:23+00:00",
+      "duration_s": 36.9,
+      "interaction_id": "v1_ChZmNFBRYXN6OEt1Yi1uc0VQMllIZFFBEhZmNFBRYXN6OEt1Yi1uc0VQMllIZFFB",
+      "post": {
+        "bbox": [
+          63,
+          40,
+          933,
+          1002
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "frost_fist": {
+      "kind": "icon",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "7d81110631aa8af3add4d40956ccf3457198277c4da9357e5d8c97cc08a4c74b",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/fireball.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf-teleport.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dark-thorn.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/frost_fist.jpg",
+      "output": "fe/public/images/frost-fist.webp",
+      "generated_at": "2026-10-15T07:42:09+00:00",
+      "duration_s": 47.4,
+      "interaction_id": "v1_ChdvNFBRYW9XWUhOaVVrZFVQaWUzbWlBRRIXbzRQUWFvV1lITmlVa2RVUGllM21pQUU",
+      "post": {
+        "bbox": [
+          62,
+          18,
+          977,
+          1014
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "arena_marker": {
+      "kind": "icon",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "ef6d6aa935e35729ac325e275537cff1752352865f46c8be2b48de563b2fbb2c",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/fireball.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf-teleport.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dark-thorn.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/images/frost-fist.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/arena_marker.jpg",
+      "output": "fe/public/images/arena.webp",
+      "generated_at": "2026-10-15T07:42:38+00:00",
+      "duration_s": 29.6,
+      "interaction_id": "v1_ChcwWVBRYXRtaUJMcVdrZFVQam82TDRBRRIXMFlQUWF0bWlCTHFXa2RVUGpvNkw0QUU",
+      "post": {
+        "bbox": [
+          175,
+          202,
+          849,
+          815
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
+    },
+    "cursed_room_marker": {
+      "kind": "icon",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "7a25894d957072947ba4537b713f1565ee3ac67edf48fad5c58fb33530947d85",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/fireball.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf-teleport.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dark-thorn.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/images/frost-fist.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/images/arena.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/cursed_room_marker.jpg",
+      "output": "fe/public/images/cursed-room.webp",
+      "generated_at": "2026-10-15T07:42:57+00:00",
+      "duration_s": 20.3,
+      "interaction_id": "v1_Chc3WVBRYXRDZ0pjYUZrZFVQeE4ySzJBMBIXN1lQUWF0Q2dKY2FGa2RVUHhOMksyQTA",
+      "post": {
+        "bbox": [
+          58,
+          110,
+          967,
+          938
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
     }
   }
 }

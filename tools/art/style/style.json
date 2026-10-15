@@ -18,7 +18,8 @@
   "frames": {
     "monster": "Subject: {subject}. It is a monster the hero fights in the dungeon; make it menacing but readable as a tiny token. Background: EXACTLY one flat, uniform chroma-key green #00FF00 (RGB 0,255,0) filling the whole canvas, no gradient, no vignette, no shadow or lighting on it. No white border or sticker outline around the subject; keep the subject's own thin dark outline and crisp edges against the green. Never use green on the subject itself (use teal, olive or brown instead).",
     "hero": "Subject: {subject}. It is a playable hero figure, full body standing, facing the viewer at 3/4, feet visible, like the attached reference figures. Background: EXACTLY one flat, uniform chroma-key green #00FF00 (RGB 0,255,0) filling the whole canvas, no gradient, no vignette, no shadow or lighting on it. No white border or sticker outline around the figure; keep the figure's own thin dark outline and crisp edges against the green. Never use green on the figure itself (use teal, olive or brown instead).",
-    "background": "Wide painterly scene for the game's title screen, in the same mood, lighting and composition as the attached reference painting: a dark stone dungeon hall with arches, wall torches with warm orange flames, an open wooden treasure chest full of glowing gold coins at the centre of the floor. {subject} Deep shadows, warm light only from the torches and the chest, muted desaturated colours, worn stone and moss. No text, no letters, no watermark, no frame."
+    "background": "Wide painterly scene for the game's title screen, in the same mood, lighting and composition as the attached reference painting: a dark stone dungeon hall with arches, wall torches with warm orange flames, an open wooden treasure chest full of glowing gold coins at the centre of the floor. {subject} Deep shadows, warm light only from the torches and the chest, muted desaturated colours, worn stone and moss. No text, no letters, no watermark, no frame.",
+    "icon": "Subject: {subject}. It is a small square game icon like the attached reference icons (inventory items and tile markers): one object, centred, thin dark outline, soft painterly shading. Background: EXACTLY one flat, uniform chroma-key green #00FF00 (RGB 0,255,0) filling the whole canvas, no gradient, no vignette, no shadow or lighting on it. No white border or sticker outline around the object; keep its own thin dark outline and crisp edges against the green. Never use green on the subject itself (use teal, olive or brown instead)."
   },
   "references": [
     {
@@ -26,7 +27,8 @@
       "role": "style",
       "kinds": [
         "monster",
-        "hero"
+        "hero",
+        "icon"
       ]
     },
     {
@@ -34,7 +36,8 @@
       "role": "style",
       "kinds": [
         "monster",
-        "hero"
+        "hero",
+        "icon"
       ]
     },
     {
@@ -42,7 +45,8 @@
       "role": "style",
       "kinds": [
         "monster",
-        "hero"
+        "hero",
+        "icon"
       ]
     },
     {
@@ -50,7 +54,8 @@
       "role": "style",
       "kinds": [
         "monster",
-        "hero"
+        "hero",
+        "icon"
       ]
     },
     {
@@ -58,7 +63,29 @@
       "role": "style",
       "kinds": [
         "monster",
-        "hero"
+        "hero",
+        "icon"
+      ]
+    },
+    {
+      "path": "fe/public/images/fireball.webp",
+      "role": "style",
+      "kinds": [
+        "icon"
+      ]
+    },
+    {
+      "path": "fe/public/images/hf-teleport.webp",
+      "role": "style",
+      "kinds": [
+        "icon"
+      ]
+    },
+    {
+      "path": "fe/public/images/hf.webp",
+      "role": "style",
+      "kinds": [
+        "icon"
       ]
     },
     {
@@ -112,6 +139,12 @@
       "image_size": "2K",
       "model": "gemini-3-pro-image",
       "quality": 85
+    },
+    "icon": {
+      "width": 100,
+      "height": 100,
+      "aspect_ratio": "1:1",
+      "image_size": "1K"
     }
   },
   "limits": {

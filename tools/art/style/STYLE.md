@@ -30,6 +30,7 @@ Karak: a dark stone dungeon lit by wall torches, treasure chests full of gold, u
 - One subject, centred, ~6 % padding after cropping; silhouette must read at 32 px.
 - Generated on flat chroma-key green `#00FF00` with a 2–3 px white outline; the tool removes the green and snaps alpha to 0/255. The subject must not contain pure green.
 - Monsters: 256×256 (shown at 32–128 px), 3/4 front view, menacing; the file is mirrored in post so monsters face left, towards the hero (`kinds.monster.mirror`). Heroes: 256×384, full body, standing.
+- Icons (`kind: icon`): 100×100 RGBA, one object (a spell scroll, a tile marker), not mirrored, like the existing item icons; their style references are the five item icons plus `fireball.webp`, `hf-teleport.webp` and `hf.webp`. Used for the Karak: Regent spells (`dark-thorn.webp`, `frost-fist.webp`) and tile markers (`arena.webp`, `cursed-room.webp`) in `fe/public/images/`.
 - No scene, no floor, no cast shadow on the background, no text.
 
 ## Consistency mechanics

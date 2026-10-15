@@ -18,6 +18,8 @@ If a file is missing the UI shows the emoji from `fe/src/theme/base.js` instead 
 | `skeleton_king.webp` | Skeleton King (10 HP) |
 | `fallen.webp` | Fallen (12 HP) |
 | `dragon.webp` | Dragon (15 HP, boss) |
+| `giant_bat.webp` | Giant Bat (6 HP, Karak: Regent) |
+| `skeleton_mage.webp` | Skeleton Mage (11 HP, Karak: Regent) |
 
 ## heroes/
 
