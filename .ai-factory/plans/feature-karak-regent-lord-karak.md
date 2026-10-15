@@ -86,3 +86,10 @@ Constraints carried over: every skill check reads `Player::getHero()` (null whil
   - `rules.md` Karak: Regent section: "### Lord Karak variant ✅" with the decisions (trigger = 5th placed room incl. Listening, ranking keys and what counts as weapons/items, dice tie-break, full heal ignores the heal limit, 2-player exception, virtual players eligible but never use active skills). README "Karak: Regent" bullet mentions the variant; `CLAUDE.md` Regent line mentions `CreateGame::$lordKarak` / `Game::isLordKarak()` / `HeroSkills` (local file).
   - Quality: php-cs-fixer on `src` plus the new test files only (never `tests` as a whole), rector dry-run in the container, full PHPUnit, ESLint on the changed FE files (no new errors), `doctrine:schema:validate` (only the known drift), `npm run build` in the frontend container. Psalm and e2e are run by the user.
   - Files: rules.md, README.md, CLAUDE.md.
+
+## Token accounting for this feature
+- One fresh session (`/clear` before `/aif-plan`) for planning + `/aif-implement` + `/aif-verify` with its fixes; `/cost` was taken once at the end, so there is no plan/implementation split.
+- **Whole part 3: $10.81** (claude-opus-5-5: 1.3k input, 100.7k output, 32.3M cache read, 292.8k cache write; 146 requests, 99% of input from cache, no misses; API 17m 46s, wall 49m 13s incl. two AskUserQuestion rounds and one commit checkpoint).
+- Subagents: 0 (codebase read directly). 1 Gemini image call (`lord_karak`) billed separately by Google.
+- Output: 4 commits (b6cfaf8..051cea4), 409 PHPUnit green (+25), one migration, 1 portrait. Verify drove five Cursed Rooms through the real API in the php container and found three bugs PHPUnit had missed (event order, TestMode dice not surviving between requests, the GET player-field whitelist); patch 2026-10-15-12.40.
+- Cheapest part of the Regent series: part 1 $38.05, part 2 $22.67, part 3 $10.81 — the variant reuses the Regent rooms, the hero flags and the established test harnesses.
