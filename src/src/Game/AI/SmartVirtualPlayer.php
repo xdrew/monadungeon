@@ -1448,10 +1448,8 @@ final class SmartVirtualPlayer
                     continue; // Skip if not a string position
                 }
 
-                [$targetX, $targetY] = explode(',', $targetPosition);
-                $targetX = (int) $targetX;
-                $targetY = (int) $targetY;
-                $distance = abs($moveX - $targetX) + abs($moveY - $targetY);
+                // Steps along the field's passages, not a straight line: a chest behind a wall is far away
+                $distance = $this->walkingDistance($moveOption, $targetPosition, $field);
                 if ($distance < $minDistanceToTarget) {
                     $minDistanceToTarget = $distance;
                     $closestTargetForMove = $targetPosition;
@@ -1535,9 +1533,7 @@ final class SmartVirtualPlayer
             // Track progress towards this target
             if ($closestTarget) {
                 // Calculate actual distance to the closest target
-                [$targetX, $targetY] = explode(',', $closestTarget);
-                [$bestX, $bestY] = explode(',', (string) $bestMove);
-                $distanceToTarget = abs((int) $bestX - (int) $targetX) + abs((int) $bestY - (int) $targetY);
+                $distanceToTarget = $this->walkingDistance((string) $bestMove, $closestTarget, $field);
 
                 if (!isset(self::$turnsSinceLastProgress[$trackingKey][$closestTarget])) {
                     self::$turnsSinceLastProgress[$trackingKey][$closestTarget] = ['distance' => $distanceToTarget, 'turns' => 0];
@@ -2946,6 +2942,25 @@ final class SmartVirtualPlayer
                 }
             }
 
+            // With a key, keep walking to the nearest chest it can reach: the first step alone, then exploring,
+            // walked it back and forth between the same two places turn after turn
+            if ($this->playerHasKey($player) && !empty($unvisitedOptions) && $this->moveCount < $this->maxMoves) {
+                $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+                $reachableChests = array_values(array_filter(
+                    $this->unopenedChests($field),
+                    fn(string $chest): bool => !isset(self::$unreachableTargets[$trackingKey][$chest])
+                        && $this->walkingDistance($currentPosition->toString(), $chest, $field) < 100,
+                ));
+                if ($reachableChests !== []) {
+                    $moveCountBefore = $this->moveCount;
+                    $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing towards a chest (have key)']);
+                    $this->executeMoveTowardsTarget($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $reachableChests, 'chest', $actions);
+                    if ($this->moveCount > $moveCountBefore) {
+                        return;
+                    }
+                }
+            }
+
             // Continue pursuing valuable monsters even through visited positions
             if (!empty($valuableMonsters) && !empty($moveToOptions) && $this->moveCount < $this->maxMoves) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
@@ -4262,6 +4277,20 @@ final class SmartVirtualPlayer
         }
 
         return $chests;
+    }
+
+    /**
+     * Moves from one place to another along the field's passages; a place out of reach counts as far
+     * beyond any reachable one (the straight-line distance plus 100), so the AI never heads for a wall.
+     */
+    private function walkingDistance(string $from, string $to, $field): int
+    {
+        if ($from === $to) {
+            return 0;
+        }
+        $path = $this->findPathToTarget($from, $to, $field->getPlacedTiles(), $field);
+
+        return $path !== [] ? \count($path) - 1 : 100 + $this->calculateManhattanDistance($from, $to);
     }
 
     /**
