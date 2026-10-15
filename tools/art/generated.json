@@ -1968,6 +1968,87 @@
           0
         ]
       }
+    },
+    "curse_token": {
+      "kind": "icon",
+      "model": "gemini-nano-banana-2.1",
+      "style_version": 2,
+      "prompt_sha256": "e15138475209aed3ca1e6166e86b709a1e41027dccc77f36a07eac0bbacfa0fe",
+      "references": [
+        {
+          "path": "fe/public/images/key.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/axe.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/sword.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dagger.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/chest-closed.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/fireball.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf-teleport.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/hf.webp",
+          "role": "style"
+        },
+        {
+          "path": "fe/public/images/dark-thorn.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/images/frost-fist.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/images/arena.webp",
+          "role": "character"
+        },
+        {
+          "path": "fe/public/images/cursed-room.webp",
+          "role": "character"
+        }
+      ],
+      "raw": "tools/art/out/raw/curse_token.jpg",
+      "output": "fe/public/images/curse.webp",
+      "generated_at": "2026-10-15T10:27:16+00:00",
+      "duration_s": 19.8,
+      "interaction_id": "v1_ChdjYXJRYXVQV0lLS3BrZFVQNVBXbDhRMBIXY2FyUWF1UFdJS0twa2RVUDVQV2w4UTA",
+      "post": {
+        "bbox": [
+          61,
+          60,
+          963,
+          969
+        ],
+        "source_size": [
+          1024,
+          1024
+        ],
+        "touches_border": false,
+        "green_residue_pct": 0.0,
+        "outline_removed_pct": 0.0,
+        "mirrored": false,
+        "corner_alpha": [
+          0,
+          0
+        ]
+      }
     }
   }
 }

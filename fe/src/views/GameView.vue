@@ -419,7 +419,13 @@
                       :class="{ 'awaiting-reincarnation': player.awaitingReincarnation, cursed: player.cursed, 'lord-karak': player.lordKarak }"
                       :title="heroTooltip(player)"
                       data-testid="hero-badge"
-                    >{{ player.awaitingReincarnation ? '💀' : player.cursed ? '☠️' : player.lordKarak ? '👑' : '⚔️' }} {{ badgeName(player) }}</span>
+                    ><img
+                      v-if="player.cursed && !player.awaitingReincarnation"
+                      src="/images/curse.webp"
+                      alt="Cursed"
+                      class="curse-token-icon"
+                      data-testid="curse-token"
+                    ><template v-else>{{ player.awaitingReincarnation ? '💀' : player.lordKarak ? '👑' : '⚔️' }}</template> {{ badgeName(player) }}</span>
                     <span
                       v-if="player.lordKarak && player.hero"
                       class="lord-karak-was"
@@ -6928,6 +6934,12 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 .hero-badge.cursed {
   color: #a5e8a5;
   border-color: rgba(120, 220, 120, 0.6);
+}
+
+.curse-token-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
 }
 
 /* Karak: Regent, Lord Karak variant */

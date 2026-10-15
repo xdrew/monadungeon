@@ -168,6 +168,12 @@
       "kind": "icon",
       "out": "fe/public/images/cursed-room.webp",
       "subject": "a tile marker for a cursed room: a cracked skull with glowing violet eyes inside a ring of purple curse runes"
+    },
+    {
+      "id": "curse_token",
+      "kind": "icon",
+      "out": "fe/public/images/curse.webp",
+      "subject": "the Curse of Karak token: a round blackened-bronze token stamped with Lord Karak's sigil, a crown pierced by a downward dagger, glowing violet runes around the rim, a faint violet glow (no smoke, no skull, no green)"
     }
   ]
 }
