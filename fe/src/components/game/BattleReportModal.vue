@@ -2189,14 +2189,12 @@ button.item-chip {
 }
 
 .reward-row {
-  /* the reward is shown like a trophy in the middle of the plaque: the item, then caption, name and bonus */
+  /* the reward in the middle of the plaque: the item, and beside it caption, name and bonus */
   align-self: center;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   min-width: 0;
-  text-align: center;
 }
 
 .reward-rise {
@@ -2251,7 +2249,6 @@ button.item-chip {
 .reward-row__text {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 4px;
   min-width: 0;
 }
@@ -2275,7 +2272,6 @@ button.item-chip {
 .reward-row__stats {
   display: flex;
   align-items: center;
-  justify-content: center;
   flex-wrap: wrap;
   gap: 12px;
 }
