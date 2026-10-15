@@ -41,14 +41,18 @@
 
 /* Game Field */
 /* A grid so a small dungeon sits in the middle of the view (the tiles container has margin: auto);
-   one tile of padding all round, plus the turn-order rail on the left. fieldUtils reads this padding. */
+   one tile of padding all round plus the HUD's room. fieldUtils reads this padding. */
 .game-field {
   width: 100%;
   height: 100%;
   overflow: auto;
   position: relative;
   padding: var(--field-padding);
+  /* room for the HUD round the field, so even an edge tile can be scrolled clear of it:
+     the turn-order rail on the left, the chronicle on the right, the rings and the pack at the bottom */
   padding-left: calc(var(--field-padding) + var(--rail-width));
+  padding-right: calc(var(--field-padding) + var(--rail-width));
+  padding-bottom: calc(var(--field-padding) + 120px);
   display: grid;
   cursor: default;
   background-color: var(--bg-field);

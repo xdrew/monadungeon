@@ -39,15 +39,6 @@ const opacityAt = (index) => FADE[props.lines.length - 1 - index] ?? 0.3;
   pointer-events: none;
 }
 
-/* while a tile is being placed the chronicle steps back, so it never hides where the room goes */
-.chronicle {
-  transition: opacity var(--transition-normal);
-}
-
-.chronicle.chronicle--quiet {
-  opacity: 0.2;
-}
-
 .chronicle__line {
   font-style: italic;
   font-size: 15px;

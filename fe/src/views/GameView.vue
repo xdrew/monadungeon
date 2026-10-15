@@ -208,10 +208,7 @@
           v-if="chronicleLines.length"
           #chronicle
         >
-          <Chronicle
-            :lines="chronicleLines"
-            :class="{ 'chronicle--quiet': isPlacingTile }"
-          />
+          <Chronicle :lines="chronicleLines" />
         </template>
         <JournalDrawer
           :open="journalOpen"
@@ -3748,6 +3745,35 @@ const isValidOrientationLocal = (position, orientation) => {
 const getRequiredOpenSideLocal = (position) => {
   return getRequiredOpenSide(position, gameData.value, currentPlayerId.value);
 };
+
+// The tile being placed is kept clear of the HUD: when it lands under the rail, the chronicle, the banner or
+// the rings, the field scrolls just enough (not a re-centre). Phones have their own HUD strip and bar: skipped.
+const HUD_CLEARANCE = { left: 330, right: 360, top: 140, bottom: 180 };
+const keepGhostClearOfHud = () => {
+  if (window.matchMedia('(max-width: 768px), (max-height: 500px)').matches) return;
+  const field = document.querySelector('.game-field');
+  const ghost = document.querySelector('.ghost-tile');
+  if (!field || !ghost) return;
+  const view = field.getBoundingClientRect();
+  const tile = ghost.getBoundingClientRect();
+  const safeLeft = view.left + HUD_CLEARANCE.left;
+  const safeRight = view.right - HUD_CLEARANCE.right;
+  const safeTop = view.top + HUD_CLEARANCE.top;
+  const safeBottom = view.bottom - HUD_CLEARANCE.bottom;
+  let dx = 0;
+  let dy = 0;
+  if (tile.left < safeLeft) dx = tile.left - safeLeft;
+  else if (tile.right > safeRight) dx = tile.right - safeRight;
+  if (tile.top < safeTop) dy = tile.top - safeTop;
+  else if (tile.bottom > safeBottom) dy = tile.bottom - safeBottom;
+  if (dx || dy) {
+    console.debug('[field] scrolling the tile being placed clear of the HUD', { dx, dy });
+    field.scrollBy({ left: dx, top: dy, behavior: 'smooth' });
+  }
+};
+watch([ghostTilePosition, isPlacingTile], ([position, placing]) => {
+  if (position && placing) nextTick(keepGhostClearOfHud);
+});
 
 // Turning the tile only makes sense when it has two different ways to lie with a door towards the hero:
 // a straight corridor (one way) and a four-way crossing (all the same) offer nothing to turn
