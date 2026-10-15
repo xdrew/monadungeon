@@ -2349,7 +2349,9 @@ button.item-chip {
 .button-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 30px 12px;
+  /* room for the keycaps under the buttons */
+  padding-bottom: 26px;
 }
 
 .button-group .btn {
@@ -2414,11 +2416,12 @@ button.item-chip {
   font-size: 24px;
 }
 
-/* the key that does it, a small keycap in the button's corner */
+/* the key that does it: a small keycap centred under the button, clear of its label */
 .kbd-hint {
   position: absolute;
-  top: 5px;
-  right: 6px;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
   padding: 2px 7px;
@@ -2430,7 +2433,9 @@ button.item-chip {
   font-weight: 600;
   letter-spacing: 0.05em;
   line-height: 1.1;
-  opacity: 0.5;
+  color: var(--text-muted);
+  text-shadow: none;
+  pointer-events: none;
 }
 
 /* ===== Phones and low screens: fighters smaller, side by side, the plaque full width ===== */
