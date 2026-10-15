@@ -136,6 +136,19 @@
   width: 300px;
 }
 
+/* a soft shade under the chronicle: the field beneath dims, the lines read, the shade fades out towards the middle */
+.game-hud__chronicle::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -40px;
+  bottom: -40px;
+  left: -90px;
+  right: calc(-1 * var(--hud-gutter));
+  pointer-events: none;
+  background: radial-gradient(ellipse 100% 90% at 100% 45%, rgba(5, 3, 2, 0.88) 0%, rgba(5, 3, 2, 0.65) 45%, rgba(5, 3, 2, 0) 78%);
+}
+
 .game-hud__plaque {
   position: absolute;
   right: var(--hud-gutter);

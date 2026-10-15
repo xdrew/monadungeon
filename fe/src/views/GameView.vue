@@ -208,7 +208,10 @@
           v-if="chronicleLines.length"
           #chronicle
         >
-          <Chronicle :lines="chronicleLines" />
+          <Chronicle
+            :lines="chronicleLines"
+            :class="{ 'chronicle--quiet': isPlacingTile }"
+          />
         </template>
         <JournalDrawer
           :open="journalOpen"
