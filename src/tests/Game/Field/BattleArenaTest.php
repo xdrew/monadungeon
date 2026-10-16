@@ -185,6 +185,25 @@ final class BattleArenaTest extends TestCase
     }
 
     #[Test]
+    public function withOneRivalTheDuelBeginsAtOnce(): void
+    {
+        $this->activePlayers = [$this->p1, $this->p2];
+        [, $messages] = $this->createTester()->handle($this->field->onPlayerMoved(...), $this->moved($this->p1));
+
+        self::assertNull($this->field->getPendingArena(), 'Nobody to choose from: no choice is asked');
+        self::assertNull($this->findMessage($messages, ArenaEntered::class));
+        $start = $this->findMessage($messages, StartDuel::class);
+        self::assertInstanceOf(StartDuel::class, $start);
+        self::assertTrue($start->challengerId->equals($this->p1));
+        self::assertTrue($start->opponentId->equals($this->p2));
+        self::assertTrue($start->firstStep);
+        self::assertInstanceOf(BeginDuel::class, $this->findMessage($messages, BeginDuel::class));
+        $reset = $this->findMessage($messages, ResetPlayerPosition::class);
+        self::assertInstanceOf(ResetPlayerPosition::class, $reset);
+        self::assertTrue($reset->playerId->equals($this->p2));
+    }
+
+    #[Test]
     public function aLonelyHeroActivatesTheArenaWithoutADuel(): void
     {
         $this->activePlayers = [$this->p1];

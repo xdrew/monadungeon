@@ -107,6 +107,11 @@ class MovementAfterBattleTest extends TestCase
             {
                 return null;
             }
+
+            public function getPendingArena(): ?array
+            {
+                return null;
+            }
         };
         
         // Create movement aggregate and initialize positions

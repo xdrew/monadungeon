@@ -2864,7 +2864,8 @@ class Field extends AggregateRoot
 
     /**
      * Karak: Regent — the first entry of the current player activates a Battle Arena (once, even when no duel
-     * follows). A virtual player summons the richest rival at once; a human chooses (ChooseDuelOpponent).
+     * follows). The duel is not optional: with one rival it begins at once, a virtual player summons the
+     * richest rival at once, a human with several rivals chooses (ChooseDuelOpponent) before moving on.
      */
     private function enterArena(Uuid $playerId, FieldPlace $position, MessageContext $context): void
     {
@@ -2897,7 +2898,7 @@ class Field extends AggregateRoot
         // The MOVE is recorded after PlayerMoved: no move spent yet means the arena is the first step
         $firstStep = $context->dispatch(new GetTurn($turnId))?->getPerformedActionsCount() === 0;
 
-        if ($context->dispatch(new GetPlayer($playerId))->isAi()) {
+        if (\count($others) === 1 || $context->dispatch(new GetPlayer($playerId))->isAi()) {
             $this->startDuel($playerId, $this->pickDuelOpponent($others, $context), $position, $turnId, $firstStep, $context);
 
             return;

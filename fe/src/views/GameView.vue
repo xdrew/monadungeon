@@ -585,7 +585,7 @@
                   <!-- Render available move/place markers before tiles -->
                   <AvailableMoveMarker
                     v-for="position in gameData.state.availablePlaces.moveTo"
-                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isProcessingAI && gameData.state.status !== 'finished'"
+                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isProcessingAI && !arenaChoiceForMe && gameData.state.status !== 'finished'"
                     :key="`move-${position}`"
                     :position="position"
                     :x="parseInt(position.split(',')[0])"

@@ -183,6 +183,11 @@ final class ThiefStealthTest extends TestCase
             {
                 return $this->fateweaverPending ? ['fieldPlace' => '1,0', 'items' => []] : null;
             }
+
+            public function getPendingArena(): ?array
+            {
+                return null;
+            }
         };
 
         $player = new class($hero) {

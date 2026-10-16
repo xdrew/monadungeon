@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { GameHelpers } from '../utils/game-helpers';
 import { snap } from '../utils/screens';
 import {
-  apiGame, apiPlayer, endTurn, expectNotice, packItemId, packTypes, position, startGame, stopTestMode,
+  API_URL, apiGame, apiPlayer, endTurn, expectNotice, packItemId, packTypes, position, startGame, stopTestMode,
   strikeWith, switchTo, takeReward, waitForFight, waitForFightClosed, watchPage,
 } from '../utils/hotseat';
 
@@ -76,7 +76,7 @@ test.describe('Regent mechanics', () => {
     expect(pack[0].itemId).not.toBe(fist);
   });
 
-  test('Battle Arena: a duel with the rival, the winner takes loot', async ({ page, request }) => {
+  test('Battle Arena with two heroes: the duel begins on entry, the winner takes loot', async ({ page, request }) => {
     const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
     await startGame(page, request, {
       gameId,
@@ -88,10 +88,10 @@ test.describe('Regent mechanics', () => {
     });
 
     await GameHelpers.placeTile(page, 0, 0);
-    await expect(page.getByTestId('arena-banner')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('[data-testid="arena-marker"]').first()).toBeVisible();
-    await snap(page, SPEC, 'arena-opponent-choice', { phone: true });
-    await page.getByTestId(`duel-opponent-${b}`).click();
+    console.log('[spec] one rival: no choice, B is summoned and the duel begins');
+    await expect(page.locator('.battle-overlay')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('arena-banner')).toHaveCount(0);
+    await expect.poll(async () => position(request, gameId, b)).toBe(await position(request, gameId, a));
 
     console.log('[spec] the duel: A rolls, then the summoned rival rolls in this browser');
     for (let side = 0; side < 3; side++) {
@@ -114,6 +114,36 @@ test.describe('Regent mechanics', () => {
     if (await loot.isVisible().catch(() => false)) await loot.click();
     await page.getByTestId('duel-dismiss').click();
     await expect.poll(async () => packTypes(request, gameId, a), { timeout: 10000 }).toEqual(['dagger']);
+  });
+
+  test('Battle Arena with three heroes: the opener chooses the rival and cannot walk on before', async ({ page, request }) => {
+    const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4(); const c = uuidv4();
+    await startGame(page, request, {
+      gameId,
+      regent: true,
+      diceRolls: [6, 6, 1, 1],
+      tileSequence: ['battleArena', 'fourSide'],
+      playerConfigs: { [a]: {}, [b]: {}, [c]: {} },
+    });
+
+    await GameHelpers.placeTile(page, 0, 0);
+    await expect(page.getByTestId('arena-banner')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid="arena-marker"]').first()).toBeVisible();
+    await expect(page.getByTestId(`duel-opponent-${b}`)).toBeVisible();
+    await expect(page.getByTestId(`duel-opponent-${c}`)).toBeVisible();
+    console.log('[spec] while the rival is not chosen there is nowhere to walk, and the server refuses a move');
+    await expect(page.locator('.available-place.clickable:not(.place-tile)')).toHaveCount(0);
+    const arena = await position(request, gameId, a);
+    const refused = await request.post(`${API_URL}/api/game/move-player`, {
+      data: { gameId, playerId: a, turnId: (await apiGame(request, gameId)).state.currentTurnId, fromPosition: arena, toPosition: '0,0' },
+    });
+    expect(refused.ok()).toBe(false);
+    expect(await position(request, gameId, a)).toBe(arena);
+    await snap(page, SPEC, 'arena-opponent-choice', { phone: true });
+
+    await page.getByTestId(`duel-opponent-${c}`).click();
+    await expect(page.locator('.battle-overlay')).toBeVisible({ timeout: 15000 });
+    expect(await position(request, gameId, c)).toBe(arena);
   });
 
   test('Cursed Room curses on a low roll; the fifth Lord Karak room reveals Lord Karak', async ({ page, request }) => {

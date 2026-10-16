@@ -16,11 +16,13 @@ use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
 use App\Game\Movement\Commands\DeclareSprint;
 use App\Game\Movement\Commands\LightningAttack;
+use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Movement\Events\PlayerMoved;
 use App\Game\Movement\Exception\InvalidMovementException;
 use App\Game\Movement\GetPlayerPosition;
 use App\Game\Movement\Movement;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\HeroSkills;
 use App\Game\Player\HeroType;
 use App\Game\Turn\GameTurn;
 use App\Game\Turn\GetCurrentTurn;
@@ -169,13 +171,47 @@ final class RegentHeroMovementTest extends TestCase
         self::assertFalse($locked->getValue($this->movement)[$this->playerId->toString()]);
     }
 
+    #[Test]
+    public function aHeroWhoOpenedAnArenaChoosesHisRivalBeforeWalkingOn(): void
+    {
+        $field = new class () {
+            public function getPendingFateweaver(): ?array
+            {
+                return null;
+            }
+
+            /** @return array{position: string, playerId: string, turnId: string, firstStep: bool} */
+            public function getPendingArena(): array
+            {
+                return ['position' => '0,0', 'playerId' => 'p1', 'turnId' => 't1', 'firstStep' => true];
+            }
+
+            public function getItems(): array
+            {
+                return [];
+            }
+        };
+        $tester = $this->createTester(HeroType::RANGER, field: $field);
+
+        $this->expectException(InvalidMovementException::class);
+        $this->expectExceptionMessage('Choose your rival on the arena first');
+        $tester->handle($this->movement->movePlayer(...), new MovePlayer(
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            turnId: $this->turnId,
+            fromPosition: FieldPlace::fromString('0,0'),
+            toPosition: FieldPlace::fromString('0,1'),
+        ));
+    }
+
     /**
      * @param array<string, Item> $items
      * @param list<TurnAction> $actionsBefore
+     * @param object|null $field a field stub of the test's own (else one with these items)
      */
-    private function createTester(?HeroType $hero, array $items = [], array $actionsBefore = []): MessageBusTester
+    private function createTester(?HeroType $hero, array $items = [], array $actionsBefore = [], ?object $field = null): MessageBusTester
     {
-        $field = new class ($items) {
+        $field ??= new class ($items) {
             /** @param array<string, Item> $items */
             public function __construct(private readonly array $items) {}
 
@@ -199,11 +235,11 @@ final class RegentHeroMovementTest extends TestCase
                 return $this->hero;
             }
 
-            public function getSkills(): ?\App\Game\Player\HeroSkills
+            public function getSkills(): ?HeroSkills
             {
                 $hero = $this->getHero();
 
-                return $hero instanceof \App\Game\Player\HeroType ? \App\Game\Player\HeroSkills::of($hero) : null;
+                return $hero instanceof HeroType ? HeroSkills::of($hero) : null;
             }
         };
 

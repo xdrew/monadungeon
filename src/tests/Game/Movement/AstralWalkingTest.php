@@ -199,6 +199,11 @@ final class AstralWalkingTest extends TestCase
             {
                 return null;
             }
+
+            public function getPendingArena(): ?array
+            {
+                return null;
+            }
         };
 
         $player = new class ($hero) {

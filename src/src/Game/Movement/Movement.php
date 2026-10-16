@@ -152,17 +152,21 @@ class Movement extends AggregateRoot
             throw new InvalidMovementException('Player position not found');
         }
 
-        // Create movement service to check transitions
-        $movementService = $this->createMovementService($context);
-
-        // Check if destination has a monster
         $field = $context->dispatch(new GetField($this->gameId));
 
         // Oracle "Fateweaver": the token of the new room must be chosen before anyone moves
         if ($field->getPendingFateweaver() !== null) {
             throw new InvalidMovementException('Choose the Fateweaver token first');
         }
+        // Karak: Regent — a hero who opened a Battle Arena summons his rival before he walks on
+        if ($field->getPendingArena() !== null) {
+            throw new InvalidMovementException('Choose your rival on the arena first');
+        }
 
+        // Create movement service to check transitions
+        $movementService = $this->createMovementService($context);
+
+        // Check if destination has a monster
         $items = $field->getItems();
         $destinationKey = $command->toPosition->toString();
         $destinationHasMonster = false;
