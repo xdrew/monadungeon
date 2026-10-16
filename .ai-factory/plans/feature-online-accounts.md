@@ -106,13 +106,13 @@ Authority: user answers > CLAUDE.md > existing code. CLAUDE.md "No sign-in, no w
   - `HomeView.vue`: the name card when anonymous, "You: Name" with inline rename when signed in; the create flow sends no username.
   - Locale keys in en/ru/pl.
   - Torchlight look (a plaque in the right column, the ember button).
-- [ ] Task 9: `LeaderboardView.vue`:
+- [x] Task 9: `LeaderboardView.vue`:
   - tabs Players / Heroes (with `?tab=` in the URL);
   - a heroes table with portrait and name;
   - the "you" mark;
   - the sort fix;
   - phone layout.
-- [ ] Task 10: `fe/e2e/tests/online.spec.ts`:
+- [x] Task 10: `fe/e2e/tests/online.spec.ts`:
   - the name card, then create, then rename;
   - the guard (a second `browser.newContext()` without the cookie gets 403 acting for the first seat; `request` with the first context's cookies succeeds);
   - after a test-mode dragon win, the Hall of fame tabs. The players' tab lists the name only when the seat has an account. So `setup-game`'s `playerConfigs` get optional `accountId` (the guest created through the API in the same browser context); the seat then gets that account's `externalId` and name. This is dev/test only, extends `PlayerTestConfig`, and has a PHPUnit case.

@@ -7,8 +7,10 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 
 ## Game Features
 
-### No sign-in
-- **Guest Play**: Jump straight into the game without creating an account
+### Guest accounts
+- **A name, no password**: the first visit asks for a name and keeps a guest account in a session cookie; the name can be changed later with the pen on the start screen
+- **Your seats are yours**: the server refuses anyone else acting for them
+- **Hall of fame**: by players and by heroes
 
 ### Core Gameplay
 - **Multiplayer Support**: 1-5 players; the dice pick who starts, then turns go clockwise

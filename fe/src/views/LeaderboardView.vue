@@ -18,8 +18,79 @@
       </h1>
     </div>
 
+    <!-- Two halls: the players (accounts) and the heroes -->
+    <nav
+      class="lb-tabs"
+      role="tablist"
+    >
+      <button
+        v-for="name in ['players', 'heroes']"
+        :key="name"
+        type="button"
+        role="tab"
+        class="lb-tab"
+        :class="{ active: tab === name }"
+        :aria-selected="tab === name"
+        :data-testid="`leaderboard-tab-${name}`"
+        @click="selectTab(name)"
+      >
+        {{ $t(`leaderboard.tab.${name}`) }}
+      </button>
+    </nav>
+
+    <!-- The heroes -->
+    <div
+      v-if="tab === 'heroes'"
+      class="leaderboard-table-container"
+    >
+      <table
+        class="leaderboard-table heroes-table"
+        data-testid="heroes-table"
+      >
+        <thead>
+          <tr>
+            <th class="position">#</th>
+            <th class="username">{{ $t('leaderboard.hero') }}</th>
+            <th class="victories">{{ $t('leaderboard.wins') }}</th>
+            <th class="games">{{ $t('leaderboard.games') }}</th>
+            <th class="winrate">{{ $t('leaderboard.winRate') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-if="!heroes.length"
+            class="empty-row"
+          >
+            <td colspan="5">
+              {{ $t('leaderboard.emptyHeroes') }}
+            </td>
+          </tr>
+          <tr
+            v-for="entry in heroes"
+            :key="entry.hero"
+            :class="{ [`rank-${entry.position}`]: entry.position <= 3 }"
+          >
+            <td class="position">{{ entry.position }}</td>
+            <td class="username">
+              <span class="hero-cell">
+                <img
+                  class="hero-cell__portrait"
+                  :src="getHero(entry.hero).image"
+                  alt=""
+                >
+                {{ heroName(entry.hero, 'name') }}
+              </span>
+            </td>
+            <td class="victories">{{ entry.victories }}</td>
+            <td class="games">{{ entry.games }}</td>
+            <td class="winrate">{{ entry.winRate }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <!-- Error state -->
-    <div v-if="error" class="error">{{ error }}</div>
+    <div v-else-if="error" class="error">{{ error }}</div>
 
     <!-- Initial loading state -->
     <div v-else-if="loading && !entries.length" class="loading">{{ $t('leaderboard.loading') }}</div>
@@ -83,11 +154,15 @@
           <tr 
             v-for="entry in entries" 
             :key="entry.position"
-            :class="{ 'faded': loading, [`rank-${entry.position}`]: entry.position <= 3 }"
+            :class="{ 'faded': loading, [`rank-${entry.position}`]: entry.position <= 3, 'is-you': entry.isYou }"
           >
             <td class="position">{{ entry.position }}</td>
             <td class="username">
               {{ entry.username }}
+              <span
+                v-if="entry.isYou"
+                class="you-mark"
+              >{{ $t('leaderboard.you') }}</span>
             </td>
             <td class="victories">{{ entry.victories }}</td>
             <td class="games">{{ entry.totalGames }}</td>
@@ -135,7 +210,9 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
+import { getHero } from '@/theme';
+import { heroName } from '@/i18n/names';
 import { gameApi } from '../services/api';
 import { t } from '@/i18n';
 import GameIcon from '@/components/ui/GameIcon.vue';
@@ -144,7 +221,7 @@ import MusicToggle from '@/components/game/MusicToggle.vue';
 
 export default {
   name: 'LeaderboardView',
-  components: { GameIcon },
+  components: { GameIcon, LanguageSwitch, MusicToggle },
   props: {
     autoRefresh: {
       type: Boolean,
@@ -153,6 +230,22 @@ export default {
   },
   setup(props) {
     const router = useRouter();
+    const route = useRoute();
+    const tab = ref(route.query.tab === 'heroes' ? 'heroes' : 'players');
+    const heroes = ref([]);
+    const fetchHeroes = async () => {
+      try {
+        heroes.value = (await gameApi.getHeroLeaderboard()).entries || [];
+      } catch (err) {
+        console.error('Failed to fetch the heroes leaderboard:', err);
+        error.value = t('leaderboard.loadFailed');
+      }
+    };
+    const selectTab = (name) => {
+      tab.value = name;
+      router.replace({ query: name === 'heroes' ? { tab: 'heroes' } : {} });
+      if (name === 'heroes') fetchHeroes();
+    };
     const loading = ref(false);
     const error = ref(null);
     const entries = ref([]);
@@ -250,6 +343,7 @@ export default {
     // Initial load
     onMounted(() => {
       fetchLeaderboard();
+      if (tab.value === 'heroes') fetchHeroes();
       
       if (props.autoRefresh) {
         refreshInterval = setInterval(fetchLeaderboard, 30000);
@@ -264,6 +358,11 @@ export default {
     });
 
     return {
+      tab,
+      heroes,
+      selectTab,
+      getHero,
+      heroName,
       loading,
       error,
       entries,
@@ -284,6 +383,60 @@ export default {
 </script>
 
 <style scoped>
+.lb-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 18px;
+}
+
+.lb-tab {
+  padding: 8px 18px;
+  border: 1px solid rgba(234, 220, 192, 0.25);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.lb-tab.active {
+  border-color: var(--color-primary);
+  color: var(--text-heading);
+  box-shadow: 0 0 14px rgba(var(--ember-rgb), 0.3);
+}
+
+.hero-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hero-cell__portrait {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--iron);
+}
+
+.is-you td {
+  color: var(--text-heading);
+}
+
+.you-mark {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid rgba(var(--ember-rgb), 0.6);
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
 .page-tools {
   position: fixed;
   top: 20px;

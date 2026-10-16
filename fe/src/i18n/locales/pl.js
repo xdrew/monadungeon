@@ -675,6 +675,10 @@ export default {
     }
   },
   leaderboard: {
+    tab: { players: 'Gracze', heroes: 'Bohaterowie' },
+    hero: 'Bohater',
+    you: 'ty',
+    emptyHeroes: 'Żadna gra jeszcze się nie skończyła.',
     empty: 'W galerii sław nikogo jeszcze nie ma. Zejdź do lochów jako pierwszy.',
     back: 'Na stronę główną',
     title: 'Galeria sław',

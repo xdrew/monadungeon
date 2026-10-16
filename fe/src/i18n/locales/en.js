@@ -676,6 +676,10 @@ export default {
     }
   },
   leaderboard: {
+    tab: { players: 'Players', heroes: 'Heroes' },
+    hero: 'Hero',
+    you: 'you',
+    emptyHeroes: 'No game has ended yet.',
     empty: 'No hero has made it to the hall yet. Descend and be the first.',
     back: 'To the start screen',
     title: 'Hall of fame',

@@ -815,6 +815,9 @@ export const gameApi = {
    * @param {string} [params.sortOrder='DESC'] - Sort order 'ASC' or 'DESC'
    * @returns {Promise<Object>} Promise with leaderboard data
    */
+  /** The Hall of fame by heroes: games, victories and win rate per hero. */
+  getHeroLeaderboard: async (params = {}) => (await apiClient.get('/leaderboard/heroes', { params })).data,
+
   getLeaderboard: async (params = {}) => {
     try {
       const response = await apiClient.get('/leaderboard', { params });

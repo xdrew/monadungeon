@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Game\Testing;
 
+use App\Account\AccountService;
 use App\Game\GameLifecycle\AddPlayer;
 use App\Game\GameLifecycle\CreateGame;
 use App\Game\GameLifecycle\StartGame;
@@ -18,6 +19,7 @@ final readonly class SetupTestGameHandler
 {
     public function __construct(
         private MessageBus $messageBus,
+        private AccountService $accounts,
     ) {}
 
     #[Handler]
@@ -84,9 +86,15 @@ final readonly class SetupTestGameHandler
         // The HP will be set from TestMode during player creation
         if (\count($config->playerConfigs) > 0) {
             foreach ($config->playerConfigs as $playerId => $playerConfig) {
+                $account = $playerConfig->accountId !== null ? $this->accounts->find(Uuid::fromString($playerConfig->accountId)) : null;
+                if ($playerConfig->accountId !== null && $account === null) {
+                    throw new \InvalidArgumentException("Unknown account for the test mode: {$playerConfig->accountId}");
+                }
                 $this->messageBus->dispatch(new AddPlayer(
                     gameId: $gameId,
                     playerId: Uuid::fromString($playerId),
+                    externalId: $account?->getId()->toString(),
+                    username: $account?->getName(),
                     isAi: false, // Explicitly set as human player for tests
                     hero: $playerConfig->hero !== null ? HeroType::from($playerConfig->hero) : null,
                 ));

@@ -33,6 +33,7 @@ final readonly class Action
                     hero: $config['hero'] ?? null,
                     hp: $config['hp'] ?? null,
                     inventory: $config['inventory'] ?? [],
+                    accountId: $config['accountId'] ?? null,
                 );
             }
 

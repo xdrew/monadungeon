@@ -19,6 +19,8 @@ export interface PlayerTestConfig {
   hp?: number;
   /** Items already in the pack at the start; a category over its limit makes the setup fail. */
   inventory?: (PackItemType | { type: PackItemType; treasureValue?: number })[];
+  /** The seat belongs to this guest account (created with POST /api/account/guest). */
+  accountId?: string;
 }
 
 /** A tile of the fixed deck: a name ('fourSideRoom', 'battleArena', 'cursedRoom', …) or a spec. */
