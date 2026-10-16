@@ -1,0 +1,18 @@
+{
+  "seconds": 0.8,
+  "influence": 0.8,
+  "ideas": [
+    {"key": "leather", "prompt": "A single footstep of a soft leather boot on a dusty stone dungeon floor: a low muffled thud with a faint scuff of grit. Close, dry, soft. No clack, no click, no echo.",
+     "label": {"en": "A soft leather boot on dusty stone", "ru": "Мягкий кожаный сапог по пыльному камню", "pl": "Miękki skórzany but na zakurzonym kamieniu"}},
+    {"key": "heavy", "prompt": "One heavy footstep of an armoured boot on a stone floor: a deep weighty thump and a faint creak of leather straps, no metal clank. Low and solid, close.",
+     "label": {"en": "A heavy armoured step, deep thump", "ru": "Тяжёлый шаг в доспехе, глубокий удар", "pl": "Ciężki krok w zbroi, głębokie uderzenie"}},
+    {"key": "dirt", "prompt": "A single footstep on packed earth and gravel in a cave: a soft low crunch, muffled and short. No click, no echo.",
+     "label": {"en": "On packed earth and gravel, a soft crunch", "ru": "По утоптанной земле и гравию, мягкий хруст", "pl": "Po ubitej ziemi i żwirze"}},
+    {"key": "pair", "prompt": "Two quick soft footsteps of leather boots on stone, like a hero stepping into the next room: low muffled thuds. Close, dry, no click, no echo.",
+     "label": {"en": "Two quick soft steps", "ru": "Два быстрых мягких шага", "pl": "Dwa szybkie miękkie kroki"}},
+    {"key": "cloth", "prompt": "One footstep on stone with the swish of a long cloak and a soft low thud of the boot. Gentle and close, no click, no echo.",
+     "label": {"en": "A step with a cloak's swish", "ru": "Шаг с шорохом плаща", "pl": "Krok z szelestem płaszcza"}},
+    {"key": "token", "prompt": "A wooden game figure moved one square on a wooden board: a soft low wooden tap as it is set down. Warm and close, no click, no high tones.",
+     "label": {"en": "A wooden figure set down on the board", "ru": "Деревянную фигурку переставили на доске", "pl": "Drewniana figurka postawiona na planszy"}}
+  ]
+}
