@@ -1283,7 +1283,9 @@ const turnOrder = useTurnOrder(gameData, isHumanPlayer);
 const heroNameById = (playerId) => {
   const player = playerById(playerId);
   if (!player) return t('common.unknown');
-  return player.hero || player.lordKarak ? heroName(player, 'short') : playerLabel(player);
+  // a hero-less player by name, else "Adventurer" as in the party rail — never "You": the sentences are in
+  // the third person ("You finds a new corridor")
+  return player.hero || player.lordKarak ? heroName(player, 'short') : (player.username || heroName(player, 'short'));
 };
 
 // The human at this screen (their pack is drawn bottom left)
@@ -1696,7 +1698,14 @@ const battleAwaitsDecision = (data, battle) => {
   const turn = (data.turns || []).find((t) => t.turnId === data.state.currentTurnId);
   const actions = turn?.actions || [];
   const last = actions[actions.length - 1];
-  return (last?.action || last?.type) === 'fight_monster';
+  if ((last?.action || last?.type) === 'fight_monster') return true;
+  // a roll that did not win and waits for spells / Sacrifice is not recorded as a fight yet: it still
+  // waits while the hero stands on the monster's tile and the monster is undefeated
+  if (battle.needsConsumableConfirmation && battle.position) {
+    const monster = data.field?.items?.[battle.position];
+    return data.field?.playerPositions?.[battle.player] === battle.position && !!monster && !monster.guardDefeated;
+  }
+  return false;
 };
 
 // Computed property to determine if the game can be started
