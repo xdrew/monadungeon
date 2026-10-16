@@ -50,6 +50,8 @@ export default defineConfig(() => {
           target: 'http://php_monadungeon:8080',
           changeOrigin: true,
           secure: false,
+          // X-Forwarded-Host/Port/Proto: the backend builds absolute links (the Google callback) from them
+          xfwd: true,
         }
       }
     },

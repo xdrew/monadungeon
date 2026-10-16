@@ -73,13 +73,19 @@ final class OAuthCookie
     }
 
     /**
-     * The callback as the browser reaches it (nginx passes Host, X-Forwarded-Proto and X-Forwarded-Port).
+     * The callback as the browser reaches it: the browser's host from X-Forwarded-Host (the Vite proxy) or Host
+     * (nginx), the port and the scheme from the forwarded headers.
      */
     public static function redirectUri(Request $request): string
     {
-        $scheme = (string) ($request->headers->get('X-Forwarded-Proto') ?: $request->getScheme());
-        $host = (string) preg_replace('/:\d+$/', '', (string) $request->headers->get('Host', $request->getHost()));
-        $port = (string) ($request->headers->get('X-Forwarded-Port') ?: $request->getPort());
+        $scheme = strtolower(trim(explode(',', (string) ($request->headers->get('X-Forwarded-Proto') ?: $request->getScheme()))[0]));
+        // a proxy that rewrites Host (the Vite dev server) passes the browser's host on as X-Forwarded-Host
+        $forwardedHost = trim(explode(',', (string) $request->headers->get('X-Forwarded-Host', ''))[0]);
+        $hostHeader = $forwardedHost !== '' ? $forwardedHost : (string) $request->headers->get('Host', $request->getHost());
+        $host = (string) preg_replace('/:\d+$/', '', $hostHeader);
+        $port = preg_match('/:(\d+)$/', $hostHeader, $m) === 1
+            ? $m[1]
+            : trim(explode(',', (string) ($request->headers->get('X-Forwarded-Port') ?: $request->getPort()))[0]);
         $default = ($scheme === 'https' && $port === '443') || ($scheme === 'http' && $port === '80') || $port === '';
 
         return sprintf('%s://%s%s%s', $scheme, $host, $default ? '' : ':' . $port, self::PATH . '/callback');
