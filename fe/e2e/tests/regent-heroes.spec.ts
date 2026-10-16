@@ -117,7 +117,7 @@ test.describe('Regent heroes', () => {
     await waitForFightClosed(page);
     await expect(page.getByTestId('retreat-banner')).toBeVisible();
     await snap(page, SPEC, 'battle-mage-retreat-choice', { phone: true });
-    const choice = page.locator('[data-testid^="retreat-"]:not([data-testid="retreat-banner"])').first();
+    const choice = page.locator('.portal-target[data-testid^="retreat-"]').first();
     const to = ((await choice.getAttribute('data-testid')) || '').replace('retreat-', '');
     await choice.click();
     await expect.poll(() => position(request, gameId, a), { timeout: 10000 }).toBe(to);

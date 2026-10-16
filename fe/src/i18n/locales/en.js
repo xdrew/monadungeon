@@ -85,6 +85,7 @@ export default {
       movesOn: '{who} moves on',
       seeksPath: '{who} seeks a path',
       noMovesLeft: 'No moves left — end your turn',
+      chooseRetreat: 'Choose where to retreat',
       rests: '{who} rests',
       ponders: '{who} ponders',
       loot: '{who} gathers the loot'
@@ -147,7 +148,8 @@ export default {
     darkThorn: { title: 'Dark Thorn', text: 'Choose another hero: they lose 1 HP. The spell costs no move and the turn goes on.', cast: 'Cast Dark Thorn' },
     reincarnation: { title: 'Reincarnation', text: 'The Warrior lost his last HP. Click a healing fountain to return there with full HP. The turn ends afterwards.' },
     magicSwap: { title: 'Magic Swap', text: 'Click another hero\'s figure to trade places. It costs all 4 moves: the turn ends on the new tile (a chest or a fountain there still counts).' },
-    retreat: { title: 'Retreat', text: 'The Lightning Attack was not won. Choose an opened tile to retreat to; the turn ends there.' },
+    retreat: { title: 'Retreat', text: 'The Lightning Attack was not won. Choose an opened tile to retreat to; the turn ends there.', fountain: 'fountain' },
+    dir: { n: 'north', s: 'south', e: 'east', w: 'west', ne: 'north-east', nw: 'north-west', se: 'south-east', sw: 'south-west', here: 'here' },
     lightning: { title: 'Lightning Attack', text: 'Choose a monster to strike. It costs all 4 moves; if you do not win you pick where to retreat.' },
     over: 'Game Over',
     overYouWin: 'You win!',

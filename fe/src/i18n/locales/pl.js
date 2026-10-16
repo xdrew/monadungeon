@@ -84,6 +84,7 @@ export default {
       movesOn: '{who} idzie dalej',
       seeksPath: '{who} szuka drogi',
       noMovesLeft: 'Brak ruchów — zakończ turę',
+      chooseRetreat: 'Wybierz, dokąd się wycofać',
       rests: '{who} odpoczywa',
       ponders: '{who} rozmyśla',
       loot: '{who} zbiera łupy'
@@ -146,7 +147,8 @@ export default {
     darkThorn: { title: 'Kolec ciemności', text: 'Wybierz innego bohatera: traci 1 PW. Zaklęcie nie kosztuje ruchu, tura trwa dalej.', cast: 'Rzuć kolec ciemności' },
     reincarnation: { title: 'Reinkarnacja', text: 'Wojownik stracił ostatni PW. Kliknij uzdrowicielską fontannę, by wrócić tam z pełnymi PW. Potem tura się kończy.' },
     magicSwap: { title: 'Magiczna zamiana', text: 'Kliknij pionek innego bohatera, by zamienić się miejscami. Kosztuje to 4 ruchy: tura kończy się na nowej płytce (skrzynia lub fontanna tam działają).' },
-    retreat: { title: 'Odwrót', text: 'Błyskawiczny atak nie dał zwycięstwa. Wybierz odkrytą płytkę, na którą się wycofasz — tam tura się kończy.' },
+    retreat: { title: 'Odwrót', text: 'Błyskawiczny atak nie dał zwycięstwa. Wybierz odkrytą płytkę, na którą się wycofasz — tam tura się kończy.', fountain: 'fontanna' },
+    dir: { n: 'na północy', s: 'na południu', e: 'na wschodzie', w: 'na zachodzie', ne: 'na północnym wschodzie', nw: 'na północnym zachodzie', se: 'na południowym wschodzie', sw: 'na południowym zachodzie', here: 'tutaj' },
     lightning: { title: 'Błyskawiczny atak', text: 'Wybierz potwora do ataku. Kosztuje to 4 ruchy; jeśli nie wygrasz, wybierzesz, dokąd się wycofać.' },
     over: 'Koniec gry',
     overYouWin: 'Wygrywasz!',

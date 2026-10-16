@@ -395,7 +395,7 @@
                   :disabled="loading || isRequestInProgress"
                   @click="handleChooseRetreat(option)"
                 >
-                  {{ option }}
+                  {{ retreatOptionLabel(option) }}
                 </button>
               </div>
             </div>
@@ -418,7 +418,8 @@
                   :disabled="loading || isRequestInProgress"
                   @click="handleLightningAttack(target.position)"
                 >
-                  {{ target.label }} <GameIcon name="heart" :size="13" /> {{ target.hp }} — {{ target.position }}
+                  {{ target.label }} · <GameIcon name="sword" :size="13" /> {{ target.hp }}
+                  <span class="portal-target__where">{{ directionLabel(myFieldPosition, target.position) }}</span>
                 </button>
               </div>
               <button
@@ -575,6 +576,33 @@
                   >
                     <div class="healing-fountain-indicator">
                       <span class="fountain-emoji"><GameIcon name="heart" :size="40" /></span>
+                    </div>
+                  </div>
+
+                  <!-- Lightning Attack targets and retreat tiles, lit on the field as well as listed in the plaque -->
+                  <div
+                    v-for="mark in skillTargetMarks"
+                    :key="`skill-mark-${mark.position}`"
+                    class="healing-fountain-marker skill-target-marker"
+                    :class="`skill-target-marker--${mark.kind}`"
+                    :data-testid="`${mark.kind}-marker-${mark.position}`"
+                    :title="mark.title"
+                    :style="{
+                      position: 'absolute',
+                      left: `${(mark.x - (gameData.field.size.minX || 0)) * tileSize}px`,
+                      top: `${(mark.y - (gameData.field.size.minY || 0)) * tileSize}px`,
+                      width: `${tileSize}px`,
+                      height: `${tileSize}px`,
+                      pointerEvents: 'auto',
+                      cursor: 'pointer'
+                    }"
+                    @click="mark.kind === 'lightning' ? handleLightningAttack(mark.position) : handleChooseRetreat(mark.position)"
+                  >
+                    <div class="healing-fountain-indicator">
+                      <GameIcon
+                        :name="mark.kind === 'lightning' ? 'lightning' : 'pin'"
+                        :size="40"
+                      />
                     </div>
                   </div>
 
@@ -1398,6 +1426,7 @@ const bannerHeadline = computed(() => {
   if (showBattleReportModal.value && battleInfo.value?.monsterType) {
     return faces(battleInfo.value.monsterType);
   }
+  if (acting.isYou && retreatChoiceForMe.value) return t('hud.headline.chooseRetreat');
   // every step of the turn spent: say so, the only thing left is to end it
   const places = gameData.value?.state?.availablePlaces;
   if (acting.isYou && places && !places.moveTo?.length && !places.placeTile?.length) return t('hud.headline.noMovesLeft');
@@ -5469,6 +5498,32 @@ const retreatChoiceForMe = computed(() => {
   const choice = gameData.value?.state?.retreatChoice;
   return choice && choice.playerId === currentPlayerId.value ? choice : null;
 });
+// Where a tile lies from the hero, in words ("north-east"): the plaques list targets this way, not as "0,-1"
+const myFieldPosition = computed(() => gameData.value?.field?.playerPositions?.[currentPlayerId.value] || null);
+const directionLabel = (from, to) => {
+  if (!from || !to) return '';
+  const [fx, fy] = from.split(',').map(Number);
+  const [tx, ty] = to.split(',').map(Number);
+  const ns = ty < fy ? 'n' : ty > fy ? 's' : '';
+  const ew = tx > fx ? 'e' : tx < fx ? 'w' : '';
+  return t(`game.dir.${ns + ew || 'here'}`);
+};
+const retreatOptionLabel = (option) => {
+  const from = retreatChoiceForMe.value?.position || myFieldPosition.value;
+  const fountain = (gameData.value?.field?.healingFountainPositions || []).includes(option);
+  const where = directionLabel(from, option);
+  const label = fountain ? `${where} · ${t('game.retreat.fountain')}` : where;
+  return label.charAt(0).toUpperCase() + label.slice(1);
+};
+const skillTargetMarks = computed(() => {
+  const at = (position, kind, title) => {
+    const [x, y] = position.split(',').map(Number);
+    return { position, x, y, kind, title };
+  };
+  if (isLightningMode.value) return lightningTargets.value.map((target) => at(target.position, 'lightning', target.label));
+  if (retreatChoiceForMe.value) return (retreatChoiceForMe.value.options || []).map((option) => at(option, 'retreat', retreatOptionLabel(option)));
+  return [];
+});
 const handleChooseRetreat = async (position) => {
   if (isRequestInProgress.value) return;
   try {
@@ -6568,6 +6623,17 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 /* Healing fountain markers */
+.skill-target-marker .healing-fountain-indicator {
+  color: var(--color-primary);
+}
+
+.portal-target__where {
+  margin-left: 6px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
 .healing-fountain-marker {
   z-index: 100 !important;
   display: flex;
