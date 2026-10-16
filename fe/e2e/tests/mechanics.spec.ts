@@ -185,6 +185,64 @@ test.describe('Mechanics', () => {
     expect(await packTypes(request, gameId, a)).toEqual(['dagger']);
   });
 
+  test('A lost fight costs one heart on screen, not two', async ({ page, request }) => {
+    const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
+    await startGame(page, request, {
+      gameId,
+      // a corridor first, then the rat's room beyond it: the lost fight pushes back onto the corridor,
+      // away from the start fountain; 1 + 1 = 2 loses, 3 HP → 2
+      diceRolls: [1, 1],
+      tileSequence: ['fourSide', 'fourSideRoom'],
+      itemSequence: ['giant_rat', 'giant_rat'],
+      playerConfigs: { [a]: { hp: 3 }, [b]: {} },
+    });
+
+    await placeAt(page, 0, -1);
+    await placeAt(page, 0, -2);
+    await waitForFight(page);
+    const filled = page.locator('.battle-overlay .hero-hp .hp-heart.filled');
+    await expect(filled).toHaveCount(2);
+    console.log('[spec] accept the defeat: the hearts must not drop again while the scene closes');
+    const seen: number[] = [];
+    const sampler = (async () => {
+      for (let i = 0; i < 40; i++) {
+        if (!(await page.locator('.battle-overlay').isVisible())) break;
+        seen.push(await filled.count());
+        await page.waitForTimeout(50);
+      }
+    })();
+    await page.locator('.battle-overlay .btn-defeat').first().click();
+    await sampler;
+    console.log(`[spec] hearts seen while closing: ${seen.join(',')}`);
+    expect(Math.min(...seen.filter((n) => n > 0), 2)).toBe(2);
+    await waitForFightClosed(page);
+    expect((await apiPlayer(request, gameId, a)).hp).toBe(2);
+  });
+
+  test('A knock-out plaque stays until it is read', async ({ page, request }) => {
+    const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
+    await startGame(page, request, {
+      gameId,
+      diceRolls: [1, 1],
+      tileSequence: ['fourSide', 'fourSideRoom'],
+      itemSequence: ['giant_rat', 'giant_rat'],
+      playerConfigs: { [a]: { hp: 1 }, [b]: {} },
+    });
+
+    await placeAt(page, 0, -1);
+    await placeAt(page, 0, -2);
+    await waitForFight(page);
+    await page.locator('.battle-overlay .btn-defeat').first().click();
+    await waitForFightClosed(page);
+    const notice = page.locator('.stunned-player-overlay');
+    await expect(notice).toBeVisible({ timeout: 8000 });
+    await snap(page, SPEC, 'knocked-out', { phone: true });
+    await page.waitForTimeout(3000);
+    await expect(notice).toBeVisible();
+    await notice.locator('.stunned-ok-button, .skip-turn-button').first().click();
+    await expect(notice).toHaveCount(0);
+  });
+
   test('The dragon ends the game: results, then the Hall of fame', async ({ page, request }) => {
     const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
     await startGame(page, request, {

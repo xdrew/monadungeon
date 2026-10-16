@@ -737,7 +737,8 @@ const emit = defineEmits(['end-turn', 'pick-item-and-end-turn', 'pick-item-with-
 const duel = computed(() => props.battleInfo?.duel || null);
 const isDuelChallenger = computed(() => duel.value?.role === 'challenger');
 const rivalLabel = computed(() => props.duelRival?.label || t('battle.rival'));
-const rivalSprite = computed(() => (props.duelRival?.heroKey && getHero(props.duelRival.heroKey).image) || '/images/ai.webp');
+// the rival's own portrait (a hero-less rival is drawn as the Adventurer, like in the party rail)
+const rivalSprite = computed(() => (props.duelRival?.heroKey && getHero(props.duelRival.heroKey).image) || DEFAULT_HERO_SPRITE);
 const duelRivalText = computed(() => (isDuelChallenger.value
   ? t('battle.rivalRollsNext', { name: rivalLabel.value })
   : t('battle.rivalToBeat', { name: rivalLabel.value, n: duel.value?.toBeat ?? props.battleInfo?.monster })));
@@ -745,7 +746,7 @@ const duelRivalText = computed(() => (isDuelChallenger.value
 const duelAwaitsDecision = computed(() => !!duel.value && props.battleInfo?.needsConsumableConfirmation === true && !battleFinalized.value);
 const duelPrimaryLabel = computed(() => {
   if (!duelAwaitsDecision.value) return t('battle.continue');
-  return isDuelChallenger.value ? t('battle.lockIn') : t('battle.fight');
+  return t('battle.lockIn');
 });
 const duelPrimaryAction = () => {
   if (isProcessing.value) return;
@@ -974,13 +975,14 @@ const dynamicResultText = computed(() => {
     return t('battle.yourStrength', { n: totalCalculatedDamage.value });
   }
 
-  if (hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) {
+  // a choice is still open (spells, Sacrifice, the duel side not locked in): a forecast, not the outcome
+  if ((hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) || duelAwaitsDecision.value) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
 
-    if (totalDamage > monsterHP) return t('battle.victory');
-    if (totalDamage === monsterHP) return t('battle.draw');
-    return t('battle.defeat');
+    if (totalDamage > monsterHP || (totalDamage === monsterHP && props.battleInfo.tieIsWin)) return t('battle.forecastWin');
+    if (totalDamage === monsterHP) return t('battle.forecastDraw');
+    return t('battle.forecastLose');
   }
 
   if (props.battleInfo.result === 'win') return t('battle.victory');
@@ -1038,8 +1040,13 @@ const totalCalculatedDamage = computed(() => {
   return (props.battleInfo.diceRollDamage || 0) + (props.battleInfo.itemDamage || 0) + consumableDamageTotal.value + rollBonus.value;
 });
 
+// The hero's HP when this fight began: the HP lost to it (or paid for Sacrifice) is subtracted on screen
+// from this, not from the live value — once "Accept defeat" reaches the server the live HP has already
+// dropped, and the hearts used to lose a second one
+const hpAtFightStart = ref(props.playerHp);
+watch(() => props.battleInfo?.battleId, () => { hpAtFightStart.value = props.playerHp; });
 const playerHpAfterBattle = computed(() => {
-  const hpAfterSacrifice = props.playerHp - sacrificeBonus.value;
+  const hpAfterSacrifice = hpAtFightStart.value - sacrificeBonus.value;
   if (dynamicResult.value === 'lose') {
     return Math.max(0, hpAfterSacrifice - 1);
   }
@@ -1582,7 +1589,7 @@ const foeState = computed(() => {
   return { win: 'defeat', lose: 'victory', draw: 'draw' }[dynamicResult.value] || '';
 });
 
-const shownHp = computed(() => (!isRolling.value && (dynamicResult.value === 'lose' || sacrificeHp.value) ? playerHpAfterBattle.value : props.playerHp));
+const shownHp = computed(() => (!isRolling.value && (dynamicResult.value === 'lose' || sacrificeHp.value) ? playerHpAfterBattle.value : hpAtFightStart.value));
 
 // What the hero's number is made of: "4 + 2, Dagger +1, Fireball +1"
 const breakdown = computed(() => {

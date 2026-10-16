@@ -891,25 +891,45 @@
       </section>
     </div>
 
-    <!-- Add a stunned player overlay when player is stunned -->
+    <!-- Stunned: on the stunned hero's turn (skip it), and right after the fight that knocked this hero out —
+         that turn ends at once and the next one is skipped by the server, so the plaque waits to be read -->
     <div
-      v-if="isCurrentPlayerStunned"
+      v-if="isCurrentPlayerStunned || showKnockedOut"
       class="stunned-player-overlay"
+      :class="{ 'stunned-player-overlay--notice': !isCurrentPlayerStunned }"
     >
-      <div class="stunned-message">
-        <div class="stunned-player-icon">
-          {{ getPlayerEmoji(currentPlayerId) }}
-        </div>
-        <h3><GameIcon name="warning" :size="22" /> {{ t('game.stunned') }}</h3>
+      <section
+        class="stunned-message"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('game.stunned')"
+      >
+        <img
+          class="stunned-player-icon"
+          :src="playerAvatar(isCurrentPlayerStunned ? getCurrentPlayerData : (knockedOutPlayer || getCurrentPlayerData))"
+          alt=""
+          @error="onAvatarError($event, getCurrentPlayerData)"
+        >
+        <h3>{{ t('game.stunned') }}</h3>
         <p>{{ t('game.stunnedText') }}</p>
-        <p>{{ t('game.stunnedHeal') }}</p>
+        <p class="stunned-heal">{{ t('game.stunnedHeal') }}</p>
         <button
-          class="skip-turn-button"
+          v-if="isCurrentPlayerStunned"
+          type="button"
+          class="btn btn--ember skip-turn-button"
           @click="skipStunnedPlayerTurn"
         >
-          {{ t('game.skipTurn') }} <span class="kbd-hint">(Enter)</span>
+          {{ t('game.skipTurn') }} <span class="kbd-hint">Enter</span>
         </button>
-      </div>
+        <button
+          v-else
+          type="button"
+          class="btn btn--ember skip-turn-button stunned-ok-button"
+          @click="knockedOut = false"
+        >
+          {{ t('game.stunnedOk') }}
+        </button>
+      </section>
     </div>
 
     <!-- Karak: Regent, Lord Karak variant — shown once per browser when the weakest hero is transformed -->
@@ -1388,7 +1408,10 @@ const bannerHeadline = computed(() => {
 // The hero rolling in the battle modal: the summoned rival rolls in this browser during a duel
 const battleRoller = computed(() => playerById(battleInfo.value?.player) || getCurrentPlayerData.value);
 const duelRival = computed(() => {
-  const rival = playerById(battleInfo.value?.duel?.opponentId);
+  // the challenger's rival is the summoned hero; the summoned hero's rival is the challenger
+  const side = battleInfo.value?.duel;
+  const rivalId = side?.role === 'opponent' ? gameData.value?.state?.duel?.challengerId : side?.opponentId;
+  const rival = playerById(rivalId);
   return rival ? { label: playerChoiceLabel(rival), heroKey: figureHeroKey(rival) } : null;
 });
 
@@ -5963,8 +5986,25 @@ const isCurrentPlayerStunned = computed(() => {
   return isStunned;
 });
 
+// This hero's HP dropped to 0 (not a Warrior reincarnating): tell it once the fight scene is closed
+// (any human at this screen: in a hot-seat game the screen hands over to the next player right after)
+const knockedOut = ref(false);
+const knockedOutPlayer = ref(null);
+watch(() => (gameData.value?.players || []).map((p) => `${p.id}:${p.hp}`).join('|'), (now, before) => {
+  if (!before || gameData.value?.state?.status === 'finished') return;
+  const was = Object.fromEntries(before.split('|').map((entry) => entry.split(':')));
+  for (const player of gameData.value?.players || []) {
+    if (player.hp === 0 && Number(was[player.id]) > 0 && !player.isAi && !isVirtualPlayer(player.id) && !player.awaitingReincarnation) {
+      knockedOutPlayer.value = player;
+      knockedOut.value = true;
+    }
+  }
+});
+const showKnockedOut = computed(() => knockedOut.value && !showBattleReportModal.value && !isReincarnationMode.value);
+
 // Add method to skip turn for stunned players
 const skipStunnedPlayerTurn = async () => {
+  knockedOut.value = false;
   if (!isCurrentPlayerStunned.value) return;
 
   try {
@@ -6421,67 +6461,90 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 /* Add styles for stunned player overlay */
 .stunned-player-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: var(--bg-overlay);
+  inset: 0;
   z-index: var(--z-overlay);
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 16px;
+  background: rgba(5, 3, 2, 0.7);
 }
 
+/* right after the knock-out: a plaque by the rings, the field stays usable around it */
+.stunned-player-overlay--notice {
+  inset: auto 16px 120px auto;
+  padding: 0;
+  background: none;
+  pointer-events: none;
+}
+
+.stunned-player-overlay--notice .stunned-message {
+  pointer-events: auto;
+  width: min(360px, calc(100vw - 32px));
+}
+
+/* a plaque like the others, with a blood-red rim */
 .stunned-message {
-  background-color: var(--bg-modal);
-  padding: 2rem;
-  border-radius: var(--radius-lg);
+  width: min(420px, 100%);
+  box-sizing: border-box;
+  padding: 22px 26px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   text-align: center;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
-  max-width: 400px;
+  background: linear-gradient(180deg, rgba(20, 12, 8, 0.97) 0%, rgba(12, 7, 5, 0.97) 100%);
+  border: 1px solid rgba(217, 69, 42, 0.55);
+  box-shadow: 0 0 36px rgba(217, 69, 42, 0.25), 0 14px 34px rgba(0, 0, 0, 0.85);
   color: var(--text-primary);
+  font-family: var(--font-body);
 }
 
 .stunned-player-icon {
-  font-size: 48px;
-  margin-bottom: 1rem;
-  background-color: rgba(255, 255, 255, 0.1);
-  width: 80px;
-  height: 80px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1rem auto;
+  object-fit: cover;
+  object-position: top;
   border: 2px solid var(--color-danger);
-  box-shadow: 0 0 15px var(--color-danger);
-  animation: pulse-shadow 2s infinite;
-}
-
-@keyframes pulse-shadow {
-  0% { box-shadow: 0 0 10px var(--color-danger); }
-  50% { box-shadow: 0 0 20px var(--color-danger); }
-  100% { box-shadow: 0 0 10px var(--color-danger); }
+  box-shadow: 0 0 18px rgba(217, 69, 42, 0.55);
+  filter: grayscale(0.5) brightness(0.8);
 }
 
 .stunned-message h3 {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 32px;
   color: var(--color-danger);
-  margin-bottom: 1rem;
+  text-shadow: 0 0 14px rgba(217, 69, 42, 0.45), 0 2px 6px #000;
+}
+
+.stunned-message p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.stunned-message .stunned-heal {
+  font-style: italic;
+  color: var(--text-secondary);
 }
 
 .skip-turn-button {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background-color: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color 0.2s;
+  position: relative;
+  margin-top: 10px;
+  min-width: 200px;
+  min-height: 48px;
 }
 
-.skip-turn-button:hover {
-  background-color: var(--color-primary-dark);
+.skip-turn-button .kbd-hint {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 /* Floating heal text */
