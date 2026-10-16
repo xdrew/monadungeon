@@ -164,7 +164,7 @@ Each test's sequence is written next to it as a comment table, as in the showcas
 
 ### Phase 5: Docs and review
 
-- [ ] Task 9: `fe/e2e/README.md` rewritten:
+- [x] Task 9: `fe/e2e/README.md` rewritten:
   - the specs and what each covers;
   - how to run one spec: `docker compose … run --rm playwright npm run test:e2e -- --config=playwright.config.docker.ts <spec>`, plus a Taskfile `fe:test:spec` task taking `{{.CLI_ARGS}}`;
   - the test-mode presets;

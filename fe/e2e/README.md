@@ -1,165 +1,60 @@
-# Monadungeon Game E2E Testing with Playwright
+# Karak e2e tests (Playwright)
 
-This directory contains end-to-end tests for the Monadungeon game using Playwright.
+The specs drive the real app: the Vue frontend served through nginx at `http://sf.sf:18080` and the Symfony backend in
+its **test mode**, which scripts the dice, the tile deck and the bag so every fight and every room is known in advance.
 
-## Handling Backend Randomness
+## Specs
 
-The tests handle backend randomness through several strategies:
+| Spec | What it covers |
+|---|---|
+| `tests/two-player-game.spec.ts` | The showcase: a whole game, Warrior (Double Attack, Reincarnation) against Thief (Stealth, Backstab): fights won, lost and drawn, stun, spells, a full pack, keys, teleportation gates, fountains, the dragon. Its video is the showcase recording. |
+| `tests/pages.spec.ts` | The lobby options and the hero roster, the language switch (en/ru/pl), the rules contents, the Hall of fame, 404, a real game against the AI with its playback speeds (no test mode). |
+| `tests/base-heroes.spec.ts` | Swordsman (Combat Training, Unstoppable), Warlock (Sacrifice, Magic Swap), Wizard (Magical Affinity, Astral Walking), Oracle (Fateweaver, Farseeing). |
+| `tests/regent-heroes.spec.ts` | Barbarian (Berserk, heal limit, Tireless), Battle Mage (Sword Master, Lightning Attack, the retreat), Acrobat (Dagger Throwing, Sprint), Ranger (Bear Attack, Listening). |
+| `tests/mechanics.spec.ts` | The Curse of Karak, the Portal of Healing, chests with and without a key, a find a full pack does not want, tile rotation, a fight surviving a reload, the dragon, the results and the Hall of fame. |
+| `tests/regent-mechanics.spec.ts` | Giant Bat → Dark Thorn, Skeleton Mage → Frost Fist, the Battle Arena duel, the Cursed Room, the Lord Karak reveal. |
 
-### 1. API Mocking
-The `GameApiMock` class intercepts API calls and replaces random values with predictable ones:
+Each topic spec has one `test()` per hero or mechanic and its own game, so a failure stays local.
 
-```typescript
-await startGame({
-  fixedDiceRolls: [6, 6],        // Control battle dice rolls
-  fixedTileSequence: ['Corridor'], // Control which tiles are drawn
-  fixedMonsterPositions: {         // Control where monsters appear
-    '1,0': true
-  },
-  fixedItemDrops: {                // Control item rewards
-    'Skeleton': 'Axe'
-  }
-});
-```
+## Running
 
-### 2. Route Interception
-Playwright intercepts HTTP requests and modifies responses:
-- `/game/start-battle` - Replace dice rolls
-- `/game/pick-tile` - Control tile selection
-- `/game/move-player` - Force monster encounters
-
-### 3. State Injection
-For complex scenarios, inject game state directly:
-```typescript
-await page.evaluate(() => {
-  window.gameStore?.updatePlayerInventory('player-1', {
-    weapons: [{ name: 'Sword', damage: 2 }]
-  });
-});
-```
-
-## Test Structure
-
-### Fixtures
-- `game-api-mock.ts` - API mocking utilities
-- `game-test-base.ts` - Base test with game-specific helpers
-
-### Test Suites
-- `battle-turn-flow.spec.ts` - Battle mechanics and turn ending
-- `inventory-management.spec.ts` - Item pickup and inventory
-- `game-progression.spec.ts` - Full game scenarios
-
-## Running Tests
+The dev stack must be up (`task run`) and Vite must be serving (`task fe:dev`); nginx answers 502 otherwise.
 
 ```bash
-# Run all tests
-npm run test:e2e
-
-# Run with UI mode (interactive)
-npm run test:e2e:ui
-
-# Debug a specific test
-npm run test:e2e:debug battle-turn-flow.spec.ts
-
-# Run tests with browser visible
-npm run test:e2e:headed
-
-# View test report
-npm run test:e2e:report
+task fe:test:spec -- mechanics.spec.ts          # one spec, verbose list output
+task fe:test:spec -- base-heroes.spec.ts -g Oracle   # one test by name
+task fe:test:video                              # everything, with videos
 ```
 
-## Writing New Tests
+The runner is the `playwright` service of `docker-compose.test.yml` (config `playwright.config.docker.ts`, one worker,
+1280×720, video on). Results land in `fe/test-results/`.
 
-1. Use the `startGame` fixture with mock options:
-```typescript
-test('my test', async ({ page, startGame }) => {
-  await startGame({
-    fixedDiceRolls: [3, 4],
-    // ... other options
-  });
-  
-  // Your test logic
-});
-```
+## Test mode
 
-2. Use helper functions for common actions:
-```typescript
-await GameTestHelpers.pickTile(page);
-await GameTestHelpers.placeTile(page, 1, 0);
-await GameTestHelpers.movePlayer(page, 1, 0);
-```
+`utils/test-game-setup.ts` → `POST /api/test/setup-game` (dev/test only):
 
-3. Add data-testid attributes to components for reliable selection:
-```vue
-<button data-testid="pick-tile-button">Pick Tile</button>
-```
+- `diceRolls`: one queue for every roll of the game, in order (Combat Training's rerolled 1s, the Cursed Room die
+  and the duel rolls take from it too);
+- `tileSequence`: the deck after the start tile: names (`fourSideRoom`, `threeSide`, `twoSideStraight`,
+  `battleArena`, `cursedRoom`, …) or `{ orientation, room, features }`;
+- `itemSequence`: the bag (`giant_rat`, `mummy`, `dragon`, `treasure_chest`, `giant_bat`, `skeleton_mage`, …);
+- `playerConfigs`, keyed by player id in turn order: `hero`, `maxHp`, `hp` (current HP), `maxActions`,
+  `inventory` (item types already in the pack: `sword`, `fireball`, `teleport`, `key`, `dark_thorn`, …, or
+  `{ type, treasureValue }`);
+- `regent`, `lordKarak`, `randomHeroes`.
 
-## Debugging Tips
+Positions, stun and the curse come from play. The first player starts; placing a tile moves the hero onto it.
 
-1. Use `page.pause()` to stop execution and inspect:
-```typescript
-await page.pause();
-```
+## Helpers
 
-2. Take screenshots at key points:
-```typescript
-await page.screenshot({ path: 'debug.png' });
-```
-
-3. Enable slow motion to see actions:
-```typescript
-test.use({ 
-  launchOptions: { slowMo: 500 } 
-});
-```
-
-4. Use verbose logging:
-```typescript
-DEBUG=pw:api npm run test:e2e
-```
-
-## Best Practices
-
-1. **Test User Journeys**: Focus on complete user scenarios rather than individual functions
-2. **Use Page Objects**: For complex pages, create page object models
-3. **Avoid Hard Waits**: Use Playwright's auto-waiting instead of `waitForTimeout`
-4. **Test Error Cases**: Include tests for network failures, validation errors, etc.
-5. **Keep Tests Independent**: Each test should set up its own state
-6. **Use Descriptive Names**: Test names should explain what's being tested
-
-## Common Patterns
-
-### Waiting for Game State Changes
-```typescript
-// Wait for turn to change
-await page.waitForSelector('[data-current-player="Player 2"]');
-
-// Wait for battle to complete
-await page.waitForSelector('.battle-dialog', { state: 'hidden' });
-
-// Wait for API response
-await page.waitForResponse('**/game/move-player');
-```
-
-### Asserting Game State
-```typescript
-// Check player position
-await GameTestHelpers.assertPlayerPosition(page, 'player-1', 0, 0);
-
-// Check inventory
-await GameTestHelpers.assertInventoryItem(page, 'player-1', 'Sword');
-
-// Check turn
-await GameTestHelpers.assertTurnEnded(page, 'Player 2');
-```
-
-### Handling Dialogs
-```typescript
-// Battle dialog
-await GameTestHelpers.waitForBattle(page);
-await page.click('[data-testid="battle-continue-button"]');
-
-// Item pickup
-await expect(page.locator('.item-pickup-dialog')).toBeVisible();
-await GameTestHelpers.pickupItem(page);
-```
+- `utils/hotseat.ts`:
+  - `startGame()` (test mode on, game set up and opened, everyone ready);
+  - `switchTo()` (hand the browser to the other player);
+  - `placeAt(x, y)` / `moveTo(x, y)` (a given spot);
+  - `waitForFight()`, `takeReward()`, `strikeWith()` (spells / Sacrifice, then "fight, win and pick up");
+  - `endTurn()`;
+  - API readers: `apiGame`, `apiPlayer`, `position`, `packTypes`, `packItemId`;
+  - `visibleWithin()`: `isVisible()` never waits.
+- `utils/game-helpers.ts`: the showcase's helpers. `placeTile()` ignores its x/y and takes the first free spot.
+- `utils/screens.ts` — `snap(page, spec, name, { phone })`: every screen a spec reaches goes to
+  `fe/test-results/screens/<spec>/NN-<name>.png`, and with `phone` also `.phone.png` at 390×844, for design reviews.
