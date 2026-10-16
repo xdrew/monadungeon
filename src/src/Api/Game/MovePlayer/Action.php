@@ -8,6 +8,7 @@ use App\Api\Error;
 use App\Game\Field\Field;
 use App\Game\Field\GetField;
 use App\Game\Item\Item;
+use App\Game\Item\ItemCategory;
 use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\QueryPlayerInventory;
@@ -88,7 +89,7 @@ final readonly class Action
                                 'guardHP' => $item->guardHP,
                             ],
                             'requiresKey' => \in_array($item->type->value, ['chest', 'ruby_chest'], true),
-                            'hasKey' => ($playerInventory['keys'] ?? []) !== [],
+                            'hasKey' => ($playerInventory[ItemCategory::KEY->value] ?? []) !== [],
                         ];
 
                         return new Response($request->gameId, null, $itemInfo);
@@ -114,9 +115,10 @@ final readonly class Action
         }
 
         // Check if it's a chest that requires a key
+        // (the inventory is keyed by ItemCategory values, singular: "key", not "keys")
         if (\in_array($item->type->value, ['chest', 'ruby_chest'], true)) {
             // Skip if player has no keys
-            $keys = $playerInventory['keys'] ?? [];
+            $keys = $playerInventory[ItemCategory::KEY->value] ?? [];
             if (\count($keys) === 0) {
                 return false;
             }
