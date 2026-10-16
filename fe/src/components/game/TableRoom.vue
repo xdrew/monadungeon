@@ -440,6 +440,7 @@ const copyInvite = async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top;
 }
 
 .room-seat__who {
@@ -519,6 +520,7 @@ const copyInvite = async () => {
   width: 52px;
   height: 52px;
   object-fit: cover;
+  object-position: top;
   border-radius: 50%;
 }
 

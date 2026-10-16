@@ -968,8 +968,10 @@ const createNewGame = async () => {
   box-shadow: 0 0 0 3px var(--iron), 0 0 0 5px var(--iron-edge), 0 0 22px rgba(var(--ember-rgb), 0.35);
 }
 
+/* the portrait is taller than the ring and starts at its top: the head stays in, the legs go */
 .hero-medallion--portrait {
   align-self: flex-start;
+  align-items: flex-start;
 }
 
 .hero-card-image {

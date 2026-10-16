@@ -247,6 +247,9 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
   border-radius: 50%;
   overflow: hidden;
   cursor: pointer;
+  /* a button centres its content: the taller portrait would lose its head; it starts at the top */
+  display: flex;
+  align-items: flex-start;
   background: radial-gradient(circle at 50% 35%, #4a3020 0%, #140c07 75%);
   box-shadow: 0 0 0 3px var(--ring), 0 0 0 5px var(--iron-edge), var(--glow);
   transition: width var(--transition-normal), height var(--transition-normal), box-shadow var(--transition-normal);
