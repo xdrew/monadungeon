@@ -455,12 +455,24 @@ const SECTIONS = [
   { id: 'tips', icon: 'eye', title: 'rules.tips.title' }
 ];
 const activeSection = ref(SECTIONS[0].id);
+// a section picked in the contents stays lit while the page scrolls to it: the last ones never reach
+// the upper third, so the observer would light the section above them instead
+let pickedUntil = 0;
 const goTo = (id) => {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   activeSection.value = id;
+  pickedUntil = Date.now() + 1500;
   history.replaceState(null, '', `#${id}`);
 };
 let observer = null;
+// scrolled to the very end: the last section is the current one
+const onScroll = () => {
+  if (Date.now() < pickedUntil) return;
+  const root = document.scrollingElement || document.documentElement;
+  if (root.scrollTop > 0 && root.scrollTop + window.innerHeight >= root.scrollHeight - 2) {
+    activeSection.value = SECTIONS[SECTIONS.length - 1].id;
+  }
+};
 
 onMounted(() => {
   // Music continues from the lobby if it is already playing
@@ -469,8 +481,9 @@ onMounted(() => {
   // The topmost section crossing the upper third of the screen is the current one
   observer = new IntersectionObserver((entries) => {
     const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-    if (visible.length) activeSection.value = visible[0].target.id;
+    if (visible.length && Date.now() >= pickedUntil) activeSection.value = visible[0].target.id;
   }, { rootMargin: '0px 0px -66% 0px' });
+  window.addEventListener('scroll', onScroll, { passive: true });
   SECTIONS.forEach(({ id }) => {
     const el = document.getElementById(id);
     if (el) observer.observe(el);
@@ -480,6 +493,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   observer?.disconnect();
+  window.removeEventListener('scroll', onScroll);
 });
 </script>
 
