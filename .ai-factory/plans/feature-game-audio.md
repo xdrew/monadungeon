@@ -68,7 +68,7 @@ Authority: user answers > CLAUDE.md (Torchlight, no emoji, debug only in dev, i1
 
 ### Phase 3: The game's sounds, e2e, docs
 - [x] Task 7: `fe/src/composables/useGameSounds.js` hooked into GameView: the field, the fight scene (the dice when they are thrown, the result at the slam), pickups, spells, the curse, turns, the online countdown; the AI and online playback through the same cues.
-- [ ] Task 8: `fe/e2e/tests/audio.spec.ts` (as in the table), then every topic spec; screenshots of the popover (desktop and phone) reviewed. (audio.spec.ts: 4/4 green; the other topic specs and the new pages lobby check wait: e2e paused by the user while they play)
+- [x] Task 8: `fe/e2e/tests/audio.spec.ts` (as in the table), then every topic spec; screenshots of the popover (desktop and phone) reviewed. (2026-10-16: all topic specs, 45/45 green)
 - [x] Task 9: Docs:
   - `tools/audio/README.md` (setup, keys, commands, costs seen in `probe`, licensing);
   - README (the sound in the game);
