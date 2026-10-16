@@ -101,6 +101,9 @@ final class SmartVirtualPlayer
     public function executeTurn(Uuid $gameId, Uuid $playerId, string $strategyType = 'balanced'): array
     {
         $this->skillActions = [];
+        // the chests tried in this turn only: the service outlives a turn (RoadRunner worker), and a chest
+        // remembered by its position alone was skipped in later turns and in other games
+        $this->collectedChests = [];
         $actions = $this->playTurn($gameId, $playerId, $strategyType);
 
         return array_merge($actions, $this->skillActions);
@@ -817,7 +820,9 @@ final class SmartVirtualPlayer
             $targetMonster = null;
 
             // Priority 1: Move towards chests if we have a key
-            if ($hasKey && !empty($allChestsOnField) && empty($visibleChests)) {
+            // (a chest next to the hero counts too: it used to be skipped while the hero explored elsewhere)
+            if ($hasKey && (!empty($allChestsOnField) || !empty($visibleChests))) {
+                $allChestsOnField = array_values(array_unique(array_merge($visibleChests, $allChestsOnField)));
                 $shouldMoveTowardsChest = true;
                 error_log('DEBUG AI: Have key and chests on field - should move towards them!');
             }
@@ -6320,8 +6325,11 @@ final class SmartVirtualPlayer
      */
     private function isChestOrTreasure(array $itemInfo): bool
     {
-        // Check if it's explicitly a chest
+        // Check if it's explicitly a chest (the move response nests the item: itemInfo.item.type)
         if (isset($itemInfo['type']) && $itemInfo['type'] === 'chest') {
+            return true;
+        }
+        if (\in_array($itemInfo['item']['type'] ?? null, ['chest', 'ruby_chest'], true)) {
             return true;
         }
 
