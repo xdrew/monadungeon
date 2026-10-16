@@ -1,0 +1,15 @@
+{
+  "takes": 1,
+  "ideas": [
+    {"key": "gleam", "prompt": "The title screen: a treasure chest of gold gleams in a dark dungeon while monsters stand guard. Mysterious and alluring: low cello and viola ostinato, harp arpeggios like glinting coins, a haunting wooden flute melody. D minor, around 80 bpm. About two and a half minutes at one level.",
+     "label": {"en": "Mysterious and alluring: cello ostinato, harp like glinting coins", "ru": "Загадочно и манит: остинато виолончели, арфа как блеск монет", "pl": "Tajemniczo i kusząco: ostinato wiolonczeli, harfa jak błysk monet"}},
+    {"key": "guard", "prompt": "Monsters waiting in the dark around a hoard of gold: a slow tense pulse on a frame drum, plucked low strings, a hurdy-gurdy drone and a sparse dark dulcimer theme. Ominous but not scary, it invites the descent. A minor, around 72 bpm. About two and a half minutes at one level.",
+     "label": {"en": "Ominous waiting: drum pulse, hurdy-gurdy drone, dark dulcimer", "ru": "Тревожное ожидание: пульс бубна, гул колёсной лиры, тёмные цимбалы", "pl": "Złowrogie czekanie: puls bębna, lira korbowa, ciemne cymbały"}},
+    {"key": "call", "prompt": "A dark heroic call to adventure before entering a dungeon full of monsters: low horns and strings carry a proud theme in a minor key over steady war drums, a lute answers. Brave and grim, not bright. E minor, around 90 bpm. About two and a half minutes at one level.",
+     "label": {"en": "Grim heroic call: horns and strings in minor, war drums", "ru": "Мрачный героический зов: валторны и струнные в миноре, боевые барабаны", "pl": "Ponure bohaterskie wezwanie: rogi i smyczki w molu, bębny"}},
+    {"key": "eerie", "prompt": "An eerie, slightly playful dungeon theme: a celesta and glockenspiel treasure motif over a low cello drone and soft pizzicato, ghostly and curious, like skeletons and a ghost guarding gold. C minor, around 76 bpm. About two and a half minutes at one level.",
+     "label": {"en": "Eerie and a little playful: celesta over a cello drone", "ru": "Жутковато и чуть игриво: челеста над гулом виолончели", "pl": "Upiornie i trochę figlarnie: czelesta nad wiolonczelą"}},
+    {"key": "march", "prompt": "A slow dark fantasy march into the depths: soft taiko and frame drums, low brass chords, a lute and a viola trading a solemn melody, torches flickering. Steady, weighty, adventurous in a dark way. D minor, around 84 bpm. About two and a half minutes at one level.",
+     "label": {"en": "A slow dark march into the depths", "ru": "Медленный тёмный марш в глубину", "pl": "Powolny mroczny marsz w głąb"}}
+  ]
+}

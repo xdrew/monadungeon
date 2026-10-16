@@ -57,13 +57,17 @@ def generate(asset_id: str, clients: dict) -> float:
     for idea in spec["ideas"]:
         for take in range(1, takes_per_idea + 1):
             name = f"{idea['key']}-{take}"
-            if music:  # the kind's prefix (instrumental, the game's mood) goes first, as in generate
-                full = " ".join(p for p in (k.prefix, idea["prompt"]) if p)
-                data, info = clients["lyria"].generate(full, k.model)
-                spend += info.get("cost_usd") or 0
-            else:
-                data, info = clients["elevenlabs"].generate(idea["prompt"], seconds, influence)
-                spend += info.get("credits") or 0
+            try:
+                if music:  # the kind's prefix (instrumental, the game's mood) goes first, as in generate
+                    full = " ".join(p for p in (k.prefix, idea["prompt"]) if p)
+                    data, info = clients["lyria"].generate(full, k.model)
+                    spend += info.get("cost_usd") or 0
+                else:
+                    data, info = clients["elevenlabs"].generate(idea["prompt"], seconds, influence)
+                    spend += info.get("credits") or 0
+            except Exception as exc:  # one refused or failed take does not lose the others
+                LOG.warning("take %s skipped: %s", name, str(exc)[:300])
+                continue
             (raw_dir / f"{name}.mp3").write_bytes(data)
             stats = postprocess.process(raw_dir / f"{name}.mp3", out_dir / f"{name}.mp3", pipeline._shape(asset, k))
             takes.append({"id": str(len(takes) + 1), "file": f"/audio/candidates/{asset_id}/{name}.mp3",
