@@ -92,7 +92,7 @@ Authority: user answers > part 1 plan (`feature-online-accounts.md`) > CLAUDE.md
   - invite link for a full table → the plaque.
 
   Then run all topic specs.
-- [ ] Task 12: Docs: CLAUDE.md (tables, push, server AI, online mode), README (how to play online, Mercure in the stack), `fe/e2e/README.md`.
+- [x] Task 12: Docs: CLAUDE.md (tables, push, server AI, online mode), README (how to play online, Mercure in the stack), `fe/e2e/README.md`.
 
 ### Phase 5: An opponent who takes too long
 - [ ] Task 13: Add the following, with a migration via diff:

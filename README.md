@@ -12,6 +12,12 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 - **Your seats are yours**: the server refuses anyone else acting for them
 - **Hall of fame**: by players and by heroes
 
+### Online tables
+- **Open a table** on the start screen: 2–5 seats, the same options (Regent, Lord Karak, random heroes); it shows in everyone's list of open tables, and its invite link (`/table/{id}`) seats a friend after a name
+- **The waiting room**: who sits where, one hero per table, the host seats the AI and starts once two seats are taken and every seat holds a hero; the host leaving closes the table
+- **Live**: every browser at the table sees the others' tiles, walks, fights and chronicle lines as they happen (push through Mercure); the server plays the AI seats itself and every browser plays the AI's turn back
+- "Descend against the AI" stays a one-browser game
+
 ### Core Gameplay
 - **Multiplayer Support**: 1-5 players; the dice pick who starts, then turns go clockwise
 - **Dynamic Tile Exploration**: Procedurally generated dungeon layout as players explore
@@ -38,6 +44,7 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 - **Custom Message Bus** with attribute-based handlers for CQRS pattern
 - **RoadRunner** as high-performance PHP application server
 - **Docker** containerization for all services
+- **Mercure** hub (`mercure` service, SSE behind nginx at `/.well-known/mercure`) pushes game changes to the browsers; the backend signs its publish JWT with `MERCURE_JWT_SECRET` (`.env`; production sets its own in the environment of `compose.prod.yml`) and posts to `MERCURE_URL`
 
 ### Frontend
 - **Vue 3** with Composition API for reactive UI
