@@ -45,6 +45,7 @@ export default {
     regentHint: 'Lord Karak rooms, Giant Bats and Skeleton Mages',
     lordKarak: 'Lord Karak variant',
     lordKarakHint: 'At the fifth Lord Karak room the weakest hero becomes Lord Karak',
+    lordKarakNeedsRegent: 'Needs the Karak: Regent expansion',
     playAi: 'Descend against the AI',
     leaderboard: 'Hall of fame',
     rules: 'How to play',
@@ -116,6 +117,7 @@ export default {
       journalTitle: 'Everything that happened in the dungeon',
       endTurn: 'End Turn',
       placeTileFirst: 'Place Tile First',
+      chooseToken: 'Choose a token',
       wait: 'Wait'
     },
     mustPlaceTile: 'You must place the picked tile before ending your turn',
@@ -184,8 +186,8 @@ export default {
       nobody: 'nobody',
       curseStays: 'The curse stays on {who}',
       curseOn: '{who} is cursed',
-      cursedRoomCursed: 'Cursed Room — {who} rolled {roll}: cursed!',
-      cursedRoomSafe: 'Cursed Room — {who} rolled {roll}: safe',
+      cursedRoomCursed: 'Cursed Room — {who} rolled {roll} (1–3 curses): cursed, no skills until a fountain',
+      cursedRoomSafe: 'Cursed Room — {who} rolled {roll} (1–3 curses): safe',
       darkThornHit: 'Dark Thorn — {who} loses 1 HP',
       notWorthTaking: '{item}: no better than what you carry — click it to take it anyway',
       magicSwapTooLate: 'Magic Swap is only possible at the beginning of the turn, before any move.',
@@ -194,6 +196,7 @@ export default {
     }
   },
   field: {
+    chestLocked: 'Locked: opens with a key',
     swapTarget: 'Magic Swap: trade places with this hero',
     playerTitle: 'Player {id}',
     currentPlayer: 'Current Player',
@@ -472,7 +475,7 @@ export default {
     },
     fateweaver: {
       prompt: 'Two tokens were drawn for the new room. Choose the one to place — the other goes back into the bag.',
-      hp: 'HP {n}',
+      hp: 'Strength {n}',
       place: 'Place'
     },
     lordKarak: {
@@ -490,7 +493,7 @@ export default {
         items: 'Tied on treasures and weapons — the fewest items.',
         roll: 'Tied on everything — the lowest die roll.'
       },
-      keepsOwn: 'Abilities (two players: he keeps his own):',
+      keepsOwn: 'Abilities (two players: his own and the rival\'s):',
       others: 'Abilities of the other heroes:',
       none: 'No other hero is in play: Lord Karak has no abilities.',
       continue: 'Continue'
@@ -519,7 +522,7 @@ export default {
   },
   rules: {
     contents: 'Contents',
-    title: '{app} RULES',
+    title: 'Rules of {app}',
     back: 'Back to Lobby',
     overview: {
       title: 'Game Overview',
@@ -660,7 +663,7 @@ export default {
   },
   leaderboard: {
     empty: 'No hero has made it to the hall yet. Descend and be the first.',
-    back: 'Back to Home',
+    back: 'Back to Lobby',
     title: 'Hall of fame',
     loading: 'Loading leaderboard...',
     player: 'Player',
@@ -673,7 +676,7 @@ export default {
   notFound: {
     title: 'Page Not Found',
     text: 'The page you are looking for doesn\'t exist or has been moved.',
-    home: 'Return to Home'
+    home: 'Back to Lobby'
   },
   monsters: {
     giant_rat: { name: 'Giant Rat', nom: 'Giant Rat', acc: 'Giant Rat', ins: 'Giant Rat' },

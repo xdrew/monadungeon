@@ -179,7 +179,7 @@
               :disabled="loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe"
               :title="pickedTileId ? t('hud.mustPlaceTile') : (duelBlocksEndTurn ? t('hud.finishDuel') : (retreatChoiceForMe ? t('hud.chooseRetreatFirst') : ''))"
               @click="handleManualEndTurn"
-            >{{ pickedTileId ? t('hud.ring.placeTileFirst') : t('hud.ring.endTurn') }}</IronRing>
+            >{{ fateweaverPrompt ? t('hud.ring.chooseToken') : pickedTileId ? t('hud.ring.placeTileFirst') : t('hud.ring.endTurn') }}</IronRing>
             <!-- Off turn: a dim hourglass, deliberately not .end-turn-btn and not "End Turn" (the e2e looks for those) -->
             <IronRing
               v-else-if="!isPlayerTurn && gameData?.state?.status !== 'finished'"

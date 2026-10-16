@@ -75,6 +75,16 @@
           :alt="formatItemName(item.type)"
           class="chest-image"
         />
+        <!-- a locked chest says so: it opens only with a key -->
+        <span
+          v-if="chestImage && item && item.locked !== false && (item.guardDefeated || item.guardHP === 0)"
+          class="chest-lock"
+          :title="$t('field.chestLocked')"
+          data-testid="chest-lock"
+        ><GameIcon
+          name="key"
+          :size="14"
+        /></span>
         <img
           v-else-if="weaponImage"
           :src="weaponImage"
@@ -577,6 +587,20 @@ const onItemClick = () => {
 </script>
 
 <style scoped>
+.chest-lock {
+  position: absolute;
+  right: 18%;
+  bottom: 14%;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--ember-rgb), 0.6);
+  background: rgba(12, 7, 5, 0.9);
+  color: var(--color-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
 .tile {
   position: absolute;
   width: var(--tile-size);

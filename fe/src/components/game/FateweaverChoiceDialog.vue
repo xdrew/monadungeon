@@ -35,7 +35,7 @@
             v-if="token.isMonster"
             class="plaque-dialog__stat plaque-dialog__stat--hp"
           ><GameIcon
-            name="heart"
+            name="sword"
             :size="13"
           /> {{ $t('dialogs.fateweaver.hp', { n: token.hp }) }}</span>
           <span

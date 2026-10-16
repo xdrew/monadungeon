@@ -44,6 +44,7 @@ export default {
     regentHint: 'Komnaty Władcy Karaku, ogromne nietoperze i lodowe szkieletory',
     lordKarak: 'Wariant Władca Karaku',
     lordKarakHint: 'W piątej komnacie Władcy Karaku najsłabszy bohater staje się Władcą Karaku',
+    lordKarakNeedsRegent: 'Wymaga dodatku „Karak: Regent”',
     playAi: 'Zejdź do lochów przeciw SI',
     leaderboard: 'Galeria sław',
     rules: 'Jak grać',
@@ -115,6 +116,7 @@ export default {
       journalTitle: 'Wszystko, co wydarzyło się w podziemiach',
       endTurn: 'Koniec tury',
       placeTileFirst: 'Najpierw płytka',
+      chooseToken: 'Wybierz żeton',
       wait: 'Czekaj'
     },
     mustPlaceTile: 'Połóż wziętą płytkę, zanim zakończysz turę',
@@ -183,8 +185,8 @@ export default {
       nobody: 'nikt',
       curseStays: 'Klątwa zostaje przy: {who}',
       curseOn: 'Klątwa spada na: {who}',
-      cursedRoomCursed: 'Przeklęta komnata — {who}: wypadło {roll}, klątwa!',
-      cursedRoomSafe: 'Przeklęta komnata — {who}: wypadło {roll}, bez klątwy',
+      cursedRoomCursed: 'Przeklęta komnata — {who}: wypadło {roll} (1–3 przeklinają): klątwa, bez umiejętności do fontanny',
+      cursedRoomSafe: 'Przeklęta komnata — {who}: wypadło {roll} (1–3 przeklinają): bez szwanku',
       darkThornHit: 'Kolec ciemności — {who} traci 1 PW',
       notWorthTaking: '{item}: nie lepsze niż twoje rzeczy — kliknij znalezisko, by je wziąć',
       magicSwapTooLate: 'Magiczna zamiana jest możliwa tylko na początku tury, przed pierwszym ruchem.',
@@ -193,6 +195,7 @@ export default {
     }
   },
   field: {
+    chestLocked: 'Zamknięta: otwiera się kluczem',
     swapTarget: 'Magiczna zamiana: zamień się miejscami z tym bohaterem',
     playerTitle: 'Gracz {id}',
     currentPlayer: 'Twój bohater',
@@ -471,7 +474,7 @@ export default {
     },
     fateweaver: {
       prompt: 'Dla nowej komnaty wylosowano dwa żetony. Wybierz, który położyć — drugi wraca do woreczka.',
-      hp: 'PW {n}',
+      hp: 'Siła {n}',
       place: 'Połóż'
     },
     lordKarak: {
@@ -489,7 +492,7 @@ export default {
         items: 'Remis w skarbach i broni — najmniej przedmiotów.',
         roll: 'Remis we wszystkim — najniższy rzut kością.'
       },
-      keepsOwn: 'Umiejętności (dwóch graczy: zachowuje własne):',
+      keepsOwn: 'Umiejętności (dwóch graczy: własne i rywala):',
       others: 'Umiejętności pozostałych bohaterów:',
       none: 'Nie ma innych bohaterów w grze: Władca Karaku nie ma umiejętności.',
       continue: 'Dalej'
@@ -659,7 +662,7 @@ export default {
   },
   leaderboard: {
     empty: 'W galerii sław nikogo jeszcze nie ma. Zejdź do lochów jako pierwszy.',
-    back: 'Na stronę główną',
+    back: 'Do lobby',
     title: 'Galeria sław',
     loading: 'Wczytywanie rankingu...',
     player: 'Gracz',
@@ -672,7 +675,7 @@ export default {
   notFound: {
     title: 'Nie znaleziono strony',
     text: 'Strona, której szukasz, nie istnieje lub została przeniesiona.',
-    home: 'Na stronę główną'
+    home: 'Do lobby'
   },
   monsters: {
     giant_rat: { name: 'Ogromny szczur', nom: 'ogromny szczur', acc: 'ogromnego szczura', ins: 'ogromnym szczurem' },

@@ -1,5 +1,10 @@
 <template>
   <div class="leaderboard-container">
+    <!-- language and music, as on every other page -->
+    <div class="page-tools">
+      <LanguageSwitch />
+      <MusicToggle />
+    </div>
     <div class="header-section">
       <button
         type="button"
@@ -134,6 +139,8 @@ import { useRouter } from 'vue-router';
 import { gameApi } from '../services/api';
 import { t } from '@/i18n';
 import GameIcon from '@/components/ui/GameIcon.vue';
+import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
+import MusicToggle from '@/components/game/MusicToggle.vue';
 
 export default {
   name: 'LeaderboardView',
@@ -277,6 +284,15 @@ export default {
 </script>
 
 <style scoped>
+.page-tools {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  display: flex;
+  gap: 10px;
+}
+
 /* The hall of fame: the dark, a title in the display face, a table of hairline rows */
 .leaderboard-container {
   min-height: 100vh;

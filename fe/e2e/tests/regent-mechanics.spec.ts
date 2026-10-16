@@ -130,7 +130,7 @@ test.describe('Regent mechanics', () => {
     });
 
     await GameHelpers.placeTile(page, 0, 0);
-    await expectNotice(page, /Cursed Room — .* rolled 2: cursed!/);
+    await expectNotice(page, /Cursed Room — .* rolled 2 .*cursed/);
     await expect(page.locator('[data-testid="cursed-room-marker"]').first()).toBeVisible();
     await snap(page, SPEC, 'cursed-room-cursed', { phone: true });
     expect((await apiPlayer(request, gameId, a)).cursed).toBe(true);

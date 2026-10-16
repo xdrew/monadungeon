@@ -179,7 +179,7 @@
             >
             <span class="regent-toggle-text">
               <strong>{{ t('lobby.lordKarak') }}</strong>
-              <span>{{ t('lobby.lordKarakHint') }}</span>
+              <span>{{ regentExpansion ? t('lobby.lordKarakHint') : t('lobby.lordKarakNeedsRegent') }}</span>
             </span>
           </label>
         </div>

@@ -1,6 +1,11 @@
 <template>
   <!-- Lost in the dark: a 404 in the Torchlight look -->
   <div class="not-found">
+    <!-- language and music, as on every other page -->
+    <div class="page-tools">
+      <LanguageSwitch />
+      <MusicToggle />
+    </div>
     <h1>404</h1>
     <h2>{{ $t('notFound.title') }}</h2>
     <p>{{ $t('notFound.text') }}</p>
@@ -17,6 +22,8 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import GameIcon from '@/components/ui/GameIcon.vue';
+import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
+import MusicToggle from '@/components/game/MusicToggle.vue';
 
 const router = useRouter();
 
@@ -26,6 +33,15 @@ const goToHome = () => {
 </script>
 
 <style scoped>
+.page-tools {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  display: flex;
+  gap: 10px;
+}
+
 .not-found {
   min-height: 100vh;
   box-sizing: border-box;
