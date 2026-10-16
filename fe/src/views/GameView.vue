@@ -10,6 +10,22 @@
       v-if="error"
       :error-message="error"
     />
+    <!-- An online table before the start (or closed by its host): the waiting room over everything -->
+    <TableRoom
+      v-if="isTableRoom"
+      :game-id="id"
+      :refresh-key="tableRefreshKey"
+      @changed="loadGameData(false)"
+    />
+    <!-- An online game: the push stream to the server is down and coming back -->
+    <div
+      v-if="isOnline && pushReconnecting"
+      class="push-chip"
+      role="status"
+      data-testid="push-reconnecting"
+    >
+      {{ t('tables.reconnecting') }}
+    </div>
 
     <div
       v-else-if="gameData"
@@ -1053,7 +1069,10 @@ import IronRing from '@/components/game/hud/IronRing.vue';
 import Chronicle from '@/components/game/hud/Chronicle.vue';
 import DecisionPlaque from '@/components/game/hud/DecisionPlaque.vue';
 import JournalDrawer from '@/components/game/hud/JournalDrawer.vue';
-import { chronicleTail, chronicleTurns } from '@/utils/chronicle';
+import { chronicleTail, chronicleTurns, describeAction } from '@/utils/chronicle';
+import TableRoom from '@/components/game/TableRoom.vue';
+import { accountApi } from '@/services/account';
+import { subscribe as subscribePush, topics as pushTopics } from '@/services/push';
 import { useTurnOrder, joinNames } from '@/composables/useTurnOrder';
 import { useI18n } from 'vue-i18n';
 import { heroName, monsterName, skillText, itemName } from '@/i18n/names';
@@ -1133,6 +1152,26 @@ const gameData = ref(null);
 const currentPlayerId = ref(localStorage.getItem('currentPlayerId') || null);
 const secondPlayerId = ref(localStorage.getItem('secondPlayerId') || null);
 const humanPlayerId = ref(localStorage.getItem('humanPlayerId') || localStorage.getItem('currentPlayerId') || null);
+
+// ===== Online tables: my seat comes from my account, the others' moves come pushed from the server =====
+const myAccount = ref(null);
+const accountReady = accountApi.me()
+  .then((account) => { myAccount.value = account; })
+  .catch((err) => console.warn('[online] could not load the account:', err?.message || err));
+const isOnline = computed(() => gameData.value?.state?.online === true);
+const mySeatId = computed(() => {
+  if (!isOnline.value || !myAccount.value) return null;
+  return gameData.value?.players?.find((p) => p.externalId === myAccount.value.id)?.id || null;
+});
+const isTableRoom = computed(() => isOnline.value
+  && (gameData.value?.state?.status === 'lobby' || gameData.value?.state?.endReason === 'abandoned'));
+const tableRefreshKey = ref(0);
+const pushReconnecting = ref(false);
+// an AI turn (or a stand-in turn) pushed by the server is being played back: reloads wait for its end
+let onlinePlaybackActive = false;
+let onlineReloadPending = false;
+const onlinePlaybackQueue = [];
+let lastOnlineFightKey = null;
 const virtualPlayerIdStored = computed(() => localStorage.getItem('virtualPlayerId') || null);
 // Debug UI (force the AI turn) shows only in dev builds: its texts live in this constant,
 // so a production build folds it to null and drops them from the bundle
@@ -1812,6 +1851,24 @@ const lastProcessedBattleId = ref(null);
 const adoptThisGamesPlayer = (data) => {
   const players = data?.players || [];
   if (!players.length) return;
+  // An online game: the seat that belongs to my account, never the keys another game left in this browser
+  if (data?.state?.online) {
+    const mine = myAccount.value ? players.find((p) => p.externalId === myAccount.value.id) : null;
+    if (!mine) return;
+    if (currentPlayerId.value !== mine.id || humanPlayerId.value !== mine.id) {
+      console.debug('[online] playing seat', mine.id);
+    }
+    currentPlayerId.value = mine.id;
+    humanPlayerId.value = mine.id;
+    try {
+      localStorage.setItem('currentPlayerId', mine.id);
+      localStorage.setItem('humanPlayerId', mine.id);
+      localStorage.setItem(`humanPlayer:${id.value}`, mine.id);
+      const ai = players.find((p) => p.isAi);
+      if (ai) localStorage.setItem('virtualPlayerId', ai.id);
+    } catch { /* the refs above still hold it for this page */ }
+    return;
+  }
   // the AI of this game, the same way: a stale virtualPlayerId from another game would hide whose turn it is
   try {
     const storedAi = localStorage.getItem('virtualPlayerId');
@@ -1941,6 +1998,10 @@ const isPlayerTurn = computed(() => {
   // Block interactions if game is finished
   if (gameData.value?.state?.status === 'finished') {
     return false;
+  }
+  // An online game: my seat's turn, and no pushed turn still playing back
+  if (isOnline.value) {
+    return !!mySeatId.value && gameData.value?.state?.currentPlayerId === mySeatId.value && !isProcessingAI.value;
   }
   
   // Get the actual current player from the API - this is the source of truth
@@ -2219,7 +2280,8 @@ const applyAiTilePlacement = (action) => {
   const responseData = result.response || {};
 
   // Add tile to field data so the watcher triggers fog dissolve and tile rendering
-  if (gameData.value?.field?.tiles) {
+  // (a pushed online turn can arrive after the state that already holds the tile)
+  if (gameData.value?.field?.tiles && !gameData.value.field.tiles.some((tile) => tile.position === position)) {
     const tileData = responseData.tile || {};
     const newTile = {
       position,
@@ -2350,6 +2412,10 @@ let aiTurnInProgress = false;
 const checkAndHandleVirtualPlayerTurn = async () => {
   try {
     if (!gameData.value?.state) {
+      return;
+    }
+    // the server plays the AI seats of an online game and pushes the turn (playOnlineAiTurn)
+    if (gameData.value.state.online) {
       return;
     }
     
@@ -2528,9 +2594,107 @@ const checkAndHandleVirtualPlayerTurn = async () => {
   }
 };
 
+// ===== Online play: what the server pushes for this game =====
+// Another seat fought: a short notice with the chronicle's sentence (the field and the log update by themselves)
+const noticeOpponentFight = (data) => {
+  const turns = data?.turns || [];
+  const turn = turns.find((tr) => tr.turnId === data?.state?.currentTurnId)
+    || [...turns].sort((a, b) => (b.turnNumber || 0) - (a.turnNumber || 0))[0];
+  const actions = Array.isArray(turn?.actions) ? turn.actions : [];
+  const index = actions.map((a) => a?.action || a?.type).lastIndexOf('fight_monster');
+  if (index < 0) return;
+  const key = `${turn.turnId || turn.turnNumber}:${index}`;
+  const first = lastOnlineFightKey === null;
+  if (key === lastOnlineFightKey) return;
+  lastOnlineFightKey = key;
+  // the first state of the page shows the field as it is; my own fights have their own scene
+  if (first || turn.playerId === mySeatId.value) return;
+  const nameOf = (playerId) => {
+    const player = data.players?.find((p) => p.id === playerId);
+    return player ? playerDisplayName(player, data.players) : t('common.unknown');
+  };
+  const line = describeAction(actions[index], nameOf(turn.playerId), nameOf, actions);
+  if (line) showActionNotice(line);
+};
+
+// A turn the server played (an AI seat, or the AI standing in for an away player): played back like the AI's
+const playOnlineAiTurn = async (message) => {
+  onlinePlaybackQueue.push(message);
+  if (onlinePlaybackActive) return;
+  onlinePlaybackActive = true;
+  isProcessingAI.value = true;
+  try {
+    while (onlinePlaybackQueue.length) {
+      const next = onlinePlaybackQueue.shift();
+      const actions = aiPlayback.filterActions(next.actions || []);
+      console.info('[online] playing back the server turn of', next.playerId, `(${actions.length} actions${next.standIn ? ', stand-in' : ''})`);
+      if (actions.length) {
+        await aiPlayback.playActions(actions, {
+          onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
+          onMovePlayer: (action) => { clearAiBattleOverlay(); applyAiPlayerMovement(action, next.playerId); },
+          onBattle: (action) => showAiBattleOverlay(action),
+          onPickup: () => clearAiBattleOverlay(),
+          onEndTurn: () => clearAiBattleOverlay(),
+        });
+        clearAiBattleOverlay();
+      }
+    }
+  } catch (err) {
+    console.error('[online] the playback failed:', err);
+  } finally {
+    onlinePlaybackActive = false;
+    onlineReloadPending = false;
+    isProcessingAI.value = false;
+    await loadGameData(false, { force: true });
+  }
+};
+
+let onlineReloadTimer = null;
+const onPushMessage = (message) => {
+  if (!message || message.gameId !== id.value) return;
+  if (message.type === 'ai.turn') {
+    playOnlineAiTurn(message);
+    return;
+  }
+  if (message.type !== 'game.changed') return;
+  tableRefreshKey.value += 1;
+  // my own commands already reload the page; a burst of changes is one reload
+  if (message.playerId && message.playerId === mySeatId.value) return;
+  clearTimeout(onlineReloadTimer);
+  onlineReloadTimer = setTimeout(() => loadGameData(false), 150);
+};
+
+let unsubscribePush = null;
+const startPush = () => {
+  if (unsubscribePush || !id.value) return;
+  unsubscribePush = subscribePush(pushTopics.game(id.value), onPushMessage, {
+    onState: (state) => {
+      pushReconnecting.value = state === 'reconnecting';
+      // what happened while the stream was down comes with the state
+      if (state === 'reopened') {
+        tableRefreshKey.value += 1;
+        loadGameData(false);
+      }
+    },
+  });
+};
+// the stream opens once the game is known to be online (games in one browser have nothing to listen to)
+watch(isOnline, (online) => { if (online) startPush(); }, { immediate: true });
+onBeforeUnmount(() => {
+  unsubscribePush?.();
+  unsubscribePush = null;
+  clearTimeout(onlineReloadTimer);
+});
+
 // Removed executeVirtualPlayerTurn - logic is now integrated into checkAndHandleVirtualPlayerTurn
 
-const loadGameData = async (showLoading = true) => {
+const loadGameData = async (showLoading = true, { force = false } = {}) => {
+  // an online playback is on screen: the final state comes when it ends
+  if (onlinePlaybackActive && !force) {
+    onlineReloadPending = true;
+    return;
+  }
+  await accountReady;
   if (!id.value) {
     console.error('No game ID found in route params');
     error.value = t('errors.invalidGame');
@@ -2549,6 +2713,7 @@ const loadGameData = async (showLoading = true) => {
     }
     const fetchedGameData = await gameApi.getGame(id.value);
     adoptThisGamesPlayer(fetchedGameData);
+    if (fetchedGameData?.state?.online) noticeOpponentFight(fetchedGameData);
 
 
     // Initialize gameData if it doesn't exist yet
@@ -4214,7 +4379,6 @@ onUnmounted(() => {
   lastExecutedAITurn = null;
   aiTurnInProgress = false;
   aiExecutionPromise = null;
-  aiCheckLock = false;
   
   // Clear any stuck AI detection timers
   if (aiStuckTimer) {
@@ -6259,6 +6423,8 @@ watch(isCurrentPlayerStunned, (stunned) => {
 // Add function to check for stunned players and handle player switching
 const checkStunnedPlayersAndSwitch = () => {
   if (!gameData.value || !gameData.value.players) return;
+  // an online game: this browser plays its own seat only
+  if (gameData.value.state?.online) return;
   
   const serverCurrentPlayerId = gameData.value.state?.currentPlayerId;
   if (!serverCurrentPlayerId) return;
@@ -6336,6 +6502,20 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 </script>
 
 <style>
+.push-chip {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: calc(var(--z-modal) + 1);
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border: 1px solid rgba(217, 69, 42, 0.6);
+  background: rgba(20, 8, 6, 0.94);
+  color: #f0b5a8;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
 .action-notice {
   max-width: min(520px, calc(100vw - 32px));
   padding: 8px 18px;

@@ -73,17 +73,17 @@ Authority: user answers > part 1 plan (`feature-online-accounts.md`) > CLAUDE.md
 - [x] Task 6: `ServerAiDriver` (in `src/src/Game/AI/`): online + in progress + current player AI → `SmartVirtualPlayer::executeTurn`, loop ≤ 5, publish `ai.turn`. Called from the terminate listener after publishing. PHPUnit with fakes; a guard against re-entry (the AI's own sub-requests must not trigger the driver).
 
 ### Phase 3: Tables in the browser
-- [ ] Task 7: `fe/src/services/tables.js`, `fe/src/services/push.js` (EventSource wrapper: subscribe(topic, handler), reconnect state), the start screen: "Open a table" form and the open tables list (live through `karak/tables`).
-- [ ] Task 8: Route `/table/:id` (join by link → waiting room; full/started plaque); the router guard leaves `/game/:id` as is.
-- [ ] Task 9: Waiting room in `GameView` (a component `fe/src/components/game/TableRoom.vue`): seats, hero roster for my seat, invite link with Copy, host controls, Leave; live through `karak/game/{id}`.
+- [x] Task 7: `fe/src/services/tables.js`, `fe/src/services/push.js` (EventSource wrapper: subscribe(topic, handler), reconnect state), the start screen: "Open a table" form and the open tables list (live through `karak/tables`).
+- [x] Task 8: Route `/table/:id` (join by link → waiting room; full/started plaque); the router guard leaves `/game/:id` as is.
+- [x] Task 9: Waiting room in `GameView` (a component `fe/src/components/game/TableRoom.vue`): seats, hero roster for my seat, invite link with Copy, host controls, Leave; live through `karak/game/{id}`.
 
 ### Phase 4: Networked play, e2e, docs
-- [ ] Task 10: `GameView` online mode:
+- [x] Task 10: `GameView` online mode:
   - my seat from the account;
   - no hot-seat switching and no browser AI in online games;
   - subscribe to the game topic: `game.changed` → reload + a fight notice; `ai.turn` → AI playback;
   - the reconnect chip.
-- [ ] Task 11: `fe/e2e/tests/online-table.spec.ts`. Two browser contexts:
+- [x] Task 11: `fe/e2e/tests/online-table.spec.ts`. Two browser contexts:
   - A opens a table (2 seats), B sees it in the list and joins through it;
   - both pick heroes, A starts;
   - A places a tile, and B sees the tile and the chronicle line without a reload;

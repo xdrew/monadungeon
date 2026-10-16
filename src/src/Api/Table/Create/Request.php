@@ -15,5 +15,12 @@ final readonly class Request
         public bool $regent = false,
         public bool $lordKarak = false,
         public bool $randomHeroes = false,
+        /**
+         * Dev/test only, with the test mode on: the deck, the bag and the dice of the new table
+         * ({tileSequence, itemSequence, diceRolls}, as in /test/setup-game); ignored elsewhere.
+         *
+         * @var array{tileSequence?: list<mixed>, itemSequence?: list<mixed>, diceRolls?: list<int>}|null
+         */
+        public ?array $test = null,
     ) {}
 }
