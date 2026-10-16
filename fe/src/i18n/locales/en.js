@@ -171,7 +171,7 @@ export default {
     secondPlace: 'Second place',
     winner: 'Winner',
     youBadge: 'YOU',
-    returnToLobby: 'Return to Lobby',
+    returnToLobby: 'To the start screen',
     viewBoard: 'View Game Board',
     stunned: 'Knocked out',
     stunnedText: 'The fight took your last HP: your next turn is skipped.',
@@ -294,7 +294,7 @@ export default {
     recoverAi: 'Failed to recover AI turn: {reason}',
     turnStuck: 'Turn did not advance. Please refresh or contact support.',
     skipTurn: 'Failed to skip turn: {reason}',
-    backToLobby: 'Back to the lobby',
+    backToLobby: 'Back to the start screen',
     actions: {
       darkThorn: 'Dark Thorn',
       doubleAttack: 'Double Attack',
@@ -527,7 +527,7 @@ export default {
   rules: {
     contents: 'Contents',
     title: 'Rules of {app}',
-    back: 'Back to Lobby',
+    back: 'To the start screen',
     overview: {
       title: 'Game Overview',
       text: '{app} is a dungeon-crawling adventure where players explore a labyrinth, fight monsters, collect treasures, and race to defeat the {dragon} to claim victory!',
@@ -615,7 +615,7 @@ export default {
     },
     regent: {
       title: 'Karak: Regent (expansion)',
-      intro: 'Switch it on in the lobby: 18 more tiles join the deck and 6 Giant Bats and 2 Skeleton Mages join the bag.',
+      intro: 'Switch it on on the start screen: 18 more tiles join the deck and 6 Giant Bats and 2 Skeleton Mages join the bag.',
       arena1: 'The first hero to enter it on their own turn chooses another hero; that hero\'s figure is moved onto the arena and the two fight a duel.',
       arena2: 'The challenger rolls and decides first (spells, skills); then the rival rolls against the challenger\'s total.',
       arena3: 'Higher strength wins. The loser loses 1 HP; the winner takes one item the winner has room for. A tie changes nothing.',
@@ -625,7 +625,7 @@ export default {
       cursed1: 'Every hero entering it rolls a die: 1–3 brings the Curse of Karak, 4–6 is safe. A cursed hero does not roll.',
       cursed2: 'Several heroes may be cursed at once. A healing fountain or the Portal of Healing lifts every curse.',
       dealing: 'Dealing heroes',
-      dealing1: 'Heroes are dealt at random, as in the board game: with the lobby switch {toggle} on (the default) you and the AI each get a different hero; Regent heroes only with the expansion.',
+      dealing1: 'Heroes are dealt at random, as in the board game: with the start-screen switch {toggle} on (the default) you and the AI each get a different hero; Regent heroes only with the expansion.',
       dealing2: 'Switch it off to pick your hero yourself; the AI is then dealt one of the others.',
       dealing3: 'The AI plays its hero: its fight odds include the hero\'s skills, and it uses Double Attack, Sacrifice, Reincarnation, Stealth, Astral Walking, Tireless, Lightning Attack, Magic Swap, Sprint, Listening, Valduk\'s heal limit, Dark Thorn and the Portal of Healing on its own. A virtual Lord Karak uses every ability he took over.',
       heroes: 'Regent heroes',
@@ -633,7 +633,7 @@ export default {
       battle_mage: '{hero} — {skill1}: a sword has strength 3. {skill2}: as the first action, for all 4 moves, teleport onto any monster and fight it; if he does not win he retreats onto an opened neighbouring tile with a door (or back where he came from), then the turn ends.',
       acrobat: '{hero} — {skill1}: once her weapon slots are full, daggers go into free spell slots; each adds +1 and is never used up (not while cursed). {skill2}: as the first action, up to 8 moves over discovered tiles, no exploring.',
       ranger: '{hero} — {skill1}: a die showing 1 counts as 6. {skill2}: place an adjacent tile without entering it, for one move (its token is drawn; an arena or a cursed room there is not triggered).',
-      lordKarakText: 'An optional switch in the lobby. When the {room} (Battle Arena or Cursed Room) is placed, the weakest hero becomes Lord Karak — before anyone enters that room.',
+      lordKarakText: 'An optional switch on the start screen. When the {room} (Battle Arena or Cursed Room) is placed, the weakest hero becomes Lord Karak — before anyone enters that room.',
       fifthRoom: 'fifth Lord Karak room',
       lk1: 'The weakest hero: the fewest treasures (by value); tie → the weakest weapons (token strength, no hero bonus); tie → the fewest keys and spells; tie → the lowest die, rerolled until one is lowest. Virtual players can be chosen too.',
       lk2: 'Lord Karak is fully healed (even from 0 HP, whatever Valduk\'s heal limit), the curse is removed, he loses his own abilities and gains those of every other hero in the game. With two players he keeps his own abilities as well.',
@@ -667,7 +667,7 @@ export default {
   },
   leaderboard: {
     empty: 'No hero has made it to the hall yet. Descend and be the first.',
-    back: 'Back to Lobby',
+    back: 'To the start screen',
     title: 'Hall of fame',
     loading: 'Loading leaderboard...',
     player: 'Player',
@@ -680,7 +680,7 @@ export default {
   notFound: {
     title: 'Page Not Found',
     text: 'The page you are looking for doesn\'t exist or has been moved.',
-    home: 'Back to Lobby'
+    home: 'To the start screen'
   },
   monsters: {
     giant_rat: { name: 'Giant Rat', nom: 'Giant Rat', acc: 'Giant Rat', ins: 'Giant Rat' },

@@ -170,7 +170,7 @@ export default {
     secondPlace: 'Drugie miejsce',
     winner: 'Zwycięzca',
     youBadge: 'TY',
-    returnToLobby: 'Do lobby',
+    returnToLobby: 'Na stronę główną',
     viewBoard: 'Zobacz planszę',
     stunned: 'Ogłuszenie',
     stunnedText: 'Walka odebrała ci ostatnie PŻ: tracisz następną turę.',
@@ -293,7 +293,7 @@ export default {
     recoverAi: 'Nie udało się przywrócić tury SI: {reason}',
     turnStuck: 'Tura nie przeszła dalej. Odśwież stronę.',
     skipTurn: 'Nie udało się pominąć tury: {reason}',
-    backToLobby: 'Wróć do lobby',
+    backToLobby: 'Wróć na stronę główną',
     actions: {
       darkThorn: 'Kolec ciemności',
       doubleAttack: 'Podwójny atak',
@@ -526,7 +526,7 @@ export default {
   rules: {
     contents: 'Spis treści',
     title: '{app}: zasady',
-    back: 'Do lobby',
+    back: 'Na stronę główną',
     overview: {
       title: 'O grze',
       text: '{app} to przygoda w podziemiach: gracze odkrywają labirynt, walczą z potworami, zbierają skarby i ścigają się, by pokonać {dragon} i zdobyć zwycięstwo!',
@@ -614,7 +614,7 @@ export default {
     },
     regent: {
       title: 'Karak: Regent (dodatek)',
-      intro: 'Włącz go w lobby: do stosu trafia 18 dodatkowych płytek, a do woreczka 6 ogromnych nietoperzy i 2 lodowe szkieletory.',
+      intro: 'Włącz go na ekranie startowym: do stosu trafia 18 dodatkowych płytek, a do woreczka 6 ogromnych nietoperzy i 2 lodowe szkieletory.',
       arena1: 'Pierwszy bohater, który wejdzie na arenę w swojej turze, wybiera innego bohatera; jego pionek zostaje przeniesiony na arenę i obaj staczają pojedynek.',
       arena2: 'Wyzywający rzuca i decyduje pierwszy (zaklęcia, umiejętności); potem rywal rzuca przeciw jego wynikowi.',
       arena3: 'Wygrywa większa siła. Przegrany traci 1 PW; zwycięzca zabiera mu jeden przedmiot, na który ma miejsce. Remis niczego nie zmienia.',
@@ -624,7 +624,7 @@ export default {
       cursed1: 'Każdy wchodzący bohater rzuca kością: 1–3 sprowadza klątwę Karak, 4–6 — bezpiecznie. Przeklęty bohater nie rzuca.',
       cursed2: 'Przeklętych może być kilku bohaterów naraz. Uzdrowicielska fontanna lub portal uzdrowienia zdejmuje każdą klątwę.',
       dealing: 'Przydział bohaterów',
-      dealing1: 'Bohaterowie są przydzielani losowo, jak w grze planszowej: z włączonym w lobby przełącznikiem {toggle} (domyślnie) ty i SI dostajecie różnych bohaterów; bohaterowie Regenta tylko z dodatkiem.',
+      dealing1: 'Bohaterowie są przydzielani losowo, jak w grze planszowej: z włączonym na ekranie startowym przełącznikiem {toggle} (domyślnie) ty i SI dostajecie różnych bohaterów; bohaterowie Regenta tylko z dodatkiem.',
       dealing2: 'Wyłącz go, aby samodzielnie wybrać bohatera; SI dostanie wtedy jednego z pozostałych.',
       dealing3: 'SI gra swoim bohaterem: ocena szans w walce uwzględnia jego umiejętności, a sama korzysta z umiejętności „Podwójny atak”, „Ofiara”, „Reinkarnacja”, „Maskowanie”, „Spacer astralny”, „Wytrwałość”, „Błyskawiczny atak”, „Magiczna zamiana”, „Sprint”, „Nasłuch”, z limitu leczenia Valduka, kolca ciemności i portalu uzdrowienia. Wirtualny Władca Karaku korzysta ze wszystkich przejętych umiejętności.',
       heroes: 'Bohaterowie Regenta',
@@ -632,7 +632,7 @@ export default {
       battle_mage: '{hero} — {skill1}: miecz ma siłę 3. {skill2}: jako pierwsza akcja, za wszystkie 4 ruchy, teleportuje się do dowolnego potwora i z nim walczy; jeśli nie wygra, wycofuje się na odkrytą sąsiednią płytkę z drzwiami (albo tam, skąd przyszedł), po czym tura się kończy.',
       acrobat: '{hero} — {skill1}: gdy miejsca na broń są zajęte, sztylety trafiają na wolne miejsca na zaklęcia; każdy daje +1 i nigdy się nie zużywa (chyba że jest przeklęta). {skill2}: jako pierwsza akcja do 8 ruchów po odkrytych płytkach, bez odkrywania.',
       ranger: '{hero} — {skill1}: kość z wynikiem 1 liczy się jako 6. {skill2}: za jeden ruch połóż sąsiednią płytkę, nie wchodząc na nią (żeton jest losowany; arena ani przeklęta komnata nie zadziałają).',
-      lordKarakText: 'Opcjonalny przełącznik w lobby. Gdy zostanie położona {room} (arena walki lub przeklęta komnata), najsłabszy bohater zostaje Władcą Karaku — zanim ktokolwiek do niej wejdzie.',
+      lordKarakText: 'Opcjonalny przełącznik na ekranie startowym. Gdy zostanie położona {room} (arena walki lub przeklęta komnata), najsłabszy bohater zostaje Władcą Karaku — zanim ktokolwiek do niej wejdzie.',
       fifthRoom: 'piąta komnata Władcy Karaku',
       lk1: 'Najsłabszy bohater: najmniej skarbów (według wartości); remis → najsłabsza broń (siła żetonów, bez premii bohatera); remis → najmniej kluczy i zaklęć; remis → najniższy rzut kością, powtarzany, aż jeden będzie najniższy. Wybrani mogą też zostać gracze wirtualni.',
       lk2: 'Władca Karaku zostaje w pełni uleczony (nawet z 0 PW, niezależnie od limitu leczenia Valduka), klątwa zostaje zdjęta, traci własne umiejętności i zyskuje umiejętności wszystkich pozostałych bohaterów w grze. Przy dwóch graczach zachowuje też własne.',
@@ -666,7 +666,7 @@ export default {
   },
   leaderboard: {
     empty: 'W galerii sław nikogo jeszcze nie ma. Zejdź do lochów jako pierwszy.',
-    back: 'Do lobby',
+    back: 'Na stronę główną',
     title: 'Galeria sław',
     loading: 'Wczytywanie rankingu...',
     player: 'Gracz',
@@ -679,7 +679,7 @@ export default {
   notFound: {
     title: 'Nie znaleziono strony',
     text: 'Strona, której szukasz, nie istnieje lub została przeniesiona.',
-    home: 'Do lobby'
+    home: 'Na stronę główną'
   },
   monsters: {
     giant_rat: { name: 'Ogromny szczur', nom: 'ogromny szczur', acc: 'ogromnego szczura', ins: 'ogromnym szczurem' },
