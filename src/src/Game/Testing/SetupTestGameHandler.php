@@ -7,6 +7,7 @@ namespace App\Game\Testing;
 use App\Game\GameLifecycle\AddPlayer;
 use App\Game\GameLifecycle\CreateGame;
 use App\Game\GameLifecycle\StartGame;
+use App\Game\Player\AddItemToInventory;
 use App\Game\Player\HeroType;
 use App\Game\Player\Player;
 use App\Infrastructure\Uuid\Uuid;
@@ -98,20 +99,26 @@ final readonly class SetupTestGameHandler
             at: new \DateTimeImmutable(),
         ));
 
-        // Apply player max actions after game is started
-        // Max actions still need to be applied separately
-        if (\count($config->playerConfigs) > 0) {
-            foreach ($config->playerConfigs as $playerId => $playerConfig) {
-                if ($playerConfig->maxActions !== null) {
-                    $this->messageBus->dispatch(new SetPlayerTestState(
-                        gameId: $gameId,
-                        playerId: Uuid::fromString($playerId),
-                        config: new PlayerTestConfig(
-                            maxHp: null, // Don't change maxHp after creation
-                            maxActions: $playerConfig->maxActions,
-                        ),
-                    ));
-                }
+        // After the start: max actions, the current HP and the preset pack
+        foreach ($config->playerConfigs as $playerId => $playerConfig) {
+            if ($playerConfig->maxActions !== null || $playerConfig->hp !== null) {
+                $this->messageBus->dispatch(new SetPlayerTestState(
+                    gameId: $gameId,
+                    playerId: Uuid::fromString($playerId),
+                    config: new PlayerTestConfig(
+                        maxHp: null, // Don't change maxHp after creation
+                        maxActions: $playerConfig->maxActions,
+                        hp: $playerConfig->hp,
+                    ),
+                ));
+            }
+            // a pack too full for its preset is refused like in play (InventoryFullException)
+            foreach ($playerConfig->inventory as $spec) {
+                $this->messageBus->dispatch(new AddItemToInventory(
+                    playerId: Uuid::fromString($playerId),
+                    gameId: $gameId,
+                    item: TestPackItem::create($spec),
+                ));
             }
         }
     }

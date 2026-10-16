@@ -5,22 +5,35 @@ export type HeroType = 'warrior' | 'thief' | 'swordsman' | 'warlock' | 'wizard' 
   // Karak: Regent heroes (need `regent: true`)
   | 'barbarian' | 'battle_mage' | 'acrobat' | 'ranger';
 
+/** Item types the test mode can put in a pack (the won loot of their usual guard). */
+export type PackItemType = 'key' | 'dagger' | 'sword' | 'axe' | 'fireball' | 'teleport'
+  | 'frost_fist' | 'dark_thorn' | 'chest' | 'ruby_chest';
+
 export interface PlayerTestConfig {
+  /** Max HP; also the HP at the start unless `hp` is given. */
   maxHp?: number;
   maxActions?: number;
   /** Hero with special skills (e.g. 'warrior' = Double Attack + Reincarnation). Omit for no hero. */
   hero?: HeroType;
+  /** Current HP at the start (0 to max HP). */
+  hp?: number;
+  /** Items already in the pack at the start; a category over its limit makes the setup fail. */
+  inventory?: (PackItemType | { type: PackItemType; treasureValue?: number })[];
 }
 
-// Note: The test API only supports setting maxHp, maxActions and hero.
-// Properties like hp, actionsRemaining, isStunned, and inventory
-// cannot be set directly via the test API and must be achieved
-// through game mechanics (e.g., losing battles to become stunned).
+/** A tile of the fixed deck: a name ('fourSideRoom', 'battleArena', 'cursedRoom', …) or a spec. */
+export type TileSpec = string | {
+  orientation?: string;
+  room?: boolean;
+  features?: ('healing_fountain' | 'teleportation_gate' | 'battle_arena' | 'cursed_room')[];
+};
+
+// Position, stun and curse cannot be preset: they come from play.
 
 export interface TestGameConfig {
   gameId?: string;
   diceRolls?: number[];
-  tileSequence?: string[];
+  tileSequence?: TileSpec[];
   itemSequence?: string[];
   playerConfigs?: { [playerId: string]: PlayerTestConfig };
   /** Karak: Regent expansion on (needed for the Regent heroes). */

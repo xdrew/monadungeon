@@ -31,6 +31,8 @@ final readonly class Action
                     maxHp: $config['maxHp'] ?? null,
                     maxActions: $config['maxActions'] ?? null,
                     hero: $config['hero'] ?? null,
+                    hp: $config['hp'] ?? null,
+                    inventory: $config['inventory'] ?? [],
                 );
             }
 
@@ -48,6 +50,8 @@ final readonly class Action
                 gameId: Uuid::fromString($request->gameId),
                 configuration: $configuration,
             ));
+        } catch (\InvalidArgumentException $e) {
+            return new Error(Uuid::fromString($request->gameId), 'Failed to setup test game: ' . $e->getMessage(), 422);
         } catch (\Throwable $e) {
             return new Error(Uuid::fromString($request->gameId), 'Failed to setup test game: ' . $e->getMessage());
         }

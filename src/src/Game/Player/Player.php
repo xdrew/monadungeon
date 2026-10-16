@@ -959,12 +959,12 @@ class Player extends AggregateRoot
     // Test mode methods - only for use in tests
 
     /**
-     * Set HP for testing purposes.
+     * Set HP for testing purposes (0 to the max HP).
      * @internal Only for use in test mode
      */
     public function setTestHp(int $hp): void
     {
-        $this->hp = max(0, $hp);
+        $this->hp = max(0, min($hp, $this->maxHp));
     }
 
     /**

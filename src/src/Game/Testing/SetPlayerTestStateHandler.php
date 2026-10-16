@@ -36,6 +36,9 @@ final readonly class SetPlayerTestStateHandler
         if ($config->maxHp !== null) {
             $player->setTestMaxHp($config->maxHp);
         }
+        if ($config->hp !== null) {
+            $player->setTestHp($config->hp);
+        }
 
         // Update turn max actions if specified
         if ($config->maxActions !== null) {

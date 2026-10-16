@@ -12,7 +12,7 @@ final readonly class Request
      * @param array<int> $diceRolls
      * @param array<string> $tileSequence
      * @param array<string> $itemSequence
-     * @param array<string, array{maxHp?: int|null, maxActions?: int|null, hero?: string|null}> $playerConfigs
+     * @param array<string, array{maxHp?: int|null, maxActions?: int|null, hero?: string|null, hp?: int|null, inventory?: list<string|array{type: string, treasureValue?: int}>}> $playerConfigs
      */
     public function __construct(
         #[Assert\NotBlank]
