@@ -40,8 +40,9 @@ use Telephantast\MessageBus\Handler\Mapping\Handler;
 use Telephantast\MessageBus\MessageContext;
 
 /**
- * Karak: Regent — a duel on a Battle Arena. Two Battles in duel mode: the challenger rolls and decides first,
- * then the summoned hero rolls against the challenger's total. Higher total wins (a hero who wins ties wins an
+ * Karak: Regent — a duel on a Battle Arena. Both heroes choose their spells before any die is rolled (the
+ * challenger first, then the summoned hero), then two Battles in duel mode: the challenger rolls, then the
+ * summoned hero rolls against the challenger's total. Higher total wins (a hero who wins ties wins an
  * equal total, both or neither → tie); the loser loses 1 HP and the winner takes one item the winner has room for.
  */
 #[Entity]
@@ -54,7 +55,19 @@ class Duel extends AggregateRoot
     public const string RESULT_TIE = 'tie';
 
     #[Column(type: Types::STRING, enumType: DuelPhase::class)]
-    private DuelPhase $phase = DuelPhase::CHALLENGER_ROLL;
+    private DuelPhase $phase = DuelPhase::CHALLENGER_PREPARE;
+
+    /**
+     * The spells (item ids) and the sacrifice each side chose before the roll.
+     *
+     * @var array{consumableIds: list<string>, sacrifice: bool}|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $challengerPrep = null;
+
+    /** @var array{consumableIds: list<string>, sacrifice: bool}|null */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $opponentPrep = null;
 
     #[Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $begun = false;
@@ -207,7 +220,7 @@ class Duel extends AggregateRoot
     }
 
     /**
-     * The challenger rolls first (Oracle "Farseeing" +1 when the arena was the first step of her turn).
+     * The duel opens with the challenger choosing his spells; a side nobody answers for chooses at once.
      */
     #[Handler]
     public function begin(BeginDuel $command, MessageContext $messageContext): void
@@ -216,27 +229,54 @@ class Duel extends AggregateRoot
             return;
         }
         $this->begun = true;
+        $this->phase = DuelPhase::CHALLENGER_PREPARE;
 
-        $challenger = $messageContext->dispatch(new GetPlayer($this->challengerId));
-        $arena = FieldPlace::fromString($this->arenaPosition);
+        if ($this->challengerIsAi) {
+            $this->prepareSide(DuelSide::CHALLENGER, $this->aiPreset($this->challengerId, $this->opponentId, null, $messageContext), $messageContext);
+        }
+    }
 
-        $messageContext->dispatch(new StartBattle(
-            battleId: $this->challengerBattleId,
-            gameId: $this->gameId,
-            playerId: $this->challengerId,
-            turnId: $this->turnId,
-            monster: Item::createDuelTarget(0),
-            fromPosition: $arena,
-            toPosition: $arena,
-            duel: new DuelSide(
-                duelId: $this->duelId,
-                role: DuelSide::CHALLENGER,
-                toBeat: null,
-                farseeing: $this->firstStep && $challenger->getSkills()?->fightsBetterOnFirstMove() === true,
-                auto: $this->challengerIsAi,
-                opponentId: $this->opponentId,
-            ),
-        ));
+    /**
+     * A human hero of the duel chooses his spells (and the sacrifice) before the roll.
+     *
+     * @throws \DomainException
+     * @throws NotYourTurnException
+     */
+    #[Handler]
+    public function prepare(PrepareDuelSide $command, MessageContext $messageContext): void
+    {
+        $role = match (true) {
+            $this->phase === DuelPhase::CHALLENGER_PREPARE && $command->playerId->equals($this->challengerId) => DuelSide::CHALLENGER,
+            $this->phase === DuelPhase::OPPONENT_PREPARE && $command->playerId->equals($this->opponentId) => DuelSide::OPPONENT,
+            default => throw new \DomainException('It is not your choice now'),
+        };
+        if (!$this->turnId->equals($command->turnId)) {
+            throw new \DomainException('Invalid turn ID');
+        }
+        $currentTurnId = $messageContext->dispatch(new GetCurrentTurn($this->gameId));
+        if ($currentTurnId === null || !$currentTurnId->equals($this->turnId)) {
+            throw new NotYourTurnException();
+        }
+
+        $player = $messageContext->dispatch(new GetPlayer($command->playerId));
+        $spells = [];
+        foreach ($player->getConsumableItems() as $item) {
+            $item = Item::fromAnything($item);
+            if ($item->type->getDamage() > 0) {
+                $spells[$item->itemId->toString()] = $item;
+            }
+        }
+        $ids = array_values(array_unique($command->consumableIds));
+        foreach ($ids as $id) {
+            if (!isset($spells[$id])) {
+                throw new \DomainException('Only your own damage spells can be spent');
+            }
+        }
+        if ($command->sacrifice && !($player->getSkills()?->sacrificesHp() === true && $player->getHP() > 0)) {
+            throw new \DomainException('Only the Warlock sacrifices HP');
+        }
+
+        $this->prepareSide($role, ['consumableIds' => $ids, 'sacrifice' => $command->sacrifice], $messageContext);
     }
 
     #[Handler]
@@ -270,6 +310,7 @@ class Duel extends AggregateRoot
                     // only a human away from the table is rolled automatically
                     auto: $this->opponentIsAi || $opponent->isAway(),
                     opponentId: $this->challengerId,
+                    preset: $this->opponentPrep ?? ['consumableIds' => [], 'sacrifice' => false],
                 ),
             ));
 
@@ -363,6 +404,14 @@ class Duel extends AggregateRoot
     #[Handler]
     public function settle(SettleDuel $command, MessageContext $messageContext): void
     {
+        // a side that did not choose its spells in time spends none
+        if ($this->begun && $this->phase === DuelPhase::CHALLENGER_PREPARE) {
+            $this->prepareSide(DuelSide::CHALLENGER, ['consumableIds' => [], 'sacrifice' => false], $messageContext);
+        }
+        if ($this->begun && $this->phase === DuelPhase::OPPONENT_PREPARE) {
+            $this->prepareSide(DuelSide::OPPONENT, ['consumableIds' => [], 'sacrifice' => false], $messageContext);
+        }
+
         if ($this->phase === DuelPhase::CHALLENGER_ROLL && $this->begun) {
             $messageContext->dispatch(new FinalizeBattle(
                 battleId: $this->challengerBattleId,
@@ -430,6 +479,127 @@ class Duel extends AggregateRoot
     public function getOpponentBattleId(): Uuid
     {
         return $this->opponentBattleId;
+    }
+
+    /**
+     * A side's choice is kept; the summoned hero chooses next (at once if nobody answers for him), then the
+     * challenger rolls.
+     *
+     * @param array{consumableIds: list<string>, sacrifice: bool} $preset
+     */
+    private function prepareSide(string $role, array $preset, MessageContext $messageContext): void
+    {
+        if ($role === DuelSide::CHALLENGER) {
+            $this->challengerPrep = $preset;
+            $this->phase = DuelPhase::OPPONENT_PREPARE;
+        } else {
+            $this->opponentPrep = $preset;
+            $this->phase = DuelPhase::CHALLENGER_ROLL;
+        }
+        $player = $messageContext->dispatch(new GetPlayer($role === DuelSide::CHALLENGER ? $this->challengerId : $this->opponentId));
+        $messageContext->dispatch(new DuelSidePrepared(
+            duelId: $this->duelId,
+            gameId: $this->gameId,
+            role: $role,
+            items: $this->presetSummary($player, $preset),
+            sacrifice: $preset['sacrifice'],
+            phase: $this->phase->value,
+        ));
+
+        if ($role === DuelSide::CHALLENGER) {
+            if ($this->opponentIsAi || $messageContext->dispatch(new GetPlayer($this->opponentId))->isAway()) {
+                $this->prepareSide(DuelSide::OPPONENT, $this->aiPreset($this->opponentId, $this->challengerId, $this->challengerPrep, $messageContext), $messageContext);
+            }
+
+            return;
+        }
+        $this->rollChallenger($messageContext);
+    }
+
+    /**
+     * The challenger rolls first (Oracle "Farseeing" +1 when the arena was the first step of her turn).
+     */
+    private function rollChallenger(MessageContext $messageContext): void
+    {
+        $challenger = $messageContext->dispatch(new GetPlayer($this->challengerId));
+        $arena = FieldPlace::fromString($this->arenaPosition);
+
+        $messageContext->dispatch(new StartBattle(
+            battleId: $this->challengerBattleId,
+            gameId: $this->gameId,
+            playerId: $this->challengerId,
+            turnId: $this->turnId,
+            monster: Item::createDuelTarget(0),
+            fromPosition: $arena,
+            toPosition: $arena,
+            duel: new DuelSide(
+                duelId: $this->duelId,
+                role: DuelSide::CHALLENGER,
+                toBeat: null,
+                farseeing: $this->firstStep && $challenger->getSkills()?->fightsBetterOnFirstMove() === true,
+                auto: $this->challengerIsAi,
+                opponentId: $this->opponentId,
+                preset: $this->challengerPrep ?? ['consumableIds' => [], 'sacrifice' => false],
+            ),
+        ));
+    }
+
+    /**
+     * What a side nobody answers for spends before the roll: the fewest damage spells (strongest first) that put
+     * its expected strength (weapons + 7) above the rival's (weapons + 7 + the spells the rival chose); none
+     * when even all of them would not.
+     *
+     * @param array{consumableIds: list<string>, sacrifice: bool}|null $rivalPrep
+     * @return array{consumableIds: list<string>, sacrifice: bool}
+     */
+    private function aiPreset(Uuid $playerId, Uuid $rivalId, ?array $rivalPrep, MessageContext $messageContext): array
+    {
+        $self = $messageContext->dispatch(new GetPlayer($playerId));
+        $rival = $messageContext->dispatch(new GetPlayer($rivalId));
+        $rivalSpells = 0;
+        foreach ($this->presetSummary($rival, $rivalPrep ?? ['consumableIds' => [], 'sacrifice' => false]) as $item) {
+            $rivalSpells += ItemType::from($item['type'])->getDamage();
+        }
+        $needed = ($rival->calculateWeaponDamage() + 7 + $rivalSpells + 1) - ($self->calculateWeaponDamage() + 7);
+
+        $spells = array_values(array_filter(
+            array_map(static fn(Item|array $item): Item => Item::fromAnything($item), $self->getConsumableItems()),
+            static fn(Item $item): bool => $item->type->getDamage() > 0,
+        ));
+        usort($spells, static fn(Item $a, Item $b): int => $b->type->getDamage() <=> $a->type->getDamage());
+        $picked = [];
+        $sum = 0;
+        if ($needed > 0) {
+            foreach ($spells as $spell) {
+                $picked[] = $spell->itemId->toString();
+                $sum += $spell->type->getDamage();
+                if ($sum >= $needed) {
+                    break;
+                }
+            }
+            if ($sum < $needed) {
+                $picked = [];
+            }
+        }
+
+        return ['consumableIds' => $picked, 'sacrifice' => false];
+    }
+
+    /**
+     * @param array{consumableIds: list<string>, sacrifice: bool} $preset
+     * @return list<array{itemId: string, type: string, name: string}>
+     */
+    private function presetSummary(Player $player, array $preset): array
+    {
+        $items = [];
+        foreach ($player->getConsumableItems() as $item) {
+            $item = Item::fromAnything($item);
+            if (\in_array($item->itemId->toString(), $preset['consumableIds'], true)) {
+                $items[] = self::summary($item);
+            }
+        }
+
+        return $items;
     }
 
     /**

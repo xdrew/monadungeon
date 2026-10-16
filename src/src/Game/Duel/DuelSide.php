@@ -11,7 +11,9 @@ use App\Infrastructure\Uuid\Uuid;
  *
  * role: 'challenger' (the hero who entered the arena, rolls and decides first, nothing to beat yet)
  *    or 'opponent' (the summoned hero, rolls against the challenger's total in $toBeat).
- * auto: the Battle finalizes itself right after the roll (a virtual player, or a human summoned in a virtual player's turn).
+ * auto: nobody answers for this side (a virtual player, or a human away from the table).
+ * preset: the spells (item ids) and the sacrifice chosen before the roll; the side is locked in with them right
+ *    after the roll, unless a human may still reroll (Warrior "Double Attack").
  *
  * @psalm-immutable
  */
@@ -27,6 +29,8 @@ final readonly class DuelSide
         public bool $farseeing,
         public bool $auto,
         public Uuid $opponentId,
+        /** @var array{consumableIds: list<string>, sacrifice: bool}|null */
+        public ?array $preset = null,
     ) {}
 
     public function isChallenger(): bool

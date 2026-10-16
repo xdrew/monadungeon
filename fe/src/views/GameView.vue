@@ -1022,28 +1022,19 @@
       </section>
     </div>
 
-    <!-- Karak: Regent — the current (or last) duel, in the middle of the screen like the other windows -->
-    <div
+    <!-- Karak: Regent — the current (or last) duel as a scene: the spells before the roll, the dice, the outcome -->
+    <DuelScene
       v-if="visibleDuel && !showBattleReportModal"
-      class="duel-overlay"
-      data-testid="duel-overlay"
-    >
-      <div
-        class="duel-modal"
-        role="dialog"
-        aria-modal="true"
-      >
-        <DuelResultPanel
-          :duel="visibleDuel"
-          :players="duelPanelPlayers"
-          :current-player-id="currentPlayerId"
-          :inventory="duelPackOfMine"
-          :disabled="loading || isRequestInProgress"
-          @loot="handleTakeDuelLoot"
-          @dismiss="dismissDuel"
-        />
-      </div>
-    </div>
+      :duel="visibleDuel"
+      :players="gameData?.players || []"
+      :labels="duelPanelPlayers"
+      :my-seat-id="mySeatId"
+      :online="isOnline"
+      :disabled="loading || isRequestInProgress"
+      @prepare="handlePrepareDuel"
+      @loot="handleTakeDuelLoot"
+      @dismiss="dismissDuel"
+    />
 
     <!-- Karak: Regent, Lord Karak variant — shown once per browser when the weakest hero is transformed -->
     <LordKarakRevealModal
@@ -1081,7 +1072,7 @@ import ItemPickupDialog from '@/components/game/ItemPickupDialog.vue';
 import FateweaverChoiceDialog from '@/components/game/FateweaverChoiceDialog.vue';
 import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
 import DuelOpponentPanel from '@/components/game/DuelOpponentPanel.vue';
-import DuelResultPanel from '@/components/game/DuelResultPanel.vue';
+import DuelScene from '@/components/game/DuelScene.vue';
 import LordKarakRevealModal from '@/components/game/LordKarakRevealModal.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import GameHud from '@/components/game/hud/GameHud.vue';
@@ -1610,8 +1601,6 @@ const duelOpponentCandidates = computed(() => (arenaChoiceForMe.value?.candidate
 // label: for buttons and tables ("Aderyn (the thief, you)"); name: for sentences ("Aderyn wins the duel")
 // whose skills the skills ring shows first: my seat online, else the player this screen plays
 const skillsOwnerId = computed(() => (isOnline.value ? mySeatId.value : currentPlayerId.value));
-// my pack, for a duel loot that comes in exchange
-const duelPackOfMine = computed(() => gameData.value?.players?.find((p) => p.id === currentPlayerId.value)?.inventory || {});
 const duelPanelPlayers = computed(() => (gameData.value?.players || []).map((p) => ({ id: p.id, label: playerChoiceLabel(p), name: displayName(p) })));
 
 // Lord Karak reveal: one dialog per game and browser (state.lordKarak stays set for the rest of the game)
@@ -1733,6 +1722,26 @@ const handleDuelContinue = async ({ battleId } = {}) => {
   if (battleId) lastProcessedBattleId.value = battleId;
   showBattleReportModal.value = false;
   battleInfo.value = null;
+  await loadGameData(false);
+};
+
+// Karak: Regent — a hero's spells for the duel, chosen before the roll
+const handlePrepareDuel = async ({ playerId, consumableIds, sacrifice }) => {
+  const duel = gameData.value?.state?.duel;
+  if (!duel) return;
+  try {
+    const response = await gameApi.prepareDuel({
+      gameId: id.value,
+      playerId,
+      turnId: gameData.value?.state?.currentTurnId,
+      duelId: duel.duelId,
+      consumableIds,
+      sacrifice
+    });
+    if (response?.success === false) showActionNotice(t('errors.duelPrepare', { reason: response.message || '' }));
+  } catch (err) {
+    showActionNotice(t('errors.duelPrepare', { reason: apiErrorMessage(err) }));
+  }
   await loadGameData(false);
 };
 
@@ -7212,30 +7221,6 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 /* Hide regular UI elements during teleport mode */
 .game-field.teleport-mode .available-move-marker {
   display: none;
-}
-
-/* Karak: Regent — the duel's outcome, centred over the dimmed field like the other windows */
-.duel-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background-color: rgba(5, 3, 2, 0.78);
-  background-image: radial-gradient(ellipse at 50% 40%, rgba(var(--ember-rgb), 0.16) 0%, rgba(0, 0, 0, 0) 50%);
-}
-
-.duel-modal {
-  width: min(480px, 100%);
-  max-height: 92vh;
-  overflow-y: auto;
-  padding: 20px 24px;
-  box-sizing: border-box;
-  border: 1px solid rgba(var(--ember-rgb), 0.45);
-  background: linear-gradient(180deg, rgba(20, 12, 8, 0.97) 0%, rgba(12, 7, 5, 0.97) 100%);
-  box-shadow: 0 0 60px rgba(var(--ember-rgb), 0.22), 0 16px 40px rgba(0, 0, 0, 0.85);
 }
 
 /* A fight on the field: FieldFight centred over its tile */

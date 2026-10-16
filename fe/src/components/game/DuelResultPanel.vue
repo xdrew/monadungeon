@@ -1,5 +1,6 @@
 <template>
-  <div class="duel-result" data-testid="duel-result">
+  <div class="duel-result" :class="{ 'duel-result--in-scene': inScene }" data-testid="duel-result">
+    <template v-if="!inScene">
     <div class="duel-result-header"><GameIcon name="sword" :size="18" /> {{ $t('battle.duelHeader') }}</div>
 
     <p v-if="phaseText" class="duel-phase">{{ phaseText }}</p>
@@ -22,6 +23,7 @@
         <div v-else class="duel-side-detail">{{ $t('dialogs.duel.rolling') }}</div>
       </div>
     </div>
+    </template>
 
     <p v-if="resultText" class="duel-outcome" data-testid="duel-outcome">{{ resultText }}</p>
 
@@ -97,6 +99,8 @@ const props = defineProps({
   currentPlayerId: { type: String, default: null },
   /** the current player's pack (state players[].inventory): what a full pack may leave on the arena */
   inventory: { type: Object, default: () => ({}) },
+  /** inside the duel scene: the scene shows the heroes, the dice and the totals itself */
+  inScene: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false }
 });
 
@@ -190,6 +194,37 @@ const leave = (own) => {
 </script>
 
 <style scoped>
+/* inside the duel scene: the loot as cards, like a fight's reward */
+.duel-result--in-scene .duel-outcome {
+  font-size: 16px;
+}
+
+.duel-result--in-scene .duel-loot-items {
+  gap: 10px;
+}
+
+.duel-result--in-scene .duel-loot-item {
+  flex-direction: column;
+  justify-content: center;
+  min-width: 112px;
+  min-height: 120px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(var(--ember-rgb), 0.16) 0%, rgba(20, 12, 8, 0.9) 100%);
+  box-shadow: 0 0 16px rgba(255, 100, 20, 0.15);
+}
+
+.duel-result--in-scene .duel-loot-item .duel-loot-img {
+  width: 60px;
+  height: 60px;
+}
+
+.duel-result--in-scene .duel-dismiss {
+  min-width: 200px;
+  min-height: 52px;
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+
 /* Battle Arena: the outcome of a duel and the loot — in the decision plaque */
 .duel-result {
   color: var(--text-primary);

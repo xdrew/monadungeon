@@ -229,6 +229,7 @@ export default {
     centerAvailable: 'Do dostępnych pól'
   },
   sound: { title: 'Dźwięk', music: 'Muzyka', sounds: 'Efekty', mute: 'Wycisz wszystko', unmute: 'Włącz dźwięk' },
+  duelScene: { caption: 'Pojedynek na Arenie', noSpells: 'bez zaklęć', choosing: 'wybiera…', rolls: 'rzuca…', prepareTitle: '{who}: przed rzutem', prepareHint: 'Wybrane przepada, nawet jeśli rzut wygrałby bez tego.', plus: '+{n} do rzutu', sacrifice: '1 PW za +1', nothingToSpend: 'Brak bojowych zaklęć.', go: 'Do pojedynku', waitsFor: '{who} wybiera zaklęcia…', items: 'przedmioty +{n}', win: 'Zwycięstwo!', lose: 'Porażka', tie: 'Remis', wins: '{who} wygrywa' },
   skillsPanel: {
     title: 'Umiejętności',
     mine: 'Twój bohater',
@@ -477,6 +478,7 @@ export default {
     failed: '{action}: nie udało się — {reason}',
     duelStart: 'Pojedynek się nie rozpoczął',
     duelStartReason: 'Pojedynek się nie rozpoczął: {reason}',
+    duelPrepare: 'Nie udało się wybrać przed pojedynkiem: {reason}',
     duelRoll: 'Rzut w pojedynku się nie udał: {reason}',
     loot: 'Nie udało się zabrać łupu',
     lootReason: 'Nie udało się zabrać łupu: {reason}',

@@ -229,6 +229,7 @@ export default {
     centerAvailable: 'К доступным клеткам'
   },
   sound: { title: 'Звук', music: 'Музыка', sounds: 'Звуки', mute: 'Выключить всё', unmute: 'Включить звук' },
+  duelScene: { caption: 'Поединок на Арене', noSpells: 'без заклинаний', choosing: 'выбирает…', rolls: 'бросает…', prepareTitle: '{who}: до броска', prepareHint: 'Выбранное тратится, даже если бросок победил бы и без него.', plus: '+{n} к броску', sacrifice: '1 ОЗ за +1', nothingToSpend: 'Боевых заклинаний нет.', go: 'В поединок', waitsFor: '{who} выбирает заклинания…', items: 'предметы +{n}', win: 'Победа!', lose: 'Поражение', tie: 'Ничья', wins: '{who} побеждает' },
   skillsPanel: {
     title: 'Умения',
     mine: 'Ваш герой',
@@ -477,6 +478,7 @@ export default {
     failed: '{action}: не удалось — {reason}',
     duelStart: 'Поединок не начался',
     duelStartReason: 'Поединок не начался: {reason}',
+    duelPrepare: 'Не удалось сделать выбор перед поединком: {reason}',
     duelRoll: 'Бросок в поединке не удался: {reason}',
     loot: 'Не удалось забрать добычу',
     lootReason: 'Не удалось забрать добычу: {reason}',

@@ -13,7 +13,9 @@ use App\Game\Duel\DuelPhase;
 use App\Game\Duel\DuelResolved;
 use App\Game\Duel\DuelSide;
 use App\Game\Duel\DuelSideCompleted;
+use App\Game\Duel\DuelSidePrepared;
 use App\Game\Duel\DuelStarted;
+use App\Game\Duel\PrepareDuelSide;
 use App\Game\Duel\SettleDuel;
 use App\Game\Duel\StartDuel;
 use App\Game\Duel\TakeDuelLoot;
@@ -104,6 +106,10 @@ final class DuelTest extends TestCase
         self::assertNull($this->findMessage($messages, StartBattle::class), 'The battle starts only once the duel exists');
 
         [, $messages] = $tester->handle($duel->begin(...), new BeginDuel($duel->getDuelId(), $this->gameId));
+        self::assertNull($this->findMessage($messages, StartBattle::class), 'The spells are chosen before any roll');
+        self::assertSame(DuelPhase::CHALLENGER_PREPARE, $duel->getPhase());
+        $tester->handle($duel->prepare(...), $this->prepare($duel, $this->challenger));
+        [, $messages] = $tester->handle($duel->prepare(...), $this->prepare($duel, $this->opponent));
         $battle = $this->findMessage($messages, StartBattle::class);
         self::assertInstanceOf(StartBattle::class, $battle);
         self::assertTrue($battle->playerId->equals($this->challenger));
@@ -118,6 +124,57 @@ final class DuelTest extends TestCase
 
         [, $messages] = $tester->handle($duel->begin(...), new BeginDuel($duel->getDuelId(), $this->gameId));
         self::assertSame([], $messages, 'The duel begins once');
+    }
+
+    #[Test]
+    public function bothChooseTheirSpellsBeforeTheRollsAndTheChoiceRidesOnTheRoll(): void
+    {
+        $this->addPlayer($this->challenger, inventory: ['mummy', 'skeleton_mage']);
+        $this->addPlayer($this->opponent, hero: HeroType::WARLOCK, inventory: ['mummy']);
+        $tester = $this->createTester();
+        [$duel] = $tester->handle(Duel::start(...), $this->startDuel(firstStep: false));
+        $tester->handle($duel->begin(...), new BeginDuel($duel->getDuelId(), $this->gameId));
+
+        $frost = $this->ownItem($this->challenger, ItemType::FROST_FIST);
+        $theirs = $this->ownItem($this->opponent, ItemType::FIREBALL);
+        $this->assertPrepareFails($tester, $duel, $this->prepare($duel, $this->opponent), 'not your choice');
+        $this->assertPrepareFails($tester, $duel, $this->prepare($duel, $this->challenger, [$theirs->itemId->toString()]), 'Only your own');
+        $this->assertPrepareFails($tester, $duel, $this->prepare($duel, $this->challenger, sacrifice: true), 'Warlock');
+
+        [, $messages] = $tester->handle($duel->prepare(...), $this->prepare($duel, $this->challenger, [$frost->itemId->toString()]));
+        $prepared = $this->findMessage($messages, DuelSidePrepared::class);
+        self::assertInstanceOf(DuelSidePrepared::class, $prepared);
+        self::assertSame('frost_fist', $prepared->items[0]['type'] ?? null);
+        self::assertSame(DuelPhase::OPPONENT_PREPARE, $duel->getPhase());
+        self::assertNull($this->findMessage($messages, StartBattle::class), 'The summoned hero chooses before anybody rolls');
+
+        [, $messages] = $tester->handle($duel->prepare(...), $this->prepare($duel, $this->opponent, [$theirs->itemId->toString()], sacrifice: true));
+        self::assertSame(DuelPhase::CHALLENGER_ROLL, $duel->getPhase());
+        $battle = $this->findMessage($messages, StartBattle::class);
+        self::assertInstanceOf(StartBattle::class, $battle);
+        self::assertSame(['consumableIds' => [$frost->itemId->toString()], 'sacrifice' => false], $battle->duel?->preset);
+
+        [, $messages] = $tester->handle($duel->onDuelSideCompleted(...), $this->side($duel, DuelSide::CHALLENGER, 9));
+        $battle = $this->findMessage($messages, StartBattle::class);
+        self::assertInstanceOf(StartBattle::class, $battle);
+        self::assertSame(['consumableIds' => [$theirs->itemId->toString()], 'sacrifice' => true], $battle->duel?->preset);
+    }
+
+    #[Test]
+    public function anAiSideSpendsWhatItNeedsAgainstTheRivalsExpectedStrength(): void
+    {
+        // the rival: a sword (2) and a Frost Fist chosen (+2) → 11 expected; the AI: a sword → 9, needs +3
+        $this->addPlayer($this->challenger, inventory: ['skeleton_warrior', 'skeleton_mage']);
+        $this->addPlayer($this->opponent, isAi: true, inventory: ['skeleton_warrior', 'skeleton_mage', 'mummy', 'mummy']);
+        $tester = $this->createTester();
+        [$duel] = $tester->handle(Duel::start(...), $this->startDuel(firstStep: false));
+        $tester->handle($duel->begin(...), new BeginDuel($duel->getDuelId(), $this->gameId));
+        $frost = $this->ownItem($this->challenger, ItemType::FROST_FIST);
+
+        [, $messages] = $tester->handle($duel->prepare(...), $this->prepare($duel, $this->challenger, [$frost->itemId->toString()]));
+        $prepared = array_values(array_filter($messages, static fn(object $m): bool => $m instanceof DuelSidePrepared && $m->role === DuelSide::OPPONENT));
+        self::assertCount(1, $prepared, 'The AI chooses at once, after the challenger');
+        self::assertSame(['frost_fist', 'fireball'], array_column($prepared[0]->items, 'type'), 'Strongest first, no more than needed: 9 + 2 + 1 = 12 > 11');
     }
 
     #[Test]
@@ -148,14 +205,22 @@ final class DuelTest extends TestCase
     {
         $this->addPlayer($this->challenger, isAi: true);
         $tester = $this->createTester();
-        $duel = $this->begunDuel($tester);
+        [$duel] = $tester->handle(Duel::start(...), $this->startDuel(firstStep: false));
+        [, $messages] = $tester->handle($duel->begin(...), new BeginDuel($duel->getDuelId(), $this->gameId));
+
+        self::assertSame(DuelPhase::OPPONENT_PREPARE, $duel->getPhase(), 'The AI chose at once; the AI\'s turn waits for him');
+        self::assertNull($this->findMessage($messages, StartBattle::class));
+        $prepared = $this->findMessage($messages, DuelSidePrepared::class);
+        self::assertInstanceOf(DuelSidePrepared::class, $prepared);
+        self::assertSame(DuelSide::CHALLENGER, $prepared->role);
 
         [, $messages] = $tester->handle($duel->onDuelSideCompleted(...), $this->side($duel, DuelSide::CHALLENGER, 7));
-
+        self::assertSame([], $messages, 'Nobody rolls before he chose');
+        $tester->handle($duel->prepare(...), $this->prepare($duel, $this->opponent));
+        [, $messages] = $tester->handle($duel->onDuelSideCompleted(...), $this->side($duel, DuelSide::CHALLENGER, 7));
         $battle = $this->findMessage($messages, StartBattle::class);
         self::assertInstanceOf(StartBattle::class, $battle);
-        self::assertFalse($battle->duel?->auto ?? true, 'The AI\'s turn waits for him');
-        self::assertSame(DuelPhase::OPPONENT_ROLL, $duel->getPhase());
+        self::assertFalse($battle->duel?->auto ?? true);
     }
 
     #[Test]
@@ -422,12 +487,29 @@ final class DuelTest extends TestCase
         return [$duel, $messages];
     }
 
+    /**
+     * Begun, and both human sides chose no spells: the challenger's roll is next.
+     */
     private function begunDuel(MessageBusTester $tester): Duel
     {
         [$duel] = $tester->handle(Duel::start(...), $this->startDuel(firstStep: false));
         $tester->handle($duel->begin(...), new BeginDuel($duel->getDuelId(), $this->gameId));
+        if ($duel->getPhase() === DuelPhase::CHALLENGER_PREPARE) {
+            $tester->handle($duel->prepare(...), $this->prepare($duel, $this->challenger));
+        }
+        if ($duel->getPhase() === DuelPhase::OPPONENT_PREPARE) {
+            $tester->handle($duel->prepare(...), $this->prepare($duel, $this->opponent));
+        }
 
         return $duel;
+    }
+
+    /**
+     * @param list<string> $spellIds
+     */
+    private function prepare(Duel $duel, Uuid $playerId, array $spellIds = [], bool $sacrifice = false): PrepareDuelSide
+    {
+        return new PrepareDuelSide($this->gameId, $playerId, $this->turnId, $duel->getDuelId(), $spellIds, $sacrifice);
     }
 
     private function startDuel(bool $firstStep): StartDuel
@@ -511,6 +593,16 @@ final class DuelTest extends TestCase
             }
         }
         self::fail("{$playerId} has no " . $type->value);
+    }
+
+    private function assertPrepareFails(MessageBusTester $tester, Duel $duel, PrepareDuelSide $command, string $message): void
+    {
+        try {
+            $tester->handle($duel->prepare(...), $command);
+            self::fail("Expected a DomainException containing '{$message}'");
+        } catch (\DomainException $e) {
+            self::assertStringContainsString($message, $e->getMessage());
+        }
     }
 
     private function assertLootFails(MessageBusTester $tester, Duel $duel, Uuid $playerId, Uuid $itemId, string $message, ?Uuid $replace = null): void

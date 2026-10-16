@@ -1146,6 +1146,12 @@ const initializeConsumableSelection = () => {
     const didNotWin = props.battleInfo.result !== 'win';
     console.log('Player did not win:', didNotWin, 'result:', props.battleInfo.result);
 
+    // Karak: Regent — the spells were chosen before the roll: only the reroll is left to decide
+    if (props.battleInfo.duel?.preset) {
+      setShowConsumableSelection(false, 'duel spells chosen before the roll');
+      return;
+    }
+
     // Karak: Regent — the duel challenger decides on every damage spell he has (there is no total to beat yet)
     if (isDuelChallenger.value) {
       const consumablesWithDamage = (props.battleInfo.availableConsumables || []).filter(item => getItemTypeDamage(item.type) > 0);

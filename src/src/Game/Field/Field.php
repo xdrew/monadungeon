@@ -19,6 +19,7 @@ use App\Game\Duel\DuelLootTaken;
 use App\Game\Duel\DuelPhase;
 use App\Game\Duel\DuelResolved;
 use App\Game\Duel\DuelSideCompleted;
+use App\Game\Duel\DuelSidePrepared;
 use App\Game\Duel\DuelStarted;
 use App\Game\Duel\SettleDuel;
 use App\Game\Duel\StartDuel;
@@ -492,14 +493,14 @@ class Field extends AggregateRoot
     }
 
     /**
-     * Karak: Regent — a duel waits for a human: the summoned hero's roll, or the human winner's loot choice
+     * Karak: Regent — a duel waits for a human: the summoned hero's spells or roll, or the human winner's loot
      * (an automatic side or an AI winner never leaves the duel in these phases).
      */
     public function duelAwaitsHuman(): bool
     {
         $phase = DuelPhase::tryFrom((string) ($this->duelInfo['phase'] ?? ''));
 
-        return $phase === DuelPhase::OPPONENT_ROLL || $phase === DuelPhase::LOOT;
+        return \in_array($phase, [DuelPhase::OPPONENT_PREPARE, DuelPhase::OPPONENT_ROLL, DuelPhase::LOOT], true);
     }
 
     #[Handler]
@@ -507,7 +508,7 @@ class Field extends AggregateRoot
     {
         $this->duelInfo = [
             'duelId' => $event->duelId->toString(),
-            'phase' => DuelPhase::CHALLENGER_ROLL->value,
+            'phase' => DuelPhase::CHALLENGER_PREPARE->value,
             'arena' => $event->arenaPosition->toString(),
             'turnId' => $event->turnId->toString(),
             'challengerId' => $event->challengerId->toString(),
@@ -518,12 +519,28 @@ class Field extends AggregateRoot
             'opponentTotal' => null,
             'challengerDetails' => null,
             'opponentDetails' => null,
+            // the spells each side chose before the roll: {items, sacrifice}
+            'challengerPrep' => null,
+            'opponentPrep' => null,
             'result' => null,
             'loser' => null,
             'reincarnatedTo' => null,
             'loot' => null,
             'lootCandidates' => [],
         ];
+    }
+
+    #[Handler]
+    public function onDuelSidePrepared(DuelSidePrepared $event): void
+    {
+        if (!$this->isCurrentDuel($event->duelId)) {
+            return;
+        }
+        /** @var array<string, mixed> $info */
+        $info = $this->duelInfo;
+        $info[$event->role . 'Prep'] = ['items' => $event->items, 'sacrifice' => $event->sacrifice];
+        $info['phase'] = $this->laterPhase($info['phase'] ?? null, DuelPhase::from($event->phase));
+        $this->duelInfo = $info;
     }
 
     #[Handler]

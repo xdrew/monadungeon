@@ -76,43 +76,42 @@ test.describe('Regent mechanics', () => {
     expect(pack[0].itemId).not.toBe(fist);
   });
 
-  test('Battle Arena with two heroes: the duel begins on entry, the winner takes loot', async ({ page, request }) => {
+  test('Battle Arena with two heroes: both choose their spells before the roll, then the dice, the winner takes loot', async ({ page, request }) => {
     const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
     await startGame(page, request, {
       gameId,
       regent: true,
-      // A rolls 6 + 6 = 12, B rolls 1 + 1 = 2 (+ her dagger 1)
+      // A rolls 6 + 6 = 12 (+ the fireball chosen before = 13), B rolls 1 + 1 = 2 (+ her dagger 1)
       diceRolls: [6, 6, 1, 1],
       tileSequence: ['battleArena', 'fourSide'],
-      playerConfigs: { [a]: {}, [b]: { inventory: ['dagger'] } },
+      playerConfigs: { [a]: { inventory: ['fireball'] }, [b]: { inventory: ['dagger'] } },
     });
 
     await GameHelpers.placeTile(page, 0, 0);
-    console.log('[spec] one rival: no choice, B is summoned and the duel begins');
-    await expect(page.locator('.battle-overlay')).toBeVisible({ timeout: 15000 });
+    console.log('[spec] one rival: no choice, B is summoned and the duel scene opens on A choosing his spells');
+    await expect(page.getByTestId('duel-scene')).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('arena-banner')).toHaveCount(0);
     await expect.poll(async () => position(request, gameId, b)).toBe(await position(request, gameId, a));
+    await expect(page.getByTestId('duel-prepare')).toBeVisible();
+    await expect(page.getByTestId('duel-total-challenger')).toHaveCount(0);
+    await page.locator('[data-testid^="duel-spell-"]').first().click();
+    await snap(page, SPEC, 'duel-prepare', { phone: true });
+    await page.getByTestId('duel-prepare-go').click();
 
-    console.log('[spec] the duel: A rolls, then the summoned rival rolls in this browser');
-    for (let side = 0; side < 3; side++) {
-      const overlay = page.locator('.battle-overlay');
-      // isVisible() does not wait: wait for the next side's scene, or stop when the duel is settled
-      const next = await Promise.race([
-        overlay.waitFor({ state: 'visible', timeout: 10000 }).then(() => 'fight'),
-        page.getByTestId('duel-result').waitFor({ state: 'visible', timeout: 10000 }).then(() => 'result'),
-      ]).catch(() => 'none');
-      if (next !== 'fight') break;
-      await page.locator('.battle-overlay .battle-footer.footer-reveal').first().waitFor({ state: 'visible', timeout: 20000 });
-      await snap(page, SPEC, `duel-side-${side + 1}`, { phone: side === 0 });
-      await page.locator('.battle-overlay [data-testid="finalize-battle"], .battle-overlay [data-testid="duel-continue"]').first().click();
-      await page.waitForTimeout(1200);
-    }
+    console.log('[spec] B chooses next (at this screen), seeing what A spends — still no dice');
+    await expect(page.getByTestId('duel-prep-challenger')).toContainText('Fireball', { timeout: 10000 });
+    await expect(page.getByTestId('duel-prepare')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('duel-total-challenger')).toHaveCount(0);
+    await page.getByTestId('duel-prepare-go').click();
 
-    await expect(page.getByTestId('duel-result')).toBeVisible({ timeout: 15000 });
+    console.log('[spec] the dice of both, the outcome, the loot');
+    await expect(page.getByTestId('duel-slam')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('duel-total-challenger')).toHaveText('13');
+    await expect(page.getByTestId('duel-total-opponent')).toHaveText('3');
     await snap(page, SPEC, 'duel-result', { phone: true });
-    const loot = page.locator('[data-testid^="duel-loot-"]:not([data-testid="duel-loot-choice"])').first();
-    if (await loot.isVisible().catch(() => false)) await loot.click();
+    await page.locator('[data-testid^="duel-loot-"]:not([data-testid="duel-loot-choice"])').first().click();
     await page.getByTestId('duel-dismiss').click();
+    await expect(page.getByTestId('duel-scene')).toHaveCount(0);
     await expect.poll(async () => packTypes(request, gameId, a), { timeout: 10000 }).toEqual(['dagger']);
   });
 
@@ -142,7 +141,7 @@ test.describe('Regent mechanics', () => {
     await snap(page, SPEC, 'arena-opponent-choice', { phone: true });
 
     await page.getByTestId(`duel-opponent-${c}`).click();
-    await expect(page.locator('.battle-overlay')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('duel-prepare')).toBeVisible({ timeout: 15000 });
     expect(await position(request, gameId, c)).toBe(arena);
   });
 

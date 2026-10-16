@@ -680,6 +680,19 @@ export const gameApi = {
    * Karak: Regent — the human challenger who won the duel takes one item from the loser
    * @returns {Promise<Object>} { gameId, duel, success }
    */
+  /**
+   * Karak: Regent — a duel side's spells (and the Warlock's sacrifice), chosen before the roll
+   */
+  prepareDuel: async ({ gameId, playerId, turnId, duelId, consumableIds = [], sacrifice = false }) => {
+    try {
+      const response = await apiClient.post('/game/duel/prepare', { gameId, playerId, turnId, duelId, consumableIds, sacrifice });
+      return response.data;
+    } catch (error) {
+      console.error('Error preparing the duel:', error);
+      throw error;
+    }
+  },
+
   takeDuelLoot: async ({ gameId, playerId, turnId, duelId, itemId, replaceItemId = null }) => {
     try {
       const response = await apiClient.post('/game/duel/loot', { gameId, playerId, turnId, duelId, itemId, replaceItemId });

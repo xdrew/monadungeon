@@ -148,6 +148,15 @@ class Battle extends AggregateRoot
     #[Column(type: UuidType::class, nullable: true)]
     private ?Uuid $duelOpponentId = null;
 
+    /**
+     * Karak: Regent — the spells and the sacrifice chosen before the roll (DuelSide::$preset): the side is
+     * locked in with them whatever is sent at the finalize.
+     *
+     * @var array{consumableIds: list<string>, sacrifice: bool}|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $duelPreset = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -189,6 +198,7 @@ class Battle extends AggregateRoot
             $battle->duelId = $command->duel->duelId;
             $battle->duelRole = $command->duel->role;
             $battle->duelOpponentId = $command->duel->opponentId;
+            $battle->duelPreset = $command->duel->preset;
             $battle->farseeing = $command->duel->farseeing;
         } else {
             // Oracle "Farseeing": +1 when no move of the turn has been spent yet (placing a tile is not a move)
@@ -211,6 +221,22 @@ class Battle extends AggregateRoot
 
         // First battle calculation: weapons only (non-consumables)
         $battle->calculateInitialBattle($messageContext);
+
+        // Karak: Regent — the spells were chosen before the roll: locked in with them now, unless a human
+        // Warrior may still reroll (then he is asked, without the spells, as the fight scene does)
+        $preset = $command->duel?->preset;
+        if ($preset !== null && ($command->duel->auto || $roller->getSkills()?->canRerollBattle() !== true)) {
+            $battle->finalizeBattle(new FinalizeBattle(
+                battleId: $battle->battleId,
+                gameId: $battle->gameId,
+                playerId: $battle->playerId,
+                turnId: $battle->turnId,
+                selectedConsumableIds: $preset['consumableIds'],
+                sacrificeHp: $preset['sacrifice'],
+            ), $messageContext);
+
+            return $battle;
+        }
 
         // Evaluate the weapons-only roll: auto-finalize a WIN, otherwise ask for consumables / reroll
         $battle->evaluateInitialRoll($command->monster, $command->fromPosition, $command->toPosition, $messageContext);
@@ -351,6 +377,17 @@ class Battle extends AggregateRoot
         // Karak: Regent — a duel side is locked in once (the turn end settles a pending side)
         if ($this->duelId !== null && $this->battleCompleted) {
             return;
+        }
+        // Karak: Regent — the spells and the sacrifice were chosen before the roll
+        if ($this->duelPreset !== null) {
+            $command = new FinalizeBattle(
+                battleId: $command->battleId,
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                turnId: $command->turnId,
+                selectedConsumableIds: $this->duelPreset['consumableIds'],
+                sacrificeHp: $this->duelPreset['sacrifice'],
+            );
         }
 
         // Get player instance
@@ -709,7 +746,8 @@ class Battle extends AggregateRoot
         }
 
         // Karak: Regent — the summoned hero beats the challenger's total with weapons alone: his side is done
-        if ($initialResult === BattleResult::WIN && $this->duelId !== null) {
+        // (not with spells chosen before the roll: they are spent anyway, at the finalize)
+        if ($initialResult === BattleResult::WIN && $this->duelId !== null && $this->duelPreset === null) {
             $messageContext->dispatch(new BattleCompleted(
                 battleId: $this->battleId,
                 gameId: $this->gameId,
@@ -815,7 +853,7 @@ class Battle extends AggregateRoot
     /**
      * Karak: Regent — the duel side payload for the UI (null for a monster fight).
      *
-     * @return array{duelId: string, role: string, opponentId: string, toBeat: ?int}|null
+     * @return array{duelId: string, role: string, opponentId: string, toBeat: ?int, preset: bool}|null
      */
     private function duelPayload(Item $monster): ?array
     {
@@ -828,6 +866,8 @@ class Battle extends AggregateRoot
             'role' => $this->duelRole,
             'opponentId' => $this->duelOpponentId->toString(),
             'toBeat' => $this->duelRole === DuelSide::CHALLENGER ? null : $monster->guardHP,
+            // the spells were chosen before the roll: the fight scene only offers the reroll
+            'preset' => $this->duelPreset !== null,
         ];
     }
 

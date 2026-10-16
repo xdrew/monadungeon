@@ -22,6 +22,7 @@ use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
 use App\Game\Movement\GetPlayerPosition;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\HeroSkills;
 use App\Game\Player\HeroType;
 use App\Game\Player\RemoveItemFromInventory;
 use App\Game\Turn\EndTurn;
@@ -74,6 +75,56 @@ final class DuelBattleTest extends TestCase
     }
 
     #[Test]
+    public function spellsChosenBeforeTheRollAreSpentAndLockTheSideAtOnce(): void
+    {
+        $this->field->setTestDiceRolls([6, 6]);
+        $fireball = Item::createMummy();
+        $tester = $this->createTester($this->createPlayer(null, [$fireball], []));
+
+        [$battle, $messages] = $tester->handle(
+            static fn(StartBattle $command, MessageContext $context): Battle => Battle::start($command, $context),
+            $this->startBattle(DuelSide::OPPONENT, 5, preset: ['consumableIds' => [$fireball->itemId->toString()], 'sacrifice' => false]),
+        );
+
+        $side = $this->findMessage($messages, DuelSideCompleted::class);
+        self::assertInstanceOf(DuelSideCompleted::class, $side, 'Nothing is asked after the roll');
+        self::assertSame(13, $side->total, '6 + 6 + the fireball, spent although 12 already beat 5');
+        $removed = $this->findMessage($messages, RemoveItemFromInventory::class);
+        self::assertInstanceOf(RemoveItemFromInventory::class, $removed);
+        self::assertTrue($removed->itemId->equals($fireball->itemId));
+
+        [, $messages] = $tester->handle(
+            static fn(FinalizeBattle $command, MessageContext $context) => $battle->finalizeBattle($command, $context),
+            $this->finalize([]),
+        );
+        self::assertSame([], $messages);
+    }
+
+    #[Test]
+    public function aWarriorWithChosenSpellsMayStillRerollAndKeepsThem(): void
+    {
+        $this->field->setTestDiceRolls([1, 2]);
+        $fireball = Item::createMummy();
+        $tester = $this->createTester($this->createPlayer(HeroType::WARRIOR, [$fireball], []));
+
+        [$battle, $messages] = $tester->handle(
+            static fn(StartBattle $command, MessageContext $context): Battle => Battle::start($command, $context),
+            $this->startBattle(DuelSide::CHALLENGER, null, preset: ['consumableIds' => [$fireball->itemId->toString()], 'sacrifice' => false]),
+        );
+        self::assertNull($this->findMessage($messages, DuelSideCompleted::class), 'He sees the dice and may reroll');
+        self::assertTrue($this->lastBattleCompleted($messages)->duel['preset'] ?? false);
+
+        // whatever the browser sends, the spells chosen before the roll count
+        [, $messages] = $tester->handle(
+            static fn(FinalizeBattle $command, MessageContext $context) => $battle->finalizeBattle($command, $context),
+            $this->finalize([]),
+        );
+        $side = $this->findMessage($messages, DuelSideCompleted::class);
+        self::assertInstanceOf(DuelSideCompleted::class, $side);
+        self::assertSame(4, $side->total, '1 + 2 + the fireball');
+    }
+
+    #[Test]
     public function theChallengerAlwaysDecidesAndLocksInHisStrength(): void
     {
         $this->field->setTestDiceRolls([3, 4]);
@@ -91,7 +142,7 @@ final class DuelBattleTest extends TestCase
         self::assertSame(BattleResult::DRAW, $completed->result);
         self::assertSame(0, $completed->monsterHP);
         self::assertSame(9, $completed->totalDamage);
-        self::assertSame(['duelId' => $this->duelId->toString(), 'role' => 'challenger', 'opponentId' => $this->rivalId->toString(), 'toBeat' => null], $completed->duel);
+        self::assertSame(['duelId' => $this->duelId->toString(), 'role' => 'challenger', 'opponentId' => $this->rivalId->toString(), 'toBeat' => null, 'preset' => false], $completed->duel);
         self::assertNull($this->findMessage($messages, PerformTurnAction::class));
         self::assertNull($this->findMessage($messages, DuelSideCompleted::class));
 
@@ -239,7 +290,10 @@ final class DuelBattleTest extends TestCase
         return array_map(static fn(string $id): string => $names[$id], $finalized?->selectedConsumableIds ?? []);
     }
 
-    private function startBattle(string $role, ?int $toBeat, bool $farseeing = false, bool $auto = false): StartBattle
+    /**
+     * @param array{consumableIds: list<string>, sacrifice: bool}|null $preset
+     */
+    private function startBattle(string $role, ?int $toBeat, bool $farseeing = false, bool $auto = false, ?array $preset = null): StartBattle
     {
         $arena = FieldPlace::fromString('1,0');
 
@@ -251,7 +305,7 @@ final class DuelBattleTest extends TestCase
             monster: Item::createDuelTarget($toBeat ?? 0),
             fromPosition: $arena,
             toPosition: $arena,
-            duel: new DuelSide($this->duelId, $role, $toBeat, $farseeing, $auto, $this->rivalId),
+            duel: new DuelSide($this->duelId, $role, $toBeat, $farseeing, $auto, $this->rivalId, $preset),
         );
     }
 
@@ -291,11 +345,11 @@ final class DuelBattleTest extends TestCase
                 return $this->hero;
             }
 
-            public function getSkills(): ?\App\Game\Player\HeroSkills
+            public function getSkills(): ?HeroSkills
             {
                 $hero = $this->getHero();
 
-                return $hero instanceof \App\Game\Player\HeroType ? \App\Game\Player\HeroSkills::of($hero) : null;
+                return $hero instanceof HeroType ? HeroSkills::of($hero) : null;
             }
 
             public function getHP(): int

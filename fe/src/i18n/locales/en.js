@@ -230,6 +230,7 @@ export default {
     centerAvailable: 'Center on Available Places'
   },
   sound: { title: 'Sound', music: 'Music', sounds: 'Sounds', mute: 'Mute all', unmute: 'Sound on' },
+  duelScene: { caption: 'Duel on the Battle Arena', noSpells: 'no spells', choosing: 'choosing…', rolls: 'rolls…', prepareTitle: '{who}: before the roll', prepareHint: 'What you choose is spent even if the roll would win without it.', plus: '+{n} to the roll', sacrifice: '1 HP for +1', nothingToSpend: 'No damage spells to spend.', go: 'Into the duel', waitsFor: '{who} chooses the spells…', items: 'items +{n}', win: 'Victory!', lose: 'Defeat', tie: 'A tie', wins: '{who} wins' },
   skillsPanel: {
     title: 'Skills',
     mine: 'Your hero',
@@ -478,6 +479,7 @@ export default {
     failed: '{action} failed: {reason}',
     duelStart: 'The duel could not start',
     duelStartReason: 'The duel could not start: {reason}',
+    duelPrepare: 'The duel choice failed: {reason}',
     duelRoll: 'The duel roll failed: {reason}',
     loot: 'The loot could not be taken',
     lootReason: 'The loot could not be taken: {reason}',
