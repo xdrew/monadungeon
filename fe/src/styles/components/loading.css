@@ -47,38 +47,6 @@
   line-height: 1.4;
 }
 
-/* Loading Overlay (Mini) */
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: var(--z-overlay);
-  background-color: rgba(0, 0, 0, 0.4);
-  border-bottom: 2px solid var(--color-primary);
-  pointer-events: none;
-  animation: slideDown var(--transition-normal) ease-out;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-indicator-mini {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-sm) var(--spacing-lg);
-  margin: 0 auto;
-  background-color: rgba(26, 26, 46, 0.95);
-  border-radius: var(--spacing-lg);
-  box-shadow: var(--shadow-md);
-  color: white;
-  font-weight: 500;
-  min-width: 180px;
-  text-align: center;
-}
-
 /* Spinners */
 .loading-spinner {
   margin: var(--spacing-lg) 0;

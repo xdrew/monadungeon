@@ -455,7 +455,7 @@ export default {
     'updating-state': 'Aktualizujemy grę...',
     'updating-status': 'Aktualizujemy stan...',
     adventure: 'Wczytujemy przygodę...',
-    adventureHint: 'Przygotuj się na potwory i skarby'
+    tips: { t1: 'Skrzyni nie otworzysz bez klucza: noszą je szkielety-klucznicy.', t2: 'Zakończ turę na fontannie uzdrowienia, a odda ci wszystkie PW.', t3: 'Niepokonany potwór zostaje na miejscu i czeka na następnego bohatera.', t4: 'Remis z potworem: bohater się cofa, potwór zostaje.', t5: 'Więcej niż dwóch broni nie uniesiesz: resztę trzeba zostawić.', t6: 'Zaklęcie działa raz: magiczny pocisk daje +1 w walce.', t7: 'Portale są połączone: przez nie skrócisz drogę.', t8: 'Gra kończy się pokonaniem smoka, a wygrywa ten, kto ma najwięcej skarbów.' }
   },
   errors: {
     move: 'Nie udało się wykonać ruchu: {reason}',

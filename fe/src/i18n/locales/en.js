@@ -456,7 +456,7 @@ export default {
     'updating-state': 'Updating game state...',
     'updating-status': 'Updating game status...',
     adventure: 'Loading adventure...',
-    adventureHint: 'Prepare to face monsters and discover treasures'
+    tips: { t1: 'A chest stays shut without a key: the Skeleton Turnkeys carry them.', t2: 'End your turn on a healing fountain and it gives back every HP.', t3: 'A monster that is not beaten stays where it is and waits for the next hero.', t4: 'A draw with a monster: the hero steps back, the monster stays.', t5: 'No more than two weapons fit the pack: the rest stays behind.', t6: 'A spell works once: a fireball adds +1 in a fight.', t7: 'The portals are linked: step through one to cut the way short.', t8: 'The game ends with the dragon beaten, and the most treasure wins it.' }
   },
   errors: {
     move: 'Failed to move player: {reason}',

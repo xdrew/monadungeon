@@ -4,7 +4,7 @@
     :data-loading-status="status || 'Processing...'"
   >
     <div class="loading-indicator-mini">
-      <div class="mini-spinner" />
+      <TorchFlame :size="14" />
       <span>{{ label }}</span>
     </div>
   </div>
@@ -13,6 +13,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import TorchFlame from '@/components/game/TorchFlame.vue';
 
 const props = defineProps({
   /** English status from GameView; it stays English as the data-loading-status hook (the e2e reads it) */
@@ -61,41 +62,34 @@ const label = computed(() => {
 </script>
 
 <style scoped>
+/* A short wait in the game: a plaque with a small flame at the top says what happens; the field stays usable */
 .loading-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 900;
+  top: 104px; /* under the turn's headline */
+  left: 50%;
+  z-index: var(--z-overlay);
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: loadingPlaqueIn 0.25s ease-out;
 }
 
 .loading-indicator-mini {
-  background-color: rgba(37, 37, 37, 0.9);
-  border-radius: 8px;
-  padding: 1rem 1.5rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  color: white;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  gap: 12px;
+  padding: 8px 20px 8px 16px;
+  border: 1px solid rgba(var(--ember-rgb), 0.45);
+  background: linear-gradient(180deg, rgba(20, 12, 8, 0.96) 0%, rgba(12, 7, 5, 0.96) 100%);
+  box-shadow: 0 0 24px rgba(255, 100, 20, 0.25), 0 8px 18px rgba(0, 0, 0, 0.8);
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 16px;
+  white-space: nowrap;
+  color: var(--text-primary);
 }
 
-.mini-spinner {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #ffc107;
-  animation: spin 1s linear infinite;
+@keyframes loadingPlaqueIn {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-</style> 
+</style>
