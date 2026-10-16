@@ -48,8 +48,8 @@ Authority: user answers > part 1 / part 2 plans > CLAUDE.md > existing code.
 ## Tasks
 
 ### Phase 1: Server
-- [ ] Task 1: `src/src/Account/AccountSession.php` (entity) and `AccountService` (session create/find/delete; `findByToken` checks sessions, then the legacy hash); `Account` gets `googleSub`, `googleEmail`, `bindGoogle()`. Migration via diff.
-- [ ] Task 2: `src/src/Account/Google/`:
+- [x] Task 1: `src/src/Account/AccountSession.php` (entity) and `AccountService` (session create/find/delete; `findByToken` checks sessions, then the legacy hash); `Account` gets `googleSub`, `googleEmail`, `bindGoogle()`. Migration via diff.
+- [x] Task 2: `src/src/Account/Google/`:
   - `GoogleOAuthClient` (interface: `authorizeUrl(state, challenge, redirectUri)`, `exchange(code, verifier, redirectUri): GoogleIdentity`);
   - `GoogleHttpClient` (curl; token endpoint; claim checks);
   - `FakeGoogleClient` (dev/test);
@@ -57,7 +57,7 @@ Authority: user answers > part 1 / part 2 plans > CLAUDE.md > existing code.
   - `GoogleSignIn` (the case table above → result + the account whose session to set).
   
   DI picks the client by `GOOGLE_CLIENT_ID`. Logs as in Settings.
-- [ ] Task 3: API in `src/src/Api/Account/Google/`: `Start`, `Callback`, plus `SignOut`; `Me` adds `google` and `googleAvailable`; the cookie helpers in `SessionCookie`. PHPUnit: `GoogleSignInTest` (every row), claim checks, return-path check, sessions. curl smoke with the fake provider.
+- [x] Task 3: API in `src/src/Api/Account/Google/`: `Start`, `Callback`, plus `SignOut`; `Me` adds `google` and `googleAvailable`; the cookie helpers in `SessionCookie`. PHPUnit: `GoogleSignInTest` (every row), claim checks, return-path check, sessions. curl smoke with the fake provider.
 
 ### Phase 2: Browser, e2e, docs
 - [ ] Task 4: `fe/src/services/account.js` (`googleStartUrl(returnPath, as?)`, `signOut()`); start-screen account line and name card; the `/table/:id` name card; the `?google=` notice; i18n en/ru/pl; the Google mark as a line icon in `gameIcons.js` (no logo image).
