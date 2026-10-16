@@ -87,8 +87,8 @@ Authority: user answers > CLAUDE.md > existing code. CLAUDE.md "No sign-in, no w
   Error responses through `App\Api\Error`: 422 for an invalid name, 401 when anonymous on PATCH. PHPUnit for the aggregate, name validation and token hashing.
 
 ### Phase 2: Seats and the guard
-- [ ] Task 4: `AddPlayer` API (`src/src/Api/Game/AddPlayer/Action.php`) takes the account for human seats; an anonymous caller gets 401 (test mode exempt). `Player` keeps `externalId`/`username` as today, no schema change. Remove `Api/Game/VirtualPlayerTurn/ActionAdapter.php` (duplicate route) after a grep proves nothing references it.
-- [ ] Task 5: `src/src/Api/Security/SeatGuardListener.php`, a kernel.request listener with priority after routing:
+- [x] Task 4: `AddPlayer` API (`src/src/Api/Game/AddPlayer/Action.php`) takes the account for human seats; an anonymous caller gets 401 (test mode exempt). `Player` keeps `externalId`/`username` as today, no schema change. Remove `Api/Game/VirtualPlayerTurn/ActionAdapter.php` (duplicate route) after a grep proves nothing references it.
+- [x] Task 5: `src/src/Api/Security/SeatGuardListener.php`, a kernel.request listener with priority after routing:
   - Applies to `POST` under `/api/game/` with a JSON `playerId`. Exempt: `/api/game` (create), `/api/game/player` (join), `/api/test/*`.
   - Looks up the player through the bus (`GetPlayer`).
   - 403 `seat.not_yours` for another's seat; the rules for `virtual-player-turn` are as in the table above.
