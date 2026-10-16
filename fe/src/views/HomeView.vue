@@ -859,6 +859,38 @@ const createNewGame = async () => {
 }
 
 /* ===== Narrow screens: the title above, the panel below, the dungeon behind both ===== */
+/* Desktop screens up to ~820px high: the right column tightens so "Descend against the AI" stays on screen */
+@media (min-width: 1025px) and (max-height: 820px) {
+  .home-container {
+    padding-top: 36px;
+    padding-bottom: 24px;
+  }
+
+  .game-panel {
+    margin-top: 24px;
+    gap: 12px;
+  }
+
+  .hero-card {
+    padding: 10px 14px;
+    gap: 14px;
+  }
+
+  .hero-medallion {
+    width: 64px;
+    height: 64px;
+  }
+
+  .regent-toggle {
+    min-height: 44px;
+    padding: 5px 12px;
+  }
+
+  .primary-button {
+    height: 58px;
+  }
+}
+
 @media (max-width: 1024px) {
   .home-container {
     grid-template-columns: 1fr;
