@@ -33,8 +33,11 @@ export const updateGameDataSelectively = (gameData, updatedData) => {
         gameData.state.currentTurnId = updatedData.state.currentTurnId;
       }
 
-      // Karak: Regent — expansion flag, Cursed Room roll, Battle Arena choice and duel
-      for (const key of ['regent', 'roomEvent', 'arenaChoice', 'duel']) {
+      // Every other state field (Regent flags, Cursed Room roll, arena choice, duel, Sprint, retreat,
+      // Fateweaver, curse, Lord Karak, the last fight…): replaced when it changed. A fixed list here
+      // used to miss new fields — Sprint's badge never showed until a reload.
+      for (const key of Object.keys(updatedData.state)) {
+        if (key === 'availablePlaces' || ['status', 'turn', 'currentPlayerId', 'currentTurnId'].includes(key)) continue;
         if (JSON.stringify(gameData.state[key]) !== JSON.stringify(updatedData.state[key])) {
           gameData.state[key] = updatedData.state[key] ?? null;
         }
