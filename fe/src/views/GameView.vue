@@ -515,7 +515,7 @@
             @center-available="centerViewOnAvailablePlaces"
           />
           <LanguageSwitch />
-          <MusicToggle />
+          <SoundControl />
         </template>
       </GameHud>
 
@@ -1097,9 +1097,11 @@ import { useTurnOrder, joinNames } from '@/composables/useTurnOrder';
 import { useI18n } from 'vue-i18n';
 import { heroName, monsterName, skillText, itemName } from '@/i18n/names';
 import { playerDisplayName } from '@/utils/playerNames';
-import MusicToggle from '@/components/game/MusicToggle.vue';
+import SoundControl from '@/components/ui/SoundControl.vue';
+import { audio } from '@/services/audio/audioEngine';
+import { useGameSounds } from '@/composables/useGameSounds';
+import { useMusicSituation } from '@/composables/useMusicSituation';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
-import { musicService } from '@/services/musicService';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';
 import { getItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES, hasRoomForItem, isWorthOffering } from '@/utils/itemUtils';
@@ -1159,8 +1161,10 @@ const loading = ref(true);
 // Transient notice for a rejected action — unlike `error` it does not replace the game view
 const actionNotice = ref('');
 let actionNoticeTimer = null;
-const showActionNotice = (text) => {
+// A refusal knocks, an informational line rings (cue: 'ui_refused' | 'notice')
+const showActionNotice = (text, cue = 'ui_refused') => {
   actionNotice.value = text;
+  audio.cue(cue);
   if (actionNoticeTimer) clearTimeout(actionNoticeTimer);
   actionNoticeTimer = setTimeout(() => { actionNotice.value = ''; }, 5000);
 };
@@ -1776,7 +1780,7 @@ const castDarkThorn = async () => {
       null,
       darkThornTargetId.value
     );
-    showActionNotice(t('game.notice.darkThornHit', { who: heroNameById(target?.id) }));
+    showActionNotice(t('game.notice.darkThornHit', { who: heroNameById(target?.id) }), 'notice');
   } catch (err) {
     showActionNotice(t('errors.failed', { action: t('errors.actions.darkThorn'), reason: apiErrorMessage(err) }));
   } finally {
@@ -1900,11 +1904,47 @@ const lastProcessedBattleId = ref(null);
 // (battleInfo is often cleared in the same tick as the scene closes: remember the fight that was on screen)
 let fightOnScreen = null;
 watch(battleInfo, (fight) => { if (fight) fightOnScreen = fight; });
+
+// ===== Sound: the music follows the situation, the state's changes sound (useGameSounds) =====
+useMusicSituation(() => {
+  if (!gameData.value) return null;
+  if (isTableRoom.value) return 'lobby';
+  if (showBattleReportModal.value && battleInfo.value) {
+    return battleInfo.value.monsterType === 'dragon' ? 'dragon' : 'fight';
+  }
+  if (gameData.value.state?.status === 'finished') return 'lobby';
+  return 'explore';
+});
+useGameSounds(gameData, {
+  isReplaying,
+  isMine: (playerId) => (isOnline.value
+    ? playerId === mySeatId.value
+    : !gameData.value?.players?.find((p) => p.id === playerId)?.isAi),
+});
+watch(pickedTileId, (tileId, was) => { if (tileId && tileId !== was) audio.cue('tile_draw'); });
+watch(ghostTileOrientation, (now, was) => {
+  if (now && was && now !== was && pickedTileId.value) audio.cue('tile_rotate');
+});
+watch(showMissingKeyDialog, (shown) => { if (shown) audio.cue('chest_locked'); });
+watch(journalOpen, (open) => audio.cue(open ? 'ui_open' : 'ui_close'));
+// the last ten seconds of my turn on an online table tick
+let tickTimer = null;
+watch(turnDeadlineLocal, (deadline) => {
+  clearInterval(tickTimer);
+  if (!deadline) return;
+  tickTimer = setInterval(() => {
+    const left = deadline - Date.now();
+    const mine = gameData.value?.state?.currentPlayerId === mySeatId.value;
+    if (mine && left > 0 && left <= 10500) audio.cue('turn_tick');
+    if (left <= 0) clearInterval(tickTimer);
+  }, 1000);
+}, { immediate: true });
+onBeforeUnmount(() => clearInterval(tickTimer));
 watch(showBattleReportModal, (shown, wasShown) => {
   const fight = fightOnScreen;
   if (shown || !wasShown || fight?.unstoppable !== true || fight.duel) return;
   if (fight.player !== currentPlayerId.value || gameData.value?.state?.status === 'finished') return;
-  showActionNotice(t('game.notice.unstoppableGoesOn', { who: heroNameById(fight.player) }));
+  showActionNotice(t('game.notice.unstoppableGoesOn', { who: heroNameById(fight.player) }), 'notice');
 });
 // localStorage.currentPlayerId is shared by all tabs: a game started in another tab overwrites it.
 // When it names nobody in this game, take the player the lobby remembered for this game.
@@ -2674,7 +2714,7 @@ const noticeOpponentFight = (data) => {
     return player ? playerDisplayName(player, data.players) : t('common.unknown');
   };
   const line = describeAction(actions[index], nameOf(turn.playerId), nameOf, actions);
-  if (line) showActionNotice(line);
+  if (line) showActionNotice(line, 'notice');
 };
 
 // A turn the server played (an AI seat, or the AI standing in for an away player): played back like the AI's
@@ -2688,7 +2728,7 @@ const playOnlineAiTurn = async (message) => {
       const next = onlinePlaybackQueue.shift();
       const actions = aiPlayback.filterActions(next.actions || []);
       console.info('[online] playing back the server turn of', next.playerId, `(${actions.length} actions${next.standIn ? ', stand-in' : ''})`);
-      if (next.standIn) showActionNotice(t('tables.standIn', { who: heroNameById(next.playerId) }));
+      if (next.standIn) showActionNotice(t('tables.standIn', { who: heroNameById(next.playerId) }), 'notice');
       if (actions.length) {
         await aiPlayback.playActions(actions, {
           onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
@@ -2997,31 +3037,6 @@ onMounted(async () => {
   window.__resetRequestLock = resetRequestLock;
 
 
-  // Initialize music service with placeholder URL
-  // Replace this with your actual music track URL
-  await musicService.init('/music/game-theme.mp3');
-  
-  // If music is enabled but not playing (likely due to autoplay block), 
-  // set up immediate retry on first user interaction
-  if (musicService.getEnabled() && musicService.audio && musicService.audio.paused) {
-    const startMusicOnInteraction = async (e) => {
-      // Don't interfere with music toggle button
-      if (e.target?.closest('.music-toggle')) return;
-      
-      try {
-        await musicService.play();
-
-        document.removeEventListener('click', startMusicOnInteraction);
-        document.removeEventListener('keydown', startMusicOnInteraction);
-      } catch (err) {
-        // Still can't play, will retry on next interaction
-      }
-    };
-    
-    document.addEventListener('click', startMusicOnInteraction);
-    document.addEventListener('keydown', startMusicOnInteraction);
-  }
-
   try {
     // Initial game data load
     loading.value = true;
@@ -3075,9 +3090,6 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  // Clean up music service
-  musicService.destroy();
-  
   // Clean up WebSocket connection when component is destroyed
   // if (socket.value) {
   //   socket.value.close();

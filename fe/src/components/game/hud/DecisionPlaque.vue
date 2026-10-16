@@ -8,6 +8,15 @@
   </section>
 </template>
 
+<script setup>
+import { onMounted, onUnmounted } from 'vue';
+import { audio } from '@/services/audio/audioEngine';
+
+// a decision appears with a parchment unfolded, and goes with it folded
+onMounted(() => audio.cue('ui_open'));
+onUnmounted(() => audio.cue('ui_close'));
+</script>
+
 <style scoped>
 .decision-plaque {
   display: flex;

@@ -10,6 +10,7 @@ import './assets/main.css'
 import '@/styles/index.css'
 import router from './router'
 import i18n from './i18n'
+import { installUiSounds } from './services/audio/uiSounds'
 import HomeView from './views/HomeView.vue'
 import GameView from './views/GameView.vue'
 import NotFoundView from './views/NotFoundView.vue'
@@ -162,4 +163,5 @@ app.use(router)
 app.use(i18n)
 
 // Mount the app
+installUiSounds()
 app.mount('#app')

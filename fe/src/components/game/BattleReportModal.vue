@@ -708,6 +708,7 @@ import DieFace from '@/components/game/fight/DieFace.vue';
 import FighterFigure from '@/components/game/fight/FighterFigure.vue';
 import ConsumableCard from '@/components/game/fight/ConsumableCard.vue';
 import { getHero } from '@/theme';
+import { audio } from '@/services/audio/audioEngine';
 
 const props = defineProps({
   /** HeroType of the fighting player (null = no hero) — picks the theme's hero portrait */
@@ -805,8 +806,13 @@ const sparkleStyle = (i) => {
   };
 };
 
+// The scene's sounds: the foe's roar as it opens, the dice as they are thrown, the blow at the slam
+const RESULT_CUES = { win: 'hit_win', lose: 'hit_lose', draw: 'draw' };
+const RESULT_STINGS = { win: 'victory', lose: 'defeat' };
+
 // Start dice rolling animation
-const startRollingAnimation = () => {
+const startRollingAnimation = ({ reroll = false } = {}) => {
+  if (!reroll && !duel.value) audio.cue(props.battleInfo?.monsterType === 'dragon' ? 'dragon_roar' : 'monster_roar');
   // Reset states
   isRolling.value = true;
   isAnimating.value = true;
@@ -822,6 +828,7 @@ const startRollingAnimation = () => {
   setTimeout(() => {
     isAnimating.value = false;
     showDice.value = true;
+    audio.cue('dice_roll');
   }, 400);
 
   // The dice are thrown at 400ms and rest about 0.92s later (DieFace: a 0.85s throw, the second die 0.07s behind);
@@ -835,6 +842,8 @@ const startRollingAnimation = () => {
       setTimeout(() => {
         showFlash.value = true;
         showResultSlam.value = true;
+        audio.cue(RESULT_CUES[dynamicResult.value] || 'draw');
+        if (RESULT_STINGS[dynamicResult.value]) audio.sting(RESULT_STINGS[dynamicResult.value]);
         setTimeout(() => {
           showFlash.value = false;
         }, 300);
@@ -870,7 +879,7 @@ watch(() => props.battleInfo?.rerolled, (rerolled, wasRerolled) => {
     selectedConsumables.value = [];
     sacrificeHp.value = false;
     isProcessing.value = false;
-    startRollingAnimation();
+    startRollingAnimation({ reroll: true });
   }
 });
 

@@ -4,7 +4,7 @@
     <!-- language and music, as on every other page -->
     <div class="page-tools">
       <LanguageSwitch />
-      <MusicToggle />
+      <SoundControl />
     </div>
     <h1>404</h1>
     <h2>{{ $t('notFound.title') }}</h2>
@@ -23,9 +23,11 @@
 import { useRouter } from 'vue-router';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
-import MusicToggle from '@/components/game/MusicToggle.vue';
+import SoundControl from '@/components/ui/SoundControl.vue';
+import { useMusicSituation } from '@/composables/useMusicSituation';
 
 const router = useRouter();
+useMusicSituation('lobby');
 
 const goToHome = () => {
   router.push('/');

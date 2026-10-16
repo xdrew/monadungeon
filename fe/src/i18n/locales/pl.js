@@ -225,10 +225,9 @@ export default {
     speeds: { half: 'Wolno (0.5x)', one: 'Normalnie (1x)', two: 'Szybko (2x)', four: 'Bardzo szybko (4x)' },
     centerMap: 'Środek mapy',
     centerPlayer: 'Do bohatera',
-    centerAvailable: 'Do dostępnych pól',
-    musicOn: 'Włącz muzykę',
-    musicOff: 'Wycisz muzykę'
+    centerAvailable: 'Do dostępnych pól'
   },
+  sound: { title: 'Dźwięk', music: 'Muzyka', sounds: 'Efekty', mute: 'Wycisz wszystko', unmute: 'Włącz dźwięk' },
   game: {
     portal: { title: 'Portal uzdrowienia', text: 'Wybierz, kogo przenieść do fontanny, potem kliknij uzdrowicielską fontannę. Portal nie kosztuje ruchu, tura trwa dalej.', cancel: 'Anuluj portal' },
     darkThorn: { title: 'Kolec ciemności', text: 'Wybierz innego bohatera: traci 1 PW. Zaklęcie nie kosztuje ruchu, tura trwa dalej.', cast: 'Rzuć kolec ciemności' },

@@ -3,7 +3,7 @@
   <div class="rules-container">
     <div class="rules-tools">
       <LanguageSwitch />
-      <MusicToggle />
+      <SoundControl />
     </div>
     <header class="rules-header">
       <button
@@ -398,15 +398,16 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { I18nT, useI18n } from 'vue-i18n';
-import MusicToggle from '@/components/game/MusicToggle.vue';
+import SoundControl from '@/components/ui/SoundControl.vue';
+import { useMusicSituation } from '@/composables/useMusicSituation';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
-import { musicService } from '@/services/musicService';
 import { getMonster } from '@/theme';
 import { monsterName, itemName, heroName } from '@/i18n/names';
 import { getItemImage } from '@/utils/itemUtils';
 
 const { t } = useI18n();
+useMusicSituation('lobby');
 
 // Monster stats from the rulebook; images come from the active theme, names and drops from the locale
 const MONSTER_RULES = [
@@ -475,9 +476,6 @@ const onScroll = () => {
 };
 
 onMounted(() => {
-  // Music continues from the lobby if it is already playing
-  musicService.init('/music/game-theme.mp3');
-
   // The topmost section crossing the upper third of the screen is the current one
   observer = new IntersectionObserver((entries) => {
     const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);

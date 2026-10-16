@@ -3,7 +3,7 @@
     <!-- language and music, as on every other page -->
     <div class="page-tools">
       <LanguageSwitch />
-      <MusicToggle />
+      <SoundControl />
     </div>
     <div class="header-section">
       <button
@@ -217,11 +217,12 @@ import { gameApi } from '../services/api';
 import { t } from '@/i18n';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
-import MusicToggle from '@/components/game/MusicToggle.vue';
+import SoundControl from '@/components/ui/SoundControl.vue';
+import { useMusicSituation } from '@/composables/useMusicSituation';
 
 export default {
   name: 'LeaderboardView',
-  components: { GameIcon, LanguageSwitch, MusicToggle },
+  components: { GameIcon, LanguageSwitch, SoundControl },
   props: {
     autoRefresh: {
       type: Boolean,
@@ -339,6 +340,8 @@ export default {
         refreshInterval = null;
       }
     });
+
+    useMusicSituation('lobby');
 
     // Initial load
     onMounted(() => {

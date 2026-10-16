@@ -12,7 +12,7 @@
     <!-- Corner tools: language and music -->
     <div class="lobby-tools">
       <LanguageSwitch />
-      <MusicToggle />
+      <SoundControl />
     </div>
 
     <header class="lobby-title">
@@ -392,18 +392,19 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { gameApi } from '@/services/api';
 import { accountApi, nameError } from '@/services/account';
-import MusicToggle from '@/components/game/MusicToggle.vue';
+import SoundControl from '@/components/ui/SoundControl.vue';
+import { useMusicSituation } from '@/composables/useMusicSituation';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import ThemeLogo from '@/components/ThemeLogo.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import TablesPanel from '@/components/lobby/TablesPanel.vue';
-import { musicService } from '@/services/musicService';
 import { useI18n } from 'vue-i18n';
 import { theme, getHero } from '@/theme';
 import { heroName, HERO_SKILL_KEYS } from '@/i18n/names';
 
 const router = useRouter();
 const route = useRoute();
+useMusicSituation('lobby');
 const { t } = useI18n();
 const errorMessage = ref('');
 const loading = ref(false);
@@ -536,9 +537,7 @@ const generateRandomId = () => {
   return template.replace(/[xy]/g, randomHex);
 };
 
-// Start the lobby music on mount
 onMounted(() => {
-  musicService.init('/music/game-theme.mp3');
   loadAccount().then(showGoogleOutcome);
   accountApi.googleStatus().then((status) => { google.value = status; });
 });

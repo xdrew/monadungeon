@@ -1,6 +1,7 @@
 import { t } from '@/i18n';
 import { monsterName } from '@/i18n/names';
 import { ref } from 'vue';
+import { audio } from '@/services/audio/audioEngine';
 
 // Action types that represent visible game-affecting actions
 const VISUALIZABLE_TYPES = new Set([
@@ -197,6 +198,17 @@ export function useAiTurnPlayback() {
   }
 
   /**
+   * A played-back fight sounds like one on the fight scene: the dice, then the blow. Tiles, steps and
+   * pickups need nothing here: they change the state, and the state's changes sound (useGameSounds).
+   */
+  function playFightSounds(action) {
+    audio.cue('dice_roll');
+    const result = String(action.battleResult || '').toLowerCase();
+    const blow = { win: 'hit_win', lose: 'hit_lose', draw: 'draw' }[result];
+    if (blow) setTimeout(() => audio.cue(blow), 700 / playbackSpeed.value);
+  }
+
+  /**
    * Play filtered actions step by step with delays.
    * callbacks: { onPlaceTile, onMovePlayer, onBattle, onPickup, onEndTurn }
    */
@@ -227,6 +239,7 @@ export function useAiTurnPlayback() {
             break;
           case 'battle':
             if (callbacks.onBattle) await callbacks.onBattle(action);
+            playFightSounds(action);
             break;
           case 'end_turn':
             if (callbacks.onEndTurn) await callbacks.onEndTurn(action);

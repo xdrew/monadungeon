@@ -226,10 +226,9 @@ export default {
     speeds: { half: 'Slow (0.5x)', one: 'Normal (1x)', two: 'Fast (2x)', four: 'Very Fast (4x)' },
     centerMap: 'Center Map',
     centerPlayer: 'Center on Player',
-    centerAvailable: 'Center on Available Places',
-    musicOn: 'Play Music',
-    musicOff: 'Mute Music'
+    centerAvailable: 'Center on Available Places'
   },
+  sound: { title: 'Sound', music: 'Music', sounds: 'Sounds', mute: 'Mute all', unmute: 'Sound on' },
   game: {
     portal: { title: 'Portal of Healing', text: 'Pick who is carried to the fountain, then click a healing fountain. The portal costs no move and the turn goes on.', cancel: 'Cancel Teleport' },
     darkThorn: { title: 'Dark Thorn', text: 'Choose another hero: they lose 1 HP. The spell costs no move and the turn goes on.', cast: 'Cast Dark Thorn' },

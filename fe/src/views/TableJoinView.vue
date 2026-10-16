@@ -6,7 +6,7 @@
   >
     <div class="page-tools">
       <LanguageSwitch />
-      <MusicToggle />
+      <SoundControl />
     </div>
 
     <form
@@ -97,7 +97,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
-import MusicToggle from '@/components/game/MusicToggle.vue';
+import SoundControl from '@/components/ui/SoundControl.vue';
+import { useMusicSituation } from '@/composables/useMusicSituation';
 import { accountApi, nameError } from '@/services/account';
 import { tablesApi, tableRefusal } from '@/services/tables';
 
@@ -106,6 +107,7 @@ const route = useRoute();
 const tableId = computed(() => String(route.params.id || ''));
 const { t } = useI18n();
 const router = useRouter();
+useMusicSituation('lobby');
 
 const phase = ref('loading'); // loading | name | joining | refused
 const reason = ref('');

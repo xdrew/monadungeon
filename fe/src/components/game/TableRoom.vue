@@ -6,7 +6,7 @@
   >
     <div class="table-room__tools">
       <LanguageSwitch />
-      <MusicToggle />
+      <SoundControl />
     </div>
 
     <section
@@ -227,7 +227,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
-import MusicToggle from '@/components/game/MusicToggle.vue';
+import SoundControl from '@/components/ui/SoundControl.vue';
 import { tablesApi } from '@/services/tables';
 import { gameApi } from '@/services/api';
 import { getHero } from '@/theme';
