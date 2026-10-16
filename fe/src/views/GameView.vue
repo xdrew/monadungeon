@@ -171,7 +171,7 @@
             >{{ pickedTileId ? t('hud.ring.placeTileFirst') : t('hud.ring.endTurn') }}</IronRing>
             <!-- Off turn: a dim hourglass, deliberately not .end-turn-btn and not "End Turn" (the e2e looks for those) -->
             <IronRing
-              v-else-if="!isPlayerTurn"
+              v-else-if="!isPlayerTurn && gameData?.state?.status !== 'finished'"
               icon="hourglass"
               :label="t('hud.ring.wait')"
               disabled
@@ -471,10 +471,11 @@
         v-if="gameData?.state?.status === 'finished'"
         class="game-finished-banner"
       >
-        <span class="trophy-icon"><GameIcon name="trophy" :size="24" /></span>
+        <span class="trophy-icon"><GameIcon name="trophy" :size="22" /></span>
         <span class="finished-text">{{ isCurrentUserWinner() ? t('game.overYouWin') : winnerId ? t('game.overWins', { who: heroNameById(winnerId) }) : t('game.overResults') }}</span>
         <button
-          class="view-results-button"
+          type="button"
+          class="btn btn--ghost btn--sm view-results-button"
           @click="showLeaderboardModal = true"
         >
           {{ t('game.viewLeaderboard') }}
@@ -796,38 +797,33 @@
       @reroll-battle="handleRerollBattle"
     />
 
-    <!-- Leaderboard Modal -->
+    <!-- The results: a centred Torchlight plaque (portraits, names, treasure); e2e hooks .leaderboard-overlay,
+         .result-banner.result-win, .lb-entry, .lb-winner, .lb-you, .lb-btn-primary, .lb-btn-secondary -->
     <div
       v-if="showLeaderboardModal"
       class="leaderboard-overlay"
     >
-      <div class="leaderboard-card">
-        <div class="leaderboard-header">
-          <span class="leaderboard-header-label">{{ t('game.over') }}</span>
-        </div>
-
-        <!-- Result message -->
+      <section
+        class="leaderboard-card"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('game.over')"
+      >
+        <span class="leaderboard-caption">{{ t('game.over') }}</span>
         <div
           v-if="humanPlayerId && !isVirtualPlayer(humanPlayerId)"
           class="result-banner"
-          :class="{
-            'result-win': isCurrentUserWinner(),
-            'result-loss': !isCurrentUserWinner()
-          }"
+          :class="isCurrentUserWinner() ? 'result-win' : 'result-loss'"
         >
-          <div v-if="isCurrentUserWinner()" class="result-text">
-            <span class="result-icon"><GameIcon name="trophy" :size="28" /></span>
-            <span>{{ t('game.victory') }}</span>
-          </div>
-          <div v-else class="result-text">
-            <span class="result-icon">{{ getPlayerEmoji(winnerId) }}</span>
-            <span>{{ t('game.opponentWins') }}</span>
-          </div>
+          <GameIcon
+            :name="isCurrentUserWinner() ? 'trophy' : 'skull'"
+            :size="30"
+          />
+          <span class="result-text">{{ isCurrentUserWinner() ? t('game.victory') : t('game.opponentWinsName', { who: heroNameById(winnerId) }) }}</span>
         </div>
 
-        <!-- Player cards -->
-        <div class="leaderboard-entries">
-          <div
+        <ol class="leaderboard-entries">
+          <li
             v-for="(entry, idx) in leaderboard"
             :key="entry.playerId"
             class="lb-entry"
@@ -837,44 +833,62 @@
               'lb-first': idx === 0
             }"
           >
-            <div class="lb-rank">
-              <span v-if="idx === 0" class="rank-medal rank-gold"><GameIcon name="trophy" :size="20" :title="t('game.firstPlace')" /></span>
-              <span v-else-if="idx === 1" class="rank-medal rank-silver"><GameIcon name="trophy" :size="20" :title="t('game.secondPlace')" /></span>
-              <span v-else class="rank-num">#{{ idx + 1 }}</span>
-            </div>
-            <div class="lb-player">
-              <span class="lb-player-icon">{{ getPlayerEmoji(entry.playerId) }}</span>
-              <span
-                v-if="entry.playerId === winnerId"
-                class="lb-crown"
-              ><GameIcon name="crown" :size="16" :title="t('game.winner')" /></span>
-              <span
-                v-if="isCurrentUserEntry(entry)"
-                class="lb-you-badge"
-              >{{ t('game.youBadge') }}</span>
-            </div>
-            <div class="lb-treasure">
-              <GameIcon name="treasure" :size="16" /> {{ entry.treasure }}
-            </div>
-          </div>
-        </div>
+            <span class="lb-rank">{{ idx + 1 }}</span>
+            <img
+              class="lb-portrait"
+              :src="playerAvatar(playerById(entry.playerId))"
+              alt=""
+              @error="onAvatarError($event, playerById(entry.playerId))"
+            >
+            <span class="lb-name">
+              <span class="lb-hero">{{ heroNameById(entry.playerId) }}</span>
+              <span class="lb-role">
+                <GameIcon
+                  v-if="entry.playerId === winnerId"
+                  name="crown"
+                  :size="13"
+                  :title="t('game.winner')"
+                />
+                {{ [entry.playerId === winnerId ? t('game.winner') : '', isCurrentUserEntry(entry) ? t('game.youBadge') : ''].filter(Boolean).join(' · ') }}
+              </span>
+            </span>
+            <span
+              class="lb-treasure"
+              :title="t('dialogs.lordKarak.treasure')"
+            >
+              <GameIcon
+                name="treasure"
+                :size="18"
+              /> {{ entry.treasure }}
+            </span>
+          </li>
+        </ol>
 
-        <!-- Actions -->
         <div class="leaderboard-actions">
           <button
-            class="lb-btn-primary"
-            @click="navigateToLobby"
-          >
-            <GameIcon name="home" :size="16" /> {{ t('game.returnToLobby') }} <span class="kbd-hint">(Enter)</span>
-          </button>
-          <button
-            class="lb-btn-secondary"
+            type="button"
+            class="btn btn--ghost lb-btn-secondary"
             @click="reloadPage"
           >
-            <GameIcon name="eye" :size="16" /> {{ t('game.viewBoard') }} <span class="kbd-hint">(Esc)</span>
+            <GameIcon
+              name="eye"
+              :size="16"
+            /> {{ t('game.viewBoard') }}
+            <span class="kbd-hint">Esc</span>
+          </button>
+          <button
+            type="button"
+            class="btn btn--ember lb-btn-primary"
+            @click="navigateToLobby"
+          >
+            <GameIcon
+              name="home"
+              :size="16"
+            /> {{ t('game.returnToLobby') }}
+            <span class="kbd-hint">Enter</span>
           </button>
         </div>
-      </div>
+      </section>
     </div>
 
     <!-- Add a stunned player overlay when player is stunned -->
@@ -6136,255 +6150,199 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 /* ============================================
-   LEADERBOARD (theme tokens)
+   RESULTS — a centred Torchlight plaque, like the full-pack choice
    ============================================ */
 .leaderboard-overlay {
   position: fixed;
   inset: 0;
-  background: var(--bg-overlay, rgba(9, 8, 15, 0.9));
-  backdrop-filter: blur(6px);
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  animation: lbOverlayIn 0.3s ease-out;
+  padding: 16px;
+  background: rgba(5, 3, 2, 0.72);
+  animation: resultsFade 0.3s ease-out;
 }
 
-@keyframes lbOverlayIn {
+@keyframes resultsFade {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 .leaderboard-card {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
-  border-radius: 14px;
-  width: 380px;
-  max-width: 95vw;
-  padding: 0;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(var(--accent-rgb), 0.1);
+  width: min(480px, 100%);
+  box-sizing: border-box;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 22px 26px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: linear-gradient(180deg, rgba(20, 12, 8, 0.97) 0%, rgba(12, 7, 5, 0.97) 100%);
+  border: 1px solid rgba(var(--ember-rgb), 0.45);
+  box-shadow: 0 0 40px rgba(var(--ember-rgb), 0.2), 0 14px 34px rgba(0, 0, 0, 0.85);
   color: var(--text-primary);
-  animation: lbCardIn 0.4s ease-out;
-  overflow: hidden;
+  font-family: var(--font-body);
 }
 
-@keyframes lbCardIn {
-  from { opacity: 0; transform: scale(0.9) translateY(15px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.leaderboard-header {
-  padding: 10px 20px;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(var(--accent-light-rgb), 0.08) 100%);
-  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
-}
-
-.leaderboard-header-label {
-  font-size: 0.75rem;
+.leaderboard-caption {
+  align-self: center;
   font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-secondary);
+  color: var(--text-accent);
 }
 
-/* Result banner */
 .result-banner {
-  margin: 16px 20px 12px;
-  padding: 14px;
-  border-radius: 10px;
-  text-align: center;
-  animation: lbResultIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes lbResultIn {
-  0% { transform: scale(0.8); opacity: 0; }
-  60% { transform: scale(1.05); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.result-banner.result-win {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(var(--accent-rgb), 0.1));
-  border: 1px solid rgba(255, 215, 0, 0.4);
-}
-
-.result-banner.result-loss {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.result-text {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  font-size: 1.3rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 44px;
+  line-height: 1;
 }
 
-.result-win .result-text {
-  color: #FFD54F;
-  text-shadow: 0 0 16px rgba(255, 215, 0, 0.4);
+.result-banner.result-win {
+  color: var(--text-heading);
+  text-shadow: 0 0 22px rgba(var(--ember-rgb), 0.55), 0 2px 6px #000;
 }
 
-.result-loss .result-text {
-  color: var(--text-muted);
+.result-banner.result-win :deep(svg) {
+  color: var(--color-primary);
 }
 
-.result-icon {
-  display: inline-flex;
-  font-size: 1.8rem;
+.result-banner.result-loss {
+  color: var(--text-secondary);
+  font-size: 32px;
 }
 
-/* Leaderboard entries */
 .leaderboard-entries {
-  padding: 0 16px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
 .lb-entry {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.06);
-  border: 1px solid rgba(var(--accent-rgb), 0.15);
-  transition: all 0.2s ease;
+  gap: 12px;
+  padding: 10px 4px;
+  border-top: 1px solid rgba(234, 220, 192, 0.12);
 }
 
-.lb-entry.lb-first {
-  background: rgba(255, 215, 0, 0.08);
-  border-color: rgba(255, 215, 0, 0.25);
-}
-
-.lb-entry.lb-you {
-  border-color: rgba(var(--accent-rgb), 0.5);
-  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.15);
-}
-
-.lb-entry.lb-winner.lb-you {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(var(--accent-rgb), 0.1));
-  border-color: rgba(255, 215, 0, 0.4);
-  box-shadow: 0 0 16px rgba(255, 215, 0, 0.15);
-  animation: lbWinnerPulse 2s infinite ease-in-out;
-}
-
-@keyframes lbWinnerPulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.1); }
-  50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.25); }
+.lb-entry:last-child {
+  border-bottom: 1px solid rgba(234, 220, 192, 0.12);
 }
 
 .lb-rank {
-  width: 36px;
+  width: 22px;
+  flex: none;
   text-align: center;
-  flex-shrink: 0;
-}
-
-.rank-medal {
-  display: inline-flex;
-}
-
-.rank-gold {
-  color: #e8b64c;
-}
-
-.rank-silver {
-  color: #b9b4ae;
-}
-
-.rank-num {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 22px;
   color: var(--text-muted);
 }
 
-.lb-player {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.lb-player-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(var(--accent-rgb), 0.15);
+.lb-portrait {
+  width: 44px;
+  height: 44px;
+  flex: none;
   border-radius: 50%;
-  font-size: 16px;
+  object-fit: cover;
+  object-position: top;
+  border: 2px solid var(--iron-dark, #3a332c);
+  background: #0c0806;
 }
 
-.lb-crown {
+.lb-winner .lb-portrait {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 14px rgba(var(--ember-rgb), 0.5);
+}
+
+.lb-winner .lb-rank {
+  color: var(--color-primary);
+}
+
+.lb-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lb-hero {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.05;
+  color: var(--text-heading);
+}
+
+.lb-role {
   display: inline-flex;
-  color: #e8b64c;
-  filter: drop-shadow(0 0 4px rgba(var(--ember-rgb), 0.5));
-}
-
-.lb-you-badge {
-  background: var(--gradient-primary);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.6rem;
-  font-weight: 700;
+  align-items: center;
+  gap: 4px;
+  min-height: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-accent);
 }
 
 .lb-treasure {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #FFD54F;
-  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: #d9c08a;
 }
 
-/* Leaderboard actions */
+/* the buttons as in the other plaques: ghost "view the board", the ember way back, keycaps under them */
 .leaderboard-actions {
   display: flex;
-  gap: 8px;
-  padding: 12px 16px 16px;
+  flex-wrap: wrap;
+  gap: 30px 12px;
+  padding: 4px 0 22px;
 }
 
-.lb-btn-primary {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 8px;
+.leaderboard-actions .btn {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 160px;
+  min-height: 50px;
+}
+
+.leaderboard-actions .kbd-hint {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-size: 10px;
   font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-  background: var(--gradient-primary);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.35);
+  line-height: 1.1;
+  color: var(--text-muted);
+  pointer-events: none;
 }
 
-.lb-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.5);
-}
+@media (hover: none), (max-width: 600px) {
+  .leaderboard-actions .kbd-hint {
+    display: none;
+  }
 
-.lb-btn-secondary {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-}
-
-.lb-btn-secondary:hover {
-  background: rgba(var(--accent-rgb), 0.1);
-  transform: translateY(-2px);
+  .leaderboard-actions {
+    padding-bottom: 4px;
+  }
 }
 
 /* Reincarnation target markers pulse so the choice is obvious */
@@ -6397,63 +6355,51 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   50% { transform: scale(1.12); }
 }
 
-/* Game finished styles */
+/* Game finished: a small plaque under the turn banner (the HUD stays readable around it) */
 .game-finished-banner {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(135deg, #2a2a4a 0%, #3a3a5a 100%);
-  color: #fff;
-  padding: 1rem;
+  top: 108px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 850; /* over the HUD, under overlays (part 4 restyles it) */
-  animation: slideDown 0.5s ease-out;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, rgba(20, 12, 8, 0.95) 0%, rgba(12, 7, 5, 0.95) 100%);
+  border: 1px solid rgba(var(--ember-rgb), 0.45);
+  box-shadow: 0 0 26px rgba(var(--ember-rgb), 0.2), 0 10px 24px rgba(0, 0, 0, 0.8);
+  color: var(--text-heading);
+  z-index: 850; /* over the field and the HUD, under the overlays */
+  animation: finishedIn 0.45s ease-out;
 }
 
-@keyframes slideDown {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(0);
-  }
+@keyframes finishedIn {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .game-finished-banner .trophy-icon {
-  font-size: 1.5rem;
-  animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  display: inline-flex;
+  color: var(--color-primary);
 }
 
 .game-finished-banner .finished-text {
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.1;
+  text-shadow: 0 2px 6px #000;
 }
 
-.view-results-button {
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-.view-results-button:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: scale(1.05);
+@media (max-width: 600px) {
+  /* above the pack row at the bottom */
+  .game-finished-banner {
+    top: auto;
+    bottom: 104px;
+  }
 }
 
 .game-interface.game-finished .game-field {
