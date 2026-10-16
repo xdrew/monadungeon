@@ -40,6 +40,16 @@ Silence trimmed at both ends. A loop drops its last 6 s (Lyria tracks wind down)
 
 In a dev build open `/dev/sounds` (also linked from the lobby's "Build: dev" line): every track, sting and sound with the game's picture it goes with, animated for as long as the sound lasts, its waveform with a playhead, each variant on its own button, where the game plays it, and "moments" that play several cues with the game's timing (a fight won or lost, the dragon, a turn, a chest). Music plays through the engine as in the game (crossfades, the sound ring's volumes). Not in production builds.
 
+## Choosing by ear
+
+```bash
+# ideas in tools/audio/candidates/<id>.json: {"seconds", "influence", "ideas": [{"key", "prompt", "label": {en, ru, pl}}]}
+tools/audio/.venv/bin/python -m tools.audio candidates teleport   # two takes per idea → the bench's "Takes for teleport"
+tools/audio/.venv/bin/python -m tools.audio pick teleport 3,8     # those takes become the game's variants
+```
+
+The takes live in `fe/public/audio/candidates/` (gitignored) until `pick`, which writes their prompts into `assets.json`, logs them and clears the bench.
+
 ## Adding a sound
 
 1. An entry in `assets.json`, then `generate --only <id>`.

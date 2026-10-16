@@ -1,0 +1,22 @@
+{
+  "seconds": 1.4,
+  "influence": 0.8,
+  "ideas": [
+    {"key": "breath", "prompt": "A soft, low magical whoosh like a deep warm breath of air drawing someone away, fading out gently. Low-pitched, smooth, no whistle, no high shimmer, no squeal, no beeps.",
+     "label": {"en": "A deep warm breath of air", "ru": "Глубокий тёплый выдох воздуха", "pl": "Głęboki ciepły podmuch"}},
+    {"key": "cloth", "prompt": "A heavy velvet cloak swept around quickly, a low soft swoosh of cloth and air, then gone. Low and muffled, no whistle, no high tones.",
+     "label": {"en": "A cloak swept around, cloth and air", "ru": "Взмах тяжёлого плаща, ткань и воздух", "pl": "Zamach ciężkiego płaszcza"}},
+    {"key": "hum", "prompt": "A low warm magical hum swelling and fading in one second, like a deep bowed note on a cello with a soft rush of air. Calm, low, no high pitch, no squeal.",
+     "label": {"en": "A low warm hum swelling and fading", "ru": "Низкий тёплый гул нарастает и гаснет", "pl": "Niski ciepły pomruk"}},
+    {"key": "water", "prompt": "A healing spring pulling someone in: a soft low gurgle and a gentle rush of water with a warm low tone, then quiet. Low-pitched, soft, no splash, no high shimmer.",
+     "label": {"en": "Pulled into a healing spring, water", "ru": "Затягивает в целебный источник, вода", "pl": "Wciągnięcie do uzdrawiającego źródła"}},
+    {"key": "embers", "prompt": "A gust of warm wind through a torch flame, a low soft whoosh with a crackle of embers, fading. Low and warm, no whistle, no high tones.",
+     "label": {"en": "A gust of warm wind through a torch", "ru": "Порыв тёплого ветра сквозь факел", "pl": "Podmuch ciepłego wiatru przez pochodnię"}},
+    {"key": "stone", "prompt": "An ancient stone portal: a low rumbling stone grind and a soft deep whoosh of air as someone steps through, then quiet. Deep, low, no high shimmer, no whistle.",
+     "label": {"en": "An old stone portal, a low rumble", "ru": "Древний каменный портал, низкий гул", "pl": "Dawny kamienny portal, niski pomruk"}},
+    {"key": "pages", "prompt": "A magic book slammed open and its pages swept by a sudden soft gust that carries the reader away, a low airy swish. No whistle, no high tones, no voice.",
+     "label": {"en": "A magic book, pages swept by a gust", "ru": "Магическая книга, страницы сдувает порывом", "pl": "Magiczna księga, kartki porwane podmuchem"}},
+    {"key": "drum", "prompt": "A soft low frame drum hit with a long felt beater and a warm rush of air, a single magical pulse that fades out. Low, round, calm, no high pitch.",
+     "label": {"en": "A soft low drum pulse with air", "ru": "Мягкий низкий удар бубна с воздухом", "pl": "Miękkie niskie uderzenie bębna"}}
+  ]
+}

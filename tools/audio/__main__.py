@@ -82,6 +82,20 @@ def cmd_reprocess(args) -> int:
     return 0
 
 
+def cmd_candidates(args) -> int:
+    from . import candidates
+    from .elevenlabs import SfxClient
+    style = load_style()
+    candidates.generate(args.id, SfxClient(load_key(ELEVENLABS_KEY), style["sfx"].model))
+    return 0
+
+
+def cmd_pick(args) -> int:
+    from . import candidates
+    candidates.pick(args.id, args.takes.split(","))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tools.audio", description="Generate game music (Lyria) and sounds (ElevenLabs).")
     parser.add_argument("--verbose", "-v", action="store_true", help="DEBUG logging (prompts, ffmpeg)")
@@ -98,6 +112,13 @@ def main(argv: list[str] | None = None) -> int:
     rep = sub.add_parser("reprocess", help="re-run the post-processing from out/raw, no API calls")
     rep.add_argument("--only", help="comma-separated asset ids")
     rep.set_defaults(func=cmd_reprocess)
+    cand = sub.add_parser("candidates", help="takes of several ideas for one sound, onto the sound bench")
+    cand.add_argument("id", help="a sound id; the ideas are in tools/audio/candidates/<id>.json")
+    cand.set_defaults(func=cmd_candidates)
+    pk = sub.add_parser("pick", help="put the chosen takes into the game")
+    pk.add_argument("id")
+    pk.add_argument("takes", help="comma-separated take numbers from the bench, e.g. 15,16")
+    pk.set_defaults(func=cmd_pick)
     args = parser.parse_args(argv)
     setup_logging(args.verbose)
     return args.func(args)
