@@ -71,11 +71,11 @@ export function describeAction(action, who, nameOf, siblings = []) {
     case 'player_moved':
     case 'move':
       if (d.sneakedPastMonster) return t('chronicle.sneaks', { who, monster: monsterName(d.monster?.name, 'acc') });
-      if (d.throughWall) return t('chronicle.throughWall', { who, to: d.to || '?' });
+      if (d.throughWall) return t('chronicle.throughWall', { who });
       if (d.strategy === 'moving toward item') return t('chronicle.headsForLoot', { who });
       return t('chronicle.movesOn', { who });
     case 'magic_swap':
-      return t('chronicle.magicSwap', { who });
+      return d.targetPlayerId ? t('chronicle.magicSwapWith', { who, target: nameOf(d.targetPlayerId) }) : t('chronicle.magicSwap', { who });
     case 'curse':
       return d.kept ? t('chronicle.curseStays', { target: nameOf(d.target) }) : t('chronicle.curseLaid', { who, target: nameOf(d.target) });
     case 'use_spell':

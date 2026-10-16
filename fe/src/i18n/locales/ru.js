@@ -306,10 +306,11 @@ export default {
   chronicle: {
     corridor: '{who} находит новый коридор.',
     sneaks: '{who} незаметно обходит {monster}.',
-    throughWall: '{who} проходит сквозь стену на {to}.',
+    throughWall: '{who} проходит сквозь стену.',
     headsForLoot: '{who} идёт за добычей.',
     movesOn: '{who} идёт дальше.',
     magicSwap: '{who} меняется местами с другим героем.',
+    magicSwapWith: '{who} меняется местами с {target}.',
     curseStays: 'Проклятие Карака остаётся на: {target}.',
     curseLaid: '{who} накладывает проклятие Карака на: {target}.',
     portalSelf: '{who} проходит через целебный портал.',

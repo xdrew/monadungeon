@@ -94,6 +94,7 @@
           class="party-member__kit-inline"
           role="group"
           :aria-label="t('hud.kitOf', { name: entry.name })"
+          :title="t('hud.kitOf', { name: entry.name })"
         >
           <InventorySlots
             :inventory="entry.player.inventory || {}"
@@ -297,7 +298,9 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 
 .party-member__who {
   font-size: 13px;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
+  /* one line: "YOU · THE BATTLE MAGE" broke after "THE" */
+  white-space: nowrap;
   font-variant-caps: all-small-caps;
   color: var(--text-muted);
 }

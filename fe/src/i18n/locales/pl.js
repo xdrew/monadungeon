@@ -306,10 +306,11 @@ export default {
   chronicle: {
     corridor: '{who} odkrywa nowy korytarz.',
     sneaks: '{who} omija {monster}.',
-    throughWall: '{who} przechodzi przez ścianę na {to}.',
+    throughWall: '{who} przechodzi przez ścianę.',
     headsForLoot: '{who} idzie po łup.',
     movesOn: '{who} idzie dalej.',
     magicSwap: '{who} zamienia się miejscami z innym bohaterem.',
+    magicSwapWith: '{who} zamienia się miejscami z {target}.',
     curseStays: 'Klątwa Karak zostaje przy: {target}.',
     curseLaid: '{who} rzuca klątwę Karak na: {target}.',
     portalSelf: '{who} przechodzi przez portal uzdrowienia.',

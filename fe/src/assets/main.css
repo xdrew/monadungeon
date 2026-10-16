@@ -266,3 +266,10 @@ input[type="checkbox"]:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Keycap hints (Enter, Esc…) mean nothing on a touch screen */
+@media (hover: none), (max-width: 600px) {
+  .kbd-hint {
+    display: none !important;
+  }
+}

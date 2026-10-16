@@ -307,10 +307,11 @@ export default {
   chronicle: {
     corridor: '{who} finds a new corridor.',
     sneaks: '{who} sneaks past the {monster}.',
-    throughWall: '{who} walks through a wall to {to}.',
+    throughWall: '{who} walks through a wall.',
     headsForLoot: '{who} heads for the loot.',
     movesOn: '{who} moves on.',
     magicSwap: '{who} trades places with another hero.',
+    magicSwapWith: '{who} trades places with {target}.',
     curseStays: 'The Curse of Karak stays on {target}.',
     curseLaid: '{who} lays the Curse of Karak on {target}.',
     portalSelf: '{who} steps through a Portal of Healing.',

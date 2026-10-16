@@ -798,6 +798,12 @@ const onItemClick = () => {
   animation: swapTargetPulse 1s ease-in-out infinite;
 }
 
+/* a dashed ember ring at the target's feet: plain to see on a dark tile */
+.hero-standee.swap-target::after {
+  border: 2px dashed rgba(var(--ember-rgb), 0.95);
+  background: rgba(var(--ember-rgb), 0.18);
+}
+
 @keyframes swapTargetPulse {
   0%, 100% {
     filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 6px rgba(var(--ember-rgb), 0.7));
