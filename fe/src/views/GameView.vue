@@ -1252,7 +1252,8 @@ const playerLabel = (player) => {
   if (!player) return t('common.player');
   if (isVirtualPlayer(player.id)) return t('common.ai');
   if (isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })) return t('common.you');
-  return player.username || heroShortName(player) || t('common.player');
+  // without a username: the hero's name ("Horan"), not its role — "the warrior (the warrior)" in the choices
+  return player.username || (player.hero ? heroName(player.hero, 'short') : '') || t('common.player');
 };
 
 // Curse of Karak: the other players (candidates) and the current holder of the token
