@@ -40,10 +40,13 @@ final class TurnWatchCommand extends Command
     {
         /** @var list<string> $overdue */
         $overdue = $this->connection->fetchFirstColumn(<<<'SQL'
-                SELECT game_id FROM game.game
-                WHERE online AND status IN ('started', 'turn_in_progress')
-                  AND turn_deadline IS NOT NULL AND turn_deadline < now()
-                ORDER BY turn_deadline
+                SELECT g.game_id FROM game.game g
+                WHERE g.online AND g.status IN ('started', 'turn_in_progress')
+                  AND g.turn_deadline IS NOT NULL AND g.turn_deadline < now()
+                  -- a table nobody is at waits (ServerAiDriver::standIn): it must not crowd out the others
+                  AND EXISTS (SELECT 1 FROM player.player p
+                              WHERE p.game_id = g.game_id AND NOT p.is_ai AND NOT p.away)
+                ORDER BY g.turn_deadline
                 LIMIT 20
             SQL);
         $played = 0;
@@ -72,8 +75,12 @@ final class TurnWatchCommand extends Command
                     $output->writeln(sprintf('turn-watch: %d overdue turn(s) played', $played));
                 }
             } catch (\Throwable $e) {
-                $this->logger->error('turn.watch_failed', ['error' => $e->getMessage()]);
-                $output->writeln('turn-watch: ' . $e->getMessage());
+                // a failed write leaves Doctrine's EntityManager closed, and it cannot be reopened in this
+                // process: stop, and docker starts the watcher again (restart: unless-stopped)
+                $this->logger->error('turn.watch_failed', ['error' => $e->getMessage(), 'at' => $e->getFile() . ':' . $e->getLine()]);
+                $output->writeln('turn-watch: ' . $e->getMessage() . ' — stopping for a restart');
+
+                return Command::FAILURE;
             }
             if ($input->getOption('once')) {
                 break;
