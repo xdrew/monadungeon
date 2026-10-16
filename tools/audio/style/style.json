@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "kinds": {
+    "music": {
+      "provider": "lyria",
+      "model": "lyria-3.5",
+      "fallback_model": "lyria-3-clip-preview",
+      "lufs": -18,
+      "bitrate": "112k",
+      "mono": false,
+      "prefix": "Instrumental only, no vocals, no choir, no lyrics. Background music for a dark fantasy tabletop board game about exploring a torch-lit dungeon. Acoustic, medieval-flavoured instruments, warm and close, recorded in a small stone room. Unobtrusive under play, it must not tire the ear over an hour: no sudden hits, no big build-up, no fade-out ending, steady dynamics from start to end.",
+      "out_dir": "fe/public/audio/music"
+    },
+    "sting": {
+      "provider": "lyria",
+      "model": "lyria-3-clip-preview",
+      "fallback_model": "lyria-3.5",
+      "lufs": -17,
+      "bitrate": "112k",
+      "mono": false,
+      "prefix": "Instrumental only, no vocals, no choir, no lyrics. A short musical cue for a dark fantasy tabletop board game, acoustic medieval-flavoured instruments. The cue is complete within its first seconds and then the track is silent.",
+      "out_dir": "fe/public/audio/music"
+    },
+    "sfx": {
+      "provider": "elevenlabs",
+      "model": "eleven_text_to_sound_v2",
+      "lufs": -16,
+      "bitrate": "96k",
+      "mono": true,
+      "prompt_influence": 0.6,
+      "prefix": "",
+      "suffix": "Close and dry, a tabletop dark fantasy game sound, no music, no voice.",
+      "out_dir": "fe/public/audio/sfx"
+    }
+  }
+}

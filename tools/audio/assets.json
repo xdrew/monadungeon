@@ -1,0 +1,56 @@
+{
+  "assets": [
+    {"id": "lobby", "kind": "music", "loop": true, "prompt": "Warm and light, a cosy tavern by the fire before the heroes go down. Fingerpicked lute and soft strings, a gentle frame drum, a recorder melody now and then. Moderate tempo around 84 bpm, D major with a modal touch. About two and a half minutes."},
+    {"id": "explore", "kind": "music", "loop": true, "variants": 2, "prompt": "Dark fantasy dungeon ambience, calm and patient. A low cello drone, a soft frame drum like a slow heartbeat, a sparse dulcimer melody, faint crackle of torches in the background. Slow, around 66 bpm, D minor. About three minutes, the same mood throughout."},
+    {"id": "fight", "kind": "music", "loop": true, "prompt": "A tense dungeon fight. Driving frame drums and taiko at 120 bpm, a low brass ostinato, staccato cellos, a hurdy-gurdy drone underneath. Taut and grim rather than heroic or epic. About ninety seconds at one level of intensity."},
+    {"id": "dragon", "kind": "music", "loop": true, "prompt": "The fight with the dragon at the bottom of the dungeon. Heavy timpani and war drums at 110 bpm, deep horns and low brass, tremolo strings, a dark bowed bass. Bigger and more menacing than an ordinary fight, but steady. About ninety seconds at one level of intensity."},
+    {"id": "victory_sting", "kind": "sting", "seconds": 5, "prompt": "A five-second victory flourish after winning a fight: a bright brass call over a frame drum roll, ending on a firm major chord."},
+    {"id": "defeat_sting", "kind": "sting", "seconds": 5, "prompt": "A five-second defeat cue after losing a fight: a low cello falling phrase over a muffled drum, ending on a dark minor chord."},
+    {"id": "game_over", "kind": "sting", "seconds": 14, "prompt": "A fourteen-second ending theme when the game is over and the treasure is counted: solemn and warm, lute and strings with a horn, resolving calmly."},
+    {"id": "lord_karak", "kind": "sting", "seconds": 9, "prompt": "A nine-second ominous reveal: an ancient lord awakens in the depths. A deep bell toll, a rising low brass cluster, a hurdy-gurdy drone, ending in an unresolved dark chord."},
+
+    {"id": "ui_click", "kind": "sfx", "seconds": 0.5, "variants": 3, "prompt": "A soft click of a small wooden token placed on a wooden board, very short."},
+    {"id": "ui_toggle", "kind": "sfx", "seconds": 0.5, "prompt": "A small iron latch flipped, a short metallic tick."},
+    {"id": "ui_open", "kind": "sfx", "seconds": 0.7, "prompt": "A parchment sheet unfolded quickly, a short paper rustle."},
+    {"id": "ui_close", "kind": "sfx", "seconds": 0.6, "prompt": "A parchment sheet folded and laid down, a short soft paper swish."},
+    {"id": "ui_refused", "kind": "sfx", "seconds": 0.6, "prompt": "A dull wooden knock, two quick muted taps on a table, meaning no."},
+    {"id": "notice", "kind": "sfx", "seconds": 0.9, "prompt": "A single small brass bell struck softly, a short clear chime with a quick decay."},
+
+    {"id": "tile_draw", "kind": "sfx", "seconds": 0.7, "prompt": "A thick cardboard tile slid off the top of a stack, a short dry scrape."},
+    {"id": "tile_place", "kind": "sfx", "seconds": 0.7, "prompt": "A thick cardboard dungeon tile set down on a table, a firm soft thud."},
+    {"id": "tile_rotate", "kind": "sfx", "seconds": 0.5, "prompt": "A cardboard tile turned on the table, a quick short scrape."},
+    {"id": "step", "kind": "sfx", "seconds": 0.6, "variants": 3, "prompt": "A single footstep of a leather boot on a stone dungeon floor, short."},
+    {"id": "teleport", "kind": "sfx", "seconds": 1.4, "prompt": "A magic portal pulls someone through: a quick airy whoosh with a shimmering tone, ending abruptly."},
+    {"id": "fountain_heal", "kind": "sfx", "seconds": 1.6, "prompt": "Healing at a magic fountain: trickling water and a soft warm rising chime."},
+    {"id": "chest_open", "kind": "sfx", "seconds": 1.2, "prompt": "An old wooden treasure chest unlocked and its heavy lid creaking open."},
+    {"id": "chest_locked", "kind": "sfx", "seconds": 0.8, "prompt": "Rattling the iron lock of a closed wooden chest that will not open."},
+    {"id": "item_pickup", "kind": "sfx", "seconds": 0.7, "prompt": "Picking up a weapon from the floor: a short metal scrape and a leather strap."},
+    {"id": "treasure", "kind": "sfx", "seconds": 1.0, "prompt": "A handful of gold coins dropped into a leather pouch, a short jingle."},
+    {"id": "key", "kind": "sfx", "seconds": 0.7, "prompt": "A heavy iron key on a ring picked up, a short metallic jingle."},
+    {"id": "item_drop", "kind": "sfx", "seconds": 0.7, "prompt": "A sword dropped on a stone floor, a short metal clatter."},
+
+    {"id": "dice_roll", "kind": "sfx", "seconds": 1.3, "variants": 2, "prompt": "Two wooden six-sided dice shaken in a hand and rolled onto a wooden table, a short clatter that settles."},
+    {"id": "hit_win", "kind": "sfx", "seconds": 1.0, "prompt": "A decisive sword strike that fells a monster: a heavy metal slash and a body falling on stone."},
+    {"id": "hit_lose", "kind": "sfx", "seconds": 1.0, "prompt": "A hero struck by a monster: a heavy blunt blow on leather armour and a short grunt of pain."},
+    {"id": "draw", "kind": "sfx", "seconds": 0.9, "prompt": "Two swords clashing and locking, a ringing metal clang, no one falls."},
+    {"id": "monster_roar", "kind": "sfx", "seconds": 1.3, "prompt": "A dungeon monster growls a short menacing snarl in a stone room."},
+    {"id": "dragon_roar", "kind": "sfx", "seconds": 2.2, "prompt": "A huge dragon roars in a deep cavern, a deep rumbling roar with a short tail."},
+    {"id": "stunned", "kind": "sfx", "seconds": 1.2, "prompt": "A hero knocked down and dazed: a body falls on stone, a dull ringing in the ears."},
+    {"id": "reincarnate", "kind": "sfx", "seconds": 1.5, "prompt": "A fallen hero rises again: a soft rising shimmer and a warm low hum."},
+
+    {"id": "spell_fireball", "kind": "sfx", "seconds": 1.3, "prompt": "A fireball spell cast: a quick ignition whoosh and a crackling burst of flame."},
+    {"id": "spell_teleport", "kind": "sfx", "seconds": 1.2, "prompt": "A spell scroll read aloud and burning away: parchment crackle and a shimmering magical swirl, no voice."},
+    {"id": "dark_thorn", "kind": "sfx", "seconds": 1.1, "prompt": "Dark magic thorns burst out of the ground: a sharp creaking of wood and a low hiss."},
+    {"id": "frost_fist", "kind": "sfx", "seconds": 1.1, "prompt": "A fist of ice strikes: crackling frost and a heavy icy crunch."},
+    {"id": "curse", "kind": "sfx", "seconds": 1.6, "prompt": "A curse falls on the hero: a low ominous drone with a whispering wind, no words."},
+    {"id": "curse_lifted", "kind": "sfx", "seconds": 1.4, "prompt": "A curse lifted: a soft bright release, a gentle rising chime and a breath of air."},
+    {"id": "sneak", "kind": "sfx", "seconds": 0.9, "prompt": "Sneaking past a monster: soft cloth rustle and careful light footsteps on stone."},
+
+    {"id": "end_turn", "kind": "sfx", "seconds": 0.8, "prompt": "A heavy wooden token placed firmly on a board, then a short low thud, ending a turn."},
+    {"id": "your_turn", "kind": "sfx", "seconds": 1.2, "prompt": "Two soft notes on a small brass bell, rising, calling a player to the table."},
+    {"id": "turn_tick", "kind": "sfx", "seconds": 0.5, "prompt": "A single tick of an old mechanical clock, short and dry."},
+    {"id": "table_join", "kind": "sfx", "seconds": 0.8, "prompt": "A wooden chair pulled up to a table, a short scrape."},
+    {"id": "game_start", "kind": "sfx", "seconds": 2.0, "prompt": "A heavy dungeon door of iron and oak creaking open, its bolt sliding."},
+    {"id": "duel_start", "kind": "sfx", "seconds": 1.2, "prompt": "Two swords drawn from their scabbards one after another, ringing steel."}
+  ]
+}
