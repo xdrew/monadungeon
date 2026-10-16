@@ -19,12 +19,20 @@ const storage = {
   remove(key) { try { localStorage.removeItem(key); } catch { /* private mode */ } },
 };
 
+// a missing value (null, '') is the default, not 0: Number(null) is 0
 const clamp01 = (v, fallback) => {
+  if (v === null || v === undefined || v === '') return fallback;
   const n = Number(v);
   return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
 };
 
 function loadSettings() {
+  // The first engine read a missing volume as 0 and could store the music at 0: start those from the defaults
+  if (storage.get('audio.version') === null) {
+    if (storage.get(KEYS.music) === '0') storage.remove(KEYS.music);
+    if (storage.get(KEYS.sfx) === '0') storage.remove(KEYS.sfx);
+    storage.set('audio.version', '2');
+  }
   const music = storage.get(KEYS.music);
   const settings = {
     music: clamp01(music, 0.5),
@@ -254,6 +262,35 @@ class AudioEngine {
       this.applyDuck();
       setTimeout(() => this.applyDuck(1.5), buf.duration * 1000 + 50);
     });
+  }
+
+  /**
+   * The sound bench (dev page): one exact file now, on the sounds' or the music's bus, regardless of the
+   * dedupe. Resolves with { duration, startedAt } (startedAt in this context's clock), or null.
+   */
+  async preview(url, bus = 'sfx') {
+    await this.unlock();
+    const buf = await this.buffer(url);
+    if (!buf || !this.ctx) return null;
+    devLog(bus === 'sfx' ? 'cue' : 'sting', url);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(bus === 'sfx' ? this.sfxBus : this.musicBus);
+    const startedAt = this.ctx.currentTime;
+    src.start();
+    return { duration: buf.duration, startedAt, buffer: buf };
+  }
+
+  /** An analyser on everything that sounds (the bench's level meter), made on first use. */
+  meter() {
+    const ctx = this.context();
+    if (!ctx) return null;
+    if (!this.analyser) {
+      this.analyser = ctx.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.master.connect(this.analyser);
+    }
+    return this.analyser;
   }
 
   /** For the e2e and the console. */

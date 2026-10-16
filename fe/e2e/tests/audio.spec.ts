@@ -35,6 +35,10 @@ test.describe('Audio', () => {
     await page.locator('.music-toggle').first().click();
     const panel = page.getByTestId('sound-panel');
     await expect(panel).toBeVisible();
+    // a first visit: the defaults, not silence
+    await expect(page.getByTestId('sound-music')).toHaveValue('0.5');
+    await expect(page.getByTestId('sound-sfx')).toHaveValue('0.8');
+    await expect(page.locator('.music-toggle').first()).not.toHaveClass(/music-off/);
     await page.getByTestId('sound-music').fill('0.3');
     await page.getByTestId('sound-sfx').fill('0.65');
     await snap(page, SPEC, 'sound-panel', { phone: true });

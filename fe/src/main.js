@@ -1,4 +1,4 @@
-import { createApp, h, computed } from 'vue'
+import { createApp, h, computed, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import '@fontsource/pirata-one/400.css'
 import '@fontsource/spectral/400.css'
@@ -17,6 +17,8 @@ import NotFoundView from './views/NotFoundView.vue'
 import LeaderboardView from './views/LeaderboardView.vue'
 import RulesView from './views/RulesView.vue'
 import TableJoinView from './views/TableJoinView.vue'
+// the sound bench is a dev tool: loaded on demand, and not in a production build at all
+const DevSoundsView = import.meta.env.DEV ? defineAsyncComponent(() => import('./views/DevSoundsView.vue')) : null
 
 // ----------------
 // Define Game Components
@@ -49,6 +51,8 @@ const CustomRouterView = {
         return LeaderboardView
       } else if (path === '/rules') {
         return RulesView
+      } else if (DevSoundsView && path === '/dev/sounds') {
+        return DevSoundsView
       } else {
         return NotFoundView
       }

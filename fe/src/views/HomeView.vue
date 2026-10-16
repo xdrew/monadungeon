@@ -403,6 +403,11 @@
         class="version-info"
       >
         {{ t('lobby.build', { version: buildVersion }) }}
+        · <a
+          href="/dev/sounds"
+          class="version-info__link"
+          data-testid="dev-sound-bench"
+        >{{ t('devSounds.title') }}</a>
       </div>
     </main>
   </div>
@@ -1241,6 +1246,10 @@ const createNewGame = async () => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.version-info__link {
+  color: inherit;
 }
 
 .version-info {

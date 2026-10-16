@@ -36,6 +36,10 @@ tools/audio/.venv/bin/python -m tools.audio reprocess --only lobby     # post-pr
 
 Silence trimmed at both ends. A loop drops its last 6 s (Lyria tracks wind down) and crosses its end into its start over 4 s, so it has no seam. A sting or a sound is cut to its `seconds` with a fade-out. One gain brings it to the loudness target (music −18, stings −17, sounds −16 LUFS; a sound shorter than 1 s is measured looped, since EBU R128 gates on 400 ms blocks), a limiter keeps the peaks under −1 dBFS. Music is 112 kbps stereo mp3, sounds 96 kbps mono.
 
+## Listening: the sound bench
+
+In a dev build open `/dev/sounds` (also linked from the lobby's "Build: dev" line): every track, sting and sound with the game's picture it goes with, animated for as long as the sound lasts, its waveform with a playhead, each variant on its own button, where the game plays it, and "moments" that play several cues with the game's timing (a fight won or lost, the dragon, a turn, a chest). Music plays through the engine as in the game (crossfades, the sound ring's volumes). Not in production builds.
+
 ## Adding a sound
 
 1. An entry in `assets.json`, then `generate --only <id>`.
