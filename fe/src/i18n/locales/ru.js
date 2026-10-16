@@ -229,6 +229,7 @@ export default {
     centerAvailable: 'К доступным клеткам'
   },
   sound: { title: 'Звук', music: 'Музыка', sounds: 'Звуки', mute: 'Выключить всё', unmute: 'Включить звук' },
+  curseScene: { caption: 'Проклятая комната', rolls: '{who} бросает кубик', rule: '1–3: Проклятие Карака падает на героя · 4–6: пронесло', token: 'Проклятие Карака', cursed: '{who} проклят: жетон переходит к герою', spared: 'Пронесло: проклятие остаётся в комнате', ok: 'Дальше' },
   duelScene: { caption: 'Поединок на Арене', noSpells: 'без заклинаний', choosing: 'выбирает…', rolls: 'бросает…', prepareTitle: '{who}: до броска', prepareHint: 'Выбранное тратится, даже если бросок победил бы и без него.', plus: '+{n} к броску', sacrifice: '1 ОЗ за +1', nothingToSpend: 'Боевых заклинаний нет.', go: 'В поединок', waitsFor: '{who} выбирает заклинания…', items: 'предметы +{n}', win: 'Победа!', lose: 'Поражение', tie: 'Ничья', wins: '{who} побеждает' },
   skillsPanel: {
     title: 'Умения',

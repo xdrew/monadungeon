@@ -229,6 +229,7 @@ export default {
     centerAvailable: 'Do dostępnych pól'
   },
   sound: { title: 'Dźwięk', music: 'Muzyka', sounds: 'Efekty', mute: 'Wycisz wszystko', unmute: 'Włącz dźwięk' },
+  curseScene: { caption: 'Przeklęta komnata', rolls: '{who} rzuca kością', rule: '1–3: Klątwa Karaka spada na bohatera · 4–6: udało się', token: 'Klątwa Karaka', cursed: '{who} przeklęty: żeton trafia do bohatera', spared: 'Udało się: klątwa zostaje w komnacie', ok: 'Dalej' },
   duelScene: { caption: 'Pojedynek na Arenie', noSpells: 'bez zaklęć', choosing: 'wybiera…', rolls: 'rzuca…', prepareTitle: '{who}: przed rzutem', prepareHint: 'Wybrane przepada, nawet jeśli rzut wygrałby bez tego.', plus: '+{n} do rzutu', sacrifice: '1 PW za +1', nothingToSpend: 'Brak bojowych zaklęć.', go: 'Do pojedynku', waitsFor: '{who} wybiera zaklęcia…', items: 'przedmioty +{n}', win: 'Zwycięstwo!', lose: 'Porażka', tie: 'Remis', wins: '{who} wygrywa' },
   skillsPanel: {
     title: 'Umiejętności',

@@ -11,3 +11,13 @@
   font-size: 18px;
   margin-bottom: 2px;
 }
+
+/* Karak: Regent — the Curse of Karak token has just landed (the hero's card in the rail, or the room on the field) */
+.curse-token-landed {
+  animation: curseTokenLanded 1.2s ease-out;
+}
+
+@keyframes curseTokenLanded {
+  0% { box-shadow: 0 0 0 3px rgba(170, 80, 240, 0.9), 0 0 30px rgba(170, 80, 240, 0.9); }
+  100% { box-shadow: 0 0 0 0 rgba(170, 80, 240, 0), 0 0 0 rgba(170, 80, 240, 0); }
+}

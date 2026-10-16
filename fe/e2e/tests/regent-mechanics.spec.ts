@@ -159,6 +159,14 @@ test.describe('Regent mechanics', () => {
     });
 
     await GameHelpers.placeTile(page, 0, 0);
+    console.log('[spec] the Cursed Room scene: the die lands on 2, the token goes onto the hero');
+    const scene = page.getByTestId('cursed-room-scene');
+    await expect(scene).toBeVisible({ timeout: 10000 });
+    await expect(scene).toHaveAttribute('data-roll', '2');
+    await expect(page.getByTestId('cursed-room-outcome')).toContainText(/cursed/, { timeout: 6000 });
+    await snap(page, SPEC, 'cursed-room-scene', { phone: true });
+    await page.getByTestId('cursed-room-ok').click();
+    await expect(scene).toHaveCount(0);
     await expectNotice(page, /Cursed Room — .* rolled 2 .*cursed/);
     await expect(page.locator('[data-testid="cursed-room-marker"]').first()).toBeVisible();
     await snap(page, SPEC, 'cursed-room-cursed', { phone: true });
@@ -169,6 +177,9 @@ test.describe('Regent mechanics', () => {
     await expect.poll(async () => (await apiGame(request, gameId)).state.currentPlayerId, { timeout: 10000 }).toBe(b);
     await switchTo(page, b);
     await GameHelpers.placeTile(page, 0, 0);
+    console.log('[spec] B rolls 6 in the fifth room: spared, the curse stays in the room');
+    await expect(page.getByTestId('cursed-room-outcome')).toContainText(/Spared/, { timeout: 10000 });
+    await page.getByTestId('cursed-room-ok').click();
 
     await expect(page.getByTestId('lord-karak-modal')).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('lord-karak-who')).toContainText(/Horan becomes Lord Karak/);

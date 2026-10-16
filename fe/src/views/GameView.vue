@@ -1022,6 +1022,16 @@
       </section>
     </div>
 
+    <!-- Karak: Regent — a Cursed Room: the die and the token -->
+    <CursedRoomScene
+      v-if="cursedRoomScene && !showBattleReportModal"
+      :event="cursedRoomScene"
+      :name="heroNameById(cursedRoomScene.playerId)"
+      :sprite="cursedRoomSceneSprite"
+      :auto-close-ms="cursedRoomSceneMine ? 0 : 2200"
+      @close="closeCursedRoomScene"
+    />
+
     <!-- Karak: Regent — the current (or last) duel as a scene: the spells before the roll, the dice, the outcome -->
     <DuelScene
       v-if="visibleDuel && !showBattleReportModal"
@@ -1036,9 +1046,9 @@
       @dismiss="dismissDuel"
     />
 
-    <!-- Karak: Regent, Lord Karak variant — shown once per browser when the weakest hero is transformed -->
+    <!-- Karak: Regent, Lord Karak variant — shown once per browser when the weakest hero is transformed (after the room's die) -->
     <LordKarakRevealModal
-      v-if="visibleLordKarak"
+      v-if="visibleLordKarak && !cursedRoomScene"
       :reveal="visibleLordKarak"
       :players="duelPanelPlayers"
       @close="dismissLordKarak"
@@ -1073,6 +1083,7 @@ import FateweaverChoiceDialog from '@/components/game/FateweaverChoiceDialog.vue
 import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
 import DuelOpponentPanel from '@/components/game/DuelOpponentPanel.vue';
 import DuelScene from '@/components/game/DuelScene.vue';
+import CursedRoomScene from '@/components/game/CursedRoomScene.vue';
 import LordKarakRevealModal from '@/components/game/LordKarakRevealModal.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import GameHud from '@/components/game/hud/GameHud.vue';
@@ -1817,16 +1828,68 @@ const castDarkThorn = async () => {
   await loadGameData(false);
 };
 
-// Cursed Room: one notice per roll (turn + hero)
+// Cursed Room: one scene (and one notice) per roll (turn + hero) — the die, then the token on the hero or left in the room
 const shownRoomEventKey = ref(null);
+const cursedRoomScene = ref(null);
+// the state the page opens with is the field as it is: only rolls made while it is open get a scene
+let roomEventsArmed = false;
+watch(gameData, (data) => {
+  if (data && !roomEventsArmed) nextTick(() => { roomEventsArmed = true; });
+});
 watch(() => gameData.value?.state?.roomEvent, (event) => {
   if (!event) return;
   const key = `${event.turnId}:${event.playerId}:${event.position}`;
   if (key === shownRoomEventKey.value) return;
   shownRoomEventKey.value = key;
+  if (!roomEventsArmed) return;
   const who = heroNameById(event.playerId);
-  showActionNotice(t(event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe', { who, roll: event.roll }));
+  showActionNotice(t(event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe', { who, roll: event.roll }), 'notice');
+  cursedRoomScene.value = event;
 });
+const cursedRoomSceneMine = computed(() => {
+  const playerId = cursedRoomScene.value?.playerId;
+  if (!playerId) return false;
+  return isOnline.value ? playerId === mySeatId.value : !gameData.value?.players?.find((p) => p.id === playerId)?.isAi;
+});
+const cursedRoomSceneSprite = computed(() => {
+  const player = gameData.value?.players?.find((p) => p.id === cursedRoomScene.value?.playerId);
+  return getHero(figureHeroKey(player)).image;
+});
+// The token flies from the scene to where it now lies: the hero's card in the rail, or back into the room on the field
+const flyCurseToken = (fromRect, target) => {
+  if (!fromRect || !target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const to = target.getBoundingClientRect();
+  const token = document.createElement('img');
+  token.src = '/images/curse.webp';
+  token.alt = '';
+  token.className = 'curse-token-flight';
+  Object.assign(token.style, { position: 'fixed', left: `${fromRect.left}px`, top: `${fromRect.top}px`, width: `${fromRect.width}px`, height: `${fromRect.height}px`, zIndex: 3000, pointerEvents: 'none' });
+  document.body.appendChild(token);
+  const dx = to.left + to.width / 2 - (fromRect.left + fromRect.width / 2);
+  const dy = to.top + to.height / 2 - (fromRect.top + fromRect.height / 2);
+  const scale = Math.max(0.2, Math.min(to.width, 40) / fromRect.width);
+  const flight = token.animate([
+    { transform: 'translate(0, 0) scale(1)', opacity: 1, filter: 'drop-shadow(0 0 18px rgba(170, 80, 240, 0.9))' },
+    { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 60}px) scale(${(1 + scale) / 2})`, opacity: 1, offset: 0.5 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0.2 },
+  ], { duration: 900, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' });
+  flight.onfinish = () => {
+    token.remove();
+    target.classList.add('curse-token-landed');
+    setTimeout(() => target.classList.remove('curse-token-landed'), 1200);
+  };
+};
+const closeCursedRoomScene = (tokenRect) => {
+  const event = cursedRoomScene.value;
+  cursedRoomScene.value = null;
+  if (!event) return;
+  nextTick(() => {
+    const target = event.cursed
+      ? document.querySelector(`.party-member[data-player-id="${event.playerId}"] .party-member__medallion`)
+      : document.querySelector(`.tile[data-position="${event.position}"]`);
+    flyCurseToken(tokenRect, target);
+  });
+};
 const handleCurseChoice = async (targetPlayerId) => {
   try {
     const result = await gameApi.curse({

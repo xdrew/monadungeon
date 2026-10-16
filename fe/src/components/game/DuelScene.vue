@@ -450,6 +450,8 @@ const inventory = computed(() => playerOf(lootChooserId.value)?.inventory || {})
 .duel-side {
   /* the figure gives way on a low screen, so the dice and the totals stay in sight */
   --fighter-w: clamp(130px, min(22vw, 30vh), 300px);
+  --fighter-img-h: clamp(220px, 50vh, 390px);
+  --fighter-img-w: calc(var(--fighter-img-h) * 0.72);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -675,6 +677,8 @@ const inventory = computed(() => playerOf(lootChooserId.value)?.inventory || {})
 
   .duel-side {
     --fighter-w: clamp(120px, 38vw, 200px);
+    --fighter-img-h: 210px;
+    --fighter-name: 22px;
   }
 
   .duel-side__roll {
