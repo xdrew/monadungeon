@@ -640,8 +640,9 @@ const handleTilePlacement = async (params) => {
       }
     }, TILE_ANIMATION_DURATION);
     
-    // Return response indicating tile was placed (exploration continues)
-    return { tilePlaced: true };
+    // Return response indicating tile was placed (exploration continues); an item lying in the new room
+    // (a chest has no guard) comes with it, so the pickup or the missing-key plaque shows as after a move
+    return moveResponse?.itemInfo ? { ...moveResponse, tilePlaced: true } : { tilePlaced: true };
   } catch (err) {
     console.error('Failed to place tile:', err);
     throw err;
