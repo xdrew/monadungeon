@@ -152,7 +152,7 @@ Each test's sequence is written next to it as a comment table, as in the showcas
 
 ### Phase 4: Mechanics
 
-- [ ] Task 7: `fe/e2e/tests/mechanics.spec.ts`: curse, portal of healing, chests, not offered, rotation, reload, endgame, as in the map.
+- [x] Task 7: `fe/e2e/tests/mechanics.spec.ts`: curse, portal of healing, chests, not offered, rotation, reload, endgame, as in the map.
   - Endgame: preset axe + sword + 2 fireballs.
   - The dragon is the first room's monster: a `fourSideRoom` and `dragon` first in the bag.
   - The dice must beat 15 with the bonuses.

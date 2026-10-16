@@ -94,8 +94,9 @@ export async function waitForTurn(page: Page, n: number): Promise<void> {
 /** The fight scene: open, and (optionally) the dice settled with the result shown. */
 export async function waitForFight(page: Page): Promise<void> {
   await page.locator('.battle-overlay').waitFor({ state: 'visible', timeout: 15000 });
-  // the footer is revealed once the dice have settled and the result is shown
-  await page.locator('.battle-overlay .battle-footer.footer-reveal').waitFor({ state: 'visible', timeout: 20000 });
+  // the dice have settled: the footer is revealed, or the Curse of Karak choice waits before it
+  await page.locator('.battle-overlay .battle-footer.footer-reveal, .battle-overlay [data-testid="curse-choice"]')
+    .first().waitFor({ state: 'visible', timeout: 20000 });
   await page.waitForTimeout(400);
 }
 
