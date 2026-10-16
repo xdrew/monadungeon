@@ -157,7 +157,7 @@ Each test's sequence is written next to it as a comment table, as in the showcas
   - The dragon is the first room's monster: a `fourSideRoom` and `dragon` first in the bag.
   - The dice must beat 15 with the bonuses.
   - Then the results overlay and `/leaderboard`.
-- [ ] Task 8: `fe/e2e/tests/regent-mechanics.spec.ts`: arena, cursed room, giant bat → dark thorn, skeleton mage → frost fist, lord karak, as in the map.
+- [x] Task 8: `fe/e2e/tests/regent-mechanics.spec.ts`: arena, cursed room, giant bat → dark thorn, skeleton mage → frost fist, lord karak, as in the map.
   - Tile names: `battleArena`, `cursedRoom`.
   - Lord Karak needs the room that reveals it. Find from `Game::onLordKarakRoomDiscovered` which tile or feature triggers it.
   - If the test deck cannot express that tile, extend `DeckTile::createFromName` with a `lordKarakRoom` name in this task, and add a PHPUnit case to task 2's test.

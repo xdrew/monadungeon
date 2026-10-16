@@ -1,4 +1,4 @@
-import { APIRequestContext, Page, expect } from '@playwright/test';
+import { APIRequestContext, Locator, Page, expect } from '@playwright/test';
 import { GameHelpers } from './game-helpers';
 import { TestGameConfig, TestGameSetup } from './test-game-setup';
 
@@ -210,3 +210,8 @@ export async function moveTo(page: Page, x: number, y: number): Promise<void> {
 }
 
 export const hasMoveMarker = (page: Page, x: number, y: number) => page.locator(marker(x, y, false));
+
+/** Whether the element shows up within ms (locator.isVisible() does not wait, whatever its timeout says). */
+export async function visibleWithin(locator: Locator, ms: number): Promise<boolean> {
+  return locator.waitFor({ state: 'visible', timeout: ms }).then(() => true).catch(() => false);
+}

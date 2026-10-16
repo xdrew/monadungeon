@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { GameHelpers } from '../utils/game-helpers';
 import { snap } from '../utils/screens';
-import { API_URL, END_TURN, watchPage } from '../utils/hotseat';
+import { API_URL, END_TURN, visibleWithin, waitForFight, watchPage } from '../utils/hotseat';
 
 /**
  * The pages around the game (lobby, language, rules book, Hall of fame, 404) and a real game against
@@ -142,20 +142,26 @@ test.describe('Pages', () => {
     const myEndTurn = page.locator(END_TURN);
 
     // The human may start: play a short turn (one tile, a fight if any) and hand over
-    if (await myEndTurn.first().isVisible({ timeout: 4000 }).catch(() => false)) {
+    if (await visibleWithin(myEndTurn.first(), 4000)) {
       console.log('[spec] the human starts: place one tile and end the turn');
       await GameHelpers.placeTile(page, 0, 0);
-      if (await page.locator('.battle-overlay').isVisible({ timeout: 6000 }).catch(() => false)) {
-        await page.locator('.battle-overlay .battle-footer').waitFor({ state: 'visible', timeout: 15000 });
+      if (await visibleWithin(page.locator('.battle-overlay'), 6000)) {
+        await waitForFight(page);
+        // a mummy: choose who carries the Curse of Karak first
+        const curse = page.locator('[data-testid^="curse-player-"]').first();
+        if (await visibleWithin(curse, 500)) {
+          await curse.click();
+          await page.locator('.battle-overlay .battle-footer.footer-reveal').waitFor({ state: 'visible', timeout: 10000 });
+        }
         await snap(page, SPEC, 'first-fight');
         await GameHelpers.continueBattle(page, 'close');
         await page.locator('.battle-overlay').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
       }
       for (const overlay of ['.item-pickup-overlay .btn-leave', '.inventory-full-overlay .btn-secondary', '.missing-key-dialog .close-button']) {
         const button = page.locator(overlay).first();
-        if (await button.isVisible({ timeout: 1500 }).catch(() => false)) await button.click();
+        if (await visibleWithin(button, 1500)) await button.click();
       }
-      if (await myEndTurn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+      if (await visibleWithin(myEndTurn.first(), 3000)) {
         await myEndTurn.first().click();
       }
     }
