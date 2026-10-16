@@ -23,8 +23,25 @@
     <div
       v-if="$slots.tools"
       class="game-hud__tools"
+      :class="{ 'is-open': toolsOpen }"
     >
-      <slot name="tools" />
+      <!-- phones: the tools fold behind one ring so they do not cover the field -->
+      <button
+        type="button"
+        class="game-hud__tools-toggle"
+        :aria-expanded="toolsOpen"
+        :aria-label="t('hud.tools')"
+        :title="t('hud.tools')"
+        @click="toolsOpen = !toolsOpen"
+      >
+        <GameIcon
+          :name="toolsOpen ? 'close' : 'menu'"
+          :size="20"
+        />
+      </button>
+      <div class="game-hud__tools-items">
+        <slot name="tools" />
+      </div>
     </div>
     <div
       v-if="$slots.chronicle"
@@ -55,6 +72,15 @@
     <slot />
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import GameIcon from '@/components/ui/GameIcon.vue';
+
+const { t } = useI18n();
+const toolsOpen = ref(false);
+</script>
 
 <style scoped>
 .game-hud {
@@ -129,6 +155,15 @@
   gap: 10px;
 }
 
+.game-hud__tools-items {
+  display: flex;
+  gap: 10px;
+}
+
+.game-hud__tools-toggle {
+  display: none;
+}
+
 .game-hud__chronicle {
   position: absolute;
   top: 120px;
@@ -197,7 +232,53 @@
   .game-hud__tools {
     top: 62px;
     flex-direction: column;
+    align-items: flex-end;
     gap: 8px;
+  }
+
+  .game-hud__tools-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    border: 0;
+    background: radial-gradient(circle at 40% 35%, #4a4643 0%, #1c1a19 70%);
+    box-shadow: 0 0 0 2px var(--iron), 0 0 0 4px var(--iron-edge);
+    color: var(--text-primary);
+  }
+
+  .game-hud__tools-toggle:hover:not(:disabled) {
+    background: radial-gradient(circle at 40% 35%, #4a4643 0%, #1c1a19 70%);
+  }
+
+  .game-hud__tools-items {
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .game-hud__tools.is-open .game-hud__tools-items {
+    display: flex;
+  }
+
+  /* the AI playback bar sits under the banner: the medallions move down below it */
+  .game-hud:has(.game-hud__top .ai-playback) .game-hud__rail {
+    top: 108px;
+  }
+
+  /* a transient notice goes under the medallions, across the screen, over the field */
+  .game-hud__top :slotted(.action-notice) {
+    position: fixed;
+    top: 134px;
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    z-index: 5;
+    text-align: center;
   }
 
   .game-hud__tools :slotted(.zoom-controls) {

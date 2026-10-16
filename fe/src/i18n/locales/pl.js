@@ -93,6 +93,7 @@ export default {
     waitingNext: 'Twoja tura jest następna',
     and: 'i',
     sprintNotice: 'Sprint — do 8 ruchów, bez odkrywania',
+    tools: 'Narzędzia',
     listenNotice: 'Nasłuchiwanie — następny kafelek usłyszysz, nie wchodząc na niego',
     astralNotice: 'Astralna wędrówka — możesz przechodzić przez ściany',
     healUpTo: 'Berserk — lecz się do',

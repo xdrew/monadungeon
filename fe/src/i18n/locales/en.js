@@ -94,6 +94,7 @@ export default {
     waitingNext: 'Your turn is next',
     and: 'and',
     sprintNotice: 'Sprint — up to 8 moves, no exploring',
+    tools: 'Tools',
     listenNotice: 'Listening — the next tile you place is heard, not entered',
     astralNotice: 'Astral Walking — you may step through walls',
     healUpTo: 'Berserk — heal up to',
