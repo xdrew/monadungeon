@@ -2358,6 +2358,11 @@ button.item-chip {
   min-width: 220px;
 }
 
+/* three choices (Valduk's Tireless): one per row, the same width */
+.button-group:has(> .btn:nth-child(3)) .btn {
+  flex-basis: 100%;
+}
+
 .battle-footer .btn {
   position: relative;
   min-height: 58px;

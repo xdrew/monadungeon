@@ -5,7 +5,7 @@ import { snap } from '../utils/screens';
 import {
   API_URL, apiGame, apiPlayer, endTurn, expectNotice, moveTo, packItemId, packTypes, placeAt, position,
   rotateGhost, startGame, stopTestMode, strikeWith, switchTo, takeReward, waitForFight, waitForFightClosed,
-  watchPage,
+  watchPage, END_TURN,
 } from '../utils/hotseat';
 
 /**
@@ -265,6 +265,31 @@ test.describe('Mechanics', () => {
     await snap(page, SPEC, 'journal', { phone: true });
     await drawer.locator('.journal-drawer__head button').click();
     await expect(drawer).toHaveCount(0);
+  });
+
+  test('A fountain lights End Turn; a teleportation gate shows dashed lines to the others', async ({ page, request }) => {
+    const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
+    await startGame(page, request, {
+      gameId,
+      tileSequence: [
+        { orientation: 'fourSide', room: false, features: ['teleportation_gate'] },
+        { orientation: 'fourSide', room: false, features: ['teleportation_gate'] },
+        'fourSide',
+      ],
+      // the start tile is a fountain: with 3 of 5 HP the hero is told to end the turn there
+      playerConfigs: { [a]: { hp: 3 }, [b]: {} },
+    });
+
+    await expect(page.getByTestId('fountain-badge')).toBeVisible();
+    await expect(page.locator('.end-turn-btn--heal')).toBeVisible();
+    await expect(page.locator(END_TURN).first()).toContainText(/heal/i);
+    await snap(page, SPEC, 'fountain-hint', { phone: true });
+
+    console.log('[spec] two gates in a row: standing on the second, a dashed line to the first');
+    await placeAt(page, 0, -1);
+    await placeAt(page, 0, -2);
+    await expect(page.locator('.gate-links .gate-link')).toHaveCount(1);
+    await snap(page, SPEC, 'gate-links', { phone: true });
   });
 
   test('The dragon ends the game: results, then the Hall of fame', async ({ page, request }) => {

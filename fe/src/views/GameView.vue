@@ -70,7 +70,7 @@
         >
           <ActionRings :waiting-text="ringsWaitingText">
             <template
-              v-if="(isPlayerTurn && (gameData?.state?.sprint || isListenMode || astralHint)) || healLimitOpen || (devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored)"
+              v-if="(isPlayerTurn && (gameData?.state?.sprint || isListenMode || astralHint || fountainHint)) || healLimitOpen || (devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored)"
               #above
             >
               <span
@@ -79,6 +79,11 @@
                 data-testid="sprint-badge"
               >{{ t('hud.sprintNotice') }}</span>
               <!-- what a skill does right now, as for Sprint: Listening armed, Astral Walking available -->
+              <span
+                v-if="isPlayerTurn && fountainHint && !pickedTileId && !gameData?.state?.sprint"
+                class="hud-chip sprint-badge"
+                data-testid="fountain-badge"
+              >{{ getCurrentPlayerData?.cursed ? t('hud.fountainCursedNotice') : t('hud.fountainNotice') }}</span>
               <span
                 v-if="isPlayerTurn && isListenMode"
                 class="hud-chip sprint-badge"
@@ -174,12 +179,13 @@
             <IronRing
               v-if="isPlayerTurn && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isDarkThornMode"
               class="end-turn-btn"
+              :class="{ 'end-turn-btn--heal': fountainHint && !pickedTileId }"
               icon="hourglass"
               :lit="!(loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe)"
               :disabled="loading || isRequestInProgress || !!pickedTileId || duelBlocksEndTurn || !!retreatChoiceForMe"
               :title="pickedTileId ? t('hud.mustPlaceTile') : (duelBlocksEndTurn ? t('hud.finishDuel') : (retreatChoiceForMe ? t('hud.chooseRetreatFirst') : ''))"
               @click="handleManualEndTurn"
-            >{{ fateweaverPrompt ? t('hud.ring.chooseToken') : pickedTileId ? t('hud.ring.placeTileFirst') : t('hud.ring.endTurn') }}</IronRing>
+            >{{ fateweaverPrompt ? t('hud.ring.chooseToken') : pickedTileId ? t('hud.ring.placeTileFirst') : fountainHint ? t('hud.ring.endTurnHeal') : t('hud.ring.endTurn') }}</IronRing>
             <!-- Off turn: a dim hourglass, deliberately not .end-turn-btn and not "End Turn" (the e2e looks for those) -->
             <IronRing
               v-else-if="!isPlayerTurn && gameData?.state?.status !== 'finished'"
@@ -589,6 +595,33 @@
                       <span class="fountain-emoji"><GameIcon name="heart" :size="40" /></span>
                     </div>
                   </div>
+
+                  <!-- Standing on a teleportation gate: dashed lines to the gates it can carry the hero to -->
+                  <svg
+                    v-if="gateLinks.length"
+                    class="gate-links"
+                    :width="(gameData.field.size.maxX - gameData.field.size.minX + 1) * tileSize"
+                    :height="(gameData.field.size.maxY - gameData.field.size.minY + 1) * tileSize"
+                    aria-hidden="true"
+                  >
+                    <line
+                      v-for="link in gateLinks"
+                      :key="`gate-${link.to}`"
+                      :x1="link.x1"
+                      :y1="link.y1"
+                      :x2="link.x2"
+                      :y2="link.y2"
+                      class="gate-link"
+                    />
+                    <circle
+                      v-for="link in gateLinks"
+                      :key="`gate-end-${link.to}`"
+                      :cx="link.x2"
+                      :cy="link.y2"
+                      r="9"
+                      class="gate-link-end"
+                    />
+                  </svg>
 
                   <!-- Lightning Attack targets and retreat tiles, lit on the field as well as listed in the plaque -->
                   <div
@@ -5612,6 +5645,33 @@ const handleDeclareSprint = async () => {
   }
 };
 
+// On a healing fountain with something to heal (or a curse to lift): End Turn says so and glows
+const fountainHint = computed(() => {
+  const me = getCurrentPlayerData.value;
+  const here = myFieldPosition.value;
+  if (!isPlayerTurn.value || !me || !here || gameData.value?.state?.status === 'finished') return false;
+  if (!(gameData.value?.field?.healingFountainPositions || []).includes(here)) return false;
+  return me.cursed || me.hp < (me.maxHp || 5);
+});
+// On a teleportation gate: the other gates it can step to, as dashed lines on the field
+const gateLinks = computed(() => {
+  const here = myFieldPosition.value;
+  const field = gameData.value?.field;
+  if (!isPlayerTurn.value || !here || !field?.tiles || isTeleportMode.value || pickedTileId.value) return [];
+  const gates = field.tiles.filter((tile) => (tile.features || []).includes('teleportation_gate')).map((tile) => tile.position);
+  if (!gates.includes(here)) return [];
+  const moves = gameData.value?.state?.availablePlaces?.moveTo || [];
+  const centre = (position) => {
+    const [x, y] = position.split(',').map(Number);
+    return [(x - (field.size.minX || 0) + 0.5) * tileSize.value, (y - (field.size.minY || 0) + 0.5) * tileSize.value];
+  };
+  const [x1, y1] = centre(here);
+  return gates.filter((gate) => gate !== here && moves.includes(gate)).map((gate) => {
+    const [x2, y2] = centre(gate);
+    return { to: gate, x1, y1, x2, y2 };
+  });
+});
+
 // Argentus "Astral Walking": told on his turn while he can still move (the moves through walls are plain marks)
 const astralHint = computed(() => isPlayerTurn.value
   && getCurrentPlayerData.value?.heroFlags?.walksThroughWalls === true
@@ -6677,6 +6737,55 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 }
 
 /* Healing fountain markers */
+.gate-links {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 21;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.gate-link {
+  stroke: rgba(var(--ember-rgb), 0.75);
+  stroke-width: 3;
+  stroke-dasharray: 10 9;
+  stroke-linecap: round;
+  animation: gateDash 1.2s linear infinite;
+}
+
+.gate-link-end {
+  fill: rgba(var(--ember-rgb), 0.18);
+  stroke: rgba(var(--ember-rgb), 0.85);
+  stroke-width: 2;
+}
+
+@keyframes gateDash {
+  to { stroke-dashoffset: -19; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gate-link {
+    animation: none;
+  }
+}
+
+/* End Turn on a fountain: a slow warm glow — ending the turn here heals */
+.end-turn-btn--heal :deep(.iron-ring__disk) {
+  animation: healRingGlow 2.2s ease-in-out infinite;
+}
+
+@keyframes healRingGlow {
+  0%, 100% { box-shadow: 0 0 0 3px var(--iron), 0 0 0 5px var(--iron-edge), 0 0 14px rgba(var(--ember-rgb), 0.45); }
+  50% { box-shadow: 0 0 0 3px var(--color-secondary), 0 0 0 5px var(--iron-edge), 0 0 30px rgba(var(--ember-rgb), 0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .end-turn-btn--heal :deep(.iron-ring__disk) {
+    animation: none;
+  }
+}
+
 .skill-target-marker .healing-fountain-indicator {
   color: var(--color-primary);
 }
