@@ -180,6 +180,7 @@
                 scope="global"
                 keypath="battle.notes.combatTraining"
                 tag="span"
+                :plural="battleInfo.onesRerolled"
               >
                 <template #skill><b>{{ $t('skills.combat_training.name') }}</b></template>
                 <template #n>{{ battleInfo.onesRerolled }}</template>
@@ -469,7 +470,7 @@
               />
             </span>
             <span class="reward-row__text">
-              <span class="reward-row__label">{{ $t('battle.reward') }}</span>
+              <span class="reward-row__label">{{ battleInfo.result === 'win' && !showConsumableSelection ? $t('battle.reward') : $t('battle.atStake') }}</span>
               <span class="reward-row__name">{{ battleInfo.reward ? formattedItemName : itemName('treasure') }}</span>
               <span
                 v-if="(battleInfo.reward && getItemTypeDamage(battleInfo.reward.type) > 0) || battleInfo.reward?.treasureValue > 0 || (isGuardChestReward && !showConsumableSelection)"
@@ -992,7 +993,7 @@ const dynamicResultText = computed(() => {
   }
 
   // a choice is still open (spells, Sacrifice, the duel side not locked in): a forecast, not the outcome
-  if ((hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) || duelAwaitsDecision.value) {
+  if (showConsumableSelection.value || duelAwaitsDecision.value) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
 
@@ -1686,7 +1687,8 @@ if (import.meta.env.DEV) {
   overflow-y: auto;
   font-family: var(--font-body);
   color: var(--text-primary);
-  background-color: rgba(5, 3, 2, 0.95);
+  /* opaque enough that the HUD's headline and the field's marks do not ghost through */
+  background-color: rgba(5, 3, 2, 0.99);
   background-image:
     radial-gradient(ellipse at 22% 45%, rgba(234, 220, 192, 0.12) 0%, rgba(0, 0, 0, 0) 35%),
     radial-gradient(ellipse at 78% 45%, rgba(var(--ember-rgb), 0.16) 0%, rgba(0, 0, 0, 0) 38%),
