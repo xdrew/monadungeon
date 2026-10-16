@@ -123,7 +123,7 @@ Each test's sequence is written next to it as a comment table, as in the showcas
 
 ### Phase 2: Shared e2e pieces and the pages spec
 
-- [ ] Task 3: `fe/e2e/utils/screens.ts` and `fe/e2e/utils/hotseat.ts`
+- [x] Task 3: `fe/e2e/utils/screens.ts` and `fe/e2e/utils/hotseat.ts`
   - `snap()` as described under Screenshots.
   - `hotseat.ts`:
     - `openGameAs(page, gameId, playerId)`: session, navigation, `waitForGameLoad`.
@@ -137,7 +137,7 @@ Each test's sequence is written next to it as a comment table, as in the showcas
     - `clickRing(page, testid)`;
     - `expectNotice(page, re)`.
   - `GameHelpers.placeTile` ignores x/y, so specs plan their tile sequences around "the first available place". This must be documented in `hotseat.ts`.
-- [ ] Task 4: `fe/e2e/tests/pages.spec.ts`: the six tests in the map, with a snap for every screen and phone snaps for the lobby, rules and the game start.
+- [x] Task 4: `fe/e2e/tests/pages.spec.ts`: the six tests in the map, with a snap for every screen and phone snaps for the lobby, rules and the game start.
   - The vs-AI test is the only one without test mode. It asserts no particular moves, only that the playback bar appears, the speed buttons switch `.active`, and the turn comes back to the human (`h3` "Turn: 2").
 
 ### Phase 3: Hero skills

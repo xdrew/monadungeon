@@ -58,6 +58,11 @@ tasks:
     cmds:
       - "{{.DOCKER_COMPOSE}} --project-name playwright-test -f docker-compose.test.yml run --rm -e BASE_URL=http://sf.sf:18080 playwright npm run test:e2e -- --config=playwright.config.docker.ts -x"
 
+  fe:test:spec:
+    desc: "Run one e2e spec (or a grep), e.g. task fe:test:spec -- pages.spec.ts"
+    cmds:
+      - "{{.DOCKER_COMPOSE}} --project-name playwright-test -f docker-compose.test.yml run --rm -e BASE_URL=http://sf.sf:18080 -e VERBOSE=1 playwright npm run test:e2e -- --config=playwright.config.docker.ts --reporter=list {{.CLI_ARGS}}"
+
   fe:test:verbose:
     desc: Run e2e tests with verbose output
     cmds:
