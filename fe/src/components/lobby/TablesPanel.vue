@@ -46,6 +46,26 @@
           {{ n }}
         </button>
       </div>
+      <div
+        class="table-form__seats"
+        role="radiogroup"
+        :aria-label="t('tables.turnLimit')"
+      >
+        <span class="table-form__label">{{ t('tables.turnLimit') }}</span>
+        <button
+          v-for="limit in TURN_LIMITS"
+          :key="String(limit)"
+          type="button"
+          role="radio"
+          class="seat-choice seat-choice--wide"
+          :class="{ 'seat-choice--on': turnSeconds === limit }"
+          :aria-checked="turnSeconds === limit"
+          :data-testid="`table-limit-${limit ?? 'none'}`"
+          @click="turnSeconds = limit"
+        >
+          {{ limit ? t(`tables.limit${limit}`) : t('tables.limitNone') }}
+        </button>
+      </div>
       <span class="table-form__hint">{{ t('tables.formHint') }}</span>
       <div class="table-form__actions">
         <button
@@ -139,7 +159,7 @@ import { ref, watch, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import GameIcon from '@/components/ui/GameIcon.vue';
-import { tablesApi } from '@/services/tables';
+import { tablesApi, TURN_LIMITS, DEFAULT_TURN_SECONDS } from '@/services/tables';
 import { subscribe, topics } from '@/services/push';
 
 const props = defineProps({
@@ -155,6 +175,7 @@ const { t } = useI18n();
 const router = useRouter();
 const formOpen = ref(false);
 const seats = ref(4);
+const turnSeconds = ref(DEFAULT_TURN_SECONDS);
 const busy = ref(false);
 const error = ref('');
 const tables = ref([]);
@@ -195,7 +216,8 @@ const createTable = async () => {
       seats: seats.value,
       regent: props.regent,
       lordKarak: props.regent && props.lordKarak,
-      randomHeroes: props.randomHeroes
+      randomHeroes: props.randomHeroes,
+      turnSeconds: turnSeconds.value
     });
     console.info('[tables] opened a table', gameId);
     router.push(`/game/${gameId}`);
@@ -244,6 +266,7 @@ const joinTable = (table) => router.push(table.isMine ? `/game/${table.gameId}` 
 
 .table-form__seats {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -262,6 +285,13 @@ const joinTable = (table) => router.push(table.isMine ? `/game/${table.gameId}` 
   font-family: var(--font-display);
   font-size: 20px;
   cursor: pointer;
+}
+
+.seat-choice--wide {
+  width: auto;
+  padding: 0 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
 }
 
 .seat-choice--on {

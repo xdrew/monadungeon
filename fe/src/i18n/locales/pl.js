@@ -80,6 +80,17 @@ export default {
     leave: 'Odejdź od stołu',
     close: 'Zamknij stół',
     actionFailed: 'Nie wyszło: {reason}',
+    turnLimit: 'Czas na ruch',
+    limit60: '1 min',
+    limit120: '2 min',
+    limit300: '5 min',
+    limitNone: 'Bez limitu',
+    limitLine: '{n} min na ruch',
+    noLimitLine: 'bez limitu czasu',
+    awayTitle: 'SI gra za ciebie',
+    awayText: 'Twój czas na ruch minął. SI wykonuje twoje ruchy, dopóki nie wrócisz.',
+    back: 'Wracam do stołu',
+    standIn: '{who} poza stołem — ruch wykonuje SI.',
     reconnecting: 'Utracono połączenie — łączymy ponownie…',
   },
   lobby: {
@@ -109,6 +120,7 @@ export default {
     createFailed: 'Nie udało się utworzyć gry. Spróbuj ponownie.'
   },
   hud: {
+    away: 'poza stołem',
     turn: 'Tura: {n}',
     turnOrder: 'Kolejność tur',
     emptySlot: 'Puste miejsce: {kind}',

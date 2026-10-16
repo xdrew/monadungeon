@@ -32,9 +32,9 @@ final readonly class Action
         }
         $me = $account->getId()->toString();
 
-        /** @var list<array{game_id: string, seats: int, taken: int|string, regent: bool, lord_karak: bool, random_heroes: bool, host_name: ?string, is_mine: bool, is_host: bool}> $rows */
+        /** @var list<array{game_id: string, seats: int, taken: int|string, regent: bool, lord_karak: bool, random_heroes: bool, turn_seconds: ?int, host_name: ?string, is_mine: bool, is_host: bool}> $rows */
         $rows = $this->connection->fetchAllAssociative(<<<'SQL'
-                SELECT g.game_id, g.seats, g.regent, g.lord_karak, g.random_heroes,
+                SELECT g.game_id, g.seats, g.regent, g.lord_karak, g.random_heroes, g.turn_seconds,
                        json_array_length(g.players) AS taken,
                        (SELECT h.username FROM player.player h
                          WHERE h.game_id = g.game_id AND h.external_id = g.host_account_id LIMIT 1) AS host_name,
@@ -56,6 +56,7 @@ final readonly class Action
             'regent' => (bool) $row['regent'],
             'lordKarak' => (bool) $row['lord_karak'],
             'randomHeroes' => (bool) $row['random_heroes'],
+            'turnSeconds' => $row['turn_seconds'] !== null ? (int) $row['turn_seconds'] : null,
             'hostName' => $row['host_name'],
             'isMine' => (bool) $row['is_mine'],
             'isHost' => (bool) $row['is_host'],

@@ -19,6 +19,8 @@ use App\Game\GameLifecycle\StartTable;
 use App\Game\GameLifecycle\TableClosed;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\HeroType;
+use App\Game\Player\MarkSeatAway;
+use App\Game\Player\MarkSeatBack;
 use App\Game\Player\PickHero;
 use App\Game\Player\Player;
 use App\Infrastructure\Uuid\Uuid;
@@ -193,9 +195,53 @@ final class TableTest extends TestCase
         self::assertNotEmpty(array_filter($messages, static fn(object $m): bool => $m instanceof TableClosed));
     }
 
-    private function openTable(int $seats, bool $randomHeroes = false): void
+    #[Test]
+    public function everyTurnOfATableWithATimeLimitHasADeadline(): void
     {
-        [$this->game] = $this->bus->handle(Game::createTable(...), new CreateTable(Uuid::v7(), self::HOST, $seats, randomHeroes: $randomHeroes));
+        $this->openTable(2, randomHeroes: true, turnSeconds: 60);
+        $this->seat(self::HOST);
+        $this->seat('guest');
+        $at = new \DateTimeImmutable('2026-10-16 12:00:00');
+
+        $this->bus->handle($this->game->startTable(...), new StartTable($this->game->getGameId(), self::HOST, $at));
+
+        self::assertSame(60, $this->game->getTurnSeconds());
+        self::assertEquals($at->modify('+60 seconds'), $this->game->getTurnDeadline());
+    }
+
+    #[Test]
+    public function aTableWithoutALimitHasNoDeadline(): void
+    {
+        $this->openTable(2, randomHeroes: true, turnSeconds: null);
+        $this->seat(self::HOST);
+        $this->seat('guest');
+
+        $this->bus->handle($this->game->startTable(...), new StartTable($this->game->getGameId(), self::HOST));
+
+        self::assertNull($this->game->getTurnDeadline());
+    }
+
+    #[Test]
+    public function aSeatIsAwayUntilItsPlayerIsBackAndTheAiNeverIs(): void
+    {
+        $this->openTable(3);
+        $human = $this->seat(self::HOST);
+        $this->ai(self::HOST);
+        $player = $this->players[$human->toString()];
+        $bot = $this->players[$this->game->getPlayers()[1]->toString()];
+        $gameId = $this->game->getGameId();
+
+        self::assertTrue($player->markAway(new MarkSeatAway($human, $gameId)));
+        self::assertFalse($player->markAway(new MarkSeatAway($human, $gameId)), 'Already away');
+        self::assertTrue($player->isAway());
+        self::assertTrue($player->markBack(new MarkSeatBack($human, $gameId)));
+        self::assertFalse($player->markBack(new MarkSeatBack($human, $gameId)), 'Already back');
+        self::assertFalse($bot->markAway(new MarkSeatAway($bot->getPlayerId(), $gameId)), 'The AI is never away');
+    }
+
+    private function openTable(int $seats, bool $randomHeroes = false, ?int $turnSeconds = CreateTable::DEFAULT_TURN_SECONDS): void
+    {
+        [$this->game] = $this->bus->handle(Game::createTable(...), new CreateTable(Uuid::v7(), self::HOST, $seats, randomHeroes: $randomHeroes, turnSeconds: $turnSeconds));
     }
 
     private function seat(string $accountId): Uuid

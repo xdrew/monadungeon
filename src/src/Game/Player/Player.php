@@ -89,6 +89,12 @@ class Player extends AggregateRoot
     private bool $isAi = false;
 
     /**
+     * An online seat whose player let a turn run out: the AI plays its turns until the player is back.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $away = false;
+
+    /**
      * @var array{key: array<Item>, weapon: array<Item>, spell: array<Item>, treasure: array<Item>}
      * Inventory slots by item category
      * Format:
@@ -713,6 +719,33 @@ class Player extends AggregateRoot
         return $this->isAi;
     }
 
+    public function isAway(): bool
+    {
+        return $this->away;
+    }
+
+    #[Handler]
+    public function markAway(MarkSeatAway $command): bool
+    {
+        if ($this->away || $this->isAi) {
+            return false;
+        }
+        $this->away = true;
+
+        return true;
+    }
+
+    #[Handler]
+    public function markBack(MarkSeatBack $command): bool
+    {
+        if (!$this->away) {
+            return false;
+        }
+        $this->away = false;
+
+        return true;
+    }
+
     public function getCharacterId(): ?Uuid
     {
         return $this->characterId;
@@ -968,6 +1001,7 @@ class Player extends AggregateRoot
             'awaitingReincarnation' => $this->awaitingReincarnation,
             'cursed' => $this->cursed,
             'externalId' => $this->externalId,
+            'away' => $this->away,
             'username' => $this->username,
             'inventory' => [
                 'items' => $this->inventory,

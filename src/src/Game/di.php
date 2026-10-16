@@ -105,6 +105,8 @@ return static function (ContainerConfigurator $di): void {
         ->set(SafeDoctrineOrmTransactionProvider::class)
         ->set(DoctrineOrmEntityFinderAndSaver::class)
         ->set(FieldPlaceNormalizer::class)
+        // online tables: the AI plays the turns that run out of time (the turnwatch service)
+        ->set(\App\Game\Console\TurnWatchCommand::class)
         ->set(GameRunConsoleCommand::class)
         ->set(GameTurnRepository::class)
         ->set(TileRepository::class)

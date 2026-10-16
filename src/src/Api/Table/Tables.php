@@ -130,6 +130,7 @@ final readonly class Tables
                 'isAi' => $player->isAi(),
                 'isHost' => $isHost,
                 'isYou' => $me !== null && $player->getExternalId() === $me,
+                'away' => $player->isAway(),
             ];
         }
 
@@ -142,6 +143,7 @@ final readonly class Tables
             'regent' => $game->isRegent(),
             'lordKarak' => $game->isLordKarak(),
             'randomHeroes' => $game->isRandomHeroes(),
+            'turnSeconds' => $game->getTurnSeconds(),
             'hostName' => $hostName,
             'isHost' => $me !== null && $me === $game->getHostAccountId(),
             'mySeat' => $mySeat,

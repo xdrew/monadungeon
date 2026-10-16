@@ -32,7 +32,7 @@
         <div class="party-member__body">
           <span class="party-member__name">{{ entry.name }}</span>
           <span class="party-member__who">
-            {{ whoLabel(entry) }}<template v-if="entry.player.hero || entry.player.lordKarak"> · </template><span
+            <span class="party-member__who-part">{{ whoLabel(entry) }}</span><template v-if="entry.player.hero || entry.player.lordKarak"> · </template><span
               v-if="entry.player.hero || entry.player.lordKarak"
               class="hero-badge"
               :class="{ 'awaiting-reincarnation': entry.player.awaitingReincarnation, cursed: entry.player.cursed, 'lord-karak': entry.player.lordKarak }"
@@ -166,9 +166,11 @@ const maxHp = (player) => player.maxHp ?? 5;
 const whoLabel = (entry) => {
   const base = entry.isYou ? t('hud.you') : props.isAi(entry.player) ? t('hud.ai') : (entry.player.username || t('hud.player'));
   // Your own turn shows in the glow alone; for the others the canvas spells it out
-  if (!entry.isYou && entry.state === 'acting') return t('hud.acting', { who: base });
-  if (!entry.isYou && entry.state === 'next') return t('hud.next', { who: base });
-  return base;
+  // an online seat whose turn ran out: the AI plays for it until its player is back
+  const who = entry.player.away ? `${base} · ${t('hud.away')}` : base;
+  if (!entry.isYou && entry.state === 'acting') return t('hud.acting', { who });
+  if (!entry.isYou && entry.state === 'next') return t('hud.next', { who });
+  return who;
 };
 
 const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.heroShortName(player));
@@ -299,10 +301,15 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 .party-member__who {
   font-size: 13px;
   letter-spacing: 0.1em;
-  /* one line: "YOU · THE BATTLE MAGE" broke after "THE" */
-  white-space: nowrap;
+  /* breaks only between its parts ("IDLE · ACTING" / "THE WARRIOR"), never inside one ("THE / BATTLE MAGE") */
+  white-space: normal;
   font-variant-caps: all-small-caps;
   color: var(--text-muted);
+}
+
+.party-member__who-part,
+.party-member__who .hero-badge {
+  white-space: nowrap;
 }
 
 .party-member--you .party-member__who {

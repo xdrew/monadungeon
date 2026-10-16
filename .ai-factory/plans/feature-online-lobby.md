@@ -95,7 +95,7 @@ Authority: user answers > part 1 plan (`feature-online-accounts.md`) > CLAUDE.md
 - [x] Task 12: Docs: CLAUDE.md (tables, push, server AI, online mode), README (how to play online, Mercure in the stack), `fe/e2e/README.md`.
 
 ### Phase 5: An opponent who takes too long
-- [ ] Task 13: Add the following, with a migration via diff:
+- [x] Task 13: Add the following, with a migration via diff:
   - `Game::turnSeconds` (table option 60/120/300/null);
   - `GameTurn::deadline`;
   - `Player::away`;
@@ -103,8 +103,8 @@ Authority: user answers > part 1 plan (`feature-online-accounts.md`) > CLAUDE.md
   - the state fields `turnDeadline` and `players[].away`.
 
   PHPUnit.
-- [ ] Task 14: The `app:turn-watch` command (loop: overdue online turns → mark away, `ServerAiDriver` plays the seat, publish), plus the `turnwatch` docker service in dev and prod; in the test mode the deadline can be set short (`setup-game` / table option `turnSeconds: 5` allowed only in dev/test). Logs: `turn.overdue`, `seat.away`, `seat.back`. PHPUnit for the overdue query and the away/back rules.
-- [ ] Task 15: Frontend:
+- [x] Task 14: The `app:turn-watch` command (loop: overdue online turns → mark away, `ServerAiDriver` plays the seat, publish), plus the `turnwatch` docker service in dev and prod; in the test mode the deadline can be set short (`setup-game` / table option `turnSeconds: 5` allowed only in dev/test). Logs: `turn.overdue`, `seat.away`, `seat.back`. PHPUnit for the overdue query and the away/back rules.
+- [x] Task 15: Frontend:
   - the countdown in the turn banner;
   - the "away" mark in the party rail;
   - the time-limit option in the table form;

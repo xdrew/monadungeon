@@ -27,6 +27,15 @@ final readonly class Action
         private LoggerInterface $logger,
     ) {}
 
+    private static function allowedLimit(?int $seconds): bool
+    {
+        $appEnv = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? 'prod';
+
+        return $seconds === null
+            || \in_array($seconds, CreateTable::TURN_LIMITS, true)
+            || ($seconds === 5 && \in_array($appEnv, ['dev', 'test'], true));
+    }
+
     #[Route('/tables', methods: ['POST'])]
     public function __invoke(#[MapRequestPayload] Request $request, HttpRequest $httpRequest): JsonResponse
     {
@@ -37,6 +46,9 @@ final readonly class Action
 
         $gameId = Uuid::v7();
         $playerId = Uuid::v7();
+        if (!self::allowedLimit($request->turnSeconds)) {
+            return Tables::refuse('table.turn_seconds', 'A turn lasts 1, 2 or 5 minutes, or has no limit', 422);
+        }
         $seeded = $this->seedTestMode($gameId, $request->test);
 
         try {
@@ -48,6 +60,7 @@ final readonly class Action
                 regent: $request->regent,
                 lordKarak: $request->lordKarak,
                 randomHeroes: $request->randomHeroes,
+                turnSeconds: $request->turnSeconds,
             ));
             $this->messageBus->dispatch(new AddPlayer(
                 gameId: $gameId,

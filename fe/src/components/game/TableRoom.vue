@@ -269,7 +269,10 @@ const optionsLine = computed(() => {
   const parts = [];
   if (table.value?.regent) parts.push(table.value.lordKarak ? `${t('tables.regentMark')} · ${t('tables.lordKarakMark')}` : t('tables.regentMark'));
   if (table.value?.randomHeroes) parts.push(t('tables.randomMark'));
-  return parts.length ? parts.join(' · ') : t('tables.roomOptions');
+  if (!parts.length) parts.push(t('tables.roomOptions'));
+  const limit = table.value?.turnSeconds;
+  parts.push(limit ? t('tables.limitLine', { n: Math.max(1, Math.round(limit / 60)) }) : t('tables.noLimitLine'));
+  return parts.join(' · ');
 });
 const heroImage = (key) => getHero(key).image;
 const heroChoices = computed(() => {

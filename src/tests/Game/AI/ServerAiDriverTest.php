@@ -8,6 +8,7 @@ use App\Game\AI\AiTurnTaker;
 use App\Game\AI\ServerAiDriver;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\MarkSeatAway;
 use App\Infrastructure\Push\Publisher;
 use App\Infrastructure\Uuid\Uuid;
 use App\Tests\Infrastructure\MessageBus\MessageBusTester;
@@ -29,11 +30,17 @@ final class ServerAiDriverTest extends TestCase
 
     private Uuid $bot;
 
-    /** @var array{online: bool, inProgress: bool, current: Uuid, turn: int} */
+    /** @var array{online: bool, inProgress: bool, current: Uuid, turn: int, deadline: ?\DateTimeImmutable} */
     private array $state;
+
+    /** @var array<string, bool> seats marked away */
+    private array $away = [];
 
     /** @var list<array{string, array<string, mixed>}> */
     private array $published = [];
+
+    /** @var list<Uuid> */
+    private array $seats = [];
 
     protected function setUp(): void
     {
@@ -41,7 +48,8 @@ final class ServerAiDriverTest extends TestCase
         $this->human = Uuid::v7();
         $this->bot = Uuid::v7();
         $this->published = [];
-        $this->state = ['online' => true, 'inProgress' => true, 'current' => $this->bot, 'turn' => 3];
+        $this->away = [];
+        $this->state = ['online' => true, 'inProgress' => true, 'current' => $this->bot, 'turn' => 3, 'deadline' => null];
     }
 
     #[Test]
@@ -103,6 +111,55 @@ final class ServerAiDriverTest extends TestCase
         self::assertSame(0, $inner);
     }
 
+    #[Test]
+    public function anAwaySeatIsPlayedAtOnceWhileSomeoneIsAtTheTable(): void
+    {
+        $other = Uuid::v7();
+        $this->state['current'] = $this->human;
+        $this->away[$this->human->toString()] = true;
+        $this->seats = [$this->human, $other];
+
+        $played = $this->driver(fn() => $this->pass($other))->drive($this->gameId);
+
+        self::assertSame(1, $played);
+        self::assertTrue($this->published[0][1]['standIn']);
+    }
+
+    #[Test]
+    public function withEveryHumanAwayOnlyTheClockMovesTheGame(): void
+    {
+        $this->state['current'] = $this->human;
+        $this->away[$this->human->toString()] = true;
+        $this->seats = [$this->human];
+
+        self::assertSame(0, $this->driver(static fn() => self::fail('Nobody is at the table'))->drive($this->gameId));
+    }
+
+    #[Test]
+    public function anOverdueTurnIsPlayedForItsSeatWhichIsAwayFromThen(): void
+    {
+        $this->state['current'] = $this->human;
+        $this->state['deadline'] = new \DateTimeImmutable('-1 second');
+        $this->seats = [$this->human, $this->bot];
+
+        $standIn = $this->driver(fn() => $this->pass($this->human))->standIn($this->gameId);
+
+        self::assertTrue($standIn);
+        self::assertTrue($this->away[$this->human->toString()] ?? false, 'The seat is away');
+        self::assertTrue($this->published[0][1]['standIn']);
+        self::assertSame($this->human->toString(), $this->published[0][1]['playerId']);
+    }
+
+    #[Test]
+    public function aTurnWithTimeLeftIsNotTakenOver(): void
+    {
+        $this->state['current'] = $this->human;
+        $this->state['deadline'] = new \DateTimeImmutable('+30 seconds');
+
+        self::assertFalse($this->driver(static fn() => self::fail('Time is left'))->standIn($this->gameId));
+        self::assertSame([], $this->away);
+    }
+
     /**
      * Ends the current turn and hands it to the given seat.
      *
@@ -123,9 +180,27 @@ final class ServerAiDriverTest extends TestCase
     {
         $test = $this;
         $bus = MessageBusTester::create(
-            fn(GetGame $_query): object => new class ($test->state) {
-                /** @param array{online: bool, inProgress: bool, current: Uuid, turn: int} $state */
-                public function __construct(private readonly array $state) {}
+            fn(GetGame $_query): object => new class ($test->state, $test->seats) {
+                /**
+                 * @param array{online: bool, inProgress: bool, current: Uuid, turn: int, deadline: ?\DateTimeImmutable} $state
+                 * @param list<Uuid> $seats
+                 */
+                public function __construct(private readonly array $state, private readonly array $seats) {}
+
+                public function getPlayers(): array
+                {
+                    return $this->seats;
+                }
+
+                public function getTurnDeadline(): ?\DateTimeImmutable
+                {
+                    return $this->state['deadline'];
+                }
+
+                public function getCurrentTurnId(): Uuid
+                {
+                    return Uuid::v7();
+                }
 
                 public function isOnline(): bool
                 {
@@ -147,13 +222,23 @@ final class ServerAiDriverTest extends TestCase
                     return $this->state['turn'];
                 }
             },
-            fn(GetPlayer $query): object => new class ($query->playerId->equals($test->bot)) {
-                public function __construct(private readonly bool $ai) {}
+            fn(GetPlayer $query): object => new class ($query->playerId->equals($test->bot), $test->away[$query->playerId->toString()] ?? false) {
+                public function __construct(private readonly bool $ai, private readonly bool $away) {}
 
                 public function isAi(): bool
                 {
                     return $this->ai;
                 }
+
+                public function isAway(): bool
+                {
+                    return $this->away;
+                }
+            },
+            static function (MarkSeatAway $command) use ($test): bool {
+                $test->away[$command->playerId->toString()] = true;
+
+                return true;
             },
         )->messageBus();
 

@@ -186,6 +186,9 @@ final readonly class Response
                 'seats' => $game->getSeats(), // an online table: how many seats it has
                 'randomHeroes' => $game->isRandomHeroes(),
                 'endReason' => $game->getEndReason(), // 'abandoned': the host closed the table before the start
+                'turnSeconds' => $game->getTurnSeconds(), // an online table's turn time limit (null: none)
+                'turnDeadline' => $game->getTurnDeadline()?->format(\DATE_ATOM), // when the current turn runs out
+                'serverTime' => (int) (new \DateTimeImmutable())->format('Uv'), // ms, for the countdown's clock offset
                 'lordKarakVariant' => $game->isLordKarak(), // Karak: Regent — the Lord Karak variant is on
                 'lordKarak' => $game->getLordKarakReveal(), // Karak: Regent — who became Lord Karak and why (null until then)
                 'roomEvent' => $field?->getRoomEvent(), // Karak: Regent — the last Cursed Room roll
@@ -245,7 +248,7 @@ final readonly class Response
                     $playerFormattedData['username'] = $playerData[$playerIdStr]['username'];
                 }
                 // Hero data (null hero is meaningful, so use array_key_exists)
-                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation', 'cursed', 'healLimit', 'lordKarak', 'lordKarakHeroes'] as $heroKey) {
+                foreach (['maxHp', 'hero', 'heroLabel', 'heroSkills', 'heroFlags', 'awaitingReincarnation', 'cursed', 'healLimit', 'lordKarak', 'lordKarakHeroes', 'away'] as $heroKey) {
                     if (\array_key_exists($heroKey, $playerData[$playerIdStr])) {
                         $playerFormattedData[$heroKey] = $playerData[$playerIdStr][$heroKey];
                     }
@@ -261,6 +264,7 @@ final readonly class Response
                     $playerFormattedData['isAi'] = $player->isAi();
                     $playerFormattedData['externalId'] = $player->getExternalId();
                     $playerFormattedData['username'] = $player->getUsername();
+                    $playerFormattedData['away'] = $player->isAway();
                     $playerFormattedData['maxHp'] = Player::MAX_HP;
                     $playerFormattedData['hero'] = $player->getChosenHero()?->value;
                     $playerFormattedData['heroLabel'] = $player->isLordKarak() ? 'Lord Karak' : $player->getChosenHero()?->label();

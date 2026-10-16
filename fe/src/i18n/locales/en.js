@@ -81,6 +81,17 @@ export default {
     leave: 'Leave the table',
     close: 'Close the table',
     actionFailed: 'That did not work: {reason}',
+    turnLimit: 'Time for a turn',
+    limit60: '1 min',
+    limit120: '2 min',
+    limit300: '5 min',
+    limitNone: 'No limit',
+    limitLine: '{n} min a turn',
+    noLimitLine: 'no time limit',
+    awayTitle: 'The AI plays for you',
+    awayText: 'Your turn ran out. The AI takes your turns until you are back.',
+    back: 'Take my seat back',
+    standIn: '{who} is away — the AI plays for them.',
     reconnecting: 'Connection lost — reconnecting…',
   },
   lobby: {
@@ -110,6 +121,7 @@ export default {
     createFailed: 'Failed to create game. Please try again.'
   },
   hud: {
+    away: 'away',
     turn: 'Turn: {n}',
     turnOrder: 'Order of the turn',
     emptySlot: 'Empty {kind} slot',

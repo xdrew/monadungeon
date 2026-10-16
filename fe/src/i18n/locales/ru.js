@@ -80,6 +80,17 @@ export default {
     leave: 'Встать из-за стола',
     close: 'Закрыть стол',
     actionFailed: 'Не вышло: {reason}',
+    turnLimit: 'Время на ход',
+    limit60: '1 мин',
+    limit120: '2 мин',
+    limit300: '5 мин',
+    limitNone: 'Без ограничения',
+    limitLine: '{n} мин на ход',
+    noLimitLine: 'время хода не ограничено',
+    awayTitle: 'За вас играет ИИ',
+    awayText: 'Время вашего хода вышло. ИИ ходит за вас, пока вы не вернётесь.',
+    back: 'Вернуться за стол',
+    standIn: '{who} не за столом — ходит ИИ.',
     reconnecting: 'Связь потеряна — переподключаемся…',
   },
   lobby: {
@@ -109,6 +120,7 @@ export default {
     createFailed: 'Не удалось создать игру. Попробуйте ещё раз.'
   },
   hud: {
+    away: 'не за столом',
     turn: 'Ход: {n}',
     turnOrder: 'Порядок ходов',
     emptySlot: 'Пустая ячейка: {kind}',

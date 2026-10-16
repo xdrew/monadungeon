@@ -20,6 +20,10 @@ final readonly class CreateTable implements Message
     public const int MIN_SEATS = 2;
     public const int MAX_SEATS = 5;
 
+    /** The time limits a host may choose (seconds); null is no limit. */
+    public const array TURN_LIMITS = [60, 120, 300];
+    public const int DEFAULT_TURN_SECONDS = 120;
+
     public function __construct(
         public Uuid $gameId,
         public string $hostAccountId,
@@ -29,5 +33,6 @@ final readonly class CreateTable implements Message
         public bool $randomHeroes = false,
         public \DateTimeImmutable $at = new \DateTimeImmutable(),
         public int $deckSize = 88,
+        public ?int $turnSeconds = self::DEFAULT_TURN_SECONDS,
     ) {}
 }

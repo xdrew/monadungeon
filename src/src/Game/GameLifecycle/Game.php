@@ -184,6 +184,18 @@ class Game extends AggregateRoot
     #[Column(type: Types::STRING, nullable: true)]
     private ?string $endReason = null;
 
+    /**
+     * An online table's turn time limit in seconds (null: no limit).
+     */
+    #[Column(type: Types::INTEGER, nullable: true)]
+    private ?int $turnSeconds = null;
+
+    /**
+     * When the current turn of an online table with a time limit runs out (the AI then plays it).
+     */
+    #[Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $turnDeadline = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -231,6 +243,7 @@ class Game extends AggregateRoot
         $game->online = true;
         $game->hostAccountId = $command->hostAccountId;
         $game->seats = $command->seats;
+        $game->turnSeconds = $command->turnSeconds;
 
         return $game;
     }
@@ -419,6 +432,7 @@ class Game extends AggregateRoot
         $this->status = GameStatus::STARTED;
         $this->currentPlayerId = $this->rollForStartingPlayer();
         $this->currentTurnNumber = 1;
+        $this->startTurnClock($command->at);
 
         $messageContext->dispatch(new GameStarted(
             gameId: $this->gameId,
@@ -722,6 +736,16 @@ class Game extends AggregateRoot
         return $this->seats;
     }
 
+    public function getTurnSeconds(): ?int
+    {
+        return $this->turnSeconds;
+    }
+
+    public function getTurnDeadline(): ?\DateTimeImmutable
+    {
+        return $this->turnDeadline;
+    }
+
     public function getEndReason(): ?string
     {
         return $this->endReason;
@@ -784,6 +808,7 @@ class Game extends AggregateRoot
         $this->currentPlayerId = $this->players[$nextPlayerIndex];
         ++$this->currentTurnNumber;
         $this->status = GameStatus::TURN_IN_PROGRESS;
+        $this->startTurnClock($command->at);
 
         $messageContext->dispatch(new TurnChanged(
             gameId: $this->gameId,
@@ -1068,6 +1093,16 @@ class Game extends AggregateRoot
         }
 
         return false;
+    }
+
+    /**
+     * An online table with a time limit: the new turn runs out this many seconds from now.
+     */
+    private function startTurnClock(\DateTimeImmutable $at): void
+    {
+        $this->turnDeadline = $this->online && $this->turnSeconds !== null
+            ? $at->modify(sprintf('+%d seconds', $this->turnSeconds))
+            : null;
     }
 
     private function assertTableInLobby(): void

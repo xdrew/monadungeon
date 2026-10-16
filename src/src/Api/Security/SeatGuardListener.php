@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Api\Security;
 
 use App\Account\CurrentAccount;
+use App\Game\Player\MarkSeatBack;
+use App\Infrastructure\Uuid\Uuid;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Telephantast\MessageBus\MessageBus;
 
 /**
  * Every game command names the seat it acts for (`playerId` in the JSON body): the caller must be allowed to
@@ -25,6 +28,7 @@ final readonly class SeatGuardListener
         private Connection $connection,
         private CurrentAccount $currentAccount,
         private LoggerInterface $logger,
+        private MessageBus $messageBus,
     ) {}
 
     #[AsEventListener(event: KernelEvents::REQUEST, priority: 8)]
@@ -46,7 +50,7 @@ final readonly class SeatGuardListener
         }
 
         $seat = $this->connection->fetchAssociative(
-            'select game_id, is_ai, external_id from player.player where player_id = :id',
+            'select game_id, is_ai, external_id, away from player.player where player_id = :id',
             ['id' => $playerId],
         );
         if ($seat === false) {
@@ -64,6 +68,12 @@ final readonly class SeatGuardListener
             str_ends_with($path, '/virtual-player-turn') || str_ends_with($path, '/virtual-player-turn-enhanced'),
         );
         if ($verdict === SeatGuard::ALLOWED) {
+            // the player of an away seat acts again: the seat is theirs from the next turn on
+            if ($seat['away'] && $caller !== null && $caller === $seat['external_id']) {
+                $this->messageBus->dispatch(new MarkSeatBack(Uuid::fromString($playerId), Uuid::fromString((string) $seat['game_id'])));
+                $this->logger->info('seat.back', ['gameId' => (string) $seat['game_id'], 'playerId' => $playerId]);
+            }
+
             return;
         }
 

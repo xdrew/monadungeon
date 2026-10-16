@@ -96,6 +96,24 @@ services:
       - monadungeon
     extra_hosts:
       - "host.docker.internal:host-gateway"
+  # Online tables: the AI plays the turns that run out of time (a loop every 5 s)
+  turnwatch:
+    container_name: turnwatch_${PROJECT}
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: app_dev
+    volumes:
+      - './src/:/sf/app/src:cached'
+    command: php bin/console app:turn-watch
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - mercure
+    networks:
+      - monadungeon
   # Push to the browsers (Server-Sent Events): the backend publishes game changes, nginx serves /.well-known/mercure
   mercure:
     container_name: mercure_${PROJECT}

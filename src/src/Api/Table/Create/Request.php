@@ -16,6 +16,10 @@ final readonly class Request
         public bool $lordKarak = false,
         public bool $randomHeroes = false,
         /**
+         * The turn time limit: 60, 120 or 300 seconds, or null for none (5 in dev/test, for the e2e).
+         */
+        public ?int $turnSeconds = CreateTable::DEFAULT_TURN_SECONDS,
+        /**
          * Dev/test only, with the test mode on: the deck, the bag and the dice of the new table
          * ({tileSequence, itemSequence, diceRolls}, as in /test/setup-game); ignored elsewhere.
          *

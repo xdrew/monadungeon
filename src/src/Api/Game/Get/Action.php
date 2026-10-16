@@ -64,6 +64,7 @@ final readonly class Action
                         'defeated' => $player->isDefeated(),
                         'isAi' => $player->isAi(),
                         'externalId' => $player->getExternalId(),
+                        'away' => $player->isAway(),
                         'username' => $player->getUsername(),
                         'maxHp' => Player::MAX_HP,
                         'hero' => $player->getChosenHero()?->value,

@@ -16,6 +16,7 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 - **Open a table** on the start screen: 2–5 seats, the same options (Regent, Lord Karak, random heroes); it shows in everyone's list of open tables, and its invite link (`/table/{id}`) seats a friend after a name
 - **The waiting room**: who sits where, one hero per table, the host seats the AI and starts once two seats are taken and every seat holds a hero; the host leaving closes the table
 - **Live**: every browser at the table sees the others' tiles, walks, fights and chronicle lines as they happen (push through Mercure); the server plays the AI seats itself and every browser plays the AI's turn back
+- **Time for a turn**: the host picks 1, 2 or 5 minutes (or no limit); the banner counts down. A turn that runs out is played by the AI, and the seat is *away*: the AI takes its turns until its player taps "Take my seat back" (or opens the game again). When everyone is away the game waits
 - "Descend against the AI" stays a one-browser game
 
 ### Core Gameplay
@@ -45,6 +46,7 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 - **RoadRunner** as high-performance PHP application server
 - **Docker** containerization for all services
 - **Mercure** hub (`mercure` service, SSE behind nginx at `/.well-known/mercure`) pushes game changes to the browsers; the backend signs its publish JWT with `MERCURE_JWT_SECRET` (`.env`; production sets its own in the environment of `compose.prod.yml`) and posts to `MERCURE_URL`
+- **turnwatch** service (`php bin/console app:turn-watch`, a loop every 5 s) lets the AI play the online turns that ran out of time; production needs it as well as `MERCURE_URL` / `MERCURE_JWT_SECRET` in `.env.prod`
 
 ### Frontend
 - **Vue 3** with Composition API for reactive UI

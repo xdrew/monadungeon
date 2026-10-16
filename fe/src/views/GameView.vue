@@ -17,6 +17,24 @@
       :refresh-key="tableRefreshKey"
       @changed="loadGameData(false)"
     />
+    <!-- An online game: my turn ran out and the AI plays for me until I take my seat back -->
+    <div
+      v-if="isOnline && mySeatAway && !isTableRoom"
+      class="away-plaque"
+      role="status"
+      data-testid="away-plaque"
+    >
+      <strong class="away-plaque__title">{{ t('tables.awayTitle') }}</strong>
+      <span class="away-plaque__text">{{ t('tables.awayText') }}</span>
+      <button
+        type="button"
+        class="btn btn--ember btn--sm"
+        data-testid="away-back"
+        @click="takeSeatBack"
+      >
+        {{ t('tables.back') }}
+      </button>
+    </div>
     <!-- An online game: the push stream to the server is down and coming back -->
     <div
       v-if="isOnline && pushReconnecting"
@@ -40,6 +58,7 @@
             :headline="bannerHeadline"
             :sub="bannerSub"
             :regent="!!gameData?.state?.regent"
+            :deadline="turnDeadlineLocal"
           />
         </template>
         <template #notice>
@@ -1072,6 +1091,7 @@ import JournalDrawer from '@/components/game/hud/JournalDrawer.vue';
 import { chronicleTail, chronicleTurns, describeAction } from '@/utils/chronicle';
 import TableRoom from '@/components/game/TableRoom.vue';
 import { accountApi } from '@/services/account';
+import { tablesApi } from '@/services/tables';
 import { subscribe as subscribePush, topics as pushTopics } from '@/services/push';
 import { useTurnOrder, joinNames } from '@/composables/useTurnOrder';
 import { useI18n } from 'vue-i18n';
@@ -1166,6 +1186,36 @@ const mySeatId = computed(() => {
 const isTableRoom = computed(() => isOnline.value
   && (gameData.value?.state?.status === 'lobby' || gameData.value?.state?.endReason === 'abandoned'));
 const tableRefreshKey = ref(0);
+// the server's clock minus this browser's (ms): the countdown runs on the server's deadline
+const clockOffset = ref(0);
+watch(() => gameData.value?.state?.serverTime, (serverTime) => {
+  if (serverTime) clockOffset.value = Number(serverTime) - Date.now();
+});
+const turnDeadlineLocal = computed(() => {
+  const deadline = gameData.value?.state?.turnDeadline;
+  if (!isOnline.value || !deadline || !['started', 'turn_in_progress'].includes(gameData.value?.state?.status)) return null;
+  return Date.parse(deadline) - clockOffset.value;
+});
+const mySeatAway = computed(() => !!gameData.value?.players?.find((p) => p.id === mySeatId.value)?.away);
+let presentSent = false;
+const takeSeatBack = async () => {
+  try {
+    await tablesApi.present(id.value);
+    console.info('[online] back at the table');
+    // at once: a pushed turn still playing back holds the reload
+    const mine = gameData.value?.players?.find((p) => p.id === mySeatId.value);
+    if (mine) mine.away = false;
+  } catch (err) {
+    console.warn('[online] could not take the seat back:', err?.response?.data || err?.message || err);
+  }
+  await loadGameData(false);
+};
+// opening the page of a running online game is being at the table
+watch(mySeatId, (seat) => {
+  if (!seat || presentSent || !['started', 'turn_in_progress'].includes(gameData.value?.state?.status)) return;
+  presentSent = true;
+  if (mySeatAway.value) takeSeatBack();
+});
 const pushReconnecting = ref(false);
 // an AI turn (or a stand-in turn) pushed by the server is being played back: reloads wait for its end
 let onlinePlaybackActive = false;
@@ -2628,6 +2678,7 @@ const playOnlineAiTurn = async (message) => {
       const next = onlinePlaybackQueue.shift();
       const actions = aiPlayback.filterActions(next.actions || []);
       console.info('[online] playing back the server turn of', next.playerId, `(${actions.length} actions${next.standIn ? ', stand-in' : ''})`);
+      if (next.standIn) showActionNotice(t('tables.standIn', { who: heroNameById(next.playerId) }));
       if (actions.length) {
         await aiPlayback.playActions(actions, {
           onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
@@ -2638,6 +2689,8 @@ const playOnlineAiTurn = async (message) => {
         });
         clearAiBattleOverlay();
       }
+      // the state after this turn before the next one (stand-in turns can come one after another)
+      if (onlinePlaybackQueue.length) await loadGameData(false, { force: true });
     }
   } catch (err) {
     console.error('[online] the playback failed:', err);
@@ -6502,6 +6555,38 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 </script>
 
 <style>
+.away-plaque {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--hud-bar-height) + 24px);
+  z-index: calc(var(--z-hud) + 5);
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 18px;
+  border: 1px solid rgba(var(--ember-rgb), 0.55);
+  background: rgba(16, 9, 6, 0.95);
+  box-shadow: 0 0 26px rgba(var(--ember-rgb), 0.22);
+  text-align: center;
+}
+
+.away-plaque__title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 24px;
+  color: var(--text-heading);
+}
+
+.away-plaque__text {
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
 .push-chip {
   position: fixed;
   top: 12px;

@@ -180,6 +180,52 @@ test.describe('Online: tables', () => {
     await friend.context().close();
   });
 
+  test('a turn that runs out: the AI plays it, the seat is away until its player takes it back', async ({ page, browser }) => {
+    await guest(page, 'Idle');
+    const busy = await newGuest(browser, 'Busy');
+    console.log('[spec] a two-seat table with a 5-second turn (dev/test only)');
+    const created = await page.request.post(`${API_URL}/api/tables`, {
+      data: { seats: 2, randomHeroes: true, turnSeconds: 5, test: { tileSequence: ['fourSide', 'fourSide', 'fourSide', 'fourSide', 'fourSide', 'fourSide'] } },
+    });
+    expect(created.status()).toBe(201);
+    const { gameId } = await created.json();
+    expect((await busy.request.post(`${API_URL}/api/tables/${gameId}/join`)).ok()).toBe(true);
+    await page.goto(`${API_URL}/game/${gameId}`);
+    await busy.goto(`${API_URL}/game/${gameId}`);
+    await expect(busy.getByTestId('table-room')).toContainText('1 min a turn');
+    expect((await page.request.post(`${API_URL}/api/tables/${gameId}/start`)).ok()).toBe(true);
+    for (const p of [page, busy]) {
+      await expect(p.getByTestId('table-room')).toHaveCount(0, { timeout: 15000 });
+      await expect(p.getByTestId('turn-clock')).toBeVisible();
+    }
+
+    const game = await apiGame(page.request, gameId);
+    const nameOf = (playerId: string) => (game.players.find((p) => p.id === playerId) as unknown as { username?: string })?.username;
+    const idleStarts = nameOf(game.state.currentPlayerId) === 'Idle';
+    const [idle, other] = idleStarts ? [page, busy] : [busy, page];
+    const idleSeat = game.state.currentPlayerId;
+    console.log(`[spec] ${idleStarts ? 'Idle' : 'Busy'} starts and does nothing`);
+    await snap(other, SPEC, 'turn-clock');
+
+    console.log('[spec] the time runs out: the AI plays the turn, the seat is away');
+    await expect(idle.getByTestId('away-plaque')).toBeVisible({ timeout: 25000 });
+    await expect(other.locator('.party-rail')).toContainText('away', { timeout: 10000 });
+    await snap(idle, SPEC, 'away', { phone: true });
+    const after = await apiGame(page.request, gameId);
+    expect(after.state.turn).toBeGreaterThan(1);
+    expect((after.players.find((p) => p.id === idleSeat) as unknown as { away?: boolean }).away).toBe(true);
+
+    console.log('[spec] the idle player takes the seat back');
+    // (with a 5-second limit the next turn can run out again soon: check right after the click)
+    const [present] = await Promise.all([
+      idle.waitForResponse((r) => r.url().endsWith(`/api/game/${gameId}/present`)),
+      idle.getByTestId('away-back').click(),
+    ]);
+    expect((await present.json()).back).toBe(true);
+    await expect(idle.getByTestId('away-plaque')).toHaveCount(0, { timeout: 4000 });
+    await busy.context().close();
+  });
+
   test('an invite to a full table, and to a table its host closed', async ({ page, browser }) => {
     await guest(page, 'Keeper');
     const created = await page.request.post(`${API_URL}/api/tables`, { data: { seats: 2 } });
