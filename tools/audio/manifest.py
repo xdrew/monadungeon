@@ -36,6 +36,8 @@ class Asset:
     loop: bool
     seconds: float | None
     variants: int
+    influence: float | None = None  # ElevenLabs prompt_influence for this asset (else the kind's)
+    prompts: tuple[str, ...] = ()  # one prompt per variant (else `prompt` for all)
 
     def outputs(self, style: dict[str, KindSettings]) -> list[Path]:
         """One file per variant: <id>.mp3, or <id>-1.mp3 … <id>-n.mp3."""
@@ -44,9 +46,10 @@ class Asset:
             return [out_dir / f"{self.id}.mp3"]
         return [out_dir / f"{self.id}-{n}.mp3" for n in range(1, self.variants + 1)]
 
-    def full_prompt(self, style: dict[str, KindSettings]) -> str:
+    def full_prompt(self, style: dict[str, KindSettings], variant: int = 0) -> str:
         k = style[self.kind]
-        return " ".join(p for p in (k.prefix, self.prompt, k.suffix) if p)
+        own = self.prompts[variant] if variant < len(self.prompts) else self.prompt
+        return " ".join(p for p in (k.prefix, own, k.suffix) if p)
 
 
 def _fail(msg: str) -> None:
@@ -84,6 +87,8 @@ def load_assets(path: Path = ASSETS_FILE) -> list[Asset]:
         seen.add(aid)
         if entry["kind"] not in KINDS:
             _fail(f"unknown kind '{entry['kind']}' for {aid}")
+        if entry.get("prompts") and len(entry["prompts"]) != int(entry.get("variants", 1)):
+            _fail(f"{aid}: one prompt per variant")
         if not entry.get("prompt"):
             _fail(f"{aid} has no prompt")
         seconds = entry.get("seconds")
@@ -91,7 +96,9 @@ def load_assets(path: Path = ASSETS_FILE) -> list[Asset]:
             _fail(f"{aid}: a sound lasts 0.5–30 s")
         assets.append(Asset(id=aid, kind=entry["kind"], prompt=entry["prompt"], loop=bool(entry.get("loop", False)),
                             seconds=float(seconds) if seconds is not None else None,
-                            variants=int(entry.get("variants", 1))))
+                            variants=int(entry.get("variants", 1)),
+                            influence=float(entry["influence"]) if "influence" in entry else None,
+                            prompts=tuple(entry.get("prompts", ()))))
     LOG.debug("loaded %d assets", len(assets))
     return assets
 

@@ -37,7 +37,7 @@ def _shape(asset: Asset, k: KindSettings) -> postprocess.Shape:
 
 def _generate_raw(asset: Asset, k: KindSettings, prompt: str, clients: dict) -> tuple[bytes, dict]:
     if k.provider == "elevenlabs":
-        return clients["elevenlabs"].generate(prompt, asset.seconds, k.prompt_influence)
+        return clients["elevenlabs"].generate(prompt, asset.seconds, asset.influence or k.prompt_influence)
     music = clients["lyria"]
     try:
         return music.generate(prompt, k.model)
@@ -58,8 +58,8 @@ def run(style: dict[str, KindSettings], assets: list[Asset], clients: dict | Non
         if only and asset.id not in only:
             continue
         k = style[asset.kind]
-        prompt = asset.full_prompt(style)
-        for out in asset.outputs(style):
+        for variant, out in enumerate(asset.outputs(style)):
+            prompt = asset.full_prompt(style, variant)
             name = out.stem
             if out.exists() and not force:
                 LOG.debug("skip %s (exists)", rel(out))
