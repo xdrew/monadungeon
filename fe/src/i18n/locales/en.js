@@ -230,6 +230,7 @@ export default {
     centerAvailable: 'Center on Available Places'
   },
   sound: { title: 'Sound', music: 'Music', sounds: 'Sounds', mute: 'Mute all', unmute: 'Sound on' },
+  fieldFight: { win: 'Victory', lose: 'Defeat', draw: 'Draw' },
   devSounds: {
     title: 'Sound bench',
     intro: 'Every track, sting and sound of the game with the picture it goes with. Click a scene or a button to hear it; the scene moves for as long as the sound lasts. Volumes follow the sound ring.',
@@ -240,6 +241,8 @@ export default {
     stings: 'Stings',
     candidates: 'Takes for {cue}',
     candidatesNote: 'Each take is a different idea of the sound, at the same loudness. Tell which numbers fit, and they go into the game.',
+    fieldFights: 'The fight on the field: an AI or a rival',
+    replay: 'Again',
     moments: 'Moments',
     momentsNote: 'Several sounds with the game\'s own timing, to hear them together.',
     play: 'Play',

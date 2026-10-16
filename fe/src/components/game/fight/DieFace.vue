@@ -202,7 +202,7 @@ const dieStyle = computed(() => {
 
 @keyframes dieThrowPath {
   0% {
-    transform: translate(calc(var(--from) * -1.1 * var(--s)), -42px) rotate(calc(var(--tilt) - 150deg));
+    transform: translate(calc(var(--from) * -1.1 * var(--s)), calc(-42px * var(--die-hop, 1))) rotate(calc(var(--tilt) - 150deg));
     animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
   }
   28% {
@@ -210,7 +210,7 @@ const dieStyle = computed(() => {
     animation-timing-function: cubic-bezier(0, 0, 0.5, 1);
   }
   44% {
-    transform: translate(calc(var(--from) * -0.25 * var(--s)), -16px) rotate(calc(var(--tilt) - 38deg));
+    transform: translate(calc(var(--from) * -0.25 * var(--s)), calc(-16px * var(--die-hop, 1))) rotate(calc(var(--tilt) - 38deg));
     animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
   }
   60% {
@@ -218,7 +218,7 @@ const dieStyle = computed(() => {
     animation-timing-function: cubic-bezier(0, 0, 0.5, 1);
   }
   70% {
-    transform: translate(calc(var(--from) * -0.04 * var(--s)), -5px) rotate(calc(var(--tilt) - 7deg));
+    transform: translate(calc(var(--from) * -0.04 * var(--s)), calc(-5px * var(--die-hop, 1))) rotate(calc(var(--tilt) - 7deg));
     animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
   }
   80% {

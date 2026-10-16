@@ -229,6 +229,7 @@ export default {
     centerAvailable: 'Do dostępnych pól'
   },
   sound: { title: 'Dźwięk', music: 'Muzyka', sounds: 'Efekty', mute: 'Wycisz wszystko', unmute: 'Włącz dźwięk' },
+  fieldFight: { win: 'Zwycięstwo', lose: 'Porażka', draw: 'Remis' },
   devSounds: {
     title: 'Stanowisko dźwięku',
     intro: 'Wszystkie utwory, krótkie motywy i dźwięki gry z obrazem, do którego należą. Kliknij scenę lub przycisk, by posłuchać; scena rusza się tak długo, jak trwa dźwięk. Głośność według pierścienia dźwięku.',
@@ -239,6 +240,8 @@ export default {
     stings: 'Krótkie motywy',
     candidates: 'Wersje dla {cue}',
     candidatesNote: 'Każda wersja to inny pomysł na dźwięk, przy tej samej głośności. Podaj pasujące numery, a trafią do gry.',
+    fieldFights: 'Walka na planszy: SI lub rywal',
+    replay: 'Jeszcze raz',
     moments: 'Chwile',
     momentsNote: 'Kilka dźwięków po kolei z opóźnieniami jak w grze, by usłyszeć je razem.',
     play: 'Graj',

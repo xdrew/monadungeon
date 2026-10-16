@@ -118,6 +118,37 @@
       </div>
     </section>
 
+    <!-- The fight on the field (an AI's or a rival's), with its sounds -->
+    <section
+      class="bench__section"
+      data-testid="bench-field-fights"
+    >
+      <h2 class="bench__h2">
+        {{ t('devSounds.fieldFights') }}
+      </h2>
+      <div class="bench__fights">
+        <div
+          v-for="fight in FIELD_FIGHTS"
+          :key="fight.result"
+          class="bench__tile"
+        >
+          <FieldFight
+            :key="`${fight.result}-${fightRun}`"
+            v-bind="fight"
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        class="btn btn--ember btn--sm bench__replay"
+        data-sound="none"
+        data-testid="bench-field-fights-replay"
+        @click="replayFights"
+      >
+        {{ t('devSounds.replay') }}
+      </button>
+    </section>
+
     <section class="bench__section">
       <h2 class="bench__h2">
         {{ t('devSounds.moments') }}
@@ -169,6 +200,7 @@ import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import SoundControl from '@/components/ui/SoundControl.vue';
 import SoundCard from '@/components/dev/SoundCard.vue';
 import SoundScene from '@/components/dev/SoundScene.vue';
+import FieldFight from '@/components/game/FieldFight.vue';
 import { audio } from '@/services/audio/audioEngine';
 import { STINGS, TRACKS, sfxFiles } from '@/services/audio/cues';
 
@@ -191,6 +223,19 @@ const MOMENTS = [
   { id: 'turn', steps: [[0, 'tile_draw'], [700, 'tile_rotate'], [1300, 'tile_place'], [1440, 'step'], [2400, 'item_pickup'], [3300, 'end_turn'], [3440, 'your_turn']] },
   { id: 'chest', steps: [[0, 'step'], [600, 'chest_open'], [740, 'treasure']] },
 ];
+
+const FIELD_FIGHTS = [
+  { result: 'win', heroKey: 'warrior', monsterType: 'skeleton_warrior', monsterHp: 9, dice: [6, 4], total: 12 },
+  { result: 'lose', heroKey: 'oracle', monsterType: 'dragon', monsterHp: 15, dice: [3, 2], total: 7 },
+  { result: 'draw', heroKey: 'ranger', monsterType: 'giant_rat', monsterHp: 5, dice: [2, 3], total: 5 },
+];
+const fightRun = ref(0);
+const replayFights = () => {
+  audio.unlock();
+  fightRun.value += 1;
+  audio.cue('dice_roll');
+  ['hit_win', 'hit_lose', 'draw'].forEach((cue, i) => setTimeout(() => audio.cue(cue), 1150 + i * 120));
+};
 
 const cards = {};
 const nowPlaying = ref(null);
@@ -333,6 +378,28 @@ onBeforeUnmount(() => {
 
 .bench__grid--wide {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.bench__fights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.bench__tile {
+  display: grid;
+  place-items: center;
+  width: 170px;
+  height: 170px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0) 38%, #3b2a1d 38%, #3b2a1d 62%, rgba(0, 0, 0, 0) 62%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0) 38%, #3b2a1d 38%, #3b2a1d 62%, rgba(0, 0, 0, 0) 62%),
+    #1b130d;
+  border: 1px solid #4a3828;
+}
+
+.bench__replay {
+  margin-top: 12px;
 }
 
 .bench__moments {

@@ -799,7 +799,7 @@
                     :active="torchlightActive"
                   />
 
-                  <!-- AI Battle Overlay - floating damage numbers on the field -->
+                  <!-- A fight on the field (the AI's, or a rival's online): FieldFight over its tile -->
                   <div
                     v-if="aiBattleOverlay"
                     class="ai-battle-overlay"
@@ -810,24 +810,16 @@
                       height: `${tileSize}px`,
                     }"
                   >
-                    <div
-                      class="battle-damage-number player-damage"
-                      :class="aiBattleOverlay.result === 'win' ? 'damage-win' : aiBattleOverlay.result === 'lose' ? 'damage-lose' : 'damage-draw'"
-                    >
-                      {{ aiBattleOverlay.playerDamage }}
-                    </div>
-                    <div class="battle-vs">
-                      VS
-                    </div>
-                    <div class="battle-damage-number monster-damage">
-                      {{ aiBattleOverlay.monsterHP }}
-                    </div>
-                    <div
-                      class="battle-result-label"
-                      :class="aiBattleOverlay.result"
-                    >
-                      {{ aiBattleOverlay.result === 'win' ? 'WIN' : aiBattleOverlay.result === 'lose' ? 'LOSE' : 'DRAW' }}
-                    </div>
+                    <FieldFight
+                      :key="aiBattleOverlay.key"
+                      :hero-key="aiBattleOverlay.heroKey"
+                      :monster-type="aiBattleOverlay.monsterType"
+                      :monster-hp="aiBattleOverlay.monsterHP"
+                      :dice="aiBattleOverlay.diceResults"
+                      :total="aiBattleOverlay.playerDamage"
+                      :result="aiBattleOverlay.result"
+                      :speed="aiBattleOverlay.speed"
+                    />
                   </div>
 
                   <!-- Fog of war overlay for unexplored positions -->
@@ -1098,6 +1090,7 @@ import { useI18n } from 'vue-i18n';
 import { heroName, monsterName, skillText, itemName } from '@/i18n/names';
 import { playerDisplayName } from '@/utils/playerNames';
 import SoundControl from '@/components/ui/SoundControl.vue';
+import FieldFight from '@/components/game/FieldFight.vue';
 import { audio } from '@/services/audio/audioEngine';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useMusicSituation } from '@/composables/useMusicSituation';
@@ -2438,8 +2431,9 @@ const applyAiTilePlacement = (action) => {
   centerViewOnTile(position);
 };
 
-const showAiBattleOverlay = (action) => {
-  const battleResult = action.battleResult || 'unknown';
+let fieldFightKey = 0;
+const showAiBattleOverlay = (action, playerId = null) => {
+  const battleResult = String(action.battleResult || 'draw').toLowerCase();
   const totalDamage = action.totalDamage || 0;
   const monsterHP = action.monsterHP || 0;
   const diceResults = action.diceResults || [];
@@ -2458,15 +2452,20 @@ const showAiBattleOverlay = (action) => {
 
   const [x, y] = battlePosition.split(',').map(Number);
 
+  const fighter = gameData.value?.players?.find((p) => p.id === (playerId || localStorage.getItem('virtualPlayerId')));
+  fieldFightKey += 1;
   aiBattleOverlay.value = {
+    key: fieldFightKey,
     position: battlePosition,
     x,
     y,
     playerDamage: totalDamage,
     monsterHP,
     diceResults,
-    result: battleResult,
+    result: ['win', 'lose', 'draw'].includes(battleResult) ? battleResult : 'draw',
     monsterType,
+    heroKey: figureHeroKey(fighter),
+    speed: aiPlayback.playbackSpeed.value || 1,
   };
 
   centerViewOnTile(battlePosition);
@@ -2627,7 +2626,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
             await aiPlayback.playActions(filteredActions, {
               onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
               onMovePlayer: (action) => { clearAiBattleOverlay(); applyAiPlayerMovement(action, currentPlayer); },
-              onBattle: (action) => showAiBattleOverlay(action),
+              onBattle: (action) => showAiBattleOverlay(action, currentPlayer),
               onPickup: () => clearAiBattleOverlay(),
               onEndTurn: () => clearAiBattleOverlay(),
             });
@@ -2715,6 +2714,23 @@ const noticeOpponentFight = (data) => {
   };
   const line = describeAction(actions[index], nameOf(turn.playerId), nameOf, actions);
   if (line) showActionNotice(line, 'notice');
+  const fight = actions[index]?.additionalData || actions[index]?.details || {};
+  if (fight.toPosition) {
+    const action = {
+      battleResult: fight.result,
+      totalDamage: fight.totalDamage ?? fight.diceRollDamage ?? 0,
+      monsterHP: fight.monster?.hp ?? 0,
+      diceResults: fight.diceResults || [],
+      monsterType: fight.monster?.name || '',
+      position: fight.toPosition,
+    };
+    showAiBattleOverlay(action, turn.playerId);
+    audio.cue('dice_roll');
+    const blow = { win: 'hit_win', lose: 'hit_lose', draw: 'draw' }[String(fight.result || '').toLowerCase()];
+    if (blow) setTimeout(() => audio.cue(blow), 1150);
+    const shown = aiBattleOverlay.value?.key;
+    setTimeout(() => { if (aiBattleOverlay.value?.key === shown) clearAiBattleOverlay(); }, 2800);
+  }
 };
 
 // A turn the server played (an AI seat, or the AI standing in for an away player): played back like the AI's
@@ -2733,7 +2749,7 @@ const playOnlineAiTurn = async (message) => {
         await aiPlayback.playActions(actions, {
           onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
           onMovePlayer: (action) => { clearAiBattleOverlay(); applyAiPlayerMovement(action, next.playerId); },
-          onBattle: (action) => showAiBattleOverlay(action),
+          onBattle: (action) => showAiBattleOverlay(action, next.playerId),
           onPickup: () => clearAiBattleOverlay(),
           onEndTurn: () => clearAiBattleOverlay(),
         });
@@ -7154,7 +7170,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   display: none;
 }
 
-/* AI Battle Overlay */
+/* A fight on the field: FieldFight centred over its tile */
 .ai-battle-overlay {
   position: absolute;
   z-index: 100;
@@ -7162,76 +7178,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
   pointer-events: none;
-  animation: battleOverlayAppear 0.3s ease-out;
-}
-
-.battle-damage-number {
-  font-size: 20px;
-  font-weight: 900;
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
-  line-height: 1;
-}
-
-.player-damage {
-  color: #4fc3f7;
-  animation: damageNumberPop 0.4s ease-out;
-}
-
-.player-damage.damage-win {
-  color: var(--color-primary-hover);
-}
-
-.player-damage.damage-lose {
-  color: #ef5350;
-}
-
-.player-damage.damage-draw {
-  color: #ffcc00;
-}
-
-.monster-damage {
-  color: #ef5350;
-}
-
-.battle-vs {
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
-  line-height: 1;
-}
-
-.battle-result-label {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
-  line-height: 1;
-}
-
-.battle-result-label.win {
-  color: var(--color-primary-hover);
-}
-
-.battle-result-label.lose {
-  color: #ef5350;
-}
-
-.battle-result-label.draw {
-  color: #ffcc00;
-}
-
-@keyframes battleOverlayAppear {
-  0% { opacity: 0; transform: scale(0.5); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes damageNumberPop {
-  0% { transform: scale(0.3) translateY(10px); opacity: 0; }
-  60% { transform: scale(1.2) translateY(-2px); }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .kbd-hint {
