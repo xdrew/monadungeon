@@ -230,6 +230,39 @@ export default {
     centerAvailable: 'Center on Available Places'
   },
   sound: { title: 'Sound', music: 'Music', sounds: 'Sounds', mute: 'Mute all', unmute: 'Sound on' },
+  skillsPanel: {
+    title: 'Skills',
+    mine: 'Your hero',
+    none: 'No hero: no special skills.',
+    kindRival: { passive: 'by itself', prompt: 'their choice', action: 'their action' },
+    kind: {
+      passive: 'by itself',
+      prompt: 'the game asks',
+      action: 'your move'
+    },
+    how: {
+      double_attack: 'In a fight, after the roll: the reroll button on the fight scene.',
+      reincarnation: 'When your last HP goes, you pick the healing fountain on the field.',
+      backstab: 'A tie in a fight counts as your victory.',
+      stealth: 'Stepping onto a monster, the game asks: fight or sneak past.',
+      combat_training: 'A die showing 1 is rerolled for you.',
+      unstoppable: 'A 6 on the dice: the turn goes on after the fight.',
+      sacrifice: 'In a fight, after the roll: give 1 HP for +1 strength.',
+      magic_swap: 'The Magic Swap ring by End Turn, as the first action of the turn.',
+      magical_affinity: 'Your fireballs and Frost Fists stay after a fight.',
+      astral_walking: 'Through a wall onto a discovered tile next to you: such places are marked.',
+      farseeing: '+1 strength when the fight is the first step of your turn.',
+      fateweaver: 'Opening a room you draw two tokens and keep one.',
+      berserk: 'At 3–4 HP +1, at 1–2 HP +2; on a fountain you may heal less: the Heal limit ring.',
+      tireless: 'After a won fight, leave the loot and walk on: the button on the fight scene.',
+      sword_master: 'A sword gives you +3, not +2.',
+      lightning_attack: 'The Lightning ring by End Turn, as the first action of the turn.',
+      dagger_throwing: 'Daggers may sit in your spell slots, +1 each.',
+      sprint: 'The Sprint ring by End Turn, at the start of the turn.',
+      bear_attack: 'A die showing 1 counts as 6.',
+      listening: 'The Listen ring by End Turn, then a tile next to you.'
+    }
+  },
   fieldFight: { win: 'Victory', lose: 'Defeat', draw: 'Draw' },
   devSounds: {
     title: 'Sound bench',

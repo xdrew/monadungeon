@@ -160,6 +160,14 @@ test.describe('Pages', () => {
     await page.waitForFunction(() => document.querySelector('h3')?.textContent?.includes('Turn:'), null, { timeout: 20000 });
     await snap(page, SPEC, 'game-start', { phone: true, settleMs: 1500 });
 
+    console.log('[spec] the skills ring: my hero first (none here), the AI hero with its skills below');
+    await page.getByTestId('skills-ring').click();
+    await expect(page.getByTestId('skills-mine')).toContainText('No hero');
+    await expect(page.getByTestId('skills-rival').locator('[data-testid^="skill-"]').first()).toBeVisible();
+    await snap(page, SPEC, 'skills-panel');
+    await page.getByTestId('skills-ring').click();
+    await expect(page.getByTestId('skills-panel')).toHaveCount(0);
+
     const playback = page.locator('.ai-playback');
     const myEndTurn = page.locator(END_TURN);
 

@@ -499,6 +499,11 @@
             @center-player="centerViewOnCurrentPlayer"
             @center-available="centerViewOnAvailablePlaces"
           />
+          <SkillsControl
+            :players="gameData?.players || []"
+            :my-id="skillsOwnerId"
+            :name-of="displayName"
+          />
           <LanguageSwitch />
           <SoundControl />
         </template>
@@ -1098,6 +1103,7 @@ import { useI18n } from 'vue-i18n';
 import { heroName, monsterName, skillText, itemName } from '@/i18n/names';
 import { playerDisplayName } from '@/utils/playerNames';
 import SoundControl from '@/components/ui/SoundControl.vue';
+import SkillsControl from '@/components/game/hud/SkillsControl.vue';
 import FieldFight from '@/components/game/FieldFight.vue';
 import { audio } from '@/services/audio/audioEngine';
 import { useGameSounds } from '@/composables/useGameSounds';
@@ -1602,6 +1608,8 @@ const duelOpponentCandidates = computed(() => (arenaChoiceForMe.value?.candidate
     treasures: (player.inventory?.treasures || []).length
   })));
 // label: for buttons and tables ("Aderyn (the thief, you)"); name: for sentences ("Aderyn wins the duel")
+// whose skills the skills ring shows first: my seat online, else the player this screen plays
+const skillsOwnerId = computed(() => (isOnline.value ? mySeatId.value : currentPlayerId.value));
 // my pack, for a duel loot that comes in exchange
 const duelPackOfMine = computed(() => gameData.value?.players?.find((p) => p.id === currentPlayerId.value)?.inventory || {});
 const duelPanelPlayers = computed(() => (gameData.value?.players || []).map((p) => ({ id: p.id, label: playerChoiceLabel(p), name: displayName(p) })));
