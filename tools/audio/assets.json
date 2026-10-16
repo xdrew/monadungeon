@@ -19,7 +19,7 @@
     {"id": "tile_draw", "kind": "sfx", "seconds": 0.7, "prompt": "A thick cardboard tile slid off the top of a stack, a short dry scrape."},
     {"id": "tile_place", "kind": "sfx", "seconds": 0.7, "prompt": "A thick cardboard dungeon tile set down on a table, a firm soft thud."},
     {"id": "tile_rotate", "kind": "sfx", "seconds": 0.5, "prompt": "A cardboard tile turned on the table, a quick short scrape."},
-    {"id": "step", "kind": "sfx", "seconds": 0.6, "variants": 3, "prompt": "A single footstep of a leather boot on a stone dungeon floor, short."},
+    {"id": "step", "kind": "sfx", "seconds": 0.8, "prompt": "A single footstep on packed earth and gravel in a cave: a soft low crunch, muffled and short. No click, no echo.", "influence": 0.8, "lufs": -24},
     {"id": "teleport", "kind": "sfx", "seconds": 1.4, "prompt": "A gust of warm wind through a torch flame, a low soft whoosh with a crackle of embers, fading. Low and warm, no whistle, no high tones.", "variants": 2, "influence": 0.8},
     {"id": "fountain_heal", "kind": "sfx", "seconds": 1.6, "prompt": "Healing at a magic fountain: trickling water and a soft warm rising chime."},
     {"id": "chest_open", "kind": "sfx", "seconds": 1.2, "prompt": "An old wooden treasure chest unlocked and its heavy lid creaking open."},

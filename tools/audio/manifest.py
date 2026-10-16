@@ -38,6 +38,7 @@ class Asset:
     variants: int
     influence: float | None = None  # ElevenLabs prompt_influence for this asset (else the kind's)
     prompts: tuple[str, ...] = ()  # one prompt per variant (else `prompt` for all)
+    lufs: float | None = None  # this asset's loudness target (else the kind's): quieter for frequent sounds
 
     def outputs(self, style: dict[str, KindSettings]) -> list[Path]:
         """One file per variant: <id>.mp3, or <id>-1.mp3 … <id>-n.mp3."""
@@ -98,7 +99,8 @@ def load_assets(path: Path = ASSETS_FILE) -> list[Asset]:
                             seconds=float(seconds) if seconds is not None else None,
                             variants=int(entry.get("variants", 1)),
                             influence=float(entry["influence"]) if "influence" in entry else None,
-                            prompts=tuple(entry.get("prompts", ()))))
+                            prompts=tuple(entry.get("prompts", ())),
+                            lufs=float(entry["lufs"]) if "lufs" in entry else None))
     LOG.debug("loaded %d assets", len(assets))
     return assets
 

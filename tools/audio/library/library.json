@@ -230,5 +230,139 @@
       "seconds": 0.52,
       "kept_at": "2026-10-16T18:59:49+00:00"
     }
+  },
+  "step": {
+    "leather-1": {
+      "file": "tools/audio/library/step/leather-1.mp3",
+      "label": {
+        "en": "A soft leather boot on dusty stone",
+        "ru": "Мягкий кожаный сапог по пыльному камню",
+        "pl": "Miękki skórzany but na zakurzonym kamieniu"
+      },
+      "prompt": "A single footstep of a soft leather boot on a dusty stone dungeon floor: a low muffled thud with a faint scuff of grit. Close, dry, soft. No clack, no click, no echo.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.31,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "leather-2": {
+      "file": "tools/audio/library/step/leather-2.mp3",
+      "label": {
+        "en": "A soft leather boot on dusty stone",
+        "ru": "Мягкий кожаный сапог по пыльному камню",
+        "pl": "Miękki skórzany but na zakurzonym kamieniu"
+      },
+      "prompt": "A single footstep of a soft leather boot on a dusty stone dungeon floor: a low muffled thud with a faint scuff of grit. Close, dry, soft. No clack, no click, no echo.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.63,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "heavy-1": {
+      "file": "tools/audio/library/step/heavy-1.mp3",
+      "label": {
+        "en": "A heavy armoured step, deep thump",
+        "ru": "Тяжёлый шаг в доспехе, глубокий удар",
+        "pl": "Ciężki krok w zbroi, głębokie uderzenie"
+      },
+      "prompt": "One heavy footstep of an armoured boot on a stone floor: a deep weighty thump and a faint creak of leather straps, no metal clank. Low and solid, close.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.63,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "heavy-2": {
+      "file": "tools/audio/library/step/heavy-2.mp3",
+      "label": {
+        "en": "A heavy armoured step, deep thump",
+        "ru": "Тяжёлый шаг в доспехе, глубокий удар",
+        "pl": "Ciężki krok w zbroi, głębokie uderzenie"
+      },
+      "prompt": "One heavy footstep of an armoured boot on a stone floor: a deep weighty thump and a faint creak of leather straps, no metal clank. Low and solid, close.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.63,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "dirt-1": {
+      "file": "tools/audio/library/step/dirt-1.mp3",
+      "label": {
+        "en": "On packed earth and gravel, a soft crunch",
+        "ru": "По утоптанной земле и гравию, мягкий хруст",
+        "pl": "Po ubitej ziemi i żwirze"
+      },
+      "prompt": "A single footstep on packed earth and gravel in a cave: a soft low crunch, muffled and short. No click, no echo.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.57,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "pair-1": {
+      "file": "tools/audio/library/step/pair-1.mp3",
+      "label": {
+        "en": "Two quick soft steps",
+        "ru": "Два быстрых мягких шага",
+        "pl": "Dwa szybkie miękkie kroki"
+      },
+      "prompt": "Two quick soft footsteps of leather boots on stone, like a hero stepping into the next room: low muffled thuds. Close, dry, no click, no echo.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.57,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "pair-2": {
+      "file": "tools/audio/library/step/pair-2.mp3",
+      "label": {
+        "en": "Two quick soft steps",
+        "ru": "Два быстрых мягких шага",
+        "pl": "Dwa szybkie miękkie kroki"
+      },
+      "prompt": "Two quick soft footsteps of leather boots on stone, like a hero stepping into the next room: low muffled thuds. Close, dry, no click, no echo.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.63,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "cloth-1": {
+      "file": "tools/audio/library/step/cloth-1.mp3",
+      "label": {
+        "en": "A step with a cloak's swish",
+        "ru": "Шаг с шорохом плаща",
+        "pl": "Krok z szelestem płaszcza"
+      },
+      "prompt": "One footstep on stone with the swish of a long cloak and a soft low thud of the boot. Gentle and close, no click, no echo.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.63,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "cloth-2": {
+      "file": "tools/audio/library/step/cloth-2.mp3",
+      "label": {
+        "en": "A step with a cloak's swish",
+        "ru": "Шаг с шорохом плаща",
+        "pl": "Krok z szelestem płaszcza"
+      },
+      "prompt": "One footstep on stone with the swish of a long cloak and a soft low thud of the boot. Gentle and close, no click, no echo.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.63,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "token-1": {
+      "file": "tools/audio/library/step/token-1.mp3",
+      "label": {
+        "en": "A wooden figure set down on the board",
+        "ru": "Деревянную фигурку переставили на доске",
+        "pl": "Drewniana figurka postawiona na planszy"
+      },
+      "prompt": "A wooden game figure moved one square on a wooden board: a soft low wooden tap as it is set down. Warm and close, no click, no high tones.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.52,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    },
+    "token-2": {
+      "file": "tools/audio/library/step/token-2.mp3",
+      "label": {
+        "en": "A wooden figure set down on the board",
+        "ru": "Деревянную фигурку переставили на доске",
+        "pl": "Drewniana figurka postawiona na planszy"
+      },
+      "prompt": "A wooden game figure moved one square on a wooden board: a soft low wooden tap as it is set down. Warm and close, no click, no high tones.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.31,
+      "kept_at": "2026-10-16T19:09:55+00:00"
+    }
   }
 }

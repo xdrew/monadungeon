@@ -31,7 +31,7 @@ def _save_log(log: dict) -> None:
 
 
 def _shape(asset: Asset, k: KindSettings) -> postprocess.Shape:
-    return postprocess.Shape(kind=asset.kind, loop=asset.loop, lufs=k.lufs, seconds=asset.seconds, mono=k.mono,
+    return postprocess.Shape(kind=asset.kind, loop=asset.loop, lufs=asset.lufs if asset.lufs is not None else k.lufs, seconds=asset.seconds, mono=k.mono,
                              bitrate=k.bitrate, fade_out=1.2 if asset.kind == "sting" else 0.0)
 
 

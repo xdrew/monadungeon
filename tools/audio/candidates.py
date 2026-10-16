@@ -74,7 +74,7 @@ def generate(asset_id: str, clients: dict) -> float:
             stats = postprocess.process(raw_dir / f"{name}.mp3", out_dir / f"{name}.mp3", pipeline._shape(asset, k))
             takes.append({"id": str(len(takes) + 1), "file": f"/audio/candidates/{asset_id}/{name}.mp3",
                           "raw": rel(raw_dir / f"{name}.mp3"), "label": idea["label"], "prompt": idea["prompt"],
-                          "influence": influence, "seconds": stats["seconds"],
+                          "influence": influence, "seconds": stats["seconds"], "requested_s": seconds,
                           "bus": "music" if music else "sfx", "model": info.get("model")})
     index = _index()
     index[asset_id] = takes
@@ -99,6 +99,9 @@ def pick(asset_id: str, numbers: list[str], keep_rest: bool = False) -> None:
         entry.pop("variants", None)
     if chosen[0].get("bus", "sfx") == "sfx":
         entry["influence"] = chosen[0]["influence"]
+        # the length the takes were made and heard at on the bench
+        if chosen[0].get("requested_s"):
+            entry["seconds"] = chosen[0]["requested_s"]
     prompts = [t["prompt"] for t in chosen]
     entry["prompt"] = prompts[0]
     if len(set(prompts)) > 1:
