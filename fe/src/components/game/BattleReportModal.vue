@@ -2429,6 +2429,112 @@ button.item-chip {
   pointer-events: none;
 }
 
+/* ===== Desktop screens up to ~860px high: the whole scene, the decision included, fits without scrolling ===== */
+@media (min-width: 769px) and (max-height: 860px) {
+  .battle-card {
+    padding: 12px 24px 14px;
+  }
+
+  .scene-title {
+    font-size: 34px;
+  }
+
+  .result-title {
+    font-size: 24px;
+    margin-top: 0;
+  }
+
+  .battle-body {
+    gap: 8px;
+    padding: 2px 0 8px;
+  }
+
+  .combatant {
+    --fighter-img-h: min(280px, 27vh);
+  }
+
+  .roll-centre {
+    padding-top: 6px;
+    gap: 6px;
+  }
+
+  .dice-stage {
+    min-height: 76px;
+  }
+
+  .dice-container {
+    --die-size: 52px;
+  }
+
+  .score__num {
+    font-size: 104px;
+  }
+
+  .score__vs {
+    margin-top: 30px;
+    font-size: 30px;
+  }
+
+  /* skill notes side by side instead of a column */
+  .verdicts {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px 24px;
+  }
+
+  .first-roll-note {
+    font-size: 14px;
+  }
+
+  .first-roll-note :deep(b),
+  .first-roll-note b {
+    font-size: 17px;
+  }
+
+  .choice-plaque {
+    padding: 12px 20px;
+    gap: 8px;
+  }
+
+  .choice-plaque__title {
+    font-size: 22px;
+  }
+
+  .reward-row__icon,
+  .reward-row__img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .reward-row__name {
+    font-size: 22px;
+  }
+}
+
+/* ===== Phones: the decision buttons stay at the bottom of the screen while the scene scrolls above them;
+   no keycaps on touch screens ===== */
+@media (max-width: 768px) {
+  .battle-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding: 12px 0 10px;
+    background: linear-gradient(180deg, rgba(12, 7, 5, 0) 0%, rgba(12, 7, 5, 0.94) 22%, rgba(12, 7, 5, 0.98) 100%);
+  }
+
+  .button-group {
+    padding-bottom: 0;
+    gap: 10px;
+  }
+}
+
+@media (hover: none), (max-width: 600px) {
+  .kbd-hint {
+    display: none;
+  }
+}
+
 /* ===== Phones and low screens: fighters smaller, side by side, the plaque full width ===== */
 @media (max-width: 768px), (max-height: 500px) {
   .battle-card {
@@ -2509,6 +2615,39 @@ button.item-chip {
   .battle-body {
     grid-template-columns: 1fr minmax(240px, 320px) 1fr;
     grid-template-areas: "hero roll foe";
+  }
+}
+
+/* Phones up to ~860px high: a smaller scene so the reward shows above the sticky buttons */
+@media (max-width: 768px) and (max-height: 900px) {
+  .combatant {
+    --fighter-img-h: 104px;
+  }
+
+  .score__num {
+    font-size: 60px;
+  }
+
+  .score__vs {
+    margin-top: 16px;
+    font-size: 22px;
+  }
+
+  .dice-container {
+    --die-size: 38px;
+  }
+
+  .dice-stage {
+    min-height: 56px;
+  }
+
+  .first-roll-note {
+    font-size: 13px;
+  }
+
+  .first-roll-note :deep(b),
+  .first-roll-note b {
+    font-size: 15px;
   }
 }
 </style>
