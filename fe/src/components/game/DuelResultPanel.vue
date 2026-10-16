@@ -76,9 +76,11 @@ const props = defineProps({
 const emit = defineEmits(['loot', 'dismiss']);
 
 const labelOf = (playerId) => props.players.find((p) => p.id === playerId)?.label || t('common.player');
+// sentences use the plain name (third person: "Aderyn wins the duel", never "You wins")
+const nameOf = (playerId) => props.players.find((p) => p.id === playerId)?.name || labelOf(playerId);
 const challengerLabel = computed(() => labelOf(props.duel.challengerId));
 const opponentLabel = computed(() => labelOf(props.duel.opponentId));
-const loserLabel = computed(() => labelOf(props.duel.loser));
+const loserLabel = computed(() => nameOf(props.duel.loser));
 const winnerId = computed(() => {
   if (props.duel.result === 'challenger') return props.duel.challengerId;
   if (props.duel.result === 'opponent') return props.duel.opponentId;
@@ -111,8 +113,8 @@ const sides = computed(() => [sideOf('challenger'), sideOf('opponent')]);
 
 const phaseText = computed(() => {
   switch (props.duel.phase) {
-    case 'challenger_roll': return t('dialogs.duel.challengerRolls', { who: challengerLabel.value });
-    case 'opponent_roll': return t('dialogs.duel.opponentRolls', { who: opponentLabel.value, n: props.duel.challengerTotal });
+    case 'challenger_roll': return t('dialogs.duel.challengerRolls', { who: nameOf(props.duel.challengerId) });
+    case 'opponent_roll': return t('dialogs.duel.opponentRolls', { who: nameOf(props.duel.opponentId), n: props.duel.challengerTotal });
     default: return '';
   }
 });
@@ -120,7 +122,7 @@ const phaseText = computed(() => {
 const resultText = computed(() => {
   if (!props.duel.result) return '';
   if (props.duel.result === 'tie') return t('dialogs.duel.tie');
-  const winner = props.duel.result === 'challenger' ? challengerLabel.value : opponentLabel.value;
+  const winner = nameOf(props.duel.result === 'challenger' ? props.duel.challengerId : props.duel.opponentId);
   if (props.duel.reincarnatedTo) {
     return t('dialogs.duel.winsReincarnates', { winner, loser: loserLabel.value, place: props.duel.reincarnatedTo });
   }
@@ -135,7 +137,7 @@ const canPickLoot = computed(() => props.duel.phase === 'loot'
 
 const lootText = computed(() => {
   if (!props.duel.result || props.duel.result === 'tie') return '';
-  if (props.duel.loot) return t('dialogs.duel.takes', { who: labelOf(winnerId.value), item: itemName(props.duel.loot, 'acc') });
+  if (props.duel.loot) return t('dialogs.duel.takes', { who: nameOf(winnerId.value), item: itemName(props.duel.loot, 'acc') });
   if (props.duel.phase === 'done') return t('dialogs.duel.nothing');
   return '';
 });

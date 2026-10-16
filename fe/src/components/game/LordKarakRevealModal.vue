@@ -7,7 +7,7 @@
         <div v-if="portrait" class="lord-karak-portrait-wrap"><img :src="portrait" :alt="heroName('lord_karak')" class="lord-karak-portrait"></div>
         <div class="lord-karak-text">
           <I18nT scope="global" keypath="dialogs.lordKarak.becomes" tag="p" class="lord-karak-who" data-testid="lord-karak-who">
-            <template #who><strong>{{ labelOf(reveal.playerId) }}</strong></template>
+            <template #who><strong>{{ nameOf(reveal.playerId) }}</strong></template>
           </I18nT>
           <p class="lord-karak-why">{{ criterionText }}</p>
           <p class="lord-karak-effects">{{ $t('dialogs.lordKarak.effects') }}</p>
@@ -74,6 +74,7 @@ const emit = defineEmits(['close']);
 const CRITERIA = ['treasure', 'weapons', 'items', 'roll'];
 
 const labelOf = (playerId) => props.players.find((p) => p.id === playerId)?.label || t('common.player');
+const nameOf = (playerId) => props.players.find((p) => p.id === playerId)?.name || labelOf(playerId);
 const portrait = computed(() => getHero('lord_karak')?.image || null);
 const criterionText = computed(() => (CRITERIA.includes(props.reveal.criterion) ? t(`dialogs.lordKarak.criteria.${props.reveal.criterion}`) : ''));
 const hasRolls = computed(() => (props.reveal.standings || []).some((row) => row.rolls?.length));

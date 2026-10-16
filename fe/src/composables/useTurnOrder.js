@@ -1,5 +1,6 @@
 import { computed, watch } from 'vue';
 import { heroName } from '@/i18n/names';
+import { playerDisplayName } from '@/utils/playerNames';
 
 const ROMAN = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
 
@@ -58,7 +59,7 @@ export function useTurnOrder(gameData, isYou) {
         else if (list.length > 2 && index === (actingIndex + 1) % list.length) state = 'next';
         else if (index < actingIndex) state = 'done';
       }
-      return { player, numeral: toRoman(index + 1), state, isYou: !!isYou(player), name: heroName(player, 'short') };
+      return { player, numeral: toRoman(index + 1), state, isYou: !!isYou(player), name: playerDisplayName(player, list) };
     });
   });
 

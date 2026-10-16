@@ -820,6 +820,7 @@
       ref="battleReportModalRef"
       :battle-info="battleInfo"
       :hero-key="figureHeroKey(battleRoller)"
+      :hero-label-text="displayName(battleRoller)"
       :has-inventory-space="hasInventorySpaceForReward"
       :player-hp="battleRoller?.hp ?? 5"
       :curse-choice="curseChoice"
@@ -1023,6 +1024,7 @@ import { chronicleTail, chronicleTurns } from '@/utils/chronicle';
 import { useTurnOrder, joinNames } from '@/composables/useTurnOrder';
 import { useI18n } from 'vue-i18n';
 import { heroName, monsterName, skillText, itemName } from '@/i18n/names';
+import { playerDisplayName } from '@/utils/playerNames';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import { musicService } from '@/services/musicService';
@@ -1321,12 +1323,14 @@ const heroTooltip = (player) => {
 };
 
 // Who a player is, the way the player panel names them
+// Players in seat order (the party rail's order): the same "Adventurer I / II" everywhere
+const seatOrder = computed(() => turnOrder.entries.value.map((entry) => entry.player));
+const displayName = (player) => playerDisplayName(player, seatOrder.value);
+// a choice or a list names the player as everywhere else, with "(you)" for this screen's player
+const isYouPlayer = (player) => !!player && isCurrentUserEntry({ playerId: player.id, externalId: player.externalId });
 const playerLabel = (player) => {
   if (!player) return t('common.player');
-  if (isVirtualPlayer(player.id)) return t('common.ai');
-  if (isCurrentUserEntry({ playerId: player.id, externalId: player.externalId })) return t('common.you');
-  // without a username: the hero's name ("Horan"), not its role — "the warrior (the warrior)" in the choices
-  return player.username || (player.hero ? heroName(player.hero, 'short') : '') || t('common.player');
+  return isYouPlayer(player) ? `${displayName(player)} (${t('common.you').toLowerCase()})` : displayName(player);
 };
 
 // Curse of Karak: the other players (candidates) and the current holder of the token
@@ -1337,7 +1341,7 @@ const curseChoice = computed(() => {
   return {
     players: all.filter(p => p.id !== currentPlayerId.value).map(p => ({
       id: p.id,
-      label: p.hero ? `${playerLabel(p)} (${heroShortName(p)})` : playerLabel(p)
+      label: playerChoiceLabel(p)
     })),
     cursedPlayerId,
     cursedLabel: holder ? playerLabel(holder) : ''
@@ -1348,7 +1352,11 @@ const curseChoicePendingForMe = computed(() => !!currentPlayerId.value && gameDa
 // ===== Karak: Regent =====
 
 const playerById = (playerId) => (gameData.value?.players || []).find((p) => p.id === playerId) || null;
-const playerChoiceLabel = (player) => (player?.hero ? `${playerLabel(player)} (${heroShortName(player)})` : playerLabel(player));
+const playerChoiceLabel = (player) => {
+  if (!player?.hero) return playerLabel(player);
+  const extra = [heroShortName(player), isYouPlayer(player) ? t('common.you').toLowerCase() : ''].filter(Boolean).join(', ');
+  return `${displayName(player)} (${extra})`;
+};
 
 // ===== HUD: turn order, banner =====
 
@@ -1357,9 +1365,8 @@ const turnOrder = useTurnOrder(gameData, isHumanPlayer);
 const heroNameById = (playerId) => {
   const player = playerById(playerId);
   if (!player) return t('common.unknown');
-  // a hero-less player by name, else "Adventurer" as in the party rail — never "You": the sentences are in
-  // the third person ("You finds a new corridor")
-  return player.hero || player.lordKarak ? heroName(player, 'short') : (player.username || heroName(player, 'short'));
+  // the third person everywhere ("Adventurer II finds…", never "You finds…"), the same name as in the rail
+  return displayName(player);
 };
 
 // The human at this screen (their pack is drawn bottom left)
@@ -1468,7 +1475,8 @@ const duelOpponentCandidates = computed(() => (arenaChoiceForMe.value?.candidate
     label: playerChoiceLabel(player),
     treasures: (player.inventory?.treasures || []).length
   })));
-const duelPanelPlayers = computed(() => (gameData.value?.players || []).map((p) => ({ id: p.id, label: playerChoiceLabel(p) })));
+// label: for buttons and tables ("Aderyn (the thief, you)"); name: for sentences ("Aderyn wins the duel")
+const duelPanelPlayers = computed(() => (gameData.value?.players || []).map((p) => ({ id: p.id, label: playerChoiceLabel(p), name: displayName(p) })));
 
 // Lord Karak reveal: one dialog per game and browser (state.lordKarak stays set for the rest of the game)
 const lordKarakSeen = ref(false);

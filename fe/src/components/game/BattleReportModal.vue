@@ -732,6 +732,8 @@ const props = defineProps({
     default: 5
   },
   /** Karak: Regent — the other hero of a Battle Arena duel: { label, heroKey } */
+  /** the roller's name as everywhere else ("Adventurer II"); the hero's short name when not given */
+  heroLabelText: { type: String, default: '' },
   duelRival: {
     type: Object,
     default: null
@@ -1590,7 +1592,7 @@ watch(isProcessing, (working) => {
 
 // ===== The scene: names, states, the breakdown of the roll, the plaque =====
 
-const heroLabel = computed(() => heroName(props.heroKey, 'short'));
+const heroLabel = computed(() => props.heroLabelText || heroName(props.heroKey, 'short'));
 const sceneTitle = computed(() => t('battle.title', { hero: heroLabel.value, foe: duel.value ? rivalLabel.value : formattedMonsterName.value }));
 
 // entrance → idle while the dice roll → the result

@@ -142,7 +142,7 @@ test.describe('Regent mechanics', () => {
     await GameHelpers.placeTile(page, 0, 0);
 
     await expect(page.getByTestId('lord-karak-modal')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('lord-karak-who')).toContainText(/Horan \(the warrior\) becomes Lord Karak/);
+    await expect(page.getByTestId('lord-karak-who')).toContainText(/Horan becomes Lord Karak/);
     await snap(page, SPEC, 'lord-karak-reveal', { phone: true });
     await page.getByTestId('lord-karak-close').click();
     const lord = await apiPlayer(request, gameId, a);
