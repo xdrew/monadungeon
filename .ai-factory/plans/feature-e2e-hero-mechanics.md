@@ -142,7 +142,7 @@ Each test's sequence is written next to it as a comment table, as in the showcas
 
 ### Phase 3: Hero skills
 
-- [ ] Task 5: `fe/e2e/tests/base-heroes.spec.ts`: Swordsman, Warlock, Wizard, Oracle, as in the map.
+- [x] Task 5: `fe/e2e/tests/base-heroes.spec.ts`: Swordsman, Warlock, Wizard, Oracle, as in the map.
   - Each test gets its own `setupGame`: hero, `hp` and `inventory` presets, and a dice/tile/bag script with a comment table.
   - Assertions use the UI hook and the API state (HP, position, pack).
   - Snaps: every note, ring, banner and plaque.
