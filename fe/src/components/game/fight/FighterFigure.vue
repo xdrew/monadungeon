@@ -50,7 +50,7 @@ const emit = defineEmits(['error']);
   flex-direction: column;
   align-items: center;
   width: var(--fighter-w, 320px);
-  --glow-rgb: 90, 140, 200;
+  --glow-rgb: 234, 220, 192;
 }
 
 .fighter--foe {

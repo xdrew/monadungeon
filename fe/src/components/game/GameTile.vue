@@ -717,8 +717,8 @@ const onItemClick = () => {
 }
 
 .hero-standee.is-you::after {
-  border: 2px solid rgba(156, 195, 234, 0.75);
-  background: rgba(156, 195, 234, 0.12);
+  border: 2px solid rgba(217, 192, 138, 0.8);
+  background: rgba(217, 192, 138, 0.12);
 }
 
 .hero-standee.is-acting::after {

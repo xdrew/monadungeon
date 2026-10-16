@@ -54,7 +54,7 @@ const emit = defineEmits(['choose']);
   background: rgba(0, 0, 0, 0.35);
   color: var(--text-primary);
   text-align: center;
-  border-color: rgba(201, 139, 217, 0.45);
+  border-color: rgba(224, 96, 74, 0.45);
 }
 
 .curse-header {
@@ -70,7 +70,7 @@ const emit = defineEmits(['choose']);
 }
 
 .curse-header :deep(svg) {
-  color: #c98bd9;
+  color: #e0604a;
 }
 
 .curse-prompt {

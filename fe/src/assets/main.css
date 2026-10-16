@@ -218,3 +218,51 @@ button:disabled {
 .mb-4 {
   margin-bottom: 1rem;
 }
+
+/* Checkboxes in the Torchlight look: a dark box with an iron rim, an ember box with a bone tick when checked
+   (the browser's bright white square was the loudest thing on the lobby and in the fight's spell list) */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  display: inline-grid;
+  place-content: center;
+  border: 1px solid var(--iron);
+  border-radius: 3px;
+  background: #0c0806;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+}
+
+input[type="checkbox"]::before {
+  content: '';
+  width: 11px;
+  height: 6px;
+  border-left: 2px solid #1a0f08;
+  border-bottom: 2px solid #1a0f08;
+  transform: translateY(-1px) rotate(-45deg) scale(0);
+  transition: transform 0.12s ease-out;
+}
+
+input[type="checkbox"]:checked {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  box-shadow: 0 0 10px rgba(var(--ember-rgb), 0.45);
+}
+
+input[type="checkbox"]:checked::before {
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

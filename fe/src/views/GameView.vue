@@ -6624,7 +6624,7 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   z-index: 100;
   font-size: 1.1rem;
   font-weight: 800;
-  color: #66ff66;
+  color: #ffd28a;
   text-shadow: 0 0 8px rgba(var(--accent-light-rgb), 0.8), 0 2px 4px rgba(0, 0, 0, 0.8);
   pointer-events: none;
   transform: translateX(-50%);

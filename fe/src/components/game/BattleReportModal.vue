@@ -1686,7 +1686,7 @@ if (import.meta.env.DEV) {
   color: var(--text-primary);
   background-color: rgba(5, 3, 2, 0.95);
   background-image:
-    radial-gradient(ellipse at 22% 45%, rgba(90, 140, 200, 0.12) 0%, rgba(0, 0, 0, 0) 35%),
+    radial-gradient(ellipse at 22% 45%, rgba(234, 220, 192, 0.12) 0%, rgba(0, 0, 0, 0) 35%),
     radial-gradient(ellipse at 78% 45%, rgba(var(--ember-rgb), 0.16) 0%, rgba(0, 0, 0, 0) 38%),
     radial-gradient(ellipse at 50% 100%, rgba(60, 35, 20, 0.6) 0%, rgba(0, 0, 0, 0) 60%);
   animation: overlayIn 0.35s ease-out;
@@ -2062,11 +2062,11 @@ if (import.meta.env.DEV) {
 }
 
 .first-roll-note--curse::before {
-  background: linear-gradient(90deg, rgba(201, 139, 217, 0) 0%, rgba(201, 139, 217, 0.7) 100%);
+  background: linear-gradient(90deg, rgba(224, 96, 74, 0) 0%, rgba(224, 96, 74, 0.7) 100%);
 }
 
 .first-roll-note--curse::after {
-  background: linear-gradient(90deg, rgba(201, 139, 217, 0.7) 0%, rgba(201, 139, 217, 0) 100%);
+  background: linear-gradient(90deg, rgba(224, 96, 74, 0.7) 0%, rgba(224, 96, 74, 0) 100%);
 }
 
 .first-roll-note__icon {
@@ -2154,7 +2154,7 @@ button.item-chip {
 }
 
 .consumable-kept {
-  border-color: rgba(156, 195, 234, 0.5);
+  border-color: rgba(var(--ember-rgb), 0.5);
 }
 
 .chip-img {

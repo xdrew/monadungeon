@@ -1,8 +1,9 @@
 /* The kit is drawn by components/game/hud/InventorySlots.vue (scoped styles).
    What stays here: the turn box of the rules page (views/RulesView.vue, restyled in part 5). */
 .turn-info {
-  background-color: rgba(44, 62, 80, 0.7);
-  border-radius: var(--radius-md);
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(234, 220, 192, 0.12);
+  border-radius: var(--radius-sm);
   padding: var(--spacing-sm);
   margin: var(--spacing-sm) 0;
   text-align: left;

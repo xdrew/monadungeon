@@ -209,7 +209,7 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 }
 
 .party-member--you {
-  --ring: #4f7fae;
+  --ring: #a08458;
 }
 
 .party-member--acting {
@@ -303,7 +303,7 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 }
 
 .party-member--you .party-member__who {
-  color: var(--color-info);
+  color: #d9c08a;
 }
 
 .party-member--acting .party-member__who {
@@ -311,7 +311,7 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 }
 
 .hero-badge.cursed {
-  color: #c98bd9;
+  color: #e0604a;
 }
 
 .hero-badge.awaiting-reincarnation {
