@@ -336,19 +336,25 @@ class Duel extends AggregateRoot
         $this->transferLoot($item, $messageContext, $dropped);
         $this->phase = DuelPhase::DONE;
 
-        $messageContext->dispatch(new PerformTurnAction(
-            turnId: $this->turnId,
-            gameId: $this->gameId,
-            playerId: $command->playerId,
-            action: TurnAction::DUEL_LOOT,
-            additionalData: [
-                'duelId' => $this->duelId->toString(),
-                'item' => $item->type->value,
-                'itemId' => $item->itemId->toString(),
-                'from' => $this->loserId?->toString(),
-                'dropped' => $dropped?->type->value,
-            ],
-        ));
+        // The turn log belongs to the turn's hero (the challenger); `by` is who took it (the summoned winner too)
+        try {
+            $messageContext->dispatch(new PerformTurnAction(
+                turnId: $this->turnId,
+                gameId: $this->gameId,
+                playerId: $this->challengerId,
+                action: TurnAction::DUEL_LOOT,
+                additionalData: [
+                    'duelId' => $this->duelId->toString(),
+                    'item' => $item->type->value,
+                    'itemId' => $item->itemId->toString(),
+                    'from' => $this->loserId?->toString(),
+                    'by' => $command->playerId->toString(),
+                    'dropped' => $dropped?->type->value,
+                ],
+            ));
+        } catch (\RuntimeException) {
+            // The turn log is bookkeeping: the loot changed hands either way
+        }
     }
 
     /**

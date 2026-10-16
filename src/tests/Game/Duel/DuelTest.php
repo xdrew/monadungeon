@@ -184,6 +184,10 @@ final class DuelTest extends TestCase
         [, $messages] = $this->createTester()->handle($duel->takeLoot(...), new TakeDuelLoot($this->gameId, $this->opponent, $this->turnId, $duel->getDuelId(), $axe->itemId));
         $this->assertTransferred($messages, $axe, from: $this->challenger, to: $this->opponent);
         self::assertSame(DuelPhase::DONE, $duel->getPhase());
+        $action = $this->findMessage($messages, PerformTurnAction::class);
+        self::assertInstanceOf(PerformTurnAction::class, $action);
+        self::assertTrue($action->playerId->equals($this->challenger), 'Logged in the turn of its hero (the turn refuses anyone else)');
+        self::assertSame($this->opponent->toString(), $action->additionalData['by'] ?? null);
     }
 
     #[Test]
