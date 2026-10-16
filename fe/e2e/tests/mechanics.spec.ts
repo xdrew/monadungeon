@@ -136,6 +136,20 @@ test.describe('Mechanics', () => {
     await snap(page, SPEC, 'find-offered-on-click');
   });
 
+  test('A tile that lies one way only goes down without asking', async ({ page, request }) => {
+    const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
+    await startGame(page, request, {
+      gameId,
+      tileSequence: ['fourSide', 'fourSide'],
+      playerConfigs: { [a]: {}, [b]: {} },
+    });
+
+    await page.locator('.available-place.clickable.place-tile[title^="Available position: 0,-1 "]').click();
+    // no Enter, no click on the ghost: a crossing has nothing to turn
+    await expect.poll(async () => (await apiGame(request, gameId)).field.tileOrientations['0,-1'], { timeout: 10000 }).toBeTruthy();
+    await expect(page.locator('.ghost-rotate-btn')).toHaveCount(0);
+  });
+
   test('The ghost tile turns with its rotate button', async ({ page, request }) => {
     const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
     await startGame(page, request, {

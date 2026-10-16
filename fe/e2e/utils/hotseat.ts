@@ -193,9 +193,15 @@ export async function placeAt(page: Page, x: number, y: number, opts: { rotate?:
   const spot = page.locator(marker(x, y, true)).first();
   await spot.waitFor({ state: 'visible', timeout: 15000 });
   await spot.click();
-  await page.locator('.tile.ghost-tile, .ghost-rotate-btn').first().waitFor({ state: 'visible', timeout: 10000 });
-  if (opts.rotate) await rotateGhost(page, opts.rotate);
-  await page.keyboard.press('Enter');
+  // a tile that can be turned waits (with its rotate button); one that lies one way only goes down by itself
+  const rotate = page.locator('.ghost-rotate-btn').first();
+  const turnable = await rotate.waitFor({ state: 'visible', timeout: 2500 }).then(() => true).catch(() => false);
+  if (turnable) {
+    if (opts.rotate) await rotateGhost(page, opts.rotate);
+    await page.keyboard.press('Enter');
+  } else if (opts.rotate) {
+    throw new Error(`the tile at ${x},${y} cannot be turned`);
+  }
   await page.locator('.tile.ghost-tile').first().waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(600);
   console.log(`[spec] placed a tile at ${x},${y}`);

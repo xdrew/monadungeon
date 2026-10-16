@@ -321,9 +321,13 @@ export class GameHelpers {
       console.log('Ghost tile detection failed, continuing anyway');
     }
 
-    // Press Enter to confirm placement
-    console.log('Pressing Enter to confirm tile placement');
-    await page.keyboard.press('Enter');
+    // A tile that can be turned waits for Enter; one that lies one way only goes down by itself
+    if (await page.locator('.ghost-rotate-btn').isVisible().catch(() => false)) {
+      console.log('Pressing Enter to confirm tile placement');
+      await page.keyboard.press('Enter');
+    } else {
+      console.log('The tile lies one way only: it is placed without Enter');
+    }
     
     // Wait a bit for the placement to process
     await page.waitForTimeout(TIMEOUTS.SHORT_WAIT);

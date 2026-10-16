@@ -4289,6 +4289,23 @@ const ghostCanRotate = computed(() => {
   return ways.size > 1;
 });
 
+// A tile that lies one way only (a crossing, a corridor along the way) has nothing to confirm: it goes down by
+// itself, after a beat to see it drawn
+const AUTO_PLACE_MS = 450;
+let autoPlacedTileId = null;
+watch(() => [pickedTileId.value, isPlacingTile.value, ghostTilePosition.value, ghostTileOrientation.value, ghostCanRotate.value],
+  ([tileId, placing, position, orientation, canRotate]) => {
+    if (!tileId || !placing || !position || !orientation || canRotate || !isPlayerTurn.value) return;
+    if (autoPlacedTileId === tileId) return;
+    autoPlacedTileId = tileId;
+    console.info('[tile] one way to lie: placed without asking', { position });
+    setTimeout(() => {
+      if (pickedTileId.value === tileId && isPlacingTile.value && ghostTilePosition.value === position) {
+        handlePlaceClick(position);
+      }
+    }, AUTO_PLACE_MS);
+  });
+
 // Use the imported rotateGhostTile function with necessary parameters
 const rotateGhostTileLocal = async () => {
   if (!ghostCanRotate.value) return;
