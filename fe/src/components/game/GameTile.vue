@@ -163,6 +163,18 @@
         data-testid="arena-marker"
       >
         <img src="/images/arena.webp" :alt="$t('field.arena')" class="arena-image" />
+        <!-- open: crossed swords, a duel waits; used: a check, it is a plain room now -->
+        <span
+          class="arena-badge"
+          :class="arenaUsed ? 'arena-badge--used' : 'arena-badge--open'"
+          :data-testid="arenaUsed ? 'arena-used-badge' : 'arena-open-badge'"
+          aria-hidden="true"
+        >
+          <GameIcon
+            :name="arenaUsed ? 'check' : 'sword'"
+            :size="14"
+          />
+        </span>
       </div>
       <div
         v-if="hasCursedRoom"
@@ -1137,11 +1149,52 @@ const onItemClick = () => {
 
 .arena-indicator {
   filter: drop-shadow(0 0 6px rgba(var(--ember-rgb), 0.55));
+  animation: arena-call 2.2s ease-in-out infinite;
 }
 
+/* used: no colour, no glow, no pulse — a plain room now */
 .arena-indicator.arena-used {
-  opacity: 0.45;
-  filter: grayscale(0.6);
+  animation: none;
+  filter: none;
+}
+
+.arena-indicator.arena-used .arena-image {
+  filter: grayscale(1) brightness(0.5);
+  opacity: 0.6;
+}
+
+.arena-badge {
+  position: absolute;
+  right: -10%;
+  bottom: -10%;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--iron-edge, #8a7a66);
+}
+
+.arena-badge--open {
+  background: radial-gradient(circle, #6b1d0e 0%, #2a0a04 100%);
+  color: #ffd2a0;
+  box-shadow: 0 0 8px rgba(217, 69, 42, 0.8);
+}
+
+.arena-badge--used {
+  background: #1a130e;
+  color: var(--text-muted);
+}
+
+@keyframes arena-call {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(var(--ember-rgb), 0.45)); }
+  50% { filter: drop-shadow(0 0 12px rgba(var(--ember-rgb), 0.95)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-indicator {
+    animation: none;
+  }
 }
 
 .cursed-room-indicator {

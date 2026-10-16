@@ -242,6 +242,7 @@ export default {
     candidatesNote: 'Każda wersja to inny pomysł na dźwięk, przy tej samej głośności. Podaj pasujące numery, a trafią do gry.',
     fieldFights: 'Walka na planszy: SI lub rywal',
     replay: 'Jeszcze raz',
+    arenas: 'Arena: czynna i zużyta',
     moments: 'Chwile',
     momentsNote: 'Kilka dźwięków po kolei z opóźnieniami jak w grze, by usłyszeć je razem.',
     play: 'Graj',

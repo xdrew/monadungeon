@@ -118,6 +118,30 @@
       </div>
     </section>
 
+    <!-- The Battle Arena on the field: still waiting for its duel, and used -->
+    <section
+      class="bench__section"
+      data-testid="bench-arenas"
+    >
+      <h2 class="bench__h2">
+        {{ t('devSounds.arenas') }}
+      </h2>
+      <div class="bench__arenas">
+        <GameTile
+          v-for="(used, i) in [false, true]"
+          :key="i"
+          :position="`${i * 2},0`"
+          :x="i * 2"
+          :y="0"
+          orientation-char="╋"
+          :is-room="true"
+          :has-battle-arena="true"
+          :arena-used="used"
+          :openings="{ top: true, right: true, bottom: true, left: true }"
+        />
+      </div>
+    </section>
+
     <!-- The fight on the field (an AI's or a rival's), with its sounds -->
     <section
       class="bench__section"
@@ -201,6 +225,7 @@ import SoundControl from '@/components/ui/SoundControl.vue';
 import SoundCard from '@/components/dev/SoundCard.vue';
 import SoundScene from '@/components/dev/SoundScene.vue';
 import FieldFight from '@/components/game/FieldFight.vue';
+import GameTile from '@/components/game/GameTile.vue';
 import { audio } from '@/services/audio/audioEngine';
 import { STINGS, TRACKS, sfxFiles } from '@/services/audio/cues';
 
@@ -378,6 +403,12 @@ onBeforeUnmount(() => {
 
 .bench__grid--wide {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.bench__arenas {
+  position: relative;
+  width: 450px;
+  height: 150px;
 }
 
 .bench__fights {

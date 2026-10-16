@@ -243,6 +243,7 @@ export default {
     candidatesNote: 'Each take is a different idea of the sound, at the same loudness. Tell which numbers fit, and they go into the game.',
     fieldFights: 'The fight on the field: an AI or a rival',
     replay: 'Again',
+    arenas: 'The Battle Arena: open, and used',
     moments: 'Moments',
     momentsNote: 'Several sounds with the game\'s own timing, to hear them together.',
     play: 'Play',
