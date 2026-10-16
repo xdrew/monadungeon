@@ -702,6 +702,11 @@ class Game extends AggregateRoot
     /**
      * Heroes are dealt at random in this game.
      */
+    public function isInProgress(): bool
+    {
+        return $this->status->isInProgress();
+    }
+
     public function isOnline(): bool
     {
         return $this->online;

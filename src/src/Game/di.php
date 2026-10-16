@@ -123,6 +123,10 @@ return static function (ContainerConfigurator $di): void {
 
         // Smart Virtual Player (Currently Active)
         ->set(SmartVirtualPlayer::class)
+        ->alias(\App\Game\AI\AiTurnTaker::class, SmartVirtualPlayer::class)
+
+        // Online games: the server plays the AI seats
+        ->set(\App\Game\AI\ServerAiDriver::class)
 
         // Virtual Player API Client
         ->set(VirtualPlayerApiClient::class)

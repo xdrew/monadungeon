@@ -26,7 +26,7 @@ use Telephantast\MessageBus\MessageBus;
 /**
  * Smart Virtual AI player that plays like a human - uses atomic actions for clean gameplay.
  */
-final class SmartVirtualPlayer
+final class SmartVirtualPlayer implements AiTurnTaker
 {
     private const int MAX_ACTIONS_PER_TURN = 30; // Safety limit to prevent infinite loops
     private const int MAX_TILES_PER_SEQUENCE = 5; // Max tiles in one placement sequence (corridors)

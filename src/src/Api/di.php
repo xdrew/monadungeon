@@ -14,5 +14,6 @@ return static function (ContainerConfigurator $di): void {
         ->load(__NAMESPACE__ . '\\', __DIR__ . '/**/Action.php')
             ->tag('controller.service_arguments')
         ->set(Security\SeatGuardListener::class)
-        ->set(Table\Tables::class);
+        ->set(Table\Tables::class)
+        ->set(Push\PublishGameChangeListener::class);
 };

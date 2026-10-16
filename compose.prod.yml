@@ -55,6 +55,7 @@ services:
       - "443:443"
     depends_on:
       - php
+      - mercure
       - frontend-builder
     networks:
       - monadungeon_prod
@@ -99,6 +100,20 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Push to the browsers (Server-Sent Events); nginx serves /.well-known/mercure
+  mercure:
+    container_name: mercure_monadungeon_prod
+    image: dunglas/mercure:v0.16
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ':80'
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:?set MERCURE_JWT_SECRET}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET:?set MERCURE_JWT_SECRET}
+      MERCURE_EXTRA_DIRECTIVES: |
+        anonymous
+    networks:
+      - monadungeon_prod
 
   # Optional: Redis for caching
   redis:

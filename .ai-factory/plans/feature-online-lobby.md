@@ -63,14 +63,14 @@ Authority: user answers > part 1 plan (`feature-online-accounts.md`) > CLAUDE.md
 - [x] Task 3: PHPUnit `TableTest` (seat cap, idempotent join, host-only AI/start, ≥ 2 seats, heroes chosen unless random, the host leaving closes the table) and API curl smoke.
 
 ### Phase 2: Push and the server's AI
-- [ ] Task 4: Docker:
+- [x] Task 4: Docker:
   - `mercure` service in `compose.yml` and `compose.prod.yml`;
   - nginx `location /.well-known/mercure` with `proxy_buffering off` and `proxy_read_timeout 1h`, in the dev and prod configs;
   - `.env` / `.env.dist` keys.
 
   Verify with `docker compose up -d mercure` and a curl subscription.
-- [ ] Task 5: `MercurePublisher` (+ interface for tests) and the `PublishGameChange` terminate listener. PHPUnit with a recording fake.
-- [ ] Task 6: `ServerAiDriver` (in `src/src/Game/AI/`): online + in progress + current player AI → `SmartVirtualPlayer::executeTurn`, loop ≤ 5, publish `ai.turn`. Called from the terminate listener after publishing. PHPUnit with fakes; a guard against re-entry (the AI's own sub-requests must not trigger the driver).
+- [x] Task 5: `MercurePublisher` (+ interface for tests) and the `PublishGameChange` terminate listener. PHPUnit with a recording fake.
+- [x] Task 6: `ServerAiDriver` (in `src/src/Game/AI/`): online + in progress + current player AI → `SmartVirtualPlayer::executeTurn`, loop ≤ 5, publish `ai.turn`. Called from the terminate listener after publishing. PHPUnit with fakes; a guard against re-entry (the AI's own sub-requests must not trigger the driver).
 
 ### Phase 3: Tables in the browser
 - [ ] Task 7: `fe/src/services/tables.js`, `fe/src/services/push.js` (EventSource wrapper: subscribe(topic, handler), reconnect state), the start screen: "Open a table" form and the open tables list (live through `karak/tables`).

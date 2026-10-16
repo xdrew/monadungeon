@@ -57,6 +57,7 @@ services:
     depends_on:
       - frontend
       - php
+      - mercure
     networks:
       - monadungeon
   php:
@@ -95,6 +96,20 @@ services:
       - monadungeon
     extra_hosts:
       - "host.docker.internal:host-gateway"
+  # Push to the browsers (Server-Sent Events): the backend publishes game changes, nginx serves /.well-known/mercure
+  mercure:
+    container_name: mercure_${PROJECT}
+    image: dunglas/mercure:v0.16
+    environment:
+      SERVER_NAME: ':80'
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET}
+      MERCURE_EXTRA_DIRECTIVES: |
+        anonymous
+        cors_origins *
+    command: /usr/bin/caddy run --config /etc/caddy/dev.Caddyfile
+    networks:
+      - monadungeon
   redis:
     container_name: redis_${PROJECT}
     image: redis:alpine
