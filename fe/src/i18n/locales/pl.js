@@ -93,6 +93,8 @@ export default {
     waitingNext: 'Twoja tura jest następna',
     and: 'i',
     sprintNotice: 'Sprint — do 8 ruchów, bez odkrywania',
+    listenNotice: 'Nasłuchiwanie — następny kafelek usłyszysz, nie wchodząc na niego',
+    astralNotice: 'Astralna wędrówka — możesz przechodzić przez ściany',
     healUpTo: 'Berserk — lecz się do',
     healFull: '5 PW (w pełni)',
     ring: {
@@ -387,6 +389,7 @@ export default {
       sacrifice: '{skill} Oddano 1 PW za +1 do siły',
       affinity: '{skill} Zaklęcia zostają w twoim ekwipunku',
       farseeing: '{skill} +1 — walka w pierwszym ruchu tury',
+      swordMaster: '{skill} +{n} — w jego rękach miecz ma siłę 3',
       berserk: '{skill} +{bonus} — walka przy {range} PW',
       bearAttack: '{skill} {n} jedynka liczy się jako 6 | {skill} {n} jedynki liczą się jako 6 | {skill} {n} jedynek liczy się jako 6',
       lightningRetreat: '{skill} Wybierz miejsce odwrotu na panelu przy pierścieniach akcji',

@@ -212,6 +212,20 @@
               </I18nT>
             </div>
             <div
+              v-if="swordMasterBonus > 0"
+              class="first-roll-note"
+              data-testid="sword-master-note"
+            >
+              <I18nT
+                scope="global"
+                keypath="battle.notes.swordMaster"
+                tag="span"
+              >
+                <template #skill><b>{{ $t('skills.sword_master.name') }}</b></template>
+                <template #n>{{ swordMasterBonus }}</template>
+              </I18nT>
+            </div>
+            <div
               v-if="battleInfo.farseeing"
               class="first-roll-note"
               data-testid="farseeing-note"
@@ -1013,6 +1027,8 @@ const weaponDamageTotal = computed(() => {
 });
 
 // Baron Markul "Sword Master": a sword has strength 3 in his hands
+const swordMasterBonus = computed(() => equippedWeapons.value
+  .reduce((sum, w) => sum + Math.max(0, weaponStrength(w) - getItemTypeDamage(w.type)), 0));
 const weaponStrength = (weapon) => (weapon?.type === 'sword' && props.heroFlags?.masterOfSword === true ? 3 : getItemTypeDamage(weapon?.type));
 
 // Valduk "Tireless": a won fight whose loot he may leave on the tile to keep moving
@@ -1608,7 +1624,12 @@ const breakdown = computed(() => {
       parts.push({ name, n, text: t('battle.part', { name, n }), accent });
     }
   };
-  equippedWeapons.value.forEach((w) => part(itemName(w.type), weaponStrength(w)));
+  // a weapon at its own strength; Baron Markul's extra on a sword is its own part ("Sword +2, Sword Master +1")
+  equippedWeapons.value.forEach((w) => {
+    const base = getItemTypeDamage(w.type);
+    part(itemName(w.type), base);
+    if (weaponStrength(w) > base) part(t('skills.sword_master.name'), weaponStrength(w) - base);
+  });
   if (showConsumableSelection.value) {
     availableConsumables.value
       .filter((item) => selectedConsumables.value.includes(item.itemId))

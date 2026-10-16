@@ -53,6 +53,13 @@ defineProps({
   --disk: 64px;
 }
 
+/* the global button:hover plate (assets/main.css) must not paint a square behind the ring */
+.iron-ring:hover:not(:disabled),
+.iron-ring:active {
+  background: none;
+  border: 0;
+}
+
 .iron-ring__disk {
   position: relative;
   width: var(--disk);

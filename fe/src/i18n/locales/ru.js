@@ -93,6 +93,8 @@ export default {
     waitingNext: 'Ваш ход следующий',
     and: 'и',
     sprintNotice: 'Спринт — до 8 шагов, без исследования',
+    listenNotice: 'Подслушивание — следующую плитку вы услышите, не входя в неё',
+    astralNotice: 'Астральное хождение — можно шагать сквозь стены',
     healUpTo: 'Берсерк — лечиться до',
     healFull: '5 ОЗ (полностью)',
     ring: {
@@ -387,6 +389,7 @@ export default {
       sacrifice: '{skill} Отдано 1 ОЗ за +1 к силе',
       affinity: '{skill} Заклинания остаются в вашем рюкзаке',
       farseeing: '{skill} +1 — бой на первом шаге хода',
+      swordMaster: '{skill} +{n} — в его руках меч силой 3',
       berserk: '{skill} +{bonus} — бой при {range} ОЗ',
       bearAttack: '{skill} {n} единица засчитана как 6 | {skill} {n} единицы засчитаны как 6 | {skill} {n} единиц засчитаны как 6',
       lightningRetreat: '{skill} Выберите, куда отступить, на панели у кругов действий',

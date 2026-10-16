@@ -70,7 +70,7 @@
         >
           <ActionRings :waiting-text="ringsWaitingText">
             <template
-              v-if="(isPlayerTurn && gameData?.state?.sprint) || healLimitOpen || (devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored)"
+              v-if="(isPlayerTurn && (gameData?.state?.sprint || isListenMode || astralHint)) || healLimitOpen || (devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored)"
               #above
             >
               <span
@@ -78,6 +78,17 @@
                 class="hud-chip sprint-badge"
                 data-testid="sprint-badge"
               >{{ t('hud.sprintNotice') }}</span>
+              <!-- what a skill does right now, as for Sprint: Listening armed, Astral Walking available -->
+              <span
+                v-if="isPlayerTurn && isListenMode"
+                class="hud-chip sprint-badge"
+                data-testid="listen-badge"
+              >{{ t('hud.listenNotice') }}</span>
+              <span
+                v-if="isPlayerTurn && astralHint && !isListenMode && !gameData?.state?.sprint"
+                class="hud-chip sprint-badge"
+                data-testid="astral-badge"
+              >{{ t('hud.astralNotice') }}</span>
               <label
                 v-if="healLimitOpen && getCurrentPlayerData?.heroFlags?.choosesHealing"
                 class="hud-chip heal-limit-label"
@@ -5562,6 +5573,11 @@ const handleDeclareSprint = async () => {
     loading.value = false;
   }
 };
+
+// Argentus "Astral Walking": told on his turn while he can still move (the moves through walls are plain marks)
+const astralHint = computed(() => isPlayerTurn.value
+  && getCurrentPlayerData.value?.heroFlags?.walksThroughWalls === true
+  && (gameData.value?.state?.availablePlaces?.moveTo || []).length > 0);
 
 // Lady Lorraine "Listening": the next placed tile is explored without entering it
 const isListenMode = ref(false);

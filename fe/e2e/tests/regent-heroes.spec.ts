@@ -92,7 +92,8 @@ test.describe('Regent heroes', () => {
     await page.getByTestId(`lightning-target-${warrior}`).click();
     await waitForFight(page);
     await expect(page.locator('.victory-title')).toBeVisible();
-    await expect(page.locator('.battle-overlay .score__detail').first()).toContainText('+3');
+    await expect(page.getByTestId('sword-master-note')).toBeVisible();
+    await expect(page.locator('.battle-overlay .score__detail').first()).toContainText('Sword Master +1');
     await snap(page, SPEC, 'battle-mage-sword-master-win');
     await takeReward(page);
     await waitForFightClosed(page);

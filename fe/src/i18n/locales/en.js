@@ -94,6 +94,8 @@ export default {
     waitingNext: 'Your turn is next',
     and: 'and',
     sprintNotice: 'Sprint — up to 8 moves, no exploring',
+    listenNotice: 'Listening — the next tile you place is heard, not entered',
+    astralNotice: 'Astral Walking — you may step through walls',
     healUpTo: 'Berserk — heal up to',
     healFull: '5 HP (full)',
     ring: {
@@ -388,6 +390,7 @@ export default {
       sacrifice: '{skill} 1 HP paid for +1 strength',
       affinity: '{skill} The spells stay in your inventory',
       farseeing: '{skill} +1 — fought on the first move of the turn',
+      swordMaster: '{skill} +{n} — a sword counts 3 in his hands',
       berserk: '{skill} +{bonus} — fighting on {range} HP',
       bearAttack: '{skill} A 1 counted as 6 | {skill} {n} ones counted as 6',
       lightningRetreat: '{skill} Choose where to retreat on the panel by the action rings',
