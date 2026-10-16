@@ -238,6 +238,9 @@ const joinTable = (table) => router.push(table.isMine ? `/game/${table.gameId}` 
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* in a lobby that fits the screen the panel takes what is left and the list scrolls inside */
+  flex: 0 1 auto;
+  min-height: 0;
 }
 
 .tables-panel__open {
@@ -322,6 +325,7 @@ const joinTable = (table) => router.push(table.isMine ? `/game/${table.gameId}` 
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
 }
 
 .open-tables__list {
@@ -332,6 +336,7 @@ const joinTable = (table) => router.push(table.isMine ? `/game/${table.gameId}` 
   flex-direction: column;
   gap: 6px;
   max-height: 240px;
+  min-height: 46px;
   overflow-y: auto;
 }
 

@@ -52,24 +52,24 @@ Authority: user answers > CLAUDE.md (Torchlight, no emoji, debug only in dev, i1
 ## Tasks
 
 ### Phase 1: Generate
-- [ ] Task 1: `tools/audio/` package. Contents:
+- [x] Task 1: `tools/audio/` package. Contents:
   - `config.py` (keys, paths);
   - `lyria.py` and `elevenlabs.py` clients (retries with backoff, a refusal reported, never the key);
   - `postprocess.py` (ffmpeg trim / fade / loudnorm / loop crossfade / encode, measured LUFS returned);
   - `manifest.py`, `pipeline.py`, `__main__.py` (`list`, `probe`, `generate`);
   - `requirements.txt`, `.env.example`, `.gitignore` for `out/` and `.env`.
-- [ ] Task 2: The style bible (`style/style.json`, `STYLE.md`) and the manifest (`assets.json`) with every track and cue in the table above. Prompts in English, instrumental, the mood per situation.
-- [ ] Task 3: `probe` against both APIs (the costs printed). Then `generate` everything into `fe/public/audio/`, listen-check by loudness and length from the log, regenerate outliers. Commit the audio and `generated.json`.
+- [x] Task 2: The style bible (`style/style.json`, `STYLE.md`) and the manifest (`assets.json`) with every track and cue in the table above. Prompts in English, instrumental, the mood per situation.
+- [x] Task 3: `probe` against both APIs (the costs printed). Then `generate` everything into `fe/public/audio/`, listen-check by loudness and length from the log, regenerate outliers. Commit the audio and `generated.json`.
 
 ### Phase 2: The engine
-- [ ] Task 4: `fe/src/services/audio/` (`audioEngine.js`: context, buses, unlock, cue playback with variants and the 60 ms dedupe, music crossfade, settings, the dev cue log; `cues.js`: the cue → files map and the situation → track map). Remove `musicService.js`; move its callers (HomeView, GameView, RulesView, MusicToggle).
-- [ ] Task 5: `useMusicSituation` (route + fight scene + results + Lord Karak) and the sound ring with the popover (`fe/src/components/ui/SoundControl.vue`, replacing `MusicToggle.vue` on every page; keeps the `.music-toggle` class); i18n en/ru/pl; `npm run i18n:check`.
-- [ ] Task 6: The delegated interface sounds (clicks on `.btn`, iron rings, toggles; opening/closing plaques and the Journal; refusals through `showActionNotice`).
+- [x] Task 4: `fe/src/services/audio/` (`audioEngine.js`: context, buses, unlock, cue playback with variants and the 60 ms dedupe, music crossfade, settings, the dev cue log; `cues.js`: the cue → files map and the situation → track map). Remove `musicService.js`; move its callers (HomeView, GameView, RulesView, MusicToggle).
+- [x] Task 5: `useMusicSituation` (route + fight scene + results + Lord Karak) and the sound ring with the popover (`fe/src/components/ui/SoundControl.vue`, replacing `MusicToggle.vue` on every page; keeps the `.music-toggle` class); i18n en/ru/pl; `npm run i18n:check`.
+- [x] Task 6: The delegated interface sounds (clicks on `.btn`, iron rings, toggles; opening/closing plaques and the Journal; refusals through `showActionNotice`).
 
 ### Phase 3: The game's sounds, e2e, docs
-- [ ] Task 7: `fe/src/composables/useGameSounds.js` hooked into GameView: the field, the fight scene (the dice when they are thrown, the result at the slam), pickups, spells, the curse, turns, the online countdown; the AI and online playback through the same cues.
-- [ ] Task 8: `fe/e2e/tests/audio.spec.ts` (as in the table), then every topic spec; screenshots of the popover (desktop and phone) reviewed.
-- [ ] Task 9: Docs:
+- [x] Task 7: `fe/src/composables/useGameSounds.js` hooked into GameView: the field, the fight scene (the dice when they are thrown, the result at the slam), pickups, spells, the curse, turns, the online countdown; the AI and online playback through the same cues.
+- [ ] Task 8: `fe/e2e/tests/audio.spec.ts` (as in the table), then every topic spec; screenshots of the popover (desktop and phone) reviewed. (audio.spec.ts: 4/4 green; the other topic specs and the new pages lobby check wait: e2e paused by the user while they play)
+- [x] Task 9: Docs:
   - `tools/audio/README.md` (setup, keys, commands, costs seen in `probe`, licensing);
   - README (the sound in the game);
   - CLAUDE.md (the engine, cues, how to add one);

@@ -108,10 +108,30 @@
           </button>
         </form>
       </div>
-      <span class="lobby-caption">{{ t('lobby.prepare') }}</span>
+      <!-- Two ways down, one tab each, so the panel fits the screen: against the AI, or at a table online -->
+      <div
+        class="lobby-tabs lobby-caption"
+        role="tablist"
+        :aria-label="t('lobby.prepare')"
+      >
+        <button
+          v-for="name in LOBBY_TABS"
+          :key="name"
+          type="button"
+          role="tab"
+          class="lobby-tab"
+          :class="{ 'lobby-tab--active': tab === name }"
+          :aria-selected="tab === name"
+          :data-testid="`lobby-tab-${name}`"
+          @click="tab = name"
+        >
+          {{ t(`lobby.tabs.${name}`) }}
+        </button>
+      </div>
 
       <!-- Hero selection (hero skills from the Karak board game) -->
       <div
+        v-if="tab === 'ai'"
         class="hero-picker"
         data-testid="hero-picker"
       >
@@ -215,56 +235,56 @@
             </div>
           </transition>
         </template>
+      </div>
 
-        <!-- The options, one row each -->
-        <div class="lobby-options">
-          <label
-            class="regent-toggle random-heroes-toggle"
-            data-testid="random-heroes-toggle"
+      <!-- The options, one row each (a game against the AI and a table alike) -->
+      <div class="lobby-options">
+        <label
+          class="regent-toggle random-heroes-toggle"
+          data-testid="random-heroes-toggle"
+        >
+          <input
+            v-model="randomHeroes"
+            type="checkbox"
+            data-testid="random-heroes-toggle-input"
           >
-            <input
-              v-model="randomHeroes"
-              type="checkbox"
-              data-testid="random-heroes-toggle-input"
-            >
-            <span class="regent-toggle-text">
-              <strong>{{ t('lobby.randomHeroes') }}</strong>
-              <span>{{ t('lobby.randomHeroesHint') }}</span>
-            </span>
-          </label>
-          <!-- Karak: Regent expansion: mixes the Lord Karak rooms and the new monsters into the game -->
-          <label
-            class="regent-toggle"
-            data-testid="regent-toggle"
+          <span class="regent-toggle-text">
+            <strong>{{ t('lobby.randomHeroes') }}</strong>
+            <span>{{ t('lobby.randomHeroesHint') }}</span>
+          </span>
+        </label>
+        <!-- Karak: Regent expansion: mixes the Lord Karak rooms and the new monsters into the game -->
+        <label
+          class="regent-toggle"
+          data-testid="regent-toggle"
+        >
+          <input
+            v-model="regentExpansion"
+            type="checkbox"
+            data-testid="regent-toggle-input"
           >
-            <input
-              v-model="regentExpansion"
-              type="checkbox"
-              data-testid="regent-toggle-input"
-            >
-            <span class="regent-toggle-text">
-              <strong>{{ t('lobby.regent') }}</strong>
-              <span>{{ t('lobby.regentHint') }}</span>
-            </span>
-          </label>
-          <!-- Lord Karak variant (needs Regent): the weakest hero becomes Lord Karak at the fifth Lord Karak room -->
-          <label
-            class="regent-toggle lord-karak-toggle"
-            :class="{ 'regent-toggle--off': !regentExpansion }"
-            data-testid="lord-karak-toggle"
+          <span class="regent-toggle-text">
+            <strong>{{ t('lobby.regent') }}</strong>
+            <span>{{ t('lobby.regentHint') }}</span>
+          </span>
+        </label>
+        <!-- Lord Karak variant (needs Regent): the weakest hero becomes Lord Karak at the fifth Lord Karak room -->
+        <label
+          class="regent-toggle lord-karak-toggle"
+          :class="{ 'regent-toggle--off': !regentExpansion }"
+          data-testid="lord-karak-toggle"
+        >
+          <input
+            v-model="lordKarakVariant"
+            type="checkbox"
+            :disabled="!regentExpansion"
+            data-testid="lord-karak-toggle-input"
           >
-            <input
-              v-model="lordKarakVariant"
-              type="checkbox"
-              :disabled="!regentExpansion"
-              data-testid="lord-karak-toggle-input"
-            >
-            <span class="regent-toggle-text">
-              <strong>{{ t('lobby.lordKarak') }}</strong>
-              <span>{{ regentExpansion ? t('lobby.lordKarakHint') : t('lobby.lordKarakNeedsRegent') }}</span>
-            </span>
-          </label>
-        </div>
+          <span class="regent-toggle-text">
+            <strong>{{ t('lobby.lordKarak') }}</strong>
+            <span>{{ regentExpansion ? t('lobby.lordKarakHint') : t('lobby.lordKarakNeedsRegent') }}</span>
+          </span>
+        </label>
       </div>
 
       <div
@@ -317,7 +337,7 @@
         </a>
       </form>
       <button
-        v-else
+        v-else-if="tab === 'ai'"
         type="button"
         class="primary-button btn btn--ember btn--lg"
         :disabled="loading || !account"
@@ -328,6 +348,7 @@
 
       <!-- Online play: a table for friends, the open tables -->
       <TablesPanel
+        v-if="tab === 'online'"
         :disabled="!account"
         :regent="regentExpansion"
         :lord-karak="lordKarakVariant"
@@ -405,6 +426,16 @@ import { heroName, HERO_SKILL_KEYS } from '@/i18n/names';
 const router = useRouter();
 const route = useRoute();
 useMusicSituation('lobby');
+
+// The panel's tab, kept for this browser; an online flow (a table link, Google) may open on its own
+const LOBBY_TABS = ['ai', 'online'];
+const readTab = () => {
+  try { return localStorage.getItem('lobby.tab'); } catch { return null; }
+};
+const tab = ref(LOBBY_TABS.includes(readTab()) ? readTab() : 'ai');
+watch(tab, (name) => {
+  try { localStorage.setItem('lobby.tab', name); } catch { /* private mode */ }
+});
 const { t } = useI18n();
 const errorMessage = ref('');
 const loading = ref(false);
@@ -1070,6 +1101,39 @@ const createNewGame = async () => {
   box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 4px var(--iron-edge), 0 0 16px rgba(var(--ember-rgb), 0.6);
 }
 
+/* the two ways down: tabs in the caption's letters, an ember underline on the open one */
+.lobby-tabs {
+  display: flex;
+  gap: 26px;
+  border-bottom: 1px solid rgba(234, 220, 192, 0.14);
+}
+
+.lobby-tab {
+  margin: 0 0 -1px;
+  padding: 0 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.lobby-tab:hover,
+.lobby-tab:focus-visible {
+  outline: none;
+  color: var(--text-secondary);
+}
+
+.lobby-tab--active,
+.lobby-tab--active:hover {
+  color: var(--text-accent);
+  border-bottom-color: var(--color-primary);
+}
+
 /* the options: checkbox rows divided by hairlines */
 .lobby-options {
   display: flex;
@@ -1194,6 +1258,30 @@ const createNewGame = async () => {
   }
 }
 
+/* ===== Desktop: the lobby fits the screen, no page scroll; a long list of tables scrolls inside.
+   Below 700px of height the page scrolls as before, so nothing is cut off ===== */
+@media (min-width: 1025px) and (min-height: 700px) {
+  .home-container {
+    height: 100vh;
+    height: 100dvh;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .game-panel {
+    min-height: 0;
+    max-height: calc(100% - 48px);
+  }
+
+  .game-panel > * {
+    flex-shrink: 0;
+  }
+
+  .game-panel > .tables-panel {
+    flex-shrink: 1;
+  }
+}
+
 /* ===== Narrow screens: the title above, the panel below, the dungeon behind both ===== */
 /* Desktop screens up to ~820px high: the right column tightens so "Descend against the AI" stays on screen */
 @media (min-width: 1025px) and (max-height: 820px) {
@@ -1204,6 +1292,7 @@ const createNewGame = async () => {
 
   .game-panel {
     margin-top: 24px;
+    max-height: calc(100% - 24px);
     gap: 12px;
   }
 

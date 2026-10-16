@@ -106,6 +106,7 @@ export default {
   },
   lobby: {
     prepare: 'Przygotowanie do zejścia',
+    tabs: { ai: 'Przeciw SI', online: 'Online' },
     description: 'Do lochów pod górą — po skarby i smoczy skarbiec.',
     heroesRandom: 'Bohaterowie są losowani',
     chooseHero: 'Wybierz bohatera',

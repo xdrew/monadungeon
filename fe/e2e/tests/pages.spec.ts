@@ -14,9 +14,27 @@ test.describe('Pages', () => {
     watchPage(page);
     await page.goto(API_URL);
     await page.evaluate(() => {
-      for (const key of ['randomHeroes', 'regentExpansion', 'lordKarakVariant', 'selectedHero', 'locale']) localStorage.removeItem(key);
+      for (const key of ['randomHeroes', 'regentExpansion', 'lordKarakVariant', 'selectedHero', 'locale', 'lobby.tab']) localStorage.removeItem(key);
     });
     await page.reload();
+  });
+
+  test('the lobby fits a 1280x720 screen: two tabs, no page scroll, the open tables scroll inside', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const pageScrolls = () => page.evaluate(() => [document.documentElement, document.body]
+      .some((el) => el.scrollHeight > el.clientHeight + 1));
+    await expect(page.getByTestId('lobby-tab-ai')).toHaveAttribute('aria-selected', 'true');
+    await page.getByTestId('random-heroes-toggle-input').uncheck(); // the tallest panel: the hero roster and card
+    await expect(page.getByTestId('hero-card')).toBeVisible();
+    expect(await pageScrolls()).toBe(false);
+    await page.getByTestId('lobby-tab-online').click();
+    await expect(page.getByTestId('tables-panel')).toBeVisible();
+    await expect(page.getByTestId('hero-picker')).toHaveCount(0);
+    expect(await pageScrolls()).toBe(false);
+    await snap(page, SPEC, 'lobby-online');
+    console.log('[spec] the tab is kept for this browser');
+    await page.reload();
+    await expect(page.getByTestId('lobby-tab-online')).toHaveAttribute('aria-selected', 'true');
   });
 
   test('lobby options and the hero roster', async ({ page }) => {

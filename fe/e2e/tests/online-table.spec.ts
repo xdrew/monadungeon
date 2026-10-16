@@ -46,6 +46,7 @@ test.describe('Online: tables', () => {
     await expect(page.locator('[data-testid="table-seat"][data-free="true"]')).toHaveCount(1);
 
     console.log('[spec] Bea sees the table in the list without a reload and joins it');
+    await bea.getByTestId('lobby-tab-online').click();
     const row = bea.locator(`[data-testid="open-table-row"][data-game-id="${gameId}"]`);
     await expect(row).toContainText('Ada', { timeout: 10000 });
     await expect(row).toContainText('1/2');
@@ -114,6 +115,7 @@ test.describe('Online: tables', () => {
   test('the host seats the AI; the server plays its turn and every browser plays it back', async ({ page, browser }) => {
     await guest(page, 'Host');
     console.log('[spec] the host opens a three-seat table from the start screen (random heroes)');
+    await page.getByTestId('lobby-tab-online').click();
     const random = page.getByTestId('random-heroes-toggle-input');
     if (!(await random.isChecked())) await random.check();
     await page.getByTestId('open-table').click();

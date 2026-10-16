@@ -107,6 +107,7 @@ export default {
   },
   lobby: {
     prepare: 'Prepare the descent',
+    tabs: { ai: 'Against the AI', online: 'Online' },
     description: 'Into the dungeon under the mountain — for treasure, and the Dragon\'s hoard.',
     heroesRandom: 'Heroes are dealt at random',
     chooseHero: 'Choose your hero',
