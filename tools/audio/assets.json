@@ -47,7 +47,7 @@
     {"id": "sneak", "kind": "sfx", "seconds": 0.9, "prompt": "Sneaking past a monster: soft cloth rustle and careful light footsteps on stone."},
 
     {"id": "end_turn", "kind": "sfx", "seconds": 0.8, "prompt": "A heavy wooden token placed firmly on a board, then a short low thud, ending a turn."},
-    {"id": "your_turn", "kind": "sfx", "seconds": 1.2, "prompt": "Two soft notes on a small brass bell, rising, calling a player to the table."},
+    {"id": "your_turn", "kind": "sfx", "seconds": 1.2, "prompt": "A short gentle low harp glissando of three notes, soft and warm, calm and welcoming. No bell, no chime, no high pitch.", "influence": 0.8},
     {"id": "turn_tick", "kind": "sfx", "seconds": 0.5, "prompt": "A single tick of an old mechanical clock, short and dry."},
     {"id": "table_join", "kind": "sfx", "seconds": 0.8, "prompt": "A wooden chair pulled up to a table, a short scrape."},
     {"id": "game_start", "kind": "sfx", "seconds": 2.0, "prompt": "A heavy dungeon door of iron and oak creaking open, its bolt sliding."},

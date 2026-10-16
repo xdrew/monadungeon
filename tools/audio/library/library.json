@@ -48,5 +48,187 @@
       "seconds": 149.32,
       "kept_at": "2026-10-16T18:51:11+00:00"
     }
+  },
+  "your_turn": {
+    "lute-1": {
+      "file": "tools/audio/library/your_turn/lute-1.mp3",
+      "label": {
+        "en": "Two soft low lute notes, rising",
+        "ru": "Две мягкие низкие ноты лютни вверх",
+        "pl": "Dwie miękkie niskie nuty lutni"
+      },
+      "prompt": "Two soft low plucked lute notes, rising gently, warm and unhurried, like a friendly nod that it is your turn. Mellow, no bell, no high tones, no urgency.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "lute-2": {
+      "file": "tools/audio/library/your_turn/lute-2.mp3",
+      "label": {
+        "en": "Two soft low lute notes, rising",
+        "ru": "Две мягкие низкие ноты лютни вверх",
+        "pl": "Dwie miękkie niskie nuty lutni"
+      },
+      "prompt": "Two soft low plucked lute notes, rising gently, warm and unhurried, like a friendly nod that it is your turn. Mellow, no bell, no high tones, no urgency.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "harp-2": {
+      "file": "tools/audio/library/your_turn/harp-2.mp3",
+      "label": {
+        "en": "A short low harp glide",
+        "ru": "Короткий низкий перебор арфы",
+        "pl": "Krótkie niskie glissando harfy"
+      },
+      "prompt": "A short gentle low harp glissando of three notes, soft and warm, calm and welcoming. No bell, no chime, no high pitch.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "chord-1": {
+      "file": "tools/audio/library/your_turn/chord-1.mp3",
+      "label": {
+        "en": "One warm low chord, soft mallets",
+        "ru": "Один тёплый низкий аккорд мягкими молоточками",
+        "pl": "Jeden ciepły niski akord"
+      },
+      "prompt": "One soft warm low chord on a felt piano or a dulcimer played with soft mallets, fading slowly, calm. No bell, no ping, no high tones.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "chord-2": {
+      "file": "tools/audio/library/your_turn/chord-2.mp3",
+      "label": {
+        "en": "One warm low chord, soft mallets",
+        "ru": "Один тёплый низкий аккорд мягкими молоточками",
+        "pl": "Jeden ciepły niski akord"
+      },
+      "prompt": "One soft warm low chord on a felt piano or a dulcimer played with soft mallets, fading slowly, calm. No bell, no ping, no high tones.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "horn-1": {
+      "file": "tools/audio/library/your_turn/horn-1.mp3",
+      "label": {
+        "en": "A soft distant low horn, two notes",
+        "ru": "Мягкий далёкий низкий рог, две ноты",
+        "pl": "Miękki daleki niski róg"
+      },
+      "prompt": "A very soft distant low horn call of two notes, mellow and calm, like a gentle signal from far away in a dungeon. Quiet, warm, no fanfare, no high notes.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "horn-2": {
+      "file": "tools/audio/library/your_turn/horn-2.mp3",
+      "label": {
+        "en": "A soft distant low horn, two notes",
+        "ru": "Мягкий далёкий низкий рог, две ноты",
+        "pl": "Miękki daleki niski róg"
+      },
+      "prompt": "A very soft distant low horn call of two notes, mellow and calm, like a gentle signal from far away in a dungeon. Quiet, warm, no fanfare, no high notes.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "token-1": {
+      "file": "tools/audio/library/your_turn/token-1.mp3",
+      "label": {
+        "en": "A wooden token slid to you, a soft knock",
+        "ru": "Деревянную фишку подвинули к тебе, мягкий стук",
+        "pl": "Drewniany żeton przesunięty do ciebie"
+      },
+      "prompt": "A heavy wooden game token slid across a wooden board toward the player and set down with a soft warm knock. Low and calm, no bell, no click.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.18,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "token-2": {
+      "file": "tools/audio/library/your_turn/token-2.mp3",
+      "label": {
+        "en": "A wooden token slid to you, a soft knock",
+        "ru": "Деревянную фишку подвинули к тебе, мягкий стук",
+        "pl": "Drewniany żeton przesunięty do ciebie"
+      },
+      "prompt": "A heavy wooden game token slid across a wooden board toward the player and set down with a soft warm knock. Low and calm, no bell, no click.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.1,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "bowl-1": {
+      "file": "tools/audio/library/your_turn/bowl-1.mp3",
+      "label": {
+        "en": "A large singing bowl, low and soft",
+        "ru": "Большая поющая чаша, низко и мягко",
+        "pl": "Duża misa dźwiękowa, nisko"
+      },
+      "prompt": "A large bronze singing bowl touched very softly with a felt mallet: a low warm hum that swells and fades, no bright ring, no high overtones.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "bowl-2": {
+      "file": "tools/audio/library/your_turn/bowl-2.mp3",
+      "label": {
+        "en": "A large singing bowl, low and soft",
+        "ru": "Большая поющая чаша, низко и мягко",
+        "pl": "Duża misa dźwiękowa, nisko"
+      },
+      "prompt": "A large bronze singing bowl touched very softly with a felt mallet: a low warm hum that swells and fades, no bright ring, no high overtones.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "flute-1": {
+      "file": "tools/audio/library/your_turn/flute-1.mp3",
+      "label": {
+        "en": "Two soft low wooden flute notes",
+        "ru": "Две мягкие низкие ноты деревянной флейты",
+        "pl": "Dwie miękkie niskie nuty fletu"
+      },
+      "prompt": "Two soft low notes on a wooden flute, breathy and warm, rising, calm and friendly. No high whistle, no bell, no urgency.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "flute-2": {
+      "file": "tools/audio/library/your_turn/flute-2.mp3",
+      "label": {
+        "en": "Two soft low wooden flute notes",
+        "ru": "Две мягкие низкие ноты деревянной флейты",
+        "pl": "Dwie miękkie niskie nuty fletu"
+      },
+      "prompt": "Two soft low notes on a wooden flute, breathy and warm, rising, calm and friendly. No high whistle, no bell, no urgency.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 1.23,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "drum-1": {
+      "file": "tools/audio/library/your_turn/drum-1.mp3",
+      "label": {
+        "en": "Two soft hand taps on a frame drum",
+        "ru": "Два мягких удара ладонью по бубну",
+        "pl": "Dwa miękkie uderzenia dłonią w bęben"
+      },
+      "prompt": "Two soft low taps on a frame drum with the hand, warm and round, like a calm knock on the table saying your turn. No bell, no high tones.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.5,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    },
+    "drum-2": {
+      "file": "tools/audio/library/your_turn/drum-2.mp3",
+      "label": {
+        "en": "Two soft hand taps on a frame drum",
+        "ru": "Два мягких удара ладонью по бубну",
+        "pl": "Dwa miękkie uderzenia dłonią w bęben"
+      },
+      "prompt": "Two soft low taps on a frame drum with the hand, warm and round, like a calm knock on the table saying your turn. No bell, no high tones.",
+      "model": "eleven_text_to_sound_v2",
+      "seconds": 0.52,
+      "kept_at": "2026-10-16T18:59:49+00:00"
+    }
   }
 }

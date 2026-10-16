@@ -966,17 +966,16 @@
     "kind": "sfx",
     "provider": "elevenlabs",
     "model": "eleven_text_to_sound_v2",
-    "call_s": 1.6,
-    "credits": 12,
-    "request_id": null,
-    "raw_s": 1.23,
+    "prompt_influence": 0.8,
+    "raw_s": 1.31,
     "seconds": 1.23,
-    "lufs_before": -14.2,
-    "lufs": -16.4,
-    "peak_dbtp": -3.6,
+    "lufs_before": -23.5,
+    "lufs": -16.7,
+    "peak_dbtp": -1.5,
     "loop": false,
     "out": "fe/public/audio/sfx/your_turn.mp3",
-    "prompt_sha256": "1a14eed92dd6aeacd4dc096d88637aefa22a11755f68afa05d5fa4e926ff6ccb",
-    "generated_at": "2026-10-16T16:28:54+00:00"
+    "prompt_sha256": "9753185e4d5a9fe2518380cec3eecf730091742c864f2db232a6ddf3137e65b5",
+    "generated_at": "2026-10-16T18:59:49+00:00",
+    "note": "chosen by ear on the sound bench: take #3 (A short low harp glide)"
   }
 }

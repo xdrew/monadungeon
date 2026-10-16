@@ -1,0 +1,22 @@
+{
+  "seconds": 1.3,
+  "influence": 0.8,
+  "ideas": [
+    {"key": "lute", "prompt": "Two soft low plucked lute notes, rising gently, warm and unhurried, like a friendly nod that it is your turn. Mellow, no bell, no high tones, no urgency.",
+     "label": {"en": "Two soft low lute notes, rising", "ru": "Две мягкие низкие ноты лютни вверх", "pl": "Dwie miękkie niskie nuty lutni"}},
+    {"key": "harp", "prompt": "A short gentle low harp glissando of three notes, soft and warm, calm and welcoming. No bell, no chime, no high pitch.",
+     "label": {"en": "A short low harp glide", "ru": "Короткий низкий перебор арфы", "pl": "Krótkie niskie glissando harfy"}},
+    {"key": "chord", "prompt": "One soft warm low chord on a felt piano or a dulcimer played with soft mallets, fading slowly, calm. No bell, no ping, no high tones.",
+     "label": {"en": "One warm low chord, soft mallets", "ru": "Один тёплый низкий аккорд мягкими молоточками", "pl": "Jeden ciepły niski akord"}},
+    {"key": "horn", "prompt": "A very soft distant low horn call of two notes, mellow and calm, like a gentle signal from far away in a dungeon. Quiet, warm, no fanfare, no high notes.",
+     "label": {"en": "A soft distant low horn, two notes", "ru": "Мягкий далёкий низкий рог, две ноты", "pl": "Miękki daleki niski róg"}},
+    {"key": "token", "prompt": "A heavy wooden game token slid across a wooden board toward the player and set down with a soft warm knock. Low and calm, no bell, no click.",
+     "label": {"en": "A wooden token slid to you, a soft knock", "ru": "Деревянную фишку подвинули к тебе, мягкий стук", "pl": "Drewniany żeton przesunięty do ciebie"}},
+    {"key": "bowl", "prompt": "A large bronze singing bowl touched very softly with a felt mallet: a low warm hum that swells and fades, no bright ring, no high overtones.",
+     "label": {"en": "A large singing bowl, low and soft", "ru": "Большая поющая чаша, низко и мягко", "pl": "Duża misa dźwiękowa, nisko"}},
+    {"key": "flute", "prompt": "Two soft low notes on a wooden flute, breathy and warm, rising, calm and friendly. No high whistle, no bell, no urgency.",
+     "label": {"en": "Two soft low wooden flute notes", "ru": "Две мягкие низкие ноты деревянной флейты", "pl": "Dwie miękkie niskie nuty fletu"}},
+    {"key": "drum", "prompt": "Two soft low taps on a frame drum with the hand, warm and round, like a calm knock on the table saying your turn. No bell, no high tones.",
+     "label": {"en": "Two soft hand taps on a frame drum", "ru": "Два мягких удара ладонью по бубну", "pl": "Dwa miękkie uderzenia dłonią w bęben"}}
+  ]
+}
