@@ -22,7 +22,9 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  timeout: 10000
+  timeout: 10000,
+  // the session cookie (HttpOnly, same origin) says whose seats these are
+  withCredentials: true
 });
 
 // Game related API methods

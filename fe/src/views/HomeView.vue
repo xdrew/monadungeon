@@ -26,6 +26,57 @@
     </header>
 
     <main class="game-panel">
+      <!-- Who plays: a name once (a guest account behind a cookie), then "You: Name" with a pen -->
+      <div
+        v-if="account"
+        class="account-line"
+        data-testid="account-line"
+      >
+        <template v-if="!renaming">
+          <span class="account-line__label">{{ t('account.you') }}</span>
+          <strong class="account-line__name">{{ account.name }}</strong>
+          <button
+            type="button"
+            class="account-line__pen"
+            :title="t('account.rename')"
+            :aria-label="t('account.rename')"
+            data-testid="account-rename"
+            @click="startRename"
+          >
+            <GameIcon
+              name="pen"
+              :size="15"
+            />
+          </button>
+        </template>
+        <form
+          v-else
+          class="account-line__form"
+          @submit.prevent="saveRename"
+        >
+          <input
+            v-model="nameInput"
+            class="name-input"
+            maxlength="24"
+            data-testid="account-name-input"
+            :aria-label="t('account.askName')"
+          >
+          <button
+            type="submit"
+            class="btn btn--ember btn--sm"
+            data-testid="account-save"
+          >
+            {{ t('account.save') }}
+          </button>
+          <button
+            type="button"
+            class="btn btn--ghost btn--sm"
+            @click="renaming = false"
+          >
+            {{ t('common.cancel') }}
+          </button>
+        </form>
+      </div>
       <span class="lobby-caption">{{ t('lobby.prepare') }}</span>
 
       <!-- Hero selection (hero skills from the Karak board game) -->
@@ -185,10 +236,40 @@
         </div>
       </div>
 
+      <form
+        v-if="accountChecked && !account"
+        class="name-card"
+        data-testid="name-card"
+        @submit.prevent="saveName"
+      >
+        <label
+          class="name-card__ask"
+          for="name-card-input"
+        >{{ t('account.askName') }}</label>
+        <div class="name-card__row">
+          <input
+            id="name-card-input"
+            v-model="nameInput"
+            class="name-input"
+            maxlength="24"
+            data-testid="name-card-input"
+          >
+          <button
+            type="submit"
+            class="btn btn--ember"
+            :disabled="savingName"
+            data-testid="name-card-save"
+          >
+            {{ t('account.enter') }}
+          </button>
+        </div>
+        <span class="name-card__hint">{{ nameErrorText || t('account.hint') }}</span>
+      </form>
       <button
+        v-else
         type="button"
         class="primary-button btn btn--ember btn--lg"
-        :disabled="loading"
+        :disabled="loading || !account"
         @click="createNewGame"
       >
         {{ t('lobby.playAi') }}
@@ -251,6 +332,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { gameApi } from '@/services/api';
+import { accountApi, nameError } from '@/services/account';
 import MusicToggle from '@/components/game/MusicToggle.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import ThemeLogo from '@/components/ThemeLogo.vue';
@@ -396,7 +478,50 @@ const generateRandomId = () => {
 // Start the lobby music on mount
 onMounted(() => {
   musicService.init('/music/game-theme.mp3');
+  loadAccount();
 });
+
+// ===== Who plays: the guest account =====
+const account = ref(null);
+const accountChecked = ref(false);
+const nameInput = ref(accountApi.suggestName());
+const nameErrorText = ref('');
+const savingName = ref(false);
+const renaming = ref(false);
+const loadAccount = async () => {
+  try {
+    account.value = await accountApi.me();
+  } catch (err) {
+    console.warn('[account] could not load the account:', err?.message || err);
+  } finally {
+    accountChecked.value = true;
+  }
+};
+const saveName = async () => {
+  if (savingName.value) return;
+  savingName.value = true;
+  nameErrorText.value = '';
+  try {
+    account.value = await accountApi.createGuest(nameInput.value);
+    console.info('[account] signed in as a guest');
+  } catch (err) {
+    nameErrorText.value = nameError(err) ? t('account.badName') : t('account.failed');
+  } finally {
+    savingName.value = false;
+  }
+};
+const startRename = () => {
+  nameInput.value = account.value?.name || '';
+  renaming.value = true;
+};
+const saveRename = async () => {
+  try {
+    account.value = await accountApi.rename(nameInput.value);
+    renaming.value = false;
+  } catch (err) {
+    errorMessage.value = nameError(err) ? t('account.badName') : t('account.failed');
+  }
+};
 
 // Game creation
 const viewLeaderboard = () => {
@@ -550,6 +675,90 @@ const createNewGame = async () => {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.account-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.account-line__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.account-line__name {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 24px;
+  color: var(--text-heading);
+}
+
+.account-line__pen {
+  display: inline-flex;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--text-accent);
+}
+
+.account-line__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.name-input {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--iron);
+  border-radius: 2px;
+  background: #0c0806;
+  color: var(--text-heading);
+  font-family: var(--font-body);
+  font-size: 18px;
+}
+
+.name-input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* the name card: in the place of the big button until the player has a name */
+.name-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid rgba(var(--ember-rgb), 0.45);
+  background: linear-gradient(180deg, rgba(20, 12, 8, 0.92) 0%, rgba(12, 7, 5, 0.92) 100%);
+  box-shadow: 0 0 26px rgba(var(--ember-rgb), 0.18);
+}
+
+.name-card__ask {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--text-heading);
+}
+
+.name-card__row {
+  display: flex;
+  gap: 10px;
+}
+
+.name-card__hint {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted);
 }
 
 .lobby-caption,

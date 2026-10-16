@@ -27,6 +27,16 @@ export default {
     rules: 'Rules',
     notFound: '404 Not Found'
   },
+  account: {
+    you: 'You',
+    rename: 'Change the name',
+    askName: 'What shall the dungeon call you?',
+    enter: 'Enter',
+    save: 'Save',
+    hint: 'Your name for the Hall of fame and the tables. You can change it later.',
+    badName: '2–24 letters, digits, spaces, - _ . please',
+    failed: 'Could not save the name, try again',
+  },
   lobby: {
     prepare: 'Prepare the descent',
     description: 'Into the dungeon under the mountain — for treasure, and the Dragon\'s hoard.',

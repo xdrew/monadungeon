@@ -101,7 +101,7 @@ Authority: user answers > CLAUDE.md > existing code. CLAUDE.md "No sign-in, no w
 - [x] Task 7: `src/src/Api/Leaderboard/Heroes/{Action,Response}.php`, `GET /api/leaderboard/heroes`: SQL over `player.player` joined to finished `game.game` (`status = 'finished'`, `winner_id`), grouped by hero (null hero → excluded), with `games`, `victories`, `winRate`; `sortBy` victories|games|win_rate. PHPUnit with a finished fixture game (the existing bus tester or a DBAL fixture, whichever the leaderboard tests use).
 
 ### Phase 4: Frontend, e2e, docs
-- [ ] Task 8:
+- [x] Task 8:
   - `fe/src/services/account.js` and axios `withCredentials`.
   - `HomeView.vue`: the name card when anonymous, "You: Name" with inline rename when signed in; the create flow sends no username.
   - Locale keys in en/ru/pl.

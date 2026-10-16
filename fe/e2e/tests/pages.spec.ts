@@ -100,7 +100,7 @@ test.describe('Pages', () => {
     await snap(page, SPEC, 'rules-regent');
 
     await page.locator('.rules-back').click();
-    await expect(page.locator('.primary-button')).toBeVisible();
+    await expect(page.locator('.lobby-caption')).toBeVisible();
   });
 
   test('Hall of fame', async ({ page }) => {
@@ -116,7 +116,7 @@ test.describe('Pages', () => {
     await expect(page.locator('th.victories .sort-indicator')).toBeVisible();
 
     await page.locator('.leaderboard-back').click();
-    await expect(page.locator('.primary-button')).toBeVisible();
+    await expect(page.locator('.lobby-caption')).toBeVisible();
   });
 
   test('404', async ({ page }) => {
@@ -124,7 +124,7 @@ test.describe('Pages', () => {
     await expect(page.locator('.not-found h1')).toHaveText(/404/);
     await snap(page, SPEC, 'not-found', { phone: true });
     await page.locator('.home-button').click();
-    await expect(page.locator('.primary-button')).toBeVisible();
+    await expect(page.locator('.lobby-caption')).toBeVisible();
   });
 
   test('a game against the AI from the lobby, with the AI playback', async ({ page }) => {
@@ -132,6 +132,10 @@ test.describe('Pages', () => {
     // the human plays without a hero, so no hero dialog (Fateweaver, Stealth…) interrupts the short turn
     await page.getByTestId('random-heroes-toggle').click();
     await page.getByTestId('hero-none').click();
+    // a fresh browser has no name yet: the name card stands in for the big button
+    await page.getByTestId('name-card-input').fill('Tester');
+    await page.getByTestId('name-card-save').click();
+    await expect(page.getByTestId('account-line')).toContainText('Tester');
     await page.locator('.primary-button').click();
     await expect(page).toHaveURL(/\/game\//, { timeout: 20000 });
     await GameHelpers.waitForGameLoad(page).catch(() => {});

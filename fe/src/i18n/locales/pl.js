@@ -26,6 +26,16 @@ export default {
     rules: 'Zasady',
     notFound: '404 — nie znaleziono'
   },
+  account: {
+    you: 'Ty',
+    rename: 'Zmień imię',
+    askName: 'Jak mają cię wołać w podziemiach?',
+    enter: 'Wejdź',
+    save: 'Zapisz',
+    hint: 'Imię do Galerii sławy i stołów. Możesz je potem zmienić.',
+    badName: '2–24 litery, cyfry, spacje, - _ .',
+    failed: 'Nie udało się zapisać imienia, spróbuj ponownie',
+  },
   lobby: {
     prepare: 'Przygotowanie do zejścia',
     description: 'Do lochów pod górą — po skarby i smoczy skarbiec.',
