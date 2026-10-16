@@ -243,6 +243,30 @@ test.describe('Mechanics', () => {
     await expect(notice).toHaveCount(0);
   });
 
+  test('The Journal holds every turn and closes with its cross', async ({ page, request }) => {
+    const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
+    await startGame(page, request, {
+      gameId,
+      tileSequence: ['fourSide', 'fourSide', 'fourSide', 'fourSide'],
+      playerConfigs: { [a]: {}, [b]: {} },
+    });
+    console.log('[spec] four turns: A places a corridor, B passes, A passes, B passes');
+    await placeAt(page, 0, -1);
+    await endTurn(page);
+    for (const id of [b, a, b]) {
+      await switchTo(page, id);
+      await endTurn(page);
+    }
+    await switchTo(page, a);
+    await page.locator('[data-hud-ring="journal"]').click();
+    const drawer = page.locator('.journal-drawer');
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator('.journal-drawer__turns > li')).toHaveCount(5, { timeout: 8000 });
+    await snap(page, SPEC, 'journal', { phone: true });
+    await drawer.locator('.journal-drawer__head button').click();
+    await expect(drawer).toHaveCount(0);
+  });
+
   test('The dragon ends the game: results, then the Hall of fame', async ({ page, request }) => {
     const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
     await startGame(page, request, {

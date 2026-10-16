@@ -1,5 +1,7 @@
 <template>
-  <!-- The Journal: every turn of the chronicle, in a side sheet (a bottom sheet on phones) -->
+  <!-- The Journal: every turn of the chronicle, in a side sheet (a bottom sheet on phones); moved to <body>
+       so the HUD's tools (sound, language…) cannot sit over its close button -->
+  <Teleport to="body">
   <transition name="journal">
     <aside
       v-if="open"
@@ -64,6 +66,7 @@
       </ol>
     </aside>
   </transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -96,7 +99,7 @@ watch(() => props.open, async (open) => {
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: calc(var(--z-hud) + 1);
+  z-index: var(--z-overlay);
   width: min(380px, 100vw);
   display: flex;
   flex-direction: column;

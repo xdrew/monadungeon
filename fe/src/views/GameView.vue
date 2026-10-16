@@ -1394,7 +1394,6 @@ const closeJournal = () => {
 
 // The chronicle (last lines, top right) and the Journal (every turn) read the same turns
 const chronicleLines = computed(() => chronicleTail(gameTurns.value, heroNameById, 4));
-const journalTurns = computed(() => (journalOpen.value ? chronicleTurns(gameTurns.value, heroNameById) : []));
 
 // "Your turn comes after Taia and Lorraine" while the others act
 const ringsWaitingText = computed(() => {
@@ -1716,6 +1715,37 @@ const handleCurseChoice = async (targetPlayerId) => {
 
 // Game turns for action log
 const gameTurns = ref([]);
+
+// The game state carries the last two turns only: the Journal loads the whole history when it opens
+// (and again when a turn ends while it is open), the live turns on top
+const journalHistory = ref([]);
+const mapTurn = (turn) => ({
+  turnId: turn.turnId || turn.turn_id,
+  turnNumber: turn.turnNumber || turn.turn_number,
+  playerId: turn.playerId || turn.player_id,
+  actions: turn.actions || [],
+  startTime: turn.startTime || turn.start_time,
+  endTime: turn.endTime || turn.end_time,
+  pendingItemPickup: turn.pendingItemPickup || turn.pending_item_pickup || false,
+});
+const loadJournalHistory = async () => {
+  try {
+    const data = await gameApi.getGameTurns(id.value);
+    journalHistory.value = (data?.turns || []).map(mapTurn);
+  } catch (err) {
+    console.warn('[journal] history not loaded:', err?.message || err);
+  }
+};
+watch(journalOpen, (open) => { if (open) loadJournalHistory(); });
+watch(() => gameTurns.value.length && gameTurns.value[gameTurns.value.length - 1]?.turnId, () => {
+  if (journalOpen.value) loadJournalHistory();
+});
+const journalTurnList = computed(() => {
+  const byId = new Map(journalHistory.value.map((turn) => [turn.turnId, turn]));
+  gameTurns.value.forEach((turn) => byId.set(turn.turnId, turn));
+  return [...byId.values()].sort((x, y) => (x.turnNumber || 0) - (y.turnNumber || 0));
+});
+const journalTurns = computed(() => (journalOpen.value ? chronicleTurns(journalTurnList.value, heroNameById) : []));
 
 // WebSocket for real-time updates
 // const socket = ref(null);

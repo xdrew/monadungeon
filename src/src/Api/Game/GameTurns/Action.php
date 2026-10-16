@@ -22,7 +22,8 @@ final readonly class Action
         try {
             $gameUuid = Uuid::fromString($gameId);
 
-            $gameTurns = $this->gameTurnRepository->getForApi($gameUuid);
+            // every turn of the game (the Journal); the game state itself carries only the last two
+            $gameTurns = $this->gameTurnRepository->getForApi($gameUuid, 10000);
 
             return Response::fromGameTurns($gameId, $gameTurns);
         } catch (GameNotFoundException $e) {
