@@ -129,6 +129,9 @@ test.describe('Pages', () => {
 
   test('a game against the AI from the lobby, with the AI playback', async ({ page }) => {
     test.setTimeout(240000);
+    // the human plays without a hero, so no hero dialog (Fateweaver, Stealth…) interrupts the short turn
+    await page.getByTestId('random-heroes-toggle').click();
+    await page.getByTestId('hero-none').click();
     await page.locator('.primary-button').click();
     await expect(page).toHaveURL(/\/game\//, { timeout: 20000 });
     await GameHelpers.waitForGameLoad(page).catch(() => {});
@@ -160,13 +163,17 @@ test.describe('Pages', () => {
     console.log('[spec] the AI turn plays back');
     await expect(playback).toBeVisible({ timeout: 30000 });
     await snap(page, SPEC, 'ai-playback', { phone: true, settleMs: 200 });
+    // slow first, so the playback lasts long enough to try the other speeds
+    let switched = 0;
     for (const label of ['Slow', 'Fast', 'Normal']) {
       const button = page.locator(`.speed-controls .speed-btn[aria-label="${label}"]`);
-      if (await button.isVisible().catch(() => false)) {
-        await button.click();
-        await expect(button).toHaveClass(/active/);
-      }
+      const clicked = await button.click({ timeout: 3000 }).then(() => true).catch(() => false);
+      if (!clicked) break; // the AI turn already ended
+      await expect(button).toHaveClass(/active/);
+      switched++;
     }
+    console.log(`[spec] speeds switched: ${switched}`);
+    expect(switched).toBeGreaterThan(0);
 
     console.log('[spec] the turn comes back to the human');
     await expect(myEndTurn.first()).toBeVisible({ timeout: 120000 });

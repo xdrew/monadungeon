@@ -146,7 +146,7 @@ Each test's sequence is written next to it as a comment table, as in the showcas
   - Each test gets its own `setupGame`: hero, `hp` and `inventory` presets, and a dice/tile/bag script with a comment table.
   - Assertions use the UI hook and the API state (HP, position, pack).
   - Snaps: every note, ring, banner and plaque.
-- [ ] Task 6: `fe/e2e/tests/regent-heroes.spec.ts`: Barbarian, Battle Mage, Acrobat, Ranger, with `regent: true`, as in the map.
+- [x] Task 6: `fe/e2e/tests/regent-heroes.spec.ts`: Barbarian, Battle Mage, Acrobat, Ranger, with `regent: true`, as in the map.
   - Same rules as task 5.
   - The heal-limit popover: select 4, end the turn on a fountain from a preset HP of 1, expect HP 4.
 
