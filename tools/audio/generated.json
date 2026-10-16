@@ -460,21 +460,20 @@
     "generated_at": "2026-10-16T16:28:14+00:00"
   },
   "lobby": {
-    "raw_s": 151.38,
-    "seconds": 138.89,
-    "lufs_before": -11.9,
-    "lufs": -18.5,
-    "peak_dbtp": -6.2,
-    "loop": true,
     "asset": "lobby",
     "kind": "music",
     "provider": "lyria",
     "model": "lyria-3.5",
-    "cost_usd": 0.08,
-    "mime": "audio/mpeg",
+    "raw_s": 149.45,
+    "seconds": 138.06,
+    "lufs_before": -12.0,
+    "lufs": -18.4,
+    "peak_dbtp": -6.4,
+    "loop": true,
     "out": "fe/public/audio/music/lobby.mp3",
-    "prompt_sha256": "5872bd581f54833908dfc0fc3e92536c54e8129567e017f78be62cb3d35bdf95",
-    "generated_at": "2026-10-16T15:23:33+00:00"
+    "prompt_sha256": "b7ffc64b3d0039ea5ea3e218e0800739b2016fc2d7caded190c39abc7449dbb0",
+    "generated_at": "2026-10-16T18:51:11+00:00",
+    "note": "chosen by ear on the sound bench: take #2 (Ominous waiting: drum pulse, hurdy-gurdy drone, dark dulcimer)"
   },
   "lord_karak": {
     "asset": "lord_karak",

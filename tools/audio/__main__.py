@@ -94,7 +94,7 @@ def cmd_candidates(args) -> int:
 
 def cmd_pick(args) -> int:
     from . import candidates
-    candidates.pick(args.id, args.takes.split(","))
+    candidates.pick(args.id, args.takes.split(","), keep_rest=args.keep_rest)
     return 0
 
 
@@ -120,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     pk = sub.add_parser("pick", help="put the chosen takes into the game")
     pk.add_argument("id")
     pk.add_argument("takes", help="comma-separated take numbers from the bench, e.g. 15,16")
+    pk.add_argument("--keep-rest", action="store_true", help="keep the other takes in tools/audio/library/")
     pk.set_defaults(func=cmd_pick)
     args = parser.parse_args(argv)
     setup_logging(args.verbose)

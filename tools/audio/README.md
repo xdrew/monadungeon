@@ -48,7 +48,7 @@ tools/audio/.venv/bin/python -m tools.audio candidates teleport   # two takes pe
 tools/audio/.venv/bin/python -m tools.audio pick teleport 3,8     # those takes become the game's variants
 ```
 
-The takes live in `fe/public/audio/candidates/` (gitignored) until `pick`, which writes their prompts into `assets.json`, logs them and clears the bench.
+`pick … --keep-rest` keeps the takes not chosen in `tools/audio/library/<id>/` (committed, not shipped with the game), listed with their prompts in `library.json`. The takes live in `fe/public/audio/candidates/` (gitignored) until `pick`, which writes their prompts into `assets.json`, logs them and clears the bench.
 
 ## Adding a sound
 

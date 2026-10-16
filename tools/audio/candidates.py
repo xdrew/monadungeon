@@ -22,6 +22,7 @@ LOG = logging.getLogger("audio.candidates")
 PUBLIC = ROOT / "fe" / "public" / "audio" / "candidates"
 INDEX = PUBLIC / "index.json"
 RAW = OUT_DIR / "candidates"
+LIBRARY = TOOL_DIR / "library"  # takes not chosen but kept (committed): <asset>/<key>.mp3 + library.json
 
 
 def _index() -> dict:
@@ -83,7 +84,7 @@ def generate(asset_id: str, clients: dict) -> float:
     return spend
 
 
-def pick(asset_id: str, numbers: list[str]) -> None:
+def pick(asset_id: str, numbers: list[str], keep_rest: bool = False) -> None:
     index = _index()
     takes = {t["id"]: t for t in index.get(asset_id, [])}
     chosen = [takes[n] for n in numbers if n in takes]
@@ -130,12 +131,32 @@ def pick(asset_id: str, numbers: list[str]) -> None:
         LOG.info("picked #%s → %s", take["id"], rel(out))
     GENERATED_LOG.write_text(json.dumps(dict(sorted(log.items())), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     write_variants(load_assets())
+    if keep_rest:
+        _keep(asset_id, [t for t in takes.values() if t["id"] not in numbers])
     index.pop(asset_id, None)
     if index:
         _save_index(index)
     elif PUBLIC.exists():
         shutil.rmtree(PUBLIC)
     shutil.rmtree(PUBLIC / asset_id, ignore_errors=True)
+
+
+def _keep(asset_id: str, rest: list[dict]) -> None:
+    """The takes not chosen go to the library, processed as for the game, with their prompts."""
+    shelf = LIBRARY / asset_id
+    shelf.mkdir(parents=True, exist_ok=True)
+    book_file = LIBRARY / "library.json"
+    book = json.loads(book_file.read_text(encoding="utf-8")) if book_file.exists() else {}
+    for take in rest:
+        name = take["file"].rsplit("/", 1)[-1]
+        shutil.copyfile(PUBLIC / asset_id / name, shelf / name)
+        book.setdefault(asset_id, {})[name.removesuffix(".mp3")] = {
+            "file": rel(shelf / name), "label": take["label"], "prompt": take["prompt"],
+            "model": take.get("model"), "seconds": take["seconds"],
+            "kept_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        LOG.info("kept #%s in %s", take["id"], rel(shelf / name))
+    book_file.write_text(json.dumps(book, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _replace_asset_line(asset_id: str, entry: dict) -> None:

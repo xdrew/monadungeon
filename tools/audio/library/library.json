@@ -1,0 +1,52 @@
+{
+  "lobby": {
+    "gleam-1": {
+      "file": "tools/audio/library/lobby/gleam-1.mp3",
+      "label": {
+        "en": "Mysterious and alluring: cello ostinato, harp like glinting coins",
+        "ru": "Загадочно и манит: остинато виолончели, арфа как блеск монет",
+        "pl": "Tajemniczo i kusząco: ostinato wiolonczeli, harfa jak błysk monet"
+      },
+      "prompt": "The title screen: a treasure chest of gold gleams in a dark dungeon while monsters stand guard. Mysterious and alluring: low cello and viola ostinato, harp arpeggios like glinting coins, a haunting wooden flute melody. D minor, around 80 bpm. About two and a half minutes at one level.",
+      "model": "lyria-3.5",
+      "seconds": 139.89,
+      "kept_at": "2026-10-16T18:51:11+00:00"
+    },
+    "call-1": {
+      "file": "tools/audio/library/lobby/call-1.mp3",
+      "label": {
+        "en": "Grim heroic call: horns and strings in minor, war drums",
+        "ru": "Мрачный героический зов: валторны и струнные в миноре, боевые барабаны",
+        "pl": "Ponure bohaterskie wezwanie: rogi i smyczki w molu, bębny"
+      },
+      "prompt": "A dark heroic call to adventure before entering a dungeon full of monsters: low horns and strings carry a proud theme in a minor key over steady war drums, a lute answers. Brave and grim, not bright. E minor, around 90 bpm. About two and a half minutes at one level.",
+      "model": "lyria-3.5",
+      "seconds": 141.66,
+      "kept_at": "2026-10-16T18:51:11+00:00"
+    },
+    "eerie-1": {
+      "file": "tools/audio/library/lobby/eerie-1.mp3",
+      "label": {
+        "en": "Eerie and a little playful: celesta over a cello drone",
+        "ru": "Жутковато и чуть игриво: челеста над гулом виолончели",
+        "pl": "Upiornie i trochę figlarnie: czelesta nad wiolonczelą"
+      },
+      "prompt": "An eerie, slightly playful dungeon theme: a celesta and glockenspiel treasure motif over a low cello drone and soft pizzicato, ghostly and curious, like skeletons and a ghost guarding gold. C minor, around 76 bpm. About two and a half minutes at one level.",
+      "model": "lyria-3.5",
+      "seconds": 135.63,
+      "kept_at": "2026-10-16T18:51:11+00:00"
+    },
+    "march-1": {
+      "file": "tools/audio/library/lobby/march-1.mp3",
+      "label": {
+        "en": "A slow dark march into the depths",
+        "ru": "Медленный тёмный марш в глубину",
+        "pl": "Powolny mroczny marsz w głąb"
+      },
+      "prompt": "A slow dark fantasy march into the depths: soft taiko and frame drums, low brass chords, a lute and a viola trading a solemn melody, torches flickering. Steady, weighty, adventurous in a dark way. D minor, around 84 bpm. About two and a half minutes at one level.",
+      "model": "lyria-3.5",
+      "seconds": 149.32,
+      "kept_at": "2026-10-16T18:51:11+00:00"
+    }
+  }
+}
