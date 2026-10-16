@@ -35,7 +35,7 @@ final readonly class Action
 
             return new Response($request->gameId, $request->playerId, $request->hero);
         } catch (\Throwable $e) {
-            return new Error($request->gameId, 'Failed to pick hero: ' . $e->getMessage());
+            return new Error($request->gameId, 'Failed to pick hero: ' . $e->getMessage(), $e instanceof \DomainException || $e->getPrevious() instanceof \DomainException ? 409 : 500);
         }
     }
 }

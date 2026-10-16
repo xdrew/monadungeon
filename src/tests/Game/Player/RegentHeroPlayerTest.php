@@ -301,6 +301,15 @@ final class RegentHeroPlayerTest extends TestCase
                 return $this->regent;
             }
 
+            public function isOnline(): bool
+
+            {
+
+                return false;
+
+            }
+
+
             public function isRandomHeroes(): bool
             {
                 return false;

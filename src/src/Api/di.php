@@ -13,5 +13,6 @@ return static function (ContainerConfigurator $di): void {
             ->autoconfigure()
         ->load(__NAMESPACE__ . '\\', __DIR__ . '/**/Action.php')
             ->tag('controller.service_arguments')
-        ->set(Security\SeatGuardListener::class);
+        ->set(Security\SeatGuardListener::class)
+        ->set(Table\Tables::class);
 };

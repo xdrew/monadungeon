@@ -405,6 +405,15 @@ final class HeroTest extends TestCase
                 return false;
             }
 
+            public function isOnline(): bool
+
+            {
+
+                return false;
+
+            }
+
+
             public function isRandomHeroes(): bool
             {
                 return $this->randomHeroes;

@@ -33,7 +33,7 @@ final readonly class Action
                            SUM(CASE WHEN g.winner_id = p.player_id THEN 1 ELSE 0 END) AS victories
                     FROM player.player p
                     JOIN game.game g ON g.game_id = p.game_id
-                    WHERE g.status = 'finished' AND p.hero IS NOT NULL
+                    WHERE g.status = 'finished' AND g.end_reason IS NULL AND p.hero IS NOT NULL
                     GROUP BY p.hero
                 SQL);
         } catch (\Throwable $e) {

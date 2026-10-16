@@ -10,6 +10,7 @@ use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\GameLifecycle\LordKarakRevealed;
 use App\Game\GameLifecycle\PlayerAdded;
+use App\Game\GameLifecycle\PlayerLeftTable;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
 use App\Game\Item\ItemType;
@@ -173,6 +174,16 @@ class Player extends AggregateRoot
             throw new \DomainException($command->hero->label() . ' needs the Karak: Regent expansion');
         }
 
+        // At a table every hero stands once: a hero held by another seat is refused
+        if ($game->isOnline()) {
+            foreach ($game->getPlayers() as $otherId) {
+                if (!$otherId->equals($this->playerId)
+                    && $messageContext->dispatch(new GetPlayer($otherId))->getChosenHero() === $command->hero) {
+                    throw new \DomainException($command->hero->label() . ' is already taken at this table');
+                }
+            }
+        }
+
         $this->hero = $command->hero;
 
         $messageContext->dispatch(new HeroPicked(
@@ -180,6 +191,16 @@ class Player extends AggregateRoot
             playerId: $this->playerId,
             hero: $command->hero,
         ));
+    }
+
+    /**
+     * The seat left a table before the start: it no longer belongs to the account and holds no hero.
+     */
+    #[Handler]
+    public function onLeftTable(PlayerLeftTable $event): void
+    {
+        $this->externalId = null;
+        $this->hero = null;
     }
 
     #[Handler]

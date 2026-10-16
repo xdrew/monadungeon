@@ -58,9 +58,9 @@ Authority: user answers > part 1 plan (`feature-online-accounts.md`) > CLAUDE.md
 ## Tasks
 
 ### Phase 1: Tables in the domain
-- [ ] Task 1: `Game` fields `online`, `hostAccountId`, `seats`; the `CreateTable` factory; the `AddAiToTable`, `LeaveTable` and `StartTable` commands with handlers and events; the seat cap and the start rule. Migration via diff. Logs `table.*`.
-- [ ] Task 2: The table API in `src/src/Api/Table/` (create, list, get, join, ai, leave, start) with DTOs; account required; join reuses `AddPlayer` with the account. Open-table listing via DBAL (online, lobby, free seats, newest first, limit 50).
-- [ ] Task 3: PHPUnit `TableTest` (seat cap, idempotent join, host-only AI/start, ≥ 2 seats, heroes chosen unless random, the host leaving closes the table) and API curl smoke.
+- [x] Task 1: `Game` fields `online`, `hostAccountId`, `seats`; the `CreateTable` factory; the `AddAiToTable`, `LeaveTable` and `StartTable` commands with handlers and events; the seat cap and the start rule. Migration via diff. Logs `table.*`.
+- [x] Task 2: The table API in `src/src/Api/Table/` (create, list, get, join, ai, leave, start) with DTOs; account required; join reuses `AddPlayer` with the account. Open-table listing via DBAL (online, lobby, free seats, newest first, limit 50).
+- [x] Task 3: PHPUnit `TableTest` (seat cap, idempotent join, host-only AI/start, ≥ 2 seats, heroes chosen unless random, the host leaving closes the table) and API curl smoke.
 
 ### Phase 2: Push and the server's AI
 - [ ] Task 4: Docker:

@@ -7,6 +7,7 @@ namespace App\Api\Game\AddPlayer;
 use App\Account\CurrentAccount;
 use App\Api\Error;
 use App\Game\GameLifecycle\AddPlayer;
+use App\Game\GameLifecycle\GetGame;
 use App\Game\Player\HeroType;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\HttpFoundation\Request as HttpRequest;
@@ -35,6 +36,16 @@ final readonly class Action
             }
             $externalId = $account->getId()->toString();
             $username = $account->getName();
+        }
+
+        // An online table is joined through /tables/{id}/join and gets its AI from the host only
+        try {
+            $online = $this->messageBus->dispatch(new GetGame($request->gameId))->isOnline();
+        } catch (\Throwable) {
+            $online = false;
+        }
+        if ($online) {
+            return new Error(Uuid::v7(), 'table.use_join: join an online table through its invite', 409);
         }
 
         try {

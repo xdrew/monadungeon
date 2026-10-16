@@ -10,11 +10,13 @@ use App\Game\Field\GetField;
 use App\Game\Field\LordKarakRoomDiscovered;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyFullGame;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyPreparedGame;
+use App\Game\GameLifecycle\Error\TableRuleBroken;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
 use App\Game\Player\CurseLifted;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
+use App\Game\Player\GetReady;
 use App\Game\Player\HeroType;
 use App\Game\Player\ItemAddedToInventory;
 use App\Game\Player\Player;
@@ -158,6 +160,30 @@ class Game extends AggregateRoot
     #[Column(type: UuidArrayJsonType::class, options: ['default' => '[]'])]
     private array $roomCursedPlayerIds = [];
 
+    /**
+     * An online table: every human seat plays from its own browser and the server plays the AI seats.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $online = false;
+
+    /**
+     * The account that opened the table; only it seats the AI and starts the game.
+     */
+    #[Column(type: Types::STRING, nullable: true)]
+    private ?string $hostAccountId = null;
+
+    /**
+     * How many seats the table has (2–5); null for a game in one browser.
+     */
+    #[Column(type: Types::INTEGER, nullable: true)]
+    private ?int $seats = null;
+
+    /**
+     * Why a game ended without being played out ('abandoned': the host left the table).
+     */
+    #[Column(type: Types::STRING, nullable: true)]
+    private ?string $endReason = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -184,6 +210,27 @@ class Game extends AggregateRoot
             lordKarak: $command->lordKarak,
             randomHeroes: $command->randomHeroes,
         ));
+
+        return $game;
+    }
+
+    #[Handler]
+    public static function createTable(CreateTable $command, MessageContext $messageContext): self
+    {
+        if ($command->seats < CreateTable::MIN_SEATS || $command->seats > CreateTable::MAX_SEATS) {
+            throw new TableRuleBroken('table.seats', sprintf('A table has %d to %d seats', CreateTable::MIN_SEATS, CreateTable::MAX_SEATS));
+        }
+        $game = self::create(new CreateGame(
+            gameId: $command->gameId,
+            at: $command->at,
+            deckSize: $command->deckSize,
+            regent: $command->regent,
+            lordKarak: $command->lordKarak,
+            randomHeroes: $command->randomHeroes,
+        ), $messageContext);
+        $game->online = true;
+        $game->hostAccountId = $command->hostAccountId;
+        $game->seats = $command->seats;
 
         return $game;
     }
@@ -260,8 +307,11 @@ class Game extends AggregateRoot
     public function addPlayer(AddPlayer $command, MessageContext $messageContext): void
     {
         $players = array_values(array_unique(array_merge($this->players, [$command->playerId])));
-        if (\count($players) > self::MAX_PLAYERS_COUNT) {
+        if (\count($players) > ($this->seats ?? self::MAX_PLAYERS_COUNT)) {
             throw new CannotAddPlayerToAlreadyFullGame();
+        }
+        if ($this->online && $command->externalId !== null && $this->findSeatOf($command->externalId, $messageContext) !== null) {
+            throw new TableRuleBroken('table.already_seated', 'This account already has a seat at the table');
         }
 
         if (!$this->status->isPreparing()) {
@@ -298,6 +348,61 @@ class Game extends AggregateRoot
             isAi: $command->isAi,
             hero: $hero,
         ));
+    }
+
+    /**
+     * @throws CannotAddPlayerToAlreadyFullGame
+     * @throws CannotAddPlayerToAlreadyPreparedGame
+     */
+    #[Handler]
+    public function addAiToTable(AddAiToTable $command, MessageContext $messageContext): void
+    {
+        $this->assertHost($command->accountId);
+        $this->addPlayer(new AddPlayer(
+            gameId: $this->gameId,
+            playerId: $command->playerId,
+            username: 'AI Player',
+            isAi: true,
+        ), $messageContext);
+    }
+
+    #[Handler]
+    public function leaveTable(LeaveTable $command, MessageContext $messageContext): void
+    {
+        $this->assertTableInLobby();
+        if ($this->hostAccountId === $command->accountId) {
+            $this->status = GameStatus::FINISHED;
+            $this->endReason = 'abandoned';
+            $messageContext->dispatch(new TableClosed($this->gameId));
+
+            return;
+        }
+
+        $seat = $this->findSeatOf($command->accountId, $messageContext);
+        if ($seat === null) {
+            return;
+        }
+        $this->players = array_values(array_filter($this->players, static fn(Uuid $id): bool => !$id->equals($seat)));
+        $messageContext->dispatch(new PlayerLeftTable($this->gameId, $seat));
+    }
+
+    #[Handler]
+    public function startTable(StartTable $command, MessageContext $messageContext): void
+    {
+        $this->assertHost($command->accountId);
+        if (\count($this->players) < CreateTable::MIN_SEATS) {
+            throw new TableRuleBroken('table.too_few', 'A table starts with at least two seats taken');
+        }
+        foreach ($this->players as $playerId) {
+            $player = $messageContext->dispatch(new GetPlayer($playerId));
+            if ($player->getChosenHero() === null) {
+                throw new TableRuleBroken('table.hero_missing', 'Every seat needs a hero before the start');
+            }
+        }
+        foreach ($this->players as $playerId) {
+            $messageContext->dispatch(new GetReady($playerId, $this->gameId));
+        }
+        $this->start(new StartGame($this->gameId, $command->at), $messageContext);
     }
 
     #[Handler]
@@ -597,6 +702,40 @@ class Game extends AggregateRoot
     /**
      * Heroes are dealt at random in this game.
      */
+    public function isOnline(): bool
+    {
+        return $this->online;
+    }
+
+    public function getHostAccountId(): ?string
+    {
+        return $this->hostAccountId;
+    }
+
+    public function getSeats(): ?int
+    {
+        return $this->seats;
+    }
+
+    public function getEndReason(): ?string
+    {
+        return $this->endReason;
+    }
+
+    /**
+     * The seat (player id) an account holds at this table, if any.
+     */
+    public function findSeatOf(string $accountId, MessageContext $messageContext): ?Uuid
+    {
+        foreach ($this->players as $playerId) {
+            if ($messageContext->dispatch(new GetPlayer($playerId))->getExternalId() === $accountId) {
+                return $playerId;
+            }
+        }
+
+        return null;
+    }
+
     public function isRandomHeroes(): bool
     {
         return $this->randomHeroes;
@@ -924,6 +1063,24 @@ class Game extends AggregateRoot
         }
 
         return false;
+    }
+
+    private function assertTableInLobby(): void
+    {
+        if (!$this->online) {
+            throw new TableRuleBroken('table.not_a_table', 'This game is not an online table');
+        }
+        if (!$this->status->isPreparing()) {
+            throw new TableRuleBroken('table.started', 'The table has already started');
+        }
+    }
+
+    private function assertHost(string $accountId): void
+    {
+        $this->assertTableInLobby();
+        if ($this->hostAccountId !== $accountId) {
+            throw new TableRuleBroken('table.not_host', 'Only the host may do this');
+        }
     }
 
     private function hasPlayer(Uuid $playerId): bool
