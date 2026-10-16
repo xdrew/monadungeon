@@ -275,6 +275,14 @@
         {{ t('lobby.playAi') }}
       </button>
 
+      <!-- Online play: a table for friends, the open tables -->
+      <TablesPanel
+        :disabled="!account"
+        :regent="regentExpansion"
+        :lord-karak="lordKarakVariant"
+        :random-heroes="randomHeroes"
+      />
+
       <div class="lobby-links">
         <button
           type="button"
@@ -337,6 +345,7 @@ import MusicToggle from '@/components/game/MusicToggle.vue';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import ThemeLogo from '@/components/ThemeLogo.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
+import TablesPanel from '@/components/lobby/TablesPanel.vue';
 import { musicService } from '@/services/musicService';
 import { useI18n } from 'vue-i18n';
 import { theme, getHero } from '@/theme';

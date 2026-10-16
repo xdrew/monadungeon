@@ -4,6 +4,7 @@ import GameView from '@/views/GameView.vue';
 import NotFoundView from '@/views/NotFoundView.vue';
 import LeaderboardView from '@/views/LeaderboardView.vue';
 import RulesView from '@/views/RulesView.vue';
+import TableJoinView from '@/views/TableJoinView.vue';
 import { t, setTitleResolver } from '@/i18n';
 
 const routes = [
@@ -19,6 +20,14 @@ const routes = [
     component: GameView,
     props: true,
     meta: { titleKey: 'routes.game' }
+  },
+  {
+    // an invite link to an online table
+    path: '/table/:id',
+    name: 'table',
+    component: TableJoinView,
+    props: true,
+    meta: { titleKey: 'routes.table' }
   },
   {
     path: '/leaderboard',

@@ -15,6 +15,7 @@ import GameView from './views/GameView.vue'
 import NotFoundView from './views/NotFoundView.vue'
 import LeaderboardView from './views/LeaderboardView.vue'
 import RulesView from './views/RulesView.vue'
+import TableJoinView from './views/TableJoinView.vue'
 
 // ----------------
 // Define Game Components
@@ -41,6 +42,8 @@ const CustomRouterView = {
         return HomeView
       } else if (path.startsWith('/game')) {
         return GameView
+      } else if (path.startsWith('/table/')) {
+        return TableJoinView
       } else if (path === '/leaderboard') {
         return LeaderboardView
       } else if (path === '/rules') {

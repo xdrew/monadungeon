@@ -54,5 +54,11 @@ export const ICONS = {
   listen: [path('M7 9a5 5 0 0 1 10 0c0 3-3 4-3 7a3 3 0 0 1-5.5 1.5'), path('M10 9.5a2 2 0 0 1 4 0c0 1.2-1 1.6-1.5 2.5')],
   eye: [path('M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z'), circle(12, 12, 3)],
   menu: [path('M4 7h16'), path('M4 12h16'), path('M4 17h16')],
-  pen: [path('M4 20l4-1L18.5 8.5l-3-3L5 16l-1 4z'), path('M13.5 7.5l3 3')]
+  pen: [path('M4 20l4-1L18.5 8.5l-3-3L5 16l-1 4z'), path('M13.5 7.5l3 3')],
+  // a table seen from above with two seats: online tables
+  table: [circle(12, 12, 5), circle(12, 3.5, 1.6), circle(12, 20.5, 1.6), circle(3.5, 12, 1.6), circle(20.5, 12, 1.6)],
+  // two chain links: the invite link
+  link: [path('M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2'), path('M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2')],
+  // a figure: a seat and who sits on it
+  person: [circle(12, 8, 3.6), path('M4.5 20.5a7.5 7.5 0 0 1 15 0')]
 };

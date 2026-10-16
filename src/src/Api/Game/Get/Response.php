@@ -182,6 +182,10 @@ final readonly class Response
                     'roomCursedPlayerIds' => array_map(static fn(Uuid $id): string => $id->toString(), $game->getRoomCursedPlayerIds()),
                 ],
                 'regent' => $game->isRegent(), // Karak: Regent expansion on
+                'online' => $game->isOnline(), // an online table: every human seat plays from its own browser
+                'seats' => $game->getSeats(), // an online table: how many seats it has
+                'randomHeroes' => $game->isRandomHeroes(),
+                'endReason' => $game->getEndReason(), // 'abandoned': the host closed the table before the start
                 'lordKarakVariant' => $game->isLordKarak(), // Karak: Regent — the Lord Karak variant is on
                 'lordKarak' => $game->getLordKarakReveal(), // Karak: Regent — who became Lord Karak and why (null until then)
                 'roomEvent' => $field?->getRoomEvent(), // Karak: Regent — the last Cursed Room roll
