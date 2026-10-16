@@ -49,10 +49,11 @@ def generate(asset_id: str, clients: dict) -> float:
     influence = float(spec.get("influence", asset.influence or k.prompt_influence))
     takes_per_idea = int(spec.get("takes", 1 if music else 2))
     out_dir, raw_dir = PUBLIC / asset_id, RAW / asset_id
+    # the files go, the folders stay: Vite's dev server misses files in a folder removed and made again
     for d in (out_dir, raw_dir):
-        if d.exists():
-            shutil.rmtree(d)
-        d.mkdir(parents=True)
+        d.mkdir(parents=True, exist_ok=True)
+        for old in d.glob("*.mp3"):
+            old.unlink()
     takes, spend = [], 0.0
     for idea in spec["ideas"]:
         for take in range(1, takes_per_idea + 1):
