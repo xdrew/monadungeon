@@ -18,6 +18,7 @@ use App\Game\Player\GetPlayer;
 use App\Game\Player\Player;
 use App\Game\Player\ReducePlayerHP;
 use App\Game\Player\RemoveItemFromInventory;
+use App\Game\Player\ReplaceInventoryItem;
 use App\Game\Turn\EndTurn;
 use App\Game\Turn\Error\NotYourTurnException;
 use App\Game\Turn\GetTurn;
@@ -184,6 +185,27 @@ class Duel extends AggregateRoot
     }
 
     /**
+     * The winner's own item that the loot replaces: the same slot kind (Hanna's daggers may sit in a spell slot).
+     */
+    private static function ownItemOfSlot(Player $winner, Item $loot, Uuid $itemId): ?Item
+    {
+        $slots = [$loot->type->getCategory()->value];
+        if ($loot->type === ItemType::DAGGER && $winner->getSkills()?->throwsDaggers() === true) {
+            $slots[] = ItemCategory::SPELL->value;
+        }
+        foreach ($slots as $slot) {
+            foreach ($winner->getInventory()[$slot] ?? [] as $own) {
+                $own = Item::fromAnything($own);
+                if ($own->itemId->equals($itemId)) {
+                    return $own;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The challenger rolls first (Oracle "Farseeing" +1 when the arena was the first step of her turn).
      */
     #[Handler]
@@ -295,11 +317,20 @@ class Duel extends AggregateRoot
         if ($item === null) {
             throw new \DomainException('Unknown item');
         }
-        if (!$messageContext->dispatch(new GetPlayer($winnerId))->hasRoomFor($item->type)) {
-            throw new \DomainException('No room for this item');
+        // A full pack takes the item in exchange for one of its own, which is left on the arena
+        $winner = $messageContext->dispatch(new GetPlayer($winnerId));
+        $dropped = null;
+        if (!$winner->hasRoomFor($item->type)) {
+            if ($command->replaceItemId === null) {
+                throw new \DomainException('No room for this item: choose one of yours to leave');
+            }
+            $dropped = self::ownItemOfSlot($winner, $item, $command->replaceItemId);
+            if ($dropped === null) {
+                throw new \DomainException('The item to leave must be yours and of the same kind');
+            }
         }
 
-        $this->transferLoot($item, $messageContext);
+        $this->transferLoot($item, $messageContext, $dropped);
         $this->phase = DuelPhase::DONE;
 
         $messageContext->dispatch(new PerformTurnAction(
@@ -312,6 +343,7 @@ class Duel extends AggregateRoot
                 'item' => $item->type->value,
                 'itemId' => $item->itemId->toString(),
                 'from' => $this->loserId?->toString(),
+                'dropped' => $dropped?->type->value,
             ],
         ));
     }
@@ -345,7 +377,9 @@ class Duel extends AggregateRoot
 
         if ($this->phase === DuelPhase::LOOT) {
             $winnerId = $this->winnerId();
-            $item = $winnerId !== null ? $this->autoPick($this->candidateItems()) : null;
+            $item = $winnerId !== null
+                ? $this->autoPick($this->candidateItems(), $messageContext->dispatch(new GetPlayer($winnerId)))
+                : null;
             if ($item !== null) {
                 $this->transferLoot($item, $messageContext);
             }
@@ -390,12 +424,17 @@ class Duel extends AggregateRoot
     }
 
     /**
+     * The best item that fits the winner's pack (nobody is there to choose what to leave).
+     *
      * @param list<Item> $candidates
      */
-    private function autoPick(array $candidates): ?Item
+    private function autoPick(array $candidates, Player $winner): ?Item
     {
         $best = null;
         foreach ($candidates as $candidate) {
+            if (!$winner->hasRoomFor($candidate->type)) {
+                continue;
+            }
             if ($best === null || self::lootScore($candidate) > self::lootScore($best)) {
                 $best = $candidate;
             }
@@ -442,7 +481,7 @@ class Duel extends AggregateRoot
             }
 
             $winner = $messageContext->dispatch(new GetPlayer($winnerId));
-            $candidates = $this->lootCandidatesFor($winner, $messageContext->dispatch(new GetPlayer($loserId)));
+            $candidates = $this->lootCandidatesFor($messageContext->dispatch(new GetPlayer($loserId)));
             $this->lootCandidates = array_map(static fn(Item $item): array => $item->toArray(), $candidates);
 
             $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($this->gameId));
@@ -450,7 +489,7 @@ class Duel extends AggregateRoot
                 $this->phase = DuelPhase::DONE;
             } elseif ($winner->isAi() || $currentPlayerId === null || !$currentPlayerId->equals($winnerId)) {
                 // Nobody can answer for this winner right now: the best item is taken automatically
-                $item = $this->autoPick($candidates);
+                $item = $this->autoPick($candidates, $winner);
                 if ($item !== null) {
                     $this->transferLoot($item, $messageContext);
                 }
@@ -463,6 +502,7 @@ class Duel extends AggregateRoot
             $this->phase = DuelPhase::DONE;
         }
 
+        $lootWinnerId = $this->phase === DuelPhase::LOOT ? $this->winnerId() : null;
         $messageContext->dispatch(new DuelResolved(
             duelId: $this->duelId,
             gameId: $this->gameId,
@@ -470,7 +510,9 @@ class Duel extends AggregateRoot
             result: $this->result,
             loserId: $this->loserId,
             loot: $this->loot,
-            lootCandidates: $this->phase === DuelPhase::LOOT ? $this->lootCandidatesSummary() : [],
+            lootCandidates: $lootWinnerId !== null
+                ? $this->lootCandidatesSummary($messageContext->dispatch(new GetPlayer($lootWinnerId)))
+                : [],
             reincarnatedTo: $this->reincarnatedTo,
         ));
 
@@ -512,17 +554,16 @@ class Duel extends AggregateRoot
     }
 
     /**
+     * Everything the loser carries: what does not fit the winner's pack is taken in exchange (takeLoot).
+     *
      * @return list<Item>
      */
-    private function lootCandidatesFor(Player $winner, Player $loser): array
+    private function lootCandidatesFor(Player $loser): array
     {
         $candidates = [];
         foreach ($loser->getInventory() as $items) {
             foreach ($items as $item) {
-                $item = Item::fromAnything($item);
-                if ($winner->hasRoomFor($item->type)) {
-                    $candidates[] = $item;
-                }
+                $candidates[] = Item::fromAnything($item);
             }
         }
 
@@ -538,11 +579,14 @@ class Duel extends AggregateRoot
     }
 
     /**
-     * @return list<array{itemId: string, type: string, name: string}>
+     * @return list<array{itemId: string, type: string, name: string, swap: bool}>
      */
-    private function lootCandidatesSummary(): array
+    private function lootCandidatesSummary(Player $winner): array
     {
-        return array_map(static fn(Item $item): array => self::summary($item), $this->candidateItems());
+        return array_map(
+            static fn(Item $item): array => self::summary($item) + ['swap' => !$winner->hasRoomFor($item->type)],
+            $this->candidateItems(),
+        );
     }
 
     private function winnerId(): ?Uuid
@@ -557,7 +601,7 @@ class Duel extends AggregateRoot
     /**
      * The event first (the Field marks the item so it is not dropped on the arena), then the inventories.
      */
-    private function transferLoot(Item $item, MessageContext $messageContext): void
+    private function transferLoot(Item $item, MessageContext $messageContext, ?Item $dropped = null): void
     {
         $winnerId = $this->winnerId();
         $loserId = $this->loserId;
@@ -577,11 +621,21 @@ class Duel extends AggregateRoot
             playerId: $loserId,
             itemId: $item->itemId,
         ));
-        $messageContext->dispatch(new AddItemToInventory(
-            playerId: $winnerId,
-            gameId: $this->gameId,
-            item: $item,
-        ));
+        if ($dropped !== null) {
+            // the winner's own item leaves the pack and stays on the arena (the Field places what leaves a pack)
+            $messageContext->dispatch(new ReplaceInventoryItem(
+                playerId: $winnerId,
+                gameId: $this->gameId,
+                itemIdToReplace: $dropped->itemId,
+                newItem: $item,
+            ));
+        } else {
+            $messageContext->dispatch(new AddItemToInventory(
+                playerId: $winnerId,
+                gameId: $this->gameId,
+                item: $item,
+            ));
+        }
 
         $this->loot = self::summary($item);
         $this->lootCandidates = [];

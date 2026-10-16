@@ -680,9 +680,9 @@ export const gameApi = {
    * Karak: Regent — the human challenger who won the duel takes one item from the loser
    * @returns {Promise<Object>} { gameId, duel, success }
    */
-  takeDuelLoot: async ({ gameId, playerId, turnId, duelId, itemId }) => {
+  takeDuelLoot: async ({ gameId, playerId, turnId, duelId, itemId, replaceItemId = null }) => {
     try {
-      const response = await apiClient.post('/game/duel/loot', { gameId, playerId, turnId, duelId, itemId });
+      const response = await apiClient.post('/game/duel/loot', { gameId, playerId, turnId, duelId, itemId, replaceItemId });
       console.log('Duel loot taken:', response.data);
       return response.data;
     } catch (error) {

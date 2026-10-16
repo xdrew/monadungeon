@@ -30,6 +30,7 @@ final readonly class Action
                 turnId: $request->turnId,
                 duelId: $request->duelId,
                 itemId: $request->itemId,
+                replaceItemId: $request->replaceItemId,
             ));
 
             $field = $this->messageBus->dispatch(new GetField($request->gameId));

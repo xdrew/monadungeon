@@ -17,7 +17,7 @@ final readonly class DuelResolved implements Event
     /**
      * @param 'challenger'|'opponent'|'tie' $result
      * @param array{itemId: string, type: string, name: string}|null $loot
-     * @param list<array{itemId: string, type: string, name: string}> $lootCandidates
+     * @param list<array{itemId: string, type: string, name: string, swap: bool}> $lootCandidates
      */
     public function __construct(
         public Uuid $duelId,

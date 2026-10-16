@@ -26,7 +26,7 @@
     <p v-if="resultText" class="duel-outcome" data-testid="duel-outcome">{{ resultText }}</p>
 
     <!-- The human challenger who won picks the loot -->
-    <div v-if="canPickLoot" class="duel-loot" data-testid="duel-loot-choice">
+    <div v-if="canPickLoot && !swapFor" class="duel-loot" data-testid="duel-loot-choice">
       <div class="duel-loot-title">{{ $t('dialogs.duel.lootFrom', { who: loserLabel }) }}</div>
       <div class="duel-loot-items">
         <button
@@ -34,14 +34,39 @@
           :key="item.itemId"
           type="button"
           class="duel-loot-item"
+          :class="{ 'duel-loot-item--swap': item.swap }"
           :disabled="disabled"
+          :title="item.swap ? $t('dialogs.duel.swapMark') : ''"
           :data-testid="`duel-loot-${item.itemId}`"
-          @click="emit('loot', item.itemId)"
+          @click="pick(item)"
         >
           <img v-if="getItemImage(item)" :src="getItemImage(item)" :alt="itemName(item)" class="duel-loot-img">
           <span>{{ itemName(item) }}</span>
+          <GameIcon v-if="item.swap" name="swap" :size="14" class="duel-loot-swap" />
         </button>
       </div>
+    </div>
+
+    <!-- A full pack: the loot comes in exchange for one of the winner's own items, left on the arena -->
+    <div v-if="canPickLoot && swapFor" class="duel-loot" data-testid="duel-loot-swap">
+      <div class="duel-loot-title">{{ $t('dialogs.duel.swapAsk', { item: itemName(swapFor, 'acc') }) }}</div>
+      <div class="duel-loot-items">
+        <button
+          v-for="own in swapOptions"
+          :key="own.itemId"
+          type="button"
+          class="duel-loot-item"
+          :disabled="disabled"
+          :data-testid="`duel-leave-${own.itemId}`"
+          @click="leave(own)"
+        >
+          <img v-if="getItemImage(own)" :src="getItemImage(own)" :alt="itemName(own)" class="duel-loot-img">
+          <span>{{ itemName(own) }}</span>
+        </button>
+      </div>
+      <button type="button" class="duel-swap-back" data-testid="duel-swap-back" @click="swapFor = null">
+        {{ $t('common.cancel') }}
+      </button>
     </div>
     <p v-else-if="lootText" class="duel-loot-taken">{{ lootText }}</p>
 
@@ -59,7 +84,7 @@
 
 <script setup>
 import GameIcon from '@/components/ui/GameIcon.vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { getItemImage } from '@/utils/itemUtils';
 import { t } from '@/i18n';
 import { itemName as localizedItemName } from '@/i18n/names';
@@ -70,6 +95,8 @@ const props = defineProps({
   /** [{ id, label }] */
   players: { type: Array, default: () => [] },
   currentPlayerId: { type: String, default: null },
+  /** the current player's pack (state players[].inventory): what a full pack may leave on the arena */
+  inventory: { type: Object, default: () => ({}) },
   disabled: { type: Boolean, default: false }
 });
 
@@ -143,17 +170,50 @@ const lootText = computed(() => {
 });
 
 const dismissable = computed(() => props.duel.phase === 'done');
+
+// The loot: straight into the pack, or (a full pack) in exchange for one of my items of the same kind
+const SLOT_OF = { dagger: 'weapons', sword: 'weapons', axe: 'weapons', key: 'keys', fireball: 'spells', teleport: 'spells', frost_fist: 'spells', dark_thorn: 'spells' };
+const slotOf = (type) => SLOT_OF[type] || 'treasures';
+const swapFor = ref(null);
+const swapOptions = computed(() => (swapFor.value ? (props.inventory?.[slotOf(swapFor.value.type)] || []) : []));
+const pick = (item) => {
+  if (item.swap) {
+    swapFor.value = item;
+    return;
+  }
+  emit('loot', { itemId: item.itemId, replaceItemId: null });
+};
+const leave = (own) => {
+  emit('loot', { itemId: swapFor.value.itemId, replaceItemId: own.itemId });
+  swapFor.value = null;
+};
 </script>
 
 <style scoped>
 /* Battle Arena: the outcome of a duel and the loot — in the decision plaque */
 .duel-result {
-  margin: 10px 0;
-  padding: 12px 14px;
-  border: 1px solid rgba(var(--ember-rgb), 0.35);
-  background: rgba(0, 0, 0, 0.35);
   color: var(--text-primary);
   text-align: center;
+}
+
+.duel-loot-item--swap {
+  border-style: dashed;
+}
+
+.duel-loot-swap {
+  color: var(--text-accent);
+}
+
+.duel-swap-back {
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .duel-result-header {

@@ -693,6 +693,8 @@ export default {
       winsReincarnates: '{winner} wins the duel; {loser} loses 1 HP and reincarnates at {place}',
       lootFrom: 'Take one item from {who}:',
       takes: '{who} takes {item}',
+      swapMark: 'This item does not fit your pack: you take it and leave one of yours on the arena',
+      swapAsk: 'No room for {item}: which of yours stays on the arena?',
       nothing: 'Nothing to take',
       dismiss: 'Dismiss'
     }

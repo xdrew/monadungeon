@@ -692,6 +692,8 @@ export default {
       winsReincarnates: 'Pojedynek wygrywa {winner}; {loser} traci 1 PW i odradza się przy fontannie ({place})',
       lootFrom: 'Zabierz jeden przedmiot przeciwnikowi ({who}):',
       takes: '{who} zabiera {item}',
+      swapMark: 'Nie mieści się w plecaku: zabierzesz, zostawiając na arenie coś swojego',
+      swapAsk: 'Brak miejsca na {item}: co ze swoich rzeczy zostaje na arenie?',
       nothing: 'Nie ma czego zabrać',
       dismiss: 'Zamknij'
     }

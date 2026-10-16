@@ -21,5 +21,7 @@ final readonly class TakeDuelLoot implements Message
         public Uuid $turnId,
         public Uuid $duelId,
         public Uuid $itemId,
+        /** a full pack: the winner's own item of the same kind, left on the arena in exchange */
+        public ?Uuid $replaceItemId = null,
     ) {}
 }

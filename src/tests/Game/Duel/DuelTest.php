@@ -30,6 +30,7 @@ use App\Game\Player\HeroType;
 use App\Game\Player\Player;
 use App\Game\Player\ReducePlayerHP;
 use App\Game\Player\RemoveItemFromInventory;
+use App\Game\Player\ReplaceInventoryItem;
 use App\Game\Turn\EndTurn;
 use App\Game\Turn\GameTurn;
 use App\Game\Turn\GetTurn;
@@ -272,15 +273,60 @@ final class DuelTest extends TestCase
     }
 
     #[Test]
-    public function theWinnerNeedsRoomForTheChosenItem(): void
+    public function aFullPackTakesTheLootInExchangeForOneOfItsOwn(): void
     {
-        $this->addPlayer($this->opponent, inventory: ['mummy']);
-        [$duel] = $this->resolvedDuel(10, 5);
-        self::assertSame(DuelPhase::LOOT, $duel->getPhase());
+        $this->addPlayer($this->opponent, inventory: ['mummy', 'treasure_chest']);
+        $this->addPlayer($this->challenger, inventory: ['skeleton_warrior', 'giant_bat', 'giant_spider', 'skeleton_mage']);
+        [$duel, $messages] = $this->resolvedDuel(10, 5);
 
-        // The challenger's spell slots filled up meanwhile
-        $this->players[$this->challenger->toString()]->setTestInventory(['mummy', 'giant_bat', 'giant_spider']);
-        $this->assertLootFails($this->createTester(), $duel, $this->challenger, $this->opponentItem(ItemType::FIREBALL)->itemId, 'No room');
+        self::assertSame(DuelPhase::LOOT, $duel->getPhase(), 'A full pack still has something to take');
+        $resolved = $this->findMessage($messages, DuelResolved::class);
+        self::assertInstanceOf(DuelResolved::class, $resolved);
+        $swaps = array_column($resolved->lootCandidates, 'swap', 'type');
+        self::assertSame(['fireball' => true, 'chest' => false], $swaps);
+
+        $fireball = $this->opponentItem(ItemType::FIREBALL);
+        $tester = $this->createTester();
+        $this->assertLootFails($tester, $duel, $this->challenger, $fireball->itemId, 'No room');
+        $sword = $this->ownItem($this->challenger, ItemType::SWORD);
+        $this->assertLootFails($tester, $duel, $this->challenger, $fireball->itemId, 'same kind', replace: $sword->itemId);
+
+        $thorn = $this->ownItem($this->challenger, ItemType::DARK_THORN);
+        [, $messages] = $tester->handle($duel->takeLoot(...), new TakeDuelLoot(
+            $this->gameId,
+            $this->challenger,
+            $this->turnId,
+            $duel->getDuelId(),
+            $fireball->itemId,
+            replaceItemId: $thorn->itemId,
+        ));
+        $removed = $this->findMessage($messages, RemoveItemFromInventory::class);
+        self::assertInstanceOf(RemoveItemFromInventory::class, $removed);
+        self::assertTrue($removed->playerId->equals($this->opponent));
+        $replaced = $this->findMessage($messages, ReplaceInventoryItem::class);
+        self::assertInstanceOf(ReplaceInventoryItem::class, $replaced, 'The Dark Thorn leaves the pack (onto the arena) for the fireball');
+        self::assertTrue($replaced->playerId->equals($this->challenger));
+        self::assertTrue($replaced->itemIdToReplace->equals($thorn->itemId));
+        self::assertTrue($replaced->newItem->itemId->equals($fireball->itemId));
+        self::assertNull($this->findMessage($messages, AddItemToInventory::class));
+        $action = $this->findMessage($messages, PerformTurnAction::class);
+        self::assertInstanceOf(PerformTurnAction::class, $action);
+        self::assertSame('dark_thorn', $action->additionalData['dropped'] ?? null);
+        self::assertSame(DuelPhase::DONE, $duel->getPhase());
+    }
+
+    #[Test]
+    public function nobodyToChooseWhatToLeaveTakesOnlyWhatFits(): void
+    {
+        $this->addPlayer($this->opponent, isAi: true, inventory: ['skeleton_warrior', 'skeleton_warrior']);
+        $this->addPlayer($this->challenger, inventory: ['skeleton_king', 'skeleton_warrior', 'mummy']);
+
+        [, $messages] = $this->resolvedDuel(5, 10);
+
+        $taken = $this->findMessage($messages, DuelLootTaken::class);
+        self::assertInstanceOf(DuelLootTaken::class, $taken);
+        self::assertSame(ItemType::FIREBALL, $taken->item->type, 'The AI has no room for a weapon: it takes the spell, no exchange');
+        self::assertNull($this->findMessage($messages, ReplaceInventoryItem::class));
     }
 
     #[Test]
@@ -419,10 +465,23 @@ final class DuelTest extends TestCase
         self::assertTrue($added->item->itemId->equals($item->itemId));
     }
 
-    private function assertLootFails(MessageBusTester $tester, Duel $duel, Uuid $playerId, Uuid $itemId, string $message): void
+    private function ownItem(Uuid $playerId, ItemType $type): Item
+    {
+        foreach ($this->players[$playerId->toString()]->getInventory() as $items) {
+            foreach ($items as $item) {
+                $item = Item::fromAnything($item);
+                if ($item->type === $type) {
+                    return $item;
+                }
+            }
+        }
+        self::fail("{$playerId} has no " . $type->value);
+    }
+
+    private function assertLootFails(MessageBusTester $tester, Duel $duel, Uuid $playerId, Uuid $itemId, string $message, ?Uuid $replace = null): void
     {
         try {
-            $tester->handle($duel->takeLoot(...), new TakeDuelLoot($this->gameId, $playerId, $this->turnId, $duel->getDuelId(), $itemId));
+            $tester->handle($duel->takeLoot(...), new TakeDuelLoot($this->gameId, $playerId, $this->turnId, $duel->getDuelId(), $itemId, $replace));
             self::fail("Expected a DomainException containing '{$message}'");
         } catch (\DomainException $e) {
             self::assertStringContainsString($message, $e->getMessage());

@@ -25,5 +25,8 @@ final readonly class Request
         #[Assert\NotBlank]
         #[Assert\Uuid]
         public Uuid $itemId,
+        /** the winner's item to leave on the arena when the pack is full */
+        #[Assert\Uuid]
+        public ?Uuid $replaceItemId = null,
     ) {}
 }
