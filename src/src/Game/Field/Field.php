@@ -491,6 +491,17 @@ class Field extends AggregateRoot
         return $this->duelInfo;
     }
 
+    /**
+     * Karak: Regent — a duel waits for a human: the summoned hero's roll, or the human winner's loot choice
+     * (an automatic side or an AI winner never leaves the duel in these phases).
+     */
+    public function duelAwaitsHuman(): bool
+    {
+        $phase = DuelPhase::tryFrom((string) ($this->duelInfo['phase'] ?? ''));
+
+        return $phase === DuelPhase::OPPONENT_ROLL || $phase === DuelPhase::LOOT;
+    }
+
     #[Handler]
     public function onDuelStarted(DuelStarted $event): void
     {

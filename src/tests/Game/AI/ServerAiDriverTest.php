@@ -6,6 +6,7 @@ namespace App\Tests\Game\AI;
 
 use App\Game\AI\AiTurnTaker;
 use App\Game\AI\ServerAiDriver;
+use App\Game\Field\GetField;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\MarkSeatAway;
@@ -42,6 +43,9 @@ final class ServerAiDriverTest extends TestCase
     /** @var list<Uuid> */
     private array $seats = [];
 
+    /** Karak: Regent — a duel in the current turn waits for a human */
+    private bool $duelAwaitsHuman = false;
+
     protected function setUp(): void
     {
         $this->gameId = Uuid::v7();
@@ -49,6 +53,7 @@ final class ServerAiDriverTest extends TestCase
         $this->bot = Uuid::v7();
         $this->published = [];
         $this->away = [];
+        $this->duelAwaitsHuman = false;
         $this->state = ['online' => true, 'inProgress' => true, 'current' => $this->bot, 'turn' => 3, 'deadline' => null];
     }
 
@@ -66,6 +71,19 @@ final class ServerAiDriverTest extends TestCase
         self::assertSame(3, $data['turn']);
         self::assertFalse($data['standIn']);
         self::assertSame([['type' => 'end_turn']], $data['actions']);
+    }
+
+    #[Test]
+    public function anAiTurnWaitingForAHumanInADuelIsNotPlayedUntilHeAnswers(): void
+    {
+        $this->duelAwaitsHuman = true;
+        $played = $this->driver(fn() => $this->pass($this->human))->drive($this->gameId);
+
+        self::assertSame(0, $played, 'The human rolls first; his request drives the turn on');
+        self::assertSame([], $this->published);
+
+        $this->duelAwaitsHuman = false;
+        self::assertSame(1, $this->driver(fn() => $this->pass($this->human))->drive($this->gameId));
     }
 
     #[Test]
@@ -233,6 +251,14 @@ final class ServerAiDriverTest extends TestCase
                 public function isAway(): bool
                 {
                     return $this->away;
+                }
+            },
+            fn(GetField $_query): object => new class ($test->duelAwaitsHuman) {
+                public function __construct(private readonly bool $awaits) {}
+
+                public function duelAwaitsHuman(): bool
+                {
+                    return $this->awaits;
                 }
             },
             static function (MarkSeatAway $command) use ($test): bool {

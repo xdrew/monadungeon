@@ -1642,6 +1642,8 @@ const dismissDuel = () => {
   } catch (e) {
     // localStorage unavailable - the panel is hidden for this page only
   }
+  // an AI that summoned me goes on with its turn
+  if (aiPausedForDuel) nextTick(() => checkAndHandleVirtualPlayerTurn());
 };
 
 // The challenger cannot end the turn while the arena choice or his duel is open
@@ -1676,7 +1678,8 @@ const handleChooseDuelOpponent = async (opponentId) => {
   await loadGameData(false);
 };
 
-// A human rival summoned by a human challenger rolls in this browser once the challenger locked in
+// A human rival summoned to a duel (by a human or by the AI, whose turn waits) rolls in this browser once the
+// challenger locked in; online only in the summoned seat's own browser
 const showPendingDuelRoll = (fetched) => {
   const duel = fetched?.state?.duel;
   const pending = fetched?.state?.lastBattleInfo;
@@ -1684,6 +1687,7 @@ const showPendingDuelRoll = (fetched) => {
   if (!pending?.duel || pending.duel.role !== 'opponent' || pending.player !== duel.opponentId) return;
   if (pending.battleId === lastProcessedBattleId.value) return;
   if (playerById(duel.opponentId)?.isAi) return;
+  if (fetched?.state?.online && duel.opponentId !== mySeatId.value) return;
   battleInfo.value = pending;
   showBattleReportModal.value = true;
 };
@@ -2512,6 +2516,8 @@ const applyAiPlayerMovement = (action, playerId) => {
 
 // Track which turn number we last executed AI for - this is our single source of truth
 let lastExecutedAITurn = null;
+// Karak: Regent — the AI's turn waits for the hero it summoned to a duel (resumed once the duel is over and closed)
+let aiPausedForDuel = false;
 // Track if we have an AI execution in progress for a specific turn
 let aiExecutionInProgressForTurn = null;
 // Promise to track ongoing AI execution
@@ -2568,6 +2574,14 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       return;
     }
     
+    // The AI waits for my duel: my roll, my loot, then the outcome closed
+    if (aiPausedForDuel) {
+      const phase = gameData.value.state.duel?.phase;
+      if (['opponent_roll', 'loot'].includes(phase) || visibleDuel.value) return;
+      console.info('[duel] the duel is over: the AI goes on with its turn');
+      aiPausedForDuel = false;
+    }
+
     // Check if we already executed this turn
     if (lastExecutedAITurn === currentTurnNumber) {
 
@@ -2647,11 +2661,21 @@ const checkAndHandleVirtualPlayerTurn = async () => {
 
           // Sync to authoritative final state
           await loadGameData(false);
-          
+
+          // Karak: Regent — the AI's turn waits for me: the hero it summoned rolls here, the turn goes on after the duel
+          const paused = (response.actions || []).some((a) => a.type === 'ai_paused');
+          if (paused) {
+            console.info('[duel] the AI waits for the summoned hero');
+            aiPausedForDuel = true;
+            lastExecutedAITurn = null;
+            isProcessingAI.value = false;
+            showPendingDuelRoll(gameData.value);
+          }
+
           // After loading, check if there's another AI turn to execute
           // This handles consecutive AI turns when human is stunned
           const newGameState = gameData.value;
-          if (newGameState?.state) {
+          if (!paused && newGameState?.state) {
             const newTurn = newGameState.state.turn;
             const newCurrentPlayer = newGameState.state.currentPlayer || newGameState.state.currentPlayerId;
             const isStillAI = storedVirtualPlayerId && newCurrentPlayer === storedVirtualPlayerId;

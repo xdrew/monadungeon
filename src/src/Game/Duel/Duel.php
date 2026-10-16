@@ -21,6 +21,7 @@ use App\Game\Player\RemoveItemFromInventory;
 use App\Game\Player\ReplaceInventoryItem;
 use App\Game\Turn\EndTurn;
 use App\Game\Turn\Error\NotYourTurnException;
+use App\Game\Turn\GetCurrentTurn;
 use App\Game\Turn\GetTurn;
 use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\TurnAction;
@@ -265,8 +266,9 @@ class Duel extends AggregateRoot
                     role: DuelSide::OPPONENT,
                     toBeat: $event->total,
                     farseeing: $opponent->getSkills()?->fightsBetterOnFirstMove() === true,
-                    // A human summoned inside a virtual player's turn cannot answer: he is rolled automatically
-                    auto: $this->opponentIsAi || $this->challengerIsAi,
+                    // A summoned human decides on his spells himself, also against an AI (its turn waits for him);
+                    // only a human away from the table is rolled automatically
+                    auto: $this->opponentIsAi || $opponent->isAway(),
                     opponentId: $this->challengerId,
                 ),
             ));
@@ -301,8 +303,9 @@ class Duel extends AggregateRoot
         if (!$this->turnId->equals($command->turnId)) {
             throw new \DomainException('Invalid turn ID');
         }
-        $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($this->gameId));
-        if ($currentPlayerId === null || !$currentPlayerId->equals($command->playerId)) {
+        // the winner takes it in the duel's own turn: the challenger, or the summoned hero (an AI's turn waits)
+        $currentTurnId = $messageContext->dispatch(new GetCurrentTurn($this->gameId));
+        if ($currentTurnId === null || !$currentTurnId->equals($this->turnId)) {
             throw new NotYourTurnException();
         }
 
@@ -487,8 +490,8 @@ class Duel extends AggregateRoot
             $currentPlayerId = $messageContext->dispatch(new GetCurrentPlayer($this->gameId));
             if ($candidates === []) {
                 $this->phase = DuelPhase::DONE;
-            } elseif ($winner->isAi() || $currentPlayerId === null || !$currentPlayerId->equals($winnerId)) {
-                // Nobody can answer for this winner right now: the best item is taken automatically
+            } elseif ($winner->isAi() || $winner->isAway() || $currentPlayerId === null) {
+                // Nobody can answer for this winner right now: the best item that fits is taken automatically
                 $item = $this->autoPick($candidates, $winner);
                 if ($item !== null) {
                     $this->transferLoot($item, $messageContext);

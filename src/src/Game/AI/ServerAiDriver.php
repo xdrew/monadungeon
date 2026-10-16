@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Game\AI;
 
+use App\Game\Field\GetField;
 use App\Game\GameLifecycle\GetGame;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\MarkSeatAway;
@@ -172,6 +173,10 @@ final class ServerAiDriver
         }
         $player = $this->messageBus->dispatch(new GetPlayer($current));
         if (!$player->isAi() && !$player->isAway()) {
+            return null;
+        }
+        // Karak: Regent — the seat's turn waits for a human in a duel; his request will drive it on
+        if ($this->messageBus->dispatch(new GetField($gameId))->duelAwaitsHuman()) {
             return null;
         }
         // nobody is at the table: the game moves on only as its turns run out (standIn), not all at once

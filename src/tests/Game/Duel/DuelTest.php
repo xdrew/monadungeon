@@ -27,12 +27,14 @@ use App\Game\Movement\GetPlayerPosition;
 use App\Game\Player\AddItemToInventory;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\HeroType;
+use App\Game\Player\MarkSeatAway;
 use App\Game\Player\Player;
 use App\Game\Player\ReducePlayerHP;
 use App\Game\Player\RemoveItemFromInventory;
 use App\Game\Player\ReplaceInventoryItem;
 use App\Game\Turn\EndTurn;
 use App\Game\Turn\GameTurn;
+use App\Game\Turn\GetCurrentTurn;
 use App\Game\Turn\GetTurn;
 use App\Game\Turn\PerformTurnAction;
 use App\Game\Turn\StartTurn;
@@ -142,7 +144,7 @@ final class DuelTest extends TestCase
     }
 
     #[Test]
-    public function aHumanSummonedByAVirtualPlayerIsRolledAutomatically(): void
+    public function aHumanSummonedByAVirtualPlayerDecidesOnHisSpellsHimself(): void
     {
         $this->addPlayer($this->challenger, isAi: true);
         $tester = $this->createTester();
@@ -152,7 +154,36 @@ final class DuelTest extends TestCase
 
         $battle = $this->findMessage($messages, StartBattle::class);
         self::assertInstanceOf(StartBattle::class, $battle);
+        self::assertFalse($battle->duel?->auto ?? true, 'The AI\'s turn waits for him');
+        self::assertSame(DuelPhase::OPPONENT_ROLL, $duel->getPhase());
+    }
+
+    #[Test]
+    public function aHumanAwayFromTheTableIsRolledAutomatically(): void
+    {
+        $this->addPlayer($this->challenger, isAi: true);
+        $this->players[$this->opponent->toString()]->markAway(new MarkSeatAway($this->opponent, $this->gameId));
+        $tester = $this->createTester();
+        $duel = $this->begunDuel($tester);
+
+        [, $messages] = $tester->handle($duel->onDuelSideCompleted(...), $this->side($duel, DuelSide::CHALLENGER, 7));
+
+        $battle = $this->findMessage($messages, StartBattle::class);
+        self::assertInstanceOf(StartBattle::class, $battle);
         self::assertTrue($battle->duel?->auto ?? false);
+    }
+
+    #[Test]
+    public function aSummonedHumanWhoWinsAgainstAnAiPicksTheLoot(): void
+    {
+        $this->addPlayer($this->challenger, isAi: true, inventory: ['skeleton_king']);
+        [$duel] = $this->resolvedDuel(5, 10);
+
+        self::assertSame(DuelPhase::LOOT, $duel->getPhase(), 'The summoned human is at the table: he chooses');
+        $axe = $this->ownItem($this->challenger, ItemType::AXE);
+        [, $messages] = $this->createTester()->handle($duel->takeLoot(...), new TakeDuelLoot($this->gameId, $this->opponent, $this->turnId, $duel->getDuelId(), $axe->itemId));
+        $this->assertTransferred($messages, $axe, from: $this->challenger, to: $this->opponent);
+        self::assertSame(DuelPhase::DONE, $duel->getPhase());
     }
 
     #[Test]
@@ -501,6 +532,7 @@ final class DuelTest extends TestCase
                 $players[$command->playerId->toString()]->reduceHP($command, $context);
             },
             fn(GetCurrentPlayer $_query): Uuid => $this->challenger,
+            fn(GetCurrentTurn $_query): Uuid => $this->turnId,
             static fn(GetTurn $_query): GameTurn => $turn,
             static fn(GetPlayerPosition $_query): FieldPlace => FieldPlace::fromString('0,0'),
         );

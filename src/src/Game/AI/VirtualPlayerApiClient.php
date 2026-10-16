@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Game\AI;
 
+use App\Game\Field\GetField;
 use App\Game\Field\TileSide;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Telephantast\MessageBus\MessageBus;
 
 /**
  * Simulates API calls that a human player would make through the frontend
@@ -17,6 +20,7 @@ final readonly class VirtualPlayerApiClient
 {
     public function __construct(
         private HttpKernelInterface $httpKernel,
+        private ?MessageBus $messageBus = null,
     ) {}
 
     /**
@@ -38,7 +42,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => \in_array($response->getStatusCode(), [200, 201], true),
@@ -67,7 +71,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => \in_array($response->getStatusCode(), [200, 201], true),
@@ -98,7 +102,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => $response->getStatusCode() === 200,
@@ -130,7 +134,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => \in_array($response->getStatusCode(), [200, 201], true),
@@ -165,7 +169,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => \in_array($response->getStatusCode(), [200, 201], true),
@@ -198,7 +202,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => $response->getStatusCode() === 200,
@@ -240,7 +244,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => $response->getStatusCode() === 200,
@@ -284,7 +288,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => $response->getStatusCode() === 200,
@@ -401,7 +405,7 @@ final readonly class VirtualPlayerApiClient
         );
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
 
         return [
             'success' => $response->getStatusCode() === 200,
@@ -538,6 +542,21 @@ final readonly class VirtualPlayerApiClient
     }
 
     /**
+     * Every request of the AI's turn goes through here. Karak: Regent — while a duel waits for a human (the
+     * summoned hero's roll, his loot), the turn pauses instead of going on (AiTurnPaused).
+     */
+    private function send(Request $request): Response
+    {
+        $gameId = json_decode((string) $request->getContent(), true)['gameId'] ?? null;
+        if ($this->messageBus !== null && \is_string($gameId)
+            && $this->messageBus->dispatch(new GetField(Uuid::fromString($gameId)))->duelAwaitsHuman()) {
+            throw new AiTurnPaused('A duel waits for a human');
+        }
+
+        return $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+    }
+
+    /**
      * @return array{gameId: string, playerId: string, turnId: string}
      */
     private function turnPayload(Uuid $gameId, Uuid $playerId, Uuid $turnId): array
@@ -557,7 +576,7 @@ final readonly class VirtualPlayerApiClient
         $request = Request::create(uri: $uri, method: 'POST', content: json_encode($payload));
         $request->headers->set('Content-Type', 'application/json');
 
-        $response = $this->httpKernel->handle($request, HttpKernelInterface::SUB_REQUEST);
+        $response = $this->send($request);
         $success = \in_array($response->getStatusCode(), [200, 201], true);
         if (!$success) {
             error_log(sprintf('DEBUG AI: %s failed (%d): %s', $action, $response->getStatusCode(), (string) $response->getContent()));

@@ -961,6 +961,11 @@ final class SmartVirtualPlayer implements AiTurnTaker
             }
 
             return $actions;
+        } catch (AiTurnPaused $e) {
+            // Karak: Regent — the summoned human rolls (and takes the loot) himself: the turn goes on when asked again
+            $actions[] = $this->createAction('ai_paused', ['reason' => 'duel', 'message' => $e->getMessage()]);
+
+            return $actions;
         } catch (\Throwable $e) {
             $actions[] = $this->createAction('ai_error', [
                 'error' => $e->getMessage(),
