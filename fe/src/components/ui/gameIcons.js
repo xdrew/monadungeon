@@ -59,6 +59,8 @@ export const ICONS = {
   table: [circle(12, 12, 5), circle(12, 3.5, 1.6), circle(12, 20.5, 1.6), circle(3.5, 12, 1.6), circle(20.5, 12, 1.6)],
   // two chain links: the invite link
   link: [path('M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2'), path('M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2')],
+  // a ring open on the right with a bar: the Google sign-in (a line mark, not the logo)
+  google: [path('M20 12h-8'), path('M20 12a8 8 0 1 1-2.6-5.9')],
   // a figure: a seat and who sits on it
   person: [circle(12, 8, 3.6), path('M4.5 20.5a7.5 7.5 0 0 1 15 0')]
 };

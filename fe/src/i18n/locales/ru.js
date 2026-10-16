@@ -28,6 +28,17 @@ export default {
     notFound: '404 — страница не найдена'
   },
   account: {
+    keepGoogle: 'Сохранить через Google',
+    keepGoogleHint: 'Войдите им на другом устройстве и играйте под своим именем',
+    keptWith: 'Сохранено через Google · {email}',
+    keptWithShort: 'Сохранено через Google',
+    signOut: 'Выйти',
+    signInGoogle: 'Уже есть аккаунт: войти через Google',
+    googleBound: 'Аккаунт сохранён через Google. Входите им на любом устройстве.',
+    googleSignedIn: 'С возвращением, {name}.',
+    googleCreated: 'Новый аккаунт, {name}, сохранён через Google.',
+    googleFailed: 'Вход через Google не удался.',
+    signedOut: 'Вы вышли на этом устройстве.',
     you: 'Вы',
     rename: 'Сменить имя',
     askName: 'Как вас зовут в подземелье?',

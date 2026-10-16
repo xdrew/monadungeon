@@ -12,7 +12,7 @@ its **test mode**, which scripts the dice, the tile deck and the bag so every fi
 | `tests/base-heroes.spec.ts` | Swordsman (Combat Training, Unstoppable), Warlock (Sacrifice, Magic Swap), Wizard (Magical Affinity, Astral Walking), Oracle (Fateweaver, Farseeing). |
 | `tests/regent-heroes.spec.ts` | Barbarian (Berserk, heal limit, Tireless), Battle Mage (Sword Master, Lightning Attack, the retreat), Acrobat (Dagger Throwing, Sprint), Ranger (Bear Attack, Listening). |
 | `tests/mechanics.spec.ts` | The Curse of Karak, the Portal of Healing, chests with and without a key, a find a full pack does not want, tile rotation, a fight surviving a reload, the dragon, the results and the Hall of fame. |
-| `tests/online.spec.ts` | Guest accounts: the name card, rename, the seat guard (another browser context gets 403), the Hall of fame by players and heroes after a won game. |
+| `tests/online.spec.ts` | Guest accounts: the name card, rename, the seat guard (another browser context gets 403), Google (fake provider: keep, sign in on another device, sign out, a created account, an invite link), the Hall of fame by players and heroes after a won game. |
 | `tests/online-table.spec.ts` | Online tables: two browsers (the open-table list, the waiting room live, one hero per table, the start, each other's tile/turn without a reload, the seat guard), an AI seat the server plays and both browsers play back, invites to a full and to a closed table, a 5-second turn that runs out (the AI plays it, the seat is away, "Take my seat back"). |
 | `tests/regent-mechanics.spec.ts` | Giant Bat → Dark Thorn, Skeleton Mage → Frost Fist, the Battle Arena duel, the Cursed Room, the Lord Karak reveal. |
 

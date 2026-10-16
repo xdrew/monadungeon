@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
 import { GameHelpers } from '../utils/game-helpers';
 import { snap } from '../utils/screens';
@@ -72,6 +72,83 @@ test.describe('Online: accounts and the Hall of fame', () => {
     } finally {
       await stranger.close();
     }
+  });
+
+  test('keep the account with Google, sign in with it on another device, sign out', async ({ page, browser }) => {
+    // the dev/test fake provider signs in as localStorage.googleFakeAs ("sub:email")
+    const sub = `e2e-${Date.now()}`;
+    const asGoogle = async (p: Page, who: string) => p.addInitScript((v) => localStorage.setItem('googleFakeAs', v), who);
+    await asGoogle(page, `${sub}:ada@gmail.com`);
+    await page.goto(API_URL);
+    await page.getByTestId('name-card-input').fill('Ada');
+    await page.getByTestId('name-card-save').click();
+    await expect(page.getByTestId('account-keep-google')).toBeVisible();
+
+    console.log('[spec] a guest keeps the account with Google');
+    await page.getByTestId('account-keep-google').click();
+    await expect(page.getByTestId('account-notice')).toContainText('kept with Google');
+    await expect(page.getByTestId('account-google')).toContainText('a…@gmail.com');
+    await expect(page).not.toHaveURL(/google=/);
+    await snap(page, SPEC, 'kept-with-google', { phone: true });
+
+    console.log('[spec] another device signs in with the same Google account and is Ada');
+    const other = await (await browser.newContext()).newPage();
+    watchPage(other);
+    await asGoogle(other, `${sub}:ada@gmail.com`);
+    await other.goto(API_URL);
+    await expect(other.getByTestId('name-card-google')).toBeVisible();
+    await snap(other, SPEC, 'sign-in-with-google', { phone: true });
+    await other.getByTestId('name-card-google').click();
+    await expect(other.getByTestId('account-line')).toContainText('Ada');
+    await expect(other.getByTestId('account-notice')).toContainText('Welcome back, Ada');
+    const meA = await (await page.request.get(`${API_URL}/api/account/me`)).json();
+    const meB = await (await other.request.get(`${API_URL}/api/account/me`)).json();
+    expect(meB.id).toBe(meA.id);
+
+    console.log('[spec] that device signs out; the first stays signed in');
+    await other.getByTestId('account-sign-out').click();
+    await expect(other.getByTestId('name-card')).toBeVisible();
+    await expect(other.getByTestId('account-notice')).toContainText('Signed out');
+    expect((await other.request.get(`${API_URL}/api/account/me`)).status()).toBe(204);
+    await page.reload();
+    await expect(page.getByTestId('account-line')).toContainText('Ada');
+
+    console.log('[spec] a Google account nobody keeps makes a new account on a new device');
+    const third = await (await browser.newContext()).newPage();
+    watchPage(third);
+    await asGoogle(third, `${sub}-c:carol@example.com`);
+    await third.goto(API_URL);
+    await third.getByTestId('name-card-google').click();
+    await expect(third.getByTestId('account-line')).toContainText('Carol');
+    await expect(third.getByTestId('account-notice')).toContainText('A new account, Carol');
+
+    console.log('[spec] a guest cannot sign out (the account would be lost)');
+    const guestOut = await other.request.post(`${API_URL}/api/account/guest`, { data: { name: 'Plain' } });
+    expect(guestOut.status()).toBe(201);
+    expect((await other.request.post(`${API_URL}/api/account/sign-out`)).status()).toBe(409);
+    await other.context().close();
+    await third.context().close();
+  });
+
+  test('an invite link signs in with Google and takes the seat', async ({ page, browser }) => {
+    const host = page.request;
+    expect((await host.post(`${API_URL}/api/account/guest`, { data: { name: 'Hostess' } })).status()).toBe(201);
+    const { gameId } = await (await host.post(`${API_URL}/api/tables`, { data: { seats: 2 } })).json();
+    const sub = `e2e-inv-${Date.now()}`;
+    // the guest is kept with Google on one device first
+    const before = await (await browser.newContext()).newPage();
+    await before.request.post(`${API_URL}/api/account/guest`, { data: { name: 'Roamer' } });
+    await before.goto(`${API_URL}/api/account/google/start?return=/&as=${sub}:roamer@example.com`);
+    await before.context().close();
+
+    const phone = await (await browser.newContext()).newPage();
+    watchPage(phone);
+    await phone.addInitScript((v) => localStorage.setItem('googleFakeAs', v), `${sub}:roamer@example.com`);
+    await phone.goto(`${API_URL}/table/${gameId}`);
+    await phone.getByTestId('name-card-google').click();
+    await expect(phone).toHaveURL(new RegExp(`/game/${gameId}`), { timeout: 15000 });
+    await expect(phone.getByTestId('table-room')).toContainText('Roamer');
+    await phone.context().close();
   });
 
   test('a won game shows in the Hall of fame, by player and by hero', async ({ page }) => {

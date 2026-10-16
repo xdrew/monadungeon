@@ -10,6 +10,7 @@ A fully-featured multiplayer dungeon-crawling adventure game where players explo
 ### Guest accounts
 - **A name, no password**: the first visit asks for a name and keeps a guest account in a session cookie; the name can be changed later with the pen on the start screen
 - **Your seats are yours**: the server refuses anyone else acting for them
+- **Keep it with Google**: "Keep with Google" next to your name ties the guest account to a Google account; "I have an account: sign in with Google" brings it to another device (the start screen and invite links). A kept account can sign out on a device
 - **Hall of fame**: by players and by heroes
 
 ### Online tables
@@ -127,6 +128,12 @@ task fe-dev       # Start Vite dev server
 task fe-build     # Production build
 task fe:test      # Run E2E tests
 ```
+
+### Google sign-in setup
+1. Google Cloud console → APIs & Services → Credentials → *Create credentials* → *OAuth client ID*, type **Web application**.
+2. Authorized redirect URI: `https://<your host>/api/account/google/callback` (the server builds it from the request's host, `X-Forwarded-Proto` and `X-Forwarded-Port`).
+3. Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` into `.env.prod` (production) or `.env` (dev). With an empty id the Google buttons are hidden and the endpoints answer 404.
+4. Dev and test use `GOOGLE_CLIENT_ID=fake`: no Google at all, `/api/account/google/start?as=<sub>:<email>` signs in as anyone (the e2e does it through `localStorage.googleFakeAs`).
 
 ## Game Rules
 

@@ -29,6 +29,17 @@ export default {
     notFound: '404 Not Found'
   },
   account: {
+    keepGoogle: 'Keep with Google',
+    keepGoogleHint: 'Sign in with it on another device and play as yourself',
+    keptWith: 'Kept with Google · {email}',
+    keptWithShort: 'Kept with Google',
+    signOut: 'Sign out',
+    signInGoogle: 'I have an account: sign in with Google',
+    googleBound: 'Your account is kept with Google. Sign in with it on any device.',
+    googleSignedIn: 'Welcome back, {name}.',
+    googleCreated: 'A new account, {name}, kept with Google.',
+    googleFailed: 'The Google sign-in did not go through.',
+    signedOut: 'Signed out on this device.',
     you: 'You',
     rename: 'Change the name',
     askName: 'What shall the dungeon call you?',

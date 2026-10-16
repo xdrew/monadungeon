@@ -41,6 +41,18 @@
         </button>
       </div>
       <span class="join-plaque__hint">{{ nameErrorText || t('account.hint') }}</span>
+      <a
+        v-if="google.available"
+        class="join-plaque__google"
+        :href="accountApi.googleStartUrl(`/table/${tableId}`, google)"
+        data-testid="name-card-google"
+      >
+        <GameIcon
+          name="google"
+          :size="15"
+        />
+        {{ t('account.signInGoogle') }}
+      </a>
     </form>
 
     <div
@@ -100,6 +112,8 @@ const reason = ref('');
 const busy = ref(false);
 const nameInput = ref(accountApi.suggestName());
 const nameErrorText = ref('');
+const google = ref({ available: false, fake: false });
+accountApi.googleStatus().then((status) => { google.value = status; });
 
 const REFUSALS = {
   'table.full': 'tables.full',
@@ -227,6 +241,16 @@ onMounted(async () => {
   font-size: 13px;
   font-style: italic;
   color: var(--text-muted);
+}
+
+.join-plaque__google {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-accent);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .name-input {

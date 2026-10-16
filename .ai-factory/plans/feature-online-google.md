@@ -60,8 +60,8 @@ Authority: user answers > part 1 / part 2 plans > CLAUDE.md > existing code.
 - [x] Task 3: API in `src/src/Api/Account/Google/`: `Start`, `Callback`, plus `SignOut`; `Me` adds `google` and `googleAvailable`; the cookie helpers in `SessionCookie`. PHPUnit: `GoogleSignInTest` (every row), claim checks, return-path check, sessions. curl smoke with the fake provider.
 
 ### Phase 2: Browser, e2e, docs
-- [ ] Task 4: `fe/src/services/account.js` (`googleStartUrl(returnPath, as?)`, `signOut()`); start-screen account line and name card; the `/table/:id` name card; the `?google=` notice; i18n en/ru/pl; the Google mark as a line icon in `gameIcons.js` (no logo image).
-- [ ] Task 5: `fe/e2e/tests/online.spec.ts`:
+- [x] Task 4: `fe/src/services/account.js` (`googleStartUrl(returnPath, as?)`, `signOut()`); start-screen account line and name card; the `/table/:id` name card; the `?google=` notice; i18n en/ru/pl; the Google mark as a line icon in `gameIcons.js` (no logo image).
+- [x] Task 5: `fe/e2e/tests/online.spec.ts`:
   - keep a guest with Google (fake);
   - a second browser signs in with the same `sub` and gets the same name;
   - a third browser signs in with a new `sub` and gets a created account;
@@ -69,7 +69,7 @@ Authority: user answers > part 1 / part 2 plans > CLAUDE.md > existing code.
   - a guest switching to a kept account.
   
   Then run all topic specs; screenshots reviewed.
-- [ ] Task 6: Docs:
+- [x] Task 6: Docs:
   - README: Google Cloud console → OAuth client "Web", the redirect URI `https://<host>/api/account/google/callback`, the env keys, the fake provider;
   - CLAUDE.md;
   - `fe/e2e/README.md`;

@@ -48,6 +48,37 @@
               :size="15"
             />
           </button>
+          <!-- kept with Google: on any device; a guest may keep the account that way -->
+          <span
+            v-if="account.google"
+            class="account-line__google"
+            data-testid="account-google"
+          >
+            <GameIcon
+              name="google"
+              :size="14"
+            />
+            {{ account.google.email ? t('account.keptWith', { email: account.google.email }) : t('account.keptWithShort') }}
+            <button
+              type="button"
+              class="account-line__link"
+              data-testid="account-sign-out"
+              @click="signOut"
+            >{{ t('account.signOut') }}</button>
+          </span>
+          <a
+            v-else-if="google.available"
+            class="account-line__link account-line__keep"
+            :href="googleUrl"
+            :title="t('account.keepGoogleHint')"
+            data-testid="account-keep-google"
+          >
+            <GameIcon
+              name="google"
+              :size="14"
+            />
+            {{ t('account.keepGoogle') }}
+          </a>
         </template>
         <form
           v-else
@@ -236,6 +267,14 @@
         </div>
       </div>
 
+      <div
+        v-if="accountNotice"
+        class="account-notice"
+        role="status"
+        data-testid="account-notice"
+      >
+        {{ accountNotice }}
+      </div>
       <form
         v-if="accountChecked && !account"
         class="name-card"
@@ -264,6 +303,18 @@
           </button>
         </div>
         <span class="name-card__hint">{{ nameErrorText || t('account.hint') }}</span>
+        <a
+          v-if="google.available"
+          class="name-card__google"
+          :href="googleUrl"
+          data-testid="name-card-google"
+        >
+          <GameIcon
+            name="google"
+            :size="15"
+          />
+          {{ t('account.signInGoogle') }}
+        </a>
       </form>
       <button
         v-else
@@ -338,7 +389,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { gameApi } from '@/services/api';
 import { accountApi, nameError } from '@/services/account';
 import MusicToggle from '@/components/game/MusicToggle.vue';
@@ -352,6 +403,7 @@ import { theme, getHero } from '@/theme';
 import { heroName, HERO_SKILL_KEYS } from '@/i18n/names';
 
 const router = useRouter();
+const route = useRoute();
 const { t } = useI18n();
 const errorMessage = ref('');
 const loading = ref(false);
@@ -487,8 +539,37 @@ const generateRandomId = () => {
 // Start the lobby music on mount
 onMounted(() => {
   musicService.init('/music/game-theme.mp3');
-  loadAccount();
+  loadAccount().then(showGoogleOutcome);
+  accountApi.googleStatus().then((status) => { google.value = status; });
 });
+
+// ===== Google: keep the account, sign in on another device =====
+const google = ref({ available: false, fake: false });
+const googleUrl = computed(() => accountApi.googleStartUrl('/', google.value));
+const accountNotice = ref('');
+const GOOGLE_NOTICES = { bound: 'account.googleBound', signed_in: 'account.googleSignedIn', created: 'account.googleCreated', failed: 'account.googleFailed' };
+// back from Google with ?google=…: one notice, then the address is clean again
+const showGoogleOutcome = () => {
+  const outcome = route.query.google;
+  if (!outcome || !GOOGLE_NOTICES[outcome]) return;
+  console.info('[account] back from Google:', outcome);
+  accountNotice.value = t(GOOGLE_NOTICES[outcome], { name: account.value?.name || '' });
+  const query = { ...route.query };
+  delete query.google;
+  router.replace({ query });
+};
+const signOut = async () => {
+  try {
+    await accountApi.signOut();
+    account.value = null;
+    nameInput.value = accountApi.suggestName();
+    accountNotice.value = t('account.signedOut');
+    console.info('[account] signed out on this device');
+  } catch (err) {
+    errorMessage.value = t('account.failed');
+    console.warn('[account] sign-out failed:', err?.response?.data || err?.message || err);
+  }
+};
 
 // ===== Who plays: the guest account =====
 const account = ref(null);
@@ -762,6 +843,44 @@ const createNewGame = async () => {
 .name-card__row {
   display: flex;
   gap: 10px;
+}
+
+.name-card__google,
+.account-line__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-accent);
+  font-family: var(--font-body);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.name-card__google:hover,
+.account-line__link:hover {
+  color: var(--color-primary-hover);
+}
+
+.account-line__google {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.account-notice {
+  padding: 8px 12px;
+  border: 1px solid rgba(var(--ember-rgb), 0.45);
+  background: rgba(20, 12, 8, 0.9);
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 .name-card__hint {

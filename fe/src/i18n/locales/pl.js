@@ -28,6 +28,17 @@ export default {
     notFound: '404 — nie znaleziono'
   },
   account: {
+    keepGoogle: 'Zachowaj przez Google',
+    keepGoogleHint: 'Zaloguj się nim na innym urządzeniu i graj jako ty',
+    keptWith: 'Zachowane przez Google · {email}',
+    keptWithShort: 'Zachowane przez Google',
+    signOut: 'Wyloguj',
+    signInGoogle: 'Mam już konto: zaloguj przez Google',
+    googleBound: 'Konto jest zachowane przez Google. Loguj się nim na każdym urządzeniu.',
+    googleSignedIn: 'Witaj z powrotem, {name}.',
+    googleCreated: 'Nowe konto, {name}, zachowane przez Google.',
+    googleFailed: 'Logowanie przez Google się nie udało.',
+    signedOut: 'Wylogowano na tym urządzeniu.',
     you: 'Ty',
     rename: 'Zmień imię',
     askName: 'Jak mają cię wołać w podziemiach?',
