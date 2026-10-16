@@ -171,4 +171,4 @@ Each test's sequence is written next to it as a comment table, as in the showcas
   - the screenshot folder.
 
   The CLAUDE.md e2e section is updated the same way. It is local only.
-- [ ] Task 10: After the user's run, read `fe/test-results/screens/**` and write the critical review, as described under Screenshots. Failures from the run are fixed first, one commit per spec.
+- [x] Task 10: After the user's run, read `fe/test-results/screens/**` and write the critical review, as described under Screenshots. Failures from the run are fixed first, one commit per spec.
