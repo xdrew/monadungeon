@@ -238,6 +238,8 @@ export default {
     back: 'To the lobby',
     music: 'Music by situation',
     stings: 'Stings',
+    candidates: 'Takes for {cue}',
+    candidatesNote: 'Each take is a different idea of the sound, at the same loudness. Tell which numbers fit, and they go into the game.',
     moments: 'Moments',
     momentsNote: 'Several sounds with the game\'s own timing, to hear them together.',
     play: 'Play',

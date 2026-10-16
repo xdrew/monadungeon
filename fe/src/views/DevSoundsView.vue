@@ -92,6 +92,31 @@
       </div>
     </section>
 
+    <!-- Takes waiting for a choice: tools/audio writes them to public/audio/candidates (gitignored) -->
+    <section
+      v-for="(takes, cue) in candidates"
+      :key="`cand-${cue}`"
+      class="bench__section"
+      data-testid="bench-candidates"
+    >
+      <h2 class="bench__h2">
+        {{ t('devSounds.candidates', { cue }) }}
+      </h2>
+      <p class="bench__note">
+        {{ t('devSounds.candidatesNote') }}
+      </p>
+      <div class="bench__grid">
+        <SoundCard
+          v-for="take in takes"
+          :id="`${cue} #${take.id}`"
+          :key="take.file"
+          :files="[take.file]"
+          :scene="cue"
+          :when="take.label[locale] || take.label.en"
+        />
+      </div>
+    </section>
+
     <section class="bench__section">
       <h2 class="bench__h2">
         {{ t('devSounds.moments') }}
@@ -146,7 +171,7 @@ import SoundScene from '@/components/dev/SoundScene.vue';
 import { audio } from '@/services/audio/audioEngine';
 import { STINGS, TRACKS, sfxFiles } from '@/services/audio/cues';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const TRACK_IDS = Object.keys(TRACKS);
 const STING_IDS = Object.keys(STINGS);
@@ -211,7 +236,18 @@ const drawMeter = () => {
   meterFrame = requestAnimationFrame(drawMeter);
 };
 
+const candidates = ref({});
+const loadCandidates = async () => {
+  try {
+    const response = await fetch('/audio/candidates/index.json', { cache: 'no-store' });
+    if (response.ok && (response.headers.get('content-type') || '').includes('json')) candidates.value = await response.json();
+  } catch {
+    // no takes waiting
+  }
+};
+
 onMounted(() => {
+  loadCandidates();
   // the bench starts quiet: the page's own music would mask what is being listened to
   audio.music(null);
   drawMeter();

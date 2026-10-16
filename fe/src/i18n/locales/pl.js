@@ -237,6 +237,8 @@ export default {
     back: 'Do lobby',
     music: 'Muzyka według sytuacji',
     stings: 'Krótkie motywy',
+    candidates: 'Wersje dla {cue}',
+    candidatesNote: 'Każda wersja to inny pomysł na dźwięk, przy tej samej głośności. Podaj pasujące numery, a trafią do gry.',
     moments: 'Chwile',
     momentsNote: 'Kilka dźwięków po kolei z opóźnieniami jak w grze, by usłyszeć je razem.',
     play: 'Graj',
