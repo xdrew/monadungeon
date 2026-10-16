@@ -60,6 +60,7 @@ Positions, stun and the curse come from play. The first player starts; placing a
   - `endTurn()`;
   - API readers: `apiGame`, `apiPlayer`, `position`, `packTypes`, `packItemId`;
   - `visibleWithin()`: `isVisible()` never waits.
+- `watchPage()` prints the page's errors and 5xx answers; run with `-e E2E_CONSOLE=1` (and `VERBOSE=1`) to print the whole browser console.
 - `utils/game-helpers.ts`: the showcase's helpers. `placeTile()` ignores its x/y and takes the first free spot.
 - `utils/screens.ts` — `snap(page, spec, name, { phone })`: every screen a spec reaches goes to
   `fe/test-results/screens/<spec>/NN-<name>.png`, and with `phone` also `.phone.png` at 390×844, for design reviews.

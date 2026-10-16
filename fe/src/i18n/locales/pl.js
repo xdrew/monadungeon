@@ -270,6 +270,7 @@ export default {
       cursedRoomCursed: 'Przeklęta komnata — {who}: wypadło {roll} (1–3 przeklinają): klątwa, bez umiejętności do fontanny',
       cursedRoomSafe: 'Przeklęta komnata — {who}: wypadło {roll} (1–3 przeklinają): bez szwanku',
       darkThornHit: 'Kolec ciemności — {who} traci 1 PW',
+      unstoppableGoesOn: 'Niepowstrzymany: wypadła szóstka — {who} kontynuuje turę',
       notWorthTaking: '{item}: nie lepsze niż twoje rzeczy — kliknij znalezisko, by je wziąć',
       magicSwapTooLate: 'Magiczna zamiana jest możliwa tylko na początku tury, przed pierwszym ruchem.',
       cursedYou: 'Spada na ciebie klątwa Karak',

@@ -503,7 +503,7 @@
             v-show="!isRolling"
             class="battle-footer"
             :class="{ 'footer-reveal': showResults, 'footer-locked': curseChoicePending, 'footer-working': isProcessing }"
-            @click.capture="markPressed"
+            @pointerdown.capture="markPressed"
           >
             <!-- Karak: Regent — a duel side: lock in the strength (consumables / sacrifice / reroll as usual), then continue -->
             <div
@@ -1581,6 +1581,8 @@ const isPotentialReward = computed(() => {
 
 // While the server works on a choice, the pressed button keeps glowing and the others fade
 // (instead of all of them turning grey under the loading screen)
+// On pointerdown, not on a capturing click: a Vue click handler on the footer stamps the click event, and the
+// button's own handler then skips a click that comes as it is re-attached (a state update at that very moment)
 const markPressed = (event) => {
   const button = event.target.closest('button');
   if (!button || button.disabled) return;

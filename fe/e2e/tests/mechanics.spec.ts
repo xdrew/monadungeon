@@ -198,6 +198,12 @@ test.describe('Mechanics', () => {
     });
 
     await placeAt(page, 0, -1);
+    // A busy server answers the state late, right as the defeat is clicked: the click must still count
+    // (it once fell between a capturing click handler on the footer and the re-rendered button)
+    await page.route(new RegExp(`/api/game/${gameId}$`), async (route) => {
+      if (route.request().method() === 'GET') await new Promise((r) => setTimeout(r, 3000));
+      await route.continue();
+    });
     await placeAt(page, 0, -2);
     await waitForFight(page);
     const filled = page.locator('.battle-overlay .hero-hp .hp-heart.filled');

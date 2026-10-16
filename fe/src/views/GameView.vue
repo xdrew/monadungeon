@@ -1896,6 +1896,16 @@ const battleInfo = ref(null);
 const battleReportModalRef = ref(null);
 const skipBattleModalReshow = ref(false);
 const lastProcessedBattleId = ref(null);
+// When the fight scene closes on the field, say why the turn goes on (the scene's note is gone with it)
+// (battleInfo is often cleared in the same tick as the scene closes: remember the fight that was on screen)
+let fightOnScreen = null;
+watch(battleInfo, (fight) => { if (fight) fightOnScreen = fight; });
+watch(showBattleReportModal, (shown, wasShown) => {
+  const fight = fightOnScreen;
+  if (shown || !wasShown || fight?.unstoppable !== true || fight.duel) return;
+  if (fight.player !== currentPlayerId.value || gameData.value?.state?.status === 'finished') return;
+  showActionNotice(t('game.notice.unstoppableGoesOn', { who: heroNameById(fight.player) }));
+});
 // localStorage.currentPlayerId is shared by all tabs: a game started in another tab overwrites it.
 // When it names nobody in this game, take the player the lobby remembered for this game.
 const adoptThisGamesPlayer = (data) => {

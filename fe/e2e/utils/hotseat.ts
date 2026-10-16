@@ -34,6 +34,7 @@ export function watchPage(page: Page): void {
   page.on('console', (msg) => {
     // the music cannot autoplay in a headless browser: not an error of the game
     if (msg.type() === 'error' && !msg.text().includes('Failed to play music')) console.log(`[browser error] ${msg.text()}`);
+    else if (process.env.E2E_CONSOLE) console.log(`[browser ${msg.type()}] ${msg.text().substring(0, 200)}`);
   });
   page.on('response', (response) => {
     if (response.status() >= 500) {

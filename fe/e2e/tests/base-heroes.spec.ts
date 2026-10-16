@@ -45,6 +45,8 @@ test.describe('Base heroes', () => {
     await expect(page.locator(END_TURN).first()).toBeVisible();
     expect((await apiGame(request, gameId)).state.currentPlayerId).toBe(a);
     expect(await packTypes(request, gameId, a)).toEqual(['dagger']);
+    // back on the field the reason is said again (players asked why the turn did not end)
+    await expect(page.getByTestId('action-notice')).toContainText('Unstoppable: a 6 was rolled');
     await snap(page, SPEC, 'swordsman-turn-goes-on');
     await endTurn(page);
   });
