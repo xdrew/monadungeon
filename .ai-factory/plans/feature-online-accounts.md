@@ -64,7 +64,7 @@ Authority: user answers > CLAUDE.md > existing code. CLAUDE.md "No sign-in, no w
 ## Tasks
 
 ### Phase 1: Accounts
-- [ ] Task 1: `Account` aggregate in `src/src/Account/`. Contents:
+- [x] Task 1: `Account` aggregate in `src/src/Account/`. Contents:
   - `Account` entity with factory `Account::createGuest(name, tokenHash, at)` and `rename(name)`;
   - `AccountName` value object with validation;
   - `AccountRepository`;
@@ -73,13 +73,13 @@ Authority: user answers > CLAUDE.md > existing code. CLAUDE.md "No sign-in, no w
   - DI registration in `src/src/Account/di.php`, following `Game/di.php`.
 
   Doctrine mapping for schema `account`; migration via diff in the php container. Logs `account.created` / `account.renamed` (id, name length), info.
-- [ ] Task 2: Session. Contents:
+- [x] Task 2: Session. Contents:
   - `src/src/Account/Session/SessionToken` (generate, hash);
   - `CurrentAccount` service (reads the `karak_session` cookie, finds by hash, caches on the request, touches `lastSeenAt` at most once a minute);
   - `SessionCookie` factory (HttpOnly, Lax, Secure on https, 400 days).
 
   No token in logs.
-- [ ] Task 3: API under `src/src/Api/Account/`:
+- [x] Task 3: API under `src/src/Api/Account/`:
   - `Guest/{Action,Request,Response}` — `POST /account/guest`, sets the cookie;
   - `Me/Get/...` — `GET /account/me`;
   - `Me/Rename/...` — `PATCH /account/me`.
