@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Api\Leaderboard\Heroes;
+
+use App\Api\Error;
+use App\Infrastructure\Uuid\Uuid;
+use Doctrine\DBAL\Connection;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Attribute\Route;
+
+/**
+ * The Hall of fame by heroes: every finished game's heroes (the AI's too), how often each played and won.
+ */
+final readonly class Action
+{
+    public function __construct(
+        private Connection $connection,
+    ) {}
+
+    #[Route('/leaderboard/heroes', methods: ['GET'])]
+    public function __invoke(Request $request): Response|Error
+    {
+        $sortBy = (string) $request->query->get('sortBy', 'victories');
+        $sortOrder = strtoupper((string) $request->query->get('sortOrder', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+
+        try {
+            /** @var list<array{hero: string, games: int|string, victories: int|string}> $rows */
+            $rows = $this->connection->fetchAllAssociative(<<<'SQL'
+                    SELECT p.hero AS hero,
+                           COUNT(*) AS games,
+                           SUM(CASE WHEN g.winner_id = p.player_id THEN 1 ELSE 0 END) AS victories
+                    FROM player.player p
+                    JOIN game.game g ON g.game_id = p.game_id
+                    WHERE g.status = 'finished' AND p.hero IS NOT NULL
+                    GROUP BY p.hero
+                SQL);
+        } catch (\Throwable $e) {
+            return new Error(Uuid::v7(), 'Failed to get the heroes leaderboard: ' . $e->getMessage());
+        }
+
+        return new Response(
+            entries: HeroStandings::build($rows, $sortBy, $sortOrder),
+            sorting: ['sortBy' => \in_array($sortBy, HeroStandings::SORTS, true) ? $sortBy : 'victories', 'sortOrder' => $sortOrder],
+        );
+    }
+}

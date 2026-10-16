@@ -32,14 +32,13 @@ final readonly class UpdateLeaderboardOnGameEnd
         $leaderboardRepository = $this->entityManager->getRepository(Leaderboard::class);
 
         foreach ($players as $player) {
-            $username = $player->getUsername();
             $externalId = $player->getExternalId();
-
-            // Skip players without username (username is required for identification)
-            if (empty($username)) {
-                $this->logger->debug('Skipping player without username for leaderboard', [
+            // The board is by players, so by accounts: the AI and seats without an account (old games,
+            // test-mode setups) are not on it
+            if ($player->isAi() || empty($externalId)) {
+                $this->logger->debug('Not on the leaderboard: AI or no account', [
                     'playerId' => $player->getPlayerId()->toString(),
-                    'externalId' => $externalId,
+                    'isAi' => $player->isAi(),
                 ]);
 
                 continue;
@@ -47,44 +46,16 @@ final readonly class UpdateLeaderboardOnGameEnd
 
             $playerId = $player->getPlayerId();
             $isWinner = $event->winnerId && $event->winnerId->equals($playerId);
+            $username = $player->getUsername() ?: 'Adventurer';
 
-            $leaderboardEntry = null;
-
-            // Try by username and externalId combination
-            if (!empty($externalId)) {
-                $leaderboardEntry = $leaderboardRepository->findOneBy([
-                    'username' => $username,
-                    'externalId' => $externalId,
-                ]);
-            }
-
-            // Players without externalId are identified by username only
-            if (!$leaderboardEntry && empty($externalId)) {
-                $leaderboardEntry = $leaderboardRepository->findOneBy([
-                    'username' => $username,
-                    'externalId' => null,
-                ]);
-            }
-
+            $leaderboardEntry = $leaderboardRepository->findOneBy(['externalId' => $externalId]);
             if ($leaderboardEntry) {
-                // Update existing entry
                 $leaderboardEntry->updateStats($isWinner);
-
-                // Update username if it changed
                 if ($leaderboardEntry->getUsername() !== $username) {
                     $leaderboardEntry->updateUsername($username);
                 }
-
-                // Update external ID if provided and different
-                if ($externalId && $leaderboardEntry->getExternalId() !== $externalId) {
-                    $leaderboardEntry->updateExternalId($externalId);
-                }
             } else {
-                // Create new leaderboard entry
-                $leaderboardEntry = new Leaderboard(
-                    username: $username,
-                    externalId: $externalId,
-                );
+                $leaderboardEntry = new Leaderboard(username: $username, externalId: $externalId);
                 $leaderboardEntry->updateStats($isWinner);
                 $this->entityManager->persist($leaderboardEntry);
             }
@@ -92,12 +63,10 @@ final readonly class UpdateLeaderboardOnGameEnd
             $this->logger->info('Successfully updated leaderboard entry', [
                 'gameId' => $event->gameId->toString(),
                 'playerId' => $playerId->toString(),
-                'username' => $username,
                 'externalId' => $externalId,
                 'isWinner' => $isWinner,
                 'victories' => $leaderboardEntry->getVictories(),
                 'totalGames' => $leaderboardEntry->getTotalGames(),
-                'isAIPlayer' => $player->isAi(),
             ]);
         }
     }

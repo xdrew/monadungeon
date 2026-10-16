@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Api\Leaderboard\Get;
 
+use App\Account\CurrentAccount;
 use App\Api\Error;
 use App\Infrastructure\Uuid\Uuid;
 use Doctrine\DBAL\Connection;
@@ -14,6 +15,7 @@ final readonly class Action
 {
     public function __construct(
         private Connection $connection,
+        private CurrentAccount $currentAccount,
     ) {}
 
     #[Route('/leaderboard', methods: ['GET'])]
@@ -24,6 +26,10 @@ final readonly class Action
             $page = max(1, (int) $request->query->get('page', 1));
             $limit = min(100, max(1, (int) $request->query->get('limit', 20)));
             $sortBy = $request->query->get('sortBy', 'victories');
+            // the page asked for "totalGames" while only "total_games" was accepted
+            if ($sortBy === 'totalGames') {
+                $sortBy = 'total_games';
+            }
             $sortOrder = strtoupper($request->query->get('sortOrder', 'DESC'));
 
             // Validate sort parameters
@@ -41,6 +47,7 @@ final readonly class Action
             $countSql = <<<'SQL'
                     SELECT COUNT(*) as total
                     FROM game.leaderboard
+                    WHERE external_id IS NOT NULL
                 SQL;
 
             $totalCount = (int) $this->connection->fetchOne($countSql);
@@ -56,6 +63,7 @@ final readonly class Action
                         created_at,
                         updated_at
                     FROM game.leaderboard
+                    WHERE external_id IS NOT NULL
                     ORDER BY {$sortBy} {$sortOrder}, username ASC
                     LIMIT :limit OFFSET :offset
                 SQL;
@@ -68,8 +76,9 @@ final readonly class Action
             $formattedEntries = [];
             $position = $offset + 1;
 
+            $me = $this->currentAccount->get($request)?->getId()->toString();
             foreach ($entries as $entry) {
-                $formattedEntries[] = $this->formatEntry($entry, $position++);
+                $formattedEntries[] = $this->formatEntry($entry, $position++, $me);
             }
 
             return new Response(
@@ -90,7 +99,7 @@ final readonly class Action
         }
     }
 
-    private function formatEntry(array $entry, int $position): array
+    private function formatEntry(array $entry, int $position, ?string $me): array
     {
         $victories = (int) $entry['victories'];
         $totalGames = (int) $entry['total_games'];
@@ -100,6 +109,7 @@ final readonly class Action
             'username' => $entry['username'],
             'victories' => $victories,
             'totalGames' => $totalGames,
+            'isYou' => $me !== null && $entry['external_id'] === $me,
             'winRate' => $totalGames > 0
                 ? round(($victories / $totalGames) * 100, 1)
                 : 0,

@@ -97,8 +97,8 @@ Authority: user answers > CLAUDE.md > existing code. CLAUDE.md "No sign-in, no w
   - curl smoke: two cookies, the second gets 403 on `end-turn` for the first one's seat.
 
 ### Phase 3: Hall of fame
-- [ ] Task 6: `UpdateLeaderboardOnGameEnd`: key by externalId (account id), refresh the username, skip AI players. `GET /api/leaderboard` returns `isYou` (caller's account id = `external_id`) and accepts `totalGames` as an alias of `total_games`. PHPUnit.
-- [ ] Task 7: `src/src/Api/Leaderboard/Heroes/{Action,Response}.php`, `GET /api/leaderboard/heroes`: SQL over `player.player` joined to finished `game.game` (`status = 'finished'`, `winner_id`), grouped by hero (null hero → excluded), with `games`, `victories`, `winRate`; `sortBy` victories|games|win_rate. PHPUnit with a finished fixture game (the existing bus tester or a DBAL fixture, whichever the leaderboard tests use).
+- [x] Task 6: `UpdateLeaderboardOnGameEnd`: key by externalId (account id), refresh the username, skip AI players. `GET /api/leaderboard` returns `isYou` (caller's account id = `external_id`) and accepts `totalGames` as an alias of `total_games`. PHPUnit.
+- [x] Task 7: `src/src/Api/Leaderboard/Heroes/{Action,Response}.php`, `GET /api/leaderboard/heroes`: SQL over `player.player` joined to finished `game.game` (`status = 'finished'`, `winner_id`), grouped by hero (null hero → excluded), with `games`, `victories`, `winRate`; `sortBy` victories|games|win_rate. PHPUnit with a finished fixture game (the existing bus tester or a DBAL fixture, whichever the leaderboard tests use).
 
 ### Phase 4: Frontend, e2e, docs
 - [ ] Task 8:
