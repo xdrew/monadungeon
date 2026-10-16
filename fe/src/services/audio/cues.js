@@ -1,11 +1,11 @@
+import SFX_VARIANTS from './variants.json';
+
 /**
  * What the game can play: sound cues (fe/public/audio/sfx, made by tools/audio) and music tracks
  * (fe/public/audio/music). A cue with variants has files <id>-1.mp3 … <id>-n.mp3, one picked at random.
  * Add a cue: an entry in tools/audio/assets.json, `python -m tools.audio generate --only <id>`, then here.
+ * How many variants a sound has comes from variants.json, written by tools/audio (generate, pick).
  */
-const SFX_VARIANTS = {
-  ui_click: 3, step: 3, dice_roll: 2,
-};
 
 export const SFX = [
   'ui_click', 'ui_toggle', 'ui_open', 'ui_close', 'ui_refused', 'notice',

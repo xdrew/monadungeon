@@ -13,9 +13,9 @@ import logging
 import shutil
 from datetime import datetime, timezone
 
-from . import postprocess
+from . import pipeline, postprocess
 from .config import ASSETS_FILE, GENERATED_LOG, OUT_DIR, RAW_DIR, ROOT, TOOL_DIR, rel
-from .manifest import load_assets, load_style
+from .manifest import load_assets, load_style, write_variants
 
 LOG = logging.getLogger("audio.candidates")
 
@@ -33,40 +33,49 @@ def _save_index(index: dict) -> None:
     INDEX.write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def generate(asset_id: str, sfx_client) -> int:
+def generate(asset_id: str, clients: dict) -> float:
+    """Returns the spend: ElevenLabs credits for a sound, US dollars for music."""
     style = load_style()
     asset = {a.id: a for a in load_assets()}.get(asset_id)
-    if asset is None or asset.kind != "sfx":
-        raise SystemExit(f"{asset_id} is not a sound in assets.json")
+    if asset is None:
+        raise SystemExit(f"{asset_id} is not in assets.json")
     spec_file = TOOL_DIR / "candidates" / f"{asset_id}.json"
     if not spec_file.exists():
         raise SystemExit(f"no ideas for {asset_id}: write {rel(spec_file)}")
     spec = json.loads(spec_file.read_text(encoding="utf-8"))
-    seconds = float(spec.get("seconds", asset.seconds or 1.0))
-    influence = float(spec.get("influence", asset.influence or style["sfx"].prompt_influence))
+    k = style[asset.kind]
+    music = k.provider == "lyria"
+    seconds = float(spec.get("seconds", asset.seconds or 1.0)) if not music else asset.seconds
+    influence = float(spec.get("influence", asset.influence or k.prompt_influence))
+    takes_per_idea = int(spec.get("takes", 1 if music else 2))
     out_dir, raw_dir = PUBLIC / asset_id, RAW / asset_id
     for d in (out_dir, raw_dir):
         if d.exists():
             shutil.rmtree(d)
         d.mkdir(parents=True)
-    k = style["sfx"]
-    takes, credits = [], 0
+    takes, spend = [], 0.0
     for idea in spec["ideas"]:
-        for take in (1, 2):
+        for take in range(1, takes_per_idea + 1):
             name = f"{idea['key']}-{take}"
-            data, info = sfx_client.generate(idea["prompt"], seconds, influence)
-            credits += info.get("credits") or 0
+            if music:  # the kind's prefix (instrumental, the game's mood) goes first, as in generate
+                full = " ".join(p for p in (k.prefix, idea["prompt"]) if p)
+                data, info = clients["lyria"].generate(full, k.model)
+                spend += info.get("cost_usd") or 0
+            else:
+                data, info = clients["elevenlabs"].generate(idea["prompt"], seconds, influence)
+                spend += info.get("credits") or 0
             (raw_dir / f"{name}.mp3").write_bytes(data)
-            stats = postprocess.process(raw_dir / f"{name}.mp3", out_dir / f"{name}.mp3",
-                                        postprocess.Shape("sfx", False, k.lufs, seconds, k.mono, k.bitrate))
+            stats = postprocess.process(raw_dir / f"{name}.mp3", out_dir / f"{name}.mp3", pipeline._shape(asset, k))
             takes.append({"id": str(len(takes) + 1), "file": f"/audio/candidates/{asset_id}/{name}.mp3",
                           "raw": rel(raw_dir / f"{name}.mp3"), "label": idea["label"], "prompt": idea["prompt"],
-                          "influence": influence, "seconds": stats["seconds"]})
+                          "influence": influence, "seconds": stats["seconds"],
+                          "bus": "music" if music else "sfx", "model": info.get("model")})
     index = _index()
     index[asset_id] = takes
     _save_index(index)
-    LOG.info("candidates %s: %d takes, %d credits — listen on /dev/sounds", asset_id, len(takes), credits)
-    return credits
+    LOG.info("candidates %s: %d takes, %s — listen on /dev/sounds", asset_id, len(takes),
+             f"${spend:.2f}" if music else f"{int(spend)} credits")
+    return spend
 
 
 def pick(asset_id: str, numbers: list[str]) -> None:
@@ -78,8 +87,12 @@ def pick(asset_id: str, numbers: list[str]) -> None:
     # the manifest: as many variants as takes, a prompt each
     data = json.loads(ASSETS_FILE.read_text(encoding="utf-8"))
     entry = next(a for a in data["assets"] if a["id"] == asset_id)
-    entry["variants"] = len(chosen)
-    entry["influence"] = chosen[0]["influence"]
+    if len(chosen) > 1:
+        entry["variants"] = len(chosen)
+    else:
+        entry.pop("variants", None)
+    if chosen[0].get("bus", "sfx") == "sfx":
+        entry["influence"] = chosen[0]["influence"]
     prompts = [t["prompt"] for t in chosen]
     entry["prompt"] = prompts[0]
     if len(set(prompts)) > 1:
@@ -93,7 +106,8 @@ def pick(asset_id: str, numbers: list[str]) -> None:
     log = json.loads(GENERATED_LOG.read_text(encoding="utf-8")) if GENERATED_LOG.exists() else {}
     for old in [n for n, v in log.items() if v.get("asset") == asset_id]:
         log.pop(old)
-    out_dir = style["sfx"].out_dir
+    k = style[asset.kind]
+    out_dir = k.out_dir
     for stale in out_dir.glob(f"{asset_id}*.mp3"):
         if stale.stem == asset_id or stale.stem.rsplit("-", 1)[0] == asset_id:
             stale.unlink()
@@ -101,15 +115,16 @@ def pick(asset_id: str, numbers: list[str]) -> None:
     for take, out in zip(chosen, asset.outputs(style)):
         raw = RAW_DIR / f"{out.stem}.mp3"
         shutil.copyfile(ROOT / take["raw"], raw)
-        k = style["sfx"]
-        stats = postprocess.process(raw, out, postprocess.Shape("sfx", False, k.lufs, asset.seconds, k.mono, k.bitrate))
-        log[out.stem] = {"asset": asset_id, "kind": "sfx", "provider": "elevenlabs", "model": k.model,
-                         "prompt_influence": take["influence"], **stats, "out": rel(out),
+        stats = postprocess.process(raw, out, pipeline._shape(asset, k))
+        log[out.stem] = {"asset": asset_id, "kind": asset.kind, "provider": k.provider, "model": take.get("model") or k.model,
+                         **({"prompt_influence": take["influence"]} if k.provider == "elevenlabs" else {}),
+                         **stats, "out": rel(out),
                          "prompt_sha256": hashlib.sha256(take["prompt"].encode("utf-8")).hexdigest(),
                          "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                          "note": f"chosen by ear on the sound bench: take #{take['id']} ({take['label']['en']})"}
         LOG.info("picked #%s → %s", take["id"], rel(out))
     GENERATED_LOG.write_text(json.dumps(dict(sorted(log.items())), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    write_variants(load_assets())
     index.pop(asset_id, None)
     if index:
         _save_index(index)

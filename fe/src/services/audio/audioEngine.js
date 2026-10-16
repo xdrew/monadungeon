@@ -278,7 +278,7 @@ class AudioEngine {
     src.connect(bus === 'sfx' ? this.sfxBus : this.musicBus);
     const startedAt = this.ctx.currentTime;
     src.start();
-    return { duration: buf.duration, startedAt, buffer: buf };
+    return { duration: buf.duration, startedAt, buffer: buf, source: src };
   }
 
   /** An analyser on everything that sounds (the bench's level meter), made on first use. */

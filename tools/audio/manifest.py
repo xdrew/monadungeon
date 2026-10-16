@@ -112,3 +112,12 @@ def describe(assets: list[Asset], style: dict[str, KindSettings]) -> str:
         lines.append(f"{'ok ' if have == len(outs) else '-- '} {a.kind:5} {a.id:16} {have}/{len(outs)}"
                      f"{' loop' if a.loop else ''}{extra}")
     return "\n".join(lines)
+
+
+VARIANTS_FILE = ROOT / "fe" / "src" / "services" / "audio" / "variants.json"
+
+
+def write_variants(assets: list[Asset]) -> None:
+    """The game's cue map reads how many files each sound has from here (fe/src/services/audio/cues.js)."""
+    data = {a.id: a.variants for a in assets if a.kind == "sfx" and a.variants > 1}
+    VARIANTS_FILE.write_text(json.dumps(dict(sorted(data.items())), indent=2) + "\n", encoding="utf-8")

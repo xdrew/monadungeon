@@ -7,7 +7,7 @@ import sys
 
 from . import pipeline, postprocess
 from .config import ELEVENLABS_KEY, GEMINI_KEY, OUT_DIR, load_key, rel, setup_logging
-from .manifest import describe, load_assets, load_style
+from .manifest import describe, load_assets, load_style, write_variants
 
 LOG = logging.getLogger("audio")
 
@@ -62,6 +62,8 @@ def cmd_generate(args) -> int:
         if unknown:
             raise SystemExit(f"unknown asset ids: {', '.join(sorted(unknown))}")
     clients = None if args.dry_run else _clients(style, assets, only)
+    if not args.dry_run:
+        write_variants(assets)
     try:
         n, spend = pipeline.run(style, assets, clients, only, args.force, args.dry_run)
     except pipeline.GenerationError as exc:
@@ -84,9 +86,9 @@ def cmd_reprocess(args) -> int:
 
 def cmd_candidates(args) -> int:
     from . import candidates
-    from .elevenlabs import SfxClient
     style = load_style()
-    candidates.generate(args.id, SfxClient(load_key(ELEVENLABS_KEY), style["sfx"].model))
+    assets = load_assets()
+    candidates.generate(args.id, _clients(style, assets, {args.id}))
     return 0
 
 

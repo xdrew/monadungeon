@@ -111,6 +111,7 @@
           :id="`${cue} #${take.id}`"
           :key="take.file"
           :files="[take.file]"
+          :bus="take.bus || 'sfx'"
           :scene="cue"
           :when="take.label[locale] || take.label.en"
         />

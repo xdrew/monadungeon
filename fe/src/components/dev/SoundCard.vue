@@ -59,6 +59,11 @@
   </article>
 </template>
 
+<script>
+// one music take at a time on the bench: a new one stops the one before
+let playingMusic = null;
+</script>
+
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -101,10 +106,27 @@ const drawWave = (buffer, progress) => {
 };
 
 /** One file (by index), or one at random as the game picks. */
+let source = null;
+const stop = () => {
+  try { source?.stop(); } catch { /* already over */ }
+  source = null;
+  playing.value = false;
+};
 const play = async (index = Math.floor(Math.random() * props.files.length)) => {
+  // a long take (music) stops on a second click
+  if (playing.value && props.bus === 'music') {
+    stop();
+    return;
+  }
   current.value = index;
+  if (props.bus === 'music') {
+    playingMusic?.();
+    audio.music(null); // the bench's loop would play over it
+  }
   const started = await audio.preview(props.files[index], props.bus);
   if (!started) return;
+  source = started.source;
+  if (props.bus === 'music') playingMusic = stop;
   duration.value = started.duration;
   run.value += 1;
   playing.value = true;
@@ -112,7 +134,7 @@ const play = async (index = Math.floor(Math.random() * props.files.length)) => {
   const tickFrame = () => {
     const progress = Math.min(1, (audio.ctx.currentTime - started.startedAt) / started.duration);
     drawWave(started.buffer, progress);
-    if (progress < 1) frame = requestAnimationFrame(tickFrame);
+    if (progress < 1 && playing.value) frame = requestAnimationFrame(tickFrame);
     else playing.value = false;
   };
   tickFrame();
@@ -127,7 +149,10 @@ onMounted(async () => {
 });
 
 defineExpose({ play });
-onBeforeUnmount(() => cancelAnimationFrame(frame));
+onBeforeUnmount(() => {
+  cancelAnimationFrame(frame);
+  if (props.bus === 'music') stop();
+});
 </script>
 
 <style scoped>
