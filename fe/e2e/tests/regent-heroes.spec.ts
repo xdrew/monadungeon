@@ -60,6 +60,42 @@ test.describe('Regent heroes', () => {
     await expect.poll(async () => (await apiPlayer(request, gameId, a)).hp, { timeout: 10000 }).toBe(4);
   });
 
+  test('Barbarian: Tireless leaves a guarded chest; the next hero picks it up without a key', async ({ page, request }) => {
+    const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
+    await startGame(page, request, {
+      gameId,
+      regent: true,
+      // 6 + 6 = 12, Berserk +2 at 2 HP → 14 beats the Fallen's 12
+      diceRolls: [6, 6],
+      tileSequence: ['fourSideRoom', 'fourSideRoom'],
+      itemSequence: ['fallen', 'giant_rat'],
+      playerConfigs: { [a]: { hero: 'barbarian', hp: 2 }, [b]: {} },
+    });
+
+    await GameHelpers.placeTile(page, 0, 0);
+    await waitForFight(page);
+    await expect(page.locator('.victory-title')).toBeVisible();
+    console.log('[spec] the Fallen\'s chest is not collected for Valduk: he may leave it and walk on');
+    await expect(page.getByTestId('tireless-continue')).toBeVisible();
+    await snap(page, SPEC, 'barbarian-tireless-chest', { phone: true });
+    const room = await position(request, gameId, a);
+    await page.getByTestId('tireless-continue').click();
+    await waitForFightClosed(page);
+    expect((await apiGame(request, gameId)).field.items[room]?.type).toBe('chest');
+    expect((await apiPlayer(request, gameId, a)).inventory.treasures?.length || 0).toBe(0);
+    await endTurn(page);
+
+    console.log('[spec] B walks onto the chest: a defeated guard\'s chest needs no key');
+    await switchTo(page, b);
+    const [cx, cy] = room.split(',').map(Number);
+    await moveTo(page, cx, cy);
+    await expect(page.locator('.item-pickup-overlay')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.missing-key-dialog')).toHaveCount(0);
+    await page.locator('.item-pickup-overlay .btn-pickup').click();
+    await expect.poll(async () => (await apiPlayer(request, gameId, b)).inventory.treasures?.length || 0, { timeout: 10000 }).toBe(1);
+    await expect.poll(async () => (await apiGame(request, gameId)).state.currentPlayerId, { timeout: 10000 }).toBe(a);
+  });
+
   test('Battle Mage: Sword Master, Lightning Attack wins; a lost one retreats', async ({ page, request }) => {
     const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
     await startGame(page, request, {

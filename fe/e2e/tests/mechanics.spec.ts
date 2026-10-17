@@ -101,6 +101,8 @@ test.describe('Mechanics', () => {
     await snap(page, SPEC, 'chest-with-key', { phone: true });
     await page.locator('.item-pickup-overlay .btn-pickup').click();
     await expect.poll(async () => (await apiPlayer(request, gameId, b)).inventory.treasures?.length || 0, { timeout: 10000 }).toBe(1);
+    console.log('[spec] unlocking the chest ends the turn: it is A\'s again');
+    await expect.poll(async () => (await apiGame(request, gameId)).state.currentPlayerId, { timeout: 10000 }).toBe(a);
   });
 
   test('A full pack is not offered a find it does not want; a click still offers it', async ({ page, request }) => {

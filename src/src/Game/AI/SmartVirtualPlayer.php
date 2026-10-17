@@ -623,7 +623,7 @@ final class SmartVirtualPlayer implements AiTurnTaker
 
                 $dragonWinChance = $this->fightWinChance($player, (int) $dragonHP);
                 $maxPossibleDamage = BattleOdds::maxTotal(
-                    $player->calculateItemDamage(),
+                    $player->calculateWeaponDamage(),
                     $player->getSkills(),
                     $player->getHP(),
                     $this->countSpells($player, ItemType::FIREBALL),
@@ -1665,7 +1665,7 @@ final class SmartVirtualPlayer implements AiTurnTaker
         $useSpells = ($this->strategyConfig['riskTolerance'] ?? 0.5) >= 0.4 || $skills?->keepsSpellsInCombat() === true;
         $winProbability = BattleOdds::winChance(
             monsterHp: (int) $monsterHP,
-            itemDamage: $player->calculateItemDamage(),
+            itemDamage: $player->calculateWeaponDamage(),
             skills: $skills,
             hp: $player->getHP(),
             fireballs: $useSpells ? $this->countSpells($player, ItemType::FIREBALL) : 0,
@@ -1686,7 +1686,7 @@ final class SmartVirtualPlayer implements AiTurnTaker
     {
         return BattleOdds::winChance(
             monsterHp: $monsterHp,
-            itemDamage: $player->calculateItemDamage(),
+            itemDamage: $player->calculateWeaponDamage(),
             skills: $player->getSkills(),
             hp: $player->getHP(),
             fireballs: $this->countSpells($player, ItemType::FIREBALL),
@@ -3235,6 +3235,15 @@ final class SmartVirtualPlayer implements AiTurnTaker
      */
     private function continueAfterAction(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array &$actions, int $recursionDepth = 0): void
     {
+        // The server ends the turn itself after a pickup, a chest or a duel: then there is nothing left to play
+        $turnNow = $this->messageBus->dispatch(new GetCurrentTurn($gameId));
+        if ($turnNow === null || !$turnNow->equals($currentTurnId)) {
+            error_log('DEBUG ai.turn_over ' . json_encode(['turnId' => $currentTurnId->toString()]));
+            $actions[] = $this->createAction('ai_info', ['message' => 'The turn is over']);
+
+            return;
+        }
+
         // Prevent infinite recursion
         if ($recursionDepth > 10) {
             error_log('DEBUG AI: Maximum recursion depth reached in continueAfterAction, ending turn');
@@ -5285,7 +5294,7 @@ final class SmartVirtualPlayer implements AiTurnTaker
     {
         $skills = $player->getSkills();
         $totalStrength = BattleOdds::expectedRoll($skills)
-            + $player->calculateItemDamage()
+            + $player->calculateWeaponDamage()
             + BattleOdds::skillBonus($skills, $player->getHP(), false);
 
         if (($this->strategyConfig['preferBattles'] ?? false) || $skills?->keepsSpellsInCombat() === true) {

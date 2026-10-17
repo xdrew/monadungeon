@@ -10,6 +10,7 @@ Monadungeon is a dungeon-crawling adventure game where players explore a labyrin
 - **Starting Position**: All players start at position (0,0) on the central starting tile ✅
 - **Initial HP**: Each player starts with 5 HP tokens ✅
 - **Starting Tile**: A pre-placed starting tile is set at position (0,0) ✅
+- **Components** (exactly the box, never trimmed): 80 tiles — the start, 53 rooms, 20 corridors, 2 healing fountains, 4 teleportation gates; 53 tokens — 43 monsters with the dragon and 10 chests. Karak: Regent adds 18 tiles and 8 tokens ✅
 - **Turn Order**: every player rolls 2d6, the highest roll starts (a tie goes to the first of the tied players in seating order), then play goes clockwise; in test mode player 1 starts and no dice are spent ✅
 
 ## Turn Structure ✅
@@ -26,7 +27,7 @@ Each player has **4 movement actions** per turn. During their turn, players can:
 ### Tile Placement Rules ✅
 When entering an undiscovered zone:
 1. Draw a random tile from the deck ✅
-2. Place it connecting to the tile you're leaving from ✅
+2. Place it connecting to the tile you're leaving from, then step onto it (only Lady Lorraine may listen instead); the turn cannot end before ✅
 3. The tile must have at least one matching open side ✅
 4. Other sides can be dead ends (walls) ✅
 
@@ -44,8 +45,8 @@ When entering an undiscovered zone:
 - Movement ends if:
   - All 4 moves are used ✅
   - A battle occurs ✅
-  - Player unlocks a chest ✅
-  - Player picks up equipment ✅
+  - Player unlocks a chest ✅ (on the server: picking up ends the turn, except the reward of an Unstoppable win)
+  - Player picks up equipment, only on the tile he stands on ✅
   - Player heals at a fountain ✅
   - Player uses certain actions that end the turn ✅
 
@@ -60,7 +61,7 @@ When entering an undiscovered zone:
    - Can use consumable spell bonuses
 4. **Battle Outcomes**: ✅
    - **WIN** (damage > monster HP): Defeat monster, collect loot
-   - **DRAW** (damage = monster HP): No damage to either side, monster remains
+   - **DRAW** (damage = monster HP): No damage to either side, monster remains, the hero moves back to the previous tile
    - **LOSE** (damage < monster HP): Lose 1 HP, move back to previous tile
 
 
@@ -79,12 +80,12 @@ When entering an undiscovered zone:
    - Axe: +3 damage ✅
 
 2. **Spells** (Consumable):
-   - Fireball: +1 damage to next attack ✅
+   - Fireball ("magic bolt"): +1 in the current fight, chosen after the roll, several per fight, then removed from the game ✅
    - Portal of Healing (teleport scroll): carry yourself or any other player to a revealed healing fountain, heal them fully and lift their curse; costs no move and does not end the turn ✅
    - Frost Fist (Karak: Regent): +2 in a fight, chosen after the roll, several per fight, combinable; the Wizard keeps it ✅
    - Dark Thorn (Karak: Regent): on your turn another hero loses 1 HP; costs no move, several per turn ✅
 
-3. **Keys**: Required to unlock treasure chests ✅
+3. **Keys**: Required to unlock a treasure chest that never had a guard; the chest of a defeated guard (the Fallen's) is loot and needs no key ✅
 
 4. **Treasures**:
    - Regular Chest: 2 Victory Points ✅
@@ -104,22 +105,22 @@ When entering an undiscovered zone:
 - A cursed hero has no skills: the Warrior cannot reroll or reincarnate, the Thief loses ties and cannot sneak, the Swordsman keeps his 1s and his turn ends after any fight, the Warlock cannot sacrifice HP or swap places, the Wizard's fireballs are consumed and he cannot walk through walls, the Oracle gets no +1 and draws a single token ✅
 - The curse is lifted by ending the turn on a healing fountain (together with the healing) or by a Portal of Healing ✅
 - The choice is made in the battle report before picking up the reward; a choice left unmade is settled when the turn ends ✅
-- Single-player games have no curse ✅
+- Single-player games have no mummy curse (there is nobody to curse); a Cursed Room still curses ✅
 
 ### Karak: Regent (expansion) ✅
 - **Switch in the lobby** ("Karak: Regent expansion"): the deck gets 18 more tiles (6 Battle Arenas, 4 Cursed Rooms, 8 rooms) and the bag 6 Giant Bats and 2 Skeleton Mages. The four Regent heroes can only be picked with the switch on (see Heroes); the Lord Karak variant is a second switch shown under it ✅
 - **Battle Arena** (a corridor) ✅
   - The first hero to enter it on their own turn chooses another hero; that hero's figure is moved onto the arena and they fight a duel
-  - The challenger rolls and decides first (spells, Sacrifice, Double Attack); then the summoned hero rolls; the strength to beat is the other hero's total
+  - Both sides choose their spells and the Warlock's Sacrifice before any die is rolled (the challenger first, then the summoned hero, who sees the challenger's choice); then the challenger rolls, then the summoned hero; the Warrior may still reroll after his roll. The strength to beat is the other hero's total
   - All combat skills apply, a cursed hero has none; the Oracle gets +1 when the arena is her first step or when she is summoned
-  - Higher total wins (a hero who wins ties wins an equal total; both or neither → tie). The winner takes one item they have room for; the loser loses 1 HP; a tie changes nothing
-  - Both figures stay on the arena; the challenger's turn goes on unless knocked out
-  - A virtual challenger picks the rival with the most treasures; a human summoned during a virtual player's turn is rolled automatically (spells only when they turn the result)
-  - A choice left unmade when the turn ends means no duel; an unfinished duel is settled at the turn end (no consumables, best loot automatically)
+  - Higher total wins (a hero who wins ties wins an equal total; both or neither → tie). The winner takes one item or treasure of the loser (a full pack takes it in exchange, the winner's own item stays on the arena); the loser loses 1 HP; a tie changes nothing
+  - Both figures stay on the arena; the duel ends the challenger's turn, like any fight
+  - Only a hero fit to fight is summoned: not one lying unconscious or waiting to reincarnate. A virtual challenger picks the rival with the most treasures; a human summoned during a virtual player's turn decides for himself (the AI's turn waits); only a seat that is away is played automatically
+  - The duel is not optional: nobody walks on before it is over, and a rival never chosen when the turn ends is picked (the most treasures) and the duel settled at once; an unfinished duel is settled at the turn end (no consumables, best loot automatically)
   - The arena activates once; later entries are a normal corridor
 - **Cursed Room** (a corridor) ✅
   - Every hero entering it rolls a die: 1–3 → Curse of Karak, 4–6 → safe; an already cursed hero does not roll; being pushed back onto it after a lost fight rolls again
-  - Several heroes may be cursed at once; the mummy token is still single. A healing fountain or the Portal of Healing lifts every curse of that hero
+  - There is one curse token: a curse from a Cursed Room takes it from whoever carried it (that hero is free again), as a mummy curse does. A healing fountain or the Portal of Healing lifts it
 - **Monsters**: Giant Bat (6 HP) drops Dark Thorn; Skeleton Mage (11 HP) drops Frost Fist ✅
 - **Spells**: a Warrior losing his last HP to a Dark Thorn or in a duel reincarnates at the nearest discovered fountain automatically ✅
 
@@ -178,7 +179,7 @@ Heroes are dealt at random, as in the board game: the lobby switch **Random hero
   - After a loss or a tie he still loses the HP / is moved back as usual, but may walk onto the monster tile again and fight once more ✅
   - After a win he may pick up or leave the reward and keep moving ✅
   - A Swordsman who loses his last HP falls unconscious and his turn ends like everyone else's ✅
-  - The usual limit of 4 actions per turn applies to the rest of the turn ✅
+  - The step into the fight is one of the 4 moves when the turn goes on; the usual limit of 4 moves applies to the rest of the turn ✅
 
 #### Lord Xanros, the Warlock ✅
 - **Sacrifice** ✅
@@ -189,7 +190,7 @@ Heroes are dealt at random, as in the board game: the lobby switch **Random hero
 - **Magic Swap** ✅
   - As the first action of his turn the Warlock may trade places with any other hero: he moves to that hero's tile, the other hero to his ✅
   - It costs all 4 moves, so the turn ends right after the swap ✅
-  - The ability of the new tile still applies: a reward lying there may be picked up (a chest still needs a key) and a healing fountain heals when the turn ends there ✅
+  - The ability of the new tile still applies: a reward lying there may be picked up (a locked chest still needs a key) and a healing fountain heals when the turn ends there ✅
   - Arriving by swap never starts a battle and nothing else about the swapped hero changes ✅
 
 #### Argentus, the Wizard ✅
@@ -208,7 +209,7 @@ Heroes are dealt at random, as in the board game: the lobby switch **Random hero
   - Placing a tile does not spend a move, so opening a room and fighting its monster gets the +1 ✅
   - Once a move, a teleport or a Magic Swap was spent, later fights in that turn get no bonus ✅
 - **Fateweaver** ✅
-  - When the Oracle opens a room, two tokens are drawn from the bag instead of one ✅
+  - Whenever the Oracle draws a token (opening a room), two are drawn from the bag instead of one ✅
   - She chooses which token is placed on the room; the other one goes back into the bag at a random position ✅
   - The choice must be made before moving; a choice left unmade when the turn ends keeps the first drawn token ✅
   - With a single token left in the bag it is a normal draw ✅
@@ -223,7 +224,7 @@ The next four heroes come with the Karak: Regent expansion: the lobby shows them
 - **Tireless** ✅
   - After winning a monster fight, if the loot still lies on the tile, he may leave it there and continue his remaining moves ✅
   - The step into the fight now counts as one of the 4 moves (a move onto a monster is otherwise never counted); the loot cannot be picked up later in that turn ✅
-  - Not available when the reward was a guarded chest collected automatically ✅
+  - Also after a guarded chest (the Fallen's): it is not collected for him, he may leave it; whoever picks it up later needs no key. The dragon's ruby is always collected (the game ends) ✅
 
 #### Baron Markul, the Battle Mage ✅
 - **Sword Master**: a sword has strength 3 in his hands (not while cursed) ✅
@@ -252,13 +253,14 @@ The next four heroes come with the Karak: Regent expansion: the lobby shows them
 
 ### Healing Fountains ✅
 - Special tiles that restore all HP ✅
-- End the player's turn immediately ✅
+- Heal only when the turn ends there (a player may also walk on) ✅
 
 
 ## Victory Conditions ✅
 1. **Game End**: When any player defeats the final boss ✅
-2. **Winner**: Player with the most Victory Points ✅
+2. **Winner**: Player with the most Victory Points; equal top scores share the victory (each counts a win in the Hall of fame) ✅
 3. **Victory Points Sources**:
+   - (The project doubles the book's points: a chest or the Fallen's treasure is 1 VP in the book, the ruby 1.5)
    - Regular treasure chests: 2 VP each ✅
    - Final bosses ruby chest: 3 VP ✅
    - Fallen's treasure: 2 VP ✅
@@ -280,7 +282,7 @@ The next four heroes come with the Karak: Regent expansion: the lobby shows them
    - Certain actions are taken (unlock chest, heal, etc.) ✅
 
 ## Game Constants ✅
-- `MAX_PLAYERS_COUNT` = 4
+- `MAX_PLAYERS_COUNT` = 5
 - `MAX_HP` = 5
 - `MAX_ACTIONS_PER_TURN` = 4
 - Inventory limits: 1 key, 2 weapons, 3 spells

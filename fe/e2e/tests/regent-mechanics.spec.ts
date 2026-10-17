@@ -113,6 +113,35 @@ test.describe('Regent mechanics', () => {
     await page.getByTestId('duel-dismiss').click();
     await expect(page.getByTestId('duel-scene')).toHaveCount(0);
     await expect.poll(async () => packTypes(request, gameId, a), { timeout: 10000 }).toEqual(['dagger']);
+    console.log('[spec] the duel ends the challenger\'s turn: it is B\'s now');
+    await expect.poll(async () => (await apiGame(request, gameId)).state.currentPlayerId, { timeout: 10000 }).toBe(b);
+  });
+
+  test('One curse token: a hero cursed in a Cursed Room frees the hero who carried it', async ({ page, request }) => {
+    const gameId = uuidv4(); const a = uuidv4(); const b = uuidv4();
+    await startGame(page, request, {
+      gameId,
+      regent: true,
+      // A rolls 2 in the first room: cursed; B rolls 1 in the second: B takes the token, A is free
+      diceRolls: [2, 1],
+      tileSequence: ['cursedRoom', 'cursedRoom', 'fourSide'],
+      playerConfigs: { [a]: { hero: 'warrior' }, [b]: { hero: 'thief' } },
+    });
+
+    await GameHelpers.placeTile(page, 0, 0);
+    await expect(page.getByTestId('cursed-room-outcome')).toContainText(/cursed/, { timeout: 10000 });
+    await page.getByTestId('cursed-room-ok').click();
+    expect((await apiPlayer(request, gameId, a)).cursed).toBe(true);
+    await endTurn(page);
+
+    await switchTo(page, b);
+    await GameHelpers.placeTile(page, 0, 0);
+    await expect(page.getByTestId('cursed-room-outcome')).toContainText(/cursed/, { timeout: 10000 });
+    await page.getByTestId('cursed-room-ok').click();
+    await expect.poll(async () => (await apiPlayer(request, gameId, a)).cursed, { timeout: 10000 }).toBe(false);
+    expect((await apiPlayer(request, gameId, b)).cursed).toBe(true);
+    await expect(page.getByTestId('curse-token')).toHaveCount(1);
+    await snap(page, SPEC, 'curse-one-token');
   });
 
   test('Battle Arena with three heroes: the opener chooses the rival and cannot walk on before', async ({ page, request }) => {
