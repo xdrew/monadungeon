@@ -173,7 +173,13 @@ test.describe('Regent mechanics', () => {
     expect((await apiPlayer(request, gameId, a)).cursed).toBe(true);
 
     console.log('[spec] three more Lord Karak rooms for A, the fifth for B');
-    for (let i = 0; i < 3; i++) await GameHelpers.placeTile(page, 0, 0);
+    for (let i = 0; i < 3; i++) {
+      await GameHelpers.placeTile(page, 0, 0);
+      // already cursed: no die, the scene only says the room does nothing
+      await expect(page.getByTestId('cursed-room-outcome')).toContainText(/already cursed/, { timeout: 10000 });
+      if (i === 0) await snap(page, SPEC, 'cursed-room-already', { phone: true });
+      await page.getByTestId('cursed-room-ok').click();
+    }
     await expect.poll(async () => (await apiGame(request, gameId)).state.currentPlayerId, { timeout: 10000 }).toBe(b);
     await switchTo(page, b);
     await GameHelpers.placeTile(page, 0, 0);

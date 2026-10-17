@@ -297,7 +297,9 @@ const myChoice = computed(() => !!actorId.value && isHumanHere(actorId.value));
 const isPreparing = (role) => actorRole.value === role;
 const actor = computed(() => playerOf(actorId.value));
 const spells = computed(() => (actor.value?.inventory?.spells || []).filter((item) => SPELLS.includes(item.type)));
-const canSacrifice = computed(() => (actor.value?.heroSkills || []).some((s) => s.key === 'sacrifice') && (actor.value?.hp ?? 0) > 0);
+// a cursed hero has no skills (the Curse of Karak): no sacrifice
+const canSacrifice = computed(() => !actor.value?.cursed
+  && (actor.value?.heroSkills || []).some((s) => s.key === 'sacrifice') && (actor.value?.hp ?? 0) > 0);
 const picked = ref([]);
 const sacrifice = ref(false);
 // one answer per choice: the button rests until the duel moves on to the next one

@@ -100,8 +100,12 @@ final class CursedRoomTest extends TestCase
         [, $messages] = $this->createTester()->handle($this->field->onPlayerMoved(...), $this->moved());
 
         self::assertSame([], $messages);
-        self::assertNull($this->field->getRoomEvent());
         self::assertSame(2, $this->field->getNextDiceRoll(), 'The die was not spent');
+        // the entry is told all the same: the browser says the room does nothing to a cursed hero
+        $event = $this->field->getRoomEvent();
+        self::assertNotNull($event);
+        self::assertTrue($event['alreadyCursed'] ?? false);
+        self::assertNull($event['roll']);
     }
 
     #[Test]

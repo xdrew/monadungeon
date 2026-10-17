@@ -229,12 +229,13 @@ export default {
     centerAvailable: 'Do dostępnych pól'
   },
   sound: { title: 'Dźwięk', music: 'Muzyka', sounds: 'Efekty', mute: 'Wycisz wszystko', unmute: 'Włącz dźwięk' },
-  curseScene: { caption: 'Przeklęta komnata', rolls: '{who} rzuca kością', rule: '1–3: Klątwa Karaka spada na bohatera · 4–6: udało się', token: 'Klątwa Karaka', cursed: '{who} przeklęty: żeton trafia do bohatera', spared: 'Udało się: klątwa zostaje w komnacie', ok: 'Dalej' },
+  curseScene: { enters: '{who} wchodzi do komnaty', alreadyRule: 'Już przeklęty bohater nie rzuca kością', already: '{who} jest już przeklęty: komnata nie działa', caption: 'Przeklęta komnata', rolls: '{who} rzuca kością', rule: '1–3: Klątwa Karaka spada na bohatera · 4–6: udało się', token: 'Klątwa Karaka', cursed: '{who} przeklęty: żeton trafia do bohatera', spared: 'Udało się: klątwa zostaje w komnacie', ok: 'Dalej' },
   duelScene: { caption: 'Pojedynek na Arenie', noSpells: 'bez zaklęć', choosing: 'wybiera…', rolls: 'rzuca…', prepareTitle: '{who}: przed rzutem', prepareHint: 'Wybrane przepada, nawet jeśli rzut wygrałby bez tego.', plus: '+{n} do rzutu', sacrifice: '1 PW za +1', nothingToSpend: 'Brak bojowych zaklęć.', go: 'Do pojedynku', waitsFor: '{who} wybiera zaklęcia…', items: 'przedmioty +{n}', win: 'Zwycięstwo!', lose: 'Porażka', tie: 'Remis', wins: '{who} wygrywa' },
   skillsPanel: {
     title: 'Umiejętności',
     mine: 'Twój bohater',
     none: 'Bez bohatera: brak specjalnych umiejętności.',
+    cursed: 'Klątwa Karaka: umiejętności nie działają, dopóki nie zdejmie jej fontanna.',
     kindRival: { passive: 'samo', prompt: 'z wyboru', action: 'akcja' },
     kind: {
       passive: 'samo',
@@ -397,6 +398,7 @@ export default {
       curseStays: 'Klątwa zostaje przy: {who}',
       curseOn: 'Klątwa spada na: {who}',
       cursedRoomCursed: 'Przeklęta komnata — {who}: wypadło {roll} (1–3 przeklinają): klątwa, bez umiejętności do fontanny',
+      cursedRoomAlready: 'Przeklęta komnata — {who} jest już przeklęty: bez rzutu',
       cursedRoomSafe: 'Przeklęta komnata — {who}: wypadło {roll} (1–3 przeklinają): bez szwanku',
       darkThornHit: 'Kolec ciemności — {who} traci 1 PW',
       unstoppableGoesOn: 'Niepowstrzymany: wypadła szóstka — {who} kontynuuje turę',

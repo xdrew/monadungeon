@@ -230,12 +230,13 @@ export default {
     centerAvailable: 'Center on Available Places'
   },
   sound: { title: 'Sound', music: 'Music', sounds: 'Sounds', mute: 'Mute all', unmute: 'Sound on' },
-  curseScene: { caption: 'Cursed Room', rolls: '{who} rolls the die', rule: '1–3: the Curse of Karak falls on the hero · 4–6: spared', token: 'The Curse of Karak', cursed: '{who} is cursed: the token goes onto the hero', spared: 'Spared: the curse stays in the room', ok: 'Go on' },
+  curseScene: { enters: '{who} enters the room', alreadyRule: 'A hero already cursed does not roll', already: '{who} is already cursed: the room does nothing', caption: 'Cursed Room', rolls: '{who} rolls the die', rule: '1–3: the Curse of Karak falls on the hero · 4–6: spared', token: 'The Curse of Karak', cursed: '{who} is cursed: the token goes onto the hero', spared: 'Spared: the curse stays in the room', ok: 'Go on' },
   duelScene: { caption: 'Duel on the Battle Arena', noSpells: 'no spells', choosing: 'choosing…', rolls: 'rolls…', prepareTitle: '{who}: before the roll', prepareHint: 'What you choose is spent even if the roll would win without it.', plus: '+{n} to the roll', sacrifice: '1 HP for +1', nothingToSpend: 'No damage spells to spend.', go: 'Into the duel', waitsFor: '{who} chooses the spells…', items: 'items +{n}', win: 'Victory!', lose: 'Defeat', tie: 'A tie', wins: '{who} wins' },
   skillsPanel: {
     title: 'Skills',
     mine: 'Your hero',
     none: 'No hero: no special skills.',
+    cursed: 'The Curse of Karak: the skills do not work until a fountain lifts it.',
     kindRival: { passive: 'by itself', prompt: 'their choice', action: 'their action' },
     kind: {
       passive: 'by itself',
@@ -398,6 +399,7 @@ export default {
       curseStays: 'The curse stays on {who}',
       curseOn: '{who} is cursed',
       cursedRoomCursed: 'Cursed Room — {who} rolled {roll} (1–3 curses): cursed, no skills until a fountain',
+      cursedRoomAlready: 'Cursed Room — {who} is already cursed: no roll',
       cursedRoomSafe: 'Cursed Room — {who} rolled {roll} (1–3 curses): safe',
       darkThornHit: 'Dark Thorn — {who} loses 1 HP',
       unstoppableGoesOn: 'Unstoppable: a 6 was rolled — {who} keeps going this turn',

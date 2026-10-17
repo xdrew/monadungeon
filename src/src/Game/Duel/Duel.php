@@ -273,7 +273,9 @@ class Duel extends AggregateRoot
             }
         }
         if ($command->sacrifice && !($player->getSkills()?->sacrificesHp() === true && $player->getHP() > 0)) {
-            throw new \DomainException('Only the Warlock sacrifices HP');
+            throw new \DomainException($player->isCursed()
+                ? 'A cursed hero has no skills: no sacrifice'
+                : 'Only the Warlock sacrifices HP');
         }
 
         $this->prepareSide($role, ['consumableIds' => $ids, 'sacrifice' => $command->sacrifice], $messageContext);

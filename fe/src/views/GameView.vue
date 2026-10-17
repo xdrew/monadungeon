@@ -1024,7 +1024,7 @@
 
     <!-- Karak: Regent — a Cursed Room: the die and the token -->
     <CursedRoomScene
-      v-if="cursedRoomScene && !showBattleReportModal"
+      v-if="cursedRoomScene && !showBattleReportModal && !isAiPlayingBack"
       :event="cursedRoomScene"
       :name="heroNameById(cursedRoomScene.playerId)"
       :sprite="cursedRoomSceneSprite"
@@ -1033,8 +1033,9 @@
     />
 
     <!-- Karak: Regent — the current (or last) duel as a scene: the spells before the roll, the dice, the outcome -->
+    <!-- after the AI's moves are played back, not over them: they show how the rival got onto the arena -->
     <DuelScene
-      v-if="visibleDuel && !showBattleReportModal"
+      v-if="visibleDuel && !showBattleReportModal && !isAiPlayingBack"
       :duel="visibleDuel"
       :players="gameData?.players || []"
       :labels="duelPanelPlayers"
@@ -1843,7 +1844,8 @@ watch(() => gameData.value?.state?.roomEvent, (event) => {
   shownRoomEventKey.value = key;
   if (!roomEventsArmed) return;
   const who = heroNameById(event.playerId);
-  showActionNotice(t(event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe', { who, roll: event.roll }), 'notice');
+  const notice = event.alreadyCursed ? 'game.notice.cursedRoomAlready' : event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe';
+  showActionNotice(t(notice, { who, roll: event.roll }), 'notice');
   cursedRoomScene.value = event;
 }, { flush: 'sync' }); // at once, not on the next tick: the AI's turn is checked right after the state loads
 const cursedRoomSceneMine = computed(() => {
@@ -1893,6 +1895,8 @@ const closeCursedRoomScene = (tokenRect) => {
   if (!event) return;
   // a turn of the AI held back by the scene
   nextTick(() => checkAndHandleVirtualPlayerTurn());
+  // the token of a hero already cursed is where it was
+  if (event.alreadyCursed) return;
   nextTick(() => {
     const target = event.cursed
       ? document.querySelector(`.party-member[data-player-id="${event.playerId}"] .party-member__medallion`)

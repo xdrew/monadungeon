@@ -44,6 +44,16 @@
           </span>
         </header>
         <p
+          v-if="hero.cursed"
+          class="skills-hero__cursed"
+          data-testid="skills-cursed"
+        >
+          <img
+            src="/images/curse.webp"
+            alt=""
+          >{{ t('skillsPanel.cursed') }}
+        </p>
+        <p
           v-if="!hero.skills.length"
           class="skills-hero__none"
         >
@@ -52,6 +62,7 @@
         <ul
           v-else
           class="skills-hero__list"
+          :class="{ 'skills-hero__list--off': hero.cursed }"
         >
           <li
             v-for="skill in hero.skills"
@@ -133,6 +144,7 @@ const heroes = computed(() => {
     name: props.nameOf(p),
     portrait: getHero(p.lordKarak ? 'lord_karak' : p.hero).image,
     skills: (p.heroSkills || []).map(skillOf),
+    cursed: !!p.cursed && (p.heroSkills || []).length > 0,
   }));
   return [...list.filter((h) => h.mine), ...list.filter((h) => !h.mine)];
 });
@@ -227,6 +239,29 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
   font-style: italic;
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.skills-hero__cursed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border: 1px solid rgba(160, 90, 220, 0.55);
+  background: rgba(110, 50, 160, 0.18);
+  font-size: 13px;
+  line-height: 1.3;
+  color: #d8b6ff;
+}
+
+.skills-hero__cursed img {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+.skills-hero__list--off {
+  opacity: 0.45;
 }
 
 .skills-hero__list {

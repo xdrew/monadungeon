@@ -14,10 +14,10 @@
     <header class="curse-scene__head">
       <span class="curse-scene__caption">{{ t('curseScene.caption') }}</span>
       <h2 class="curse-scene__title">
-        {{ t('curseScene.rolls', { who: name }) }}
+        {{ event.alreadyCursed ? t('curseScene.enters', { who: name }) : t('curseScene.rolls', { who: name }) }}
       </h2>
       <p class="curse-scene__rule">
-        {{ t('curseScene.rule') }}
+        {{ event.alreadyCursed ? t('curseScene.alreadyRule') : t('curseScene.rule') }}
       </p>
     </header>
 
@@ -29,7 +29,10 @@
         :state="stage === 'done' ? (event.cursed ? 'defeat' : 'victory') : 'idle'"
       />
       <div class="curse-scene__middle">
-        <div class="curse-scene__die">
+        <div
+          v-if="!event.alreadyCursed"
+          class="curse-scene__die"
+        >
           <DieFace
             :value="event.roll"
             :rolling="stage === 'rolling'"
@@ -38,6 +41,7 @@
           />
         </div>
         <div
+          v-if="!event.alreadyCursed"
           class="curse-scene__scale"
           aria-hidden="true"
         >
@@ -60,7 +64,7 @@
           class="curse-scene__outcome"
           data-testid="cursed-room-outcome"
         >
-          {{ event.cursed ? t('curseScene.cursed', { who: name }) : t('curseScene.spared', { who: name }) }}
+          {{ event.alreadyCursed ? t('curseScene.already', { who: name }) : event.cursed ? t('curseScene.cursed', { who: name }) : t('curseScene.spared', { who: name }) }}
         </p>
         <button
           v-if="stage === 'done'"
@@ -99,6 +103,13 @@ const stage = ref('rolling');
 const token = ref(null);
 const timers = [];
 onMounted(() => {
+  // a hero already cursed does not roll: the scene only says so
+  if (props.event.alreadyCursed) {
+    stage.value = 'done';
+    audio.cue('curse');
+    if (props.autoCloseMs) timers.push(setTimeout(close, props.autoCloseMs));
+    return;
+  }
   audio.cue('dice_roll');
   timers.push(setTimeout(() => { stage.value = 'told'; audio.cue(props.event.cursed ? 'curse' : 'curse_lifted'); }, 1300));
   timers.push(setTimeout(() => { stage.value = 'done'; }, 2300));

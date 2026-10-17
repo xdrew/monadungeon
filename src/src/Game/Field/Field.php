@@ -219,7 +219,7 @@ class Field extends AggregateRoot
     /**
      * Karak: Regent — the last Cursed Room roll, for the UI (kept until the next roll).
      *
-     * @var array{playerId: string, position: string, roll: int, cursed: bool, turnId: ?string}|null
+     * @var array{playerId: string, position: string, roll: ?int, cursed: bool, alreadyCursed?: bool, turnId: ?string}|null
      */
     #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
     private ?array $roomEvent = null;
@@ -599,7 +599,7 @@ class Field extends AggregateRoot
     /**
      * Karak: Regent — the last Cursed Room roll, until the next one (the browser shows each roll once, by its turn and hero).
      *
-     * @return array{playerId: string, position: string, roll: int, cursed: bool, turnId: ?string}|null
+     * @return array{playerId: string, position: string, roll: ?int, cursed: bool, alreadyCursed?: bool, turnId: ?string}|null
      */
     public function getRoomEvent(): ?array
     {
@@ -2841,6 +2841,16 @@ class Field extends AggregateRoot
     {
         $player = $context->dispatch(new GetPlayer($playerId));
         if ($player->isCursed()) {
+            // no roll for a hero already cursed; the entry is still told, so the room does not look idle
+            $this->roomEvent = [
+                'playerId' => $playerId->toString(),
+                'position' => $position->toString(),
+                'roll' => null,
+                'cursed' => true,
+                'alreadyCursed' => true,
+                'turnId' => $context->dispatch(new GetCurrentTurn($this->gameId))?->toString(),
+            ];
+
             return;
         }
 
