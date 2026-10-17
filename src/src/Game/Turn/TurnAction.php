@@ -142,6 +142,8 @@ enum TurnAction: string
             return !\in_array($previousAction, [
                 self::PICK_TILE,
                 self::ROTATE_TILE,
+                self::PLACE_TILE,
+                self::FATEWEAVER,
                 self::MAGIC_SWAP,
                 self::FIGHT_MONSTER,
                 self::PICK_UP_EQUIPMENT,
@@ -220,6 +222,12 @@ enum TurnAction: string
             // self::PICK_ITEM, // Removed - turn ending handled manually, but in practice turn ends anyway
         ], true)) {
             return false;
+        }
+
+        // A placed tile is entered next (Listening and the Fateweaver choice are handled above): no other move, no new
+        // tile, no pickup before the hero steps onto it (Movement checks the step goes onto the placed tile)
+        if ($previousAction === self::PLACE_TILE || $previousAction === self::FATEWEAVER) {
+            return $this === self::MOVE;
         }
 
         // After PICK_TILE, only PLACE_TILE and ROTATE_TILE are allowed

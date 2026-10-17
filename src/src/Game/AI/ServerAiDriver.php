@@ -103,7 +103,7 @@ final class ServerAiDriver
             if ($after->getCurrentTurnNumber() === $turn && $after->isInProgress() && $turnId !== null) {
                 // the AI could not finish the turn (a choice it does not make): the turn ends as it stands
                 $this->logger->warning('turn.forced_end', ['gameId' => $gameId->toString(), 'playerId' => $current->toString(), 'turn' => $turn]);
-                $this->messageBus->dispatch(new EndTurn($turnId, $gameId, $current));
+                $this->messageBus->dispatch(new EndTurn($turnId, $gameId, $current, force: true));
             }
         } catch (\Throwable $e) {
             $this->logger->error('turn.stand_in_failed', ['gameId' => $gameId->toString(), 'error' => $e->getMessage()]);

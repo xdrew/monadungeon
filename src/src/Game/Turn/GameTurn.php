@@ -191,7 +191,6 @@ class GameTurn extends AggregateRoot
             ];
 
             // Always process PICK_ITEM after battle, even if turn might have ended
-            // The Field.php handler will manage the turn ending
             $messageContext->dispatch(new TurnActionPerformed(
                 turnId: $this->turnId,
                 gameId: $command->gameId,
@@ -201,6 +200,11 @@ class GameTurn extends AggregateRoot
                 tileId: $command->tileId,
                 additionalData: $command->additionalData,
             ));
+
+            // Collecting the loot of the fight ends the turn (the fight had already locked it)
+            if ($this->endTime === null) {
+                $this->endTurnByPickup($command, $messageContext);
+            }
 
             return;
         }
@@ -234,6 +238,14 @@ class GameTurn extends AggregateRoot
         // If turn end was deferred for item pickup, mark it
         if ($command->deferTurnEnd && $this->performedActionsCount >= $this->maxMoves()) {
             $this->pendingItemPickup = true;
+        }
+
+        // Collecting equipment or a treasure ends the turn — except the reward of an Unstoppable win: the Swordsman
+        // may pick it up and walk on
+        if ($command->action === TurnAction::PICK_ITEM && !$this->pickupFollowsUnstoppableWin()) {
+            $this->endTurnByPickup($command, $messageContext);
+
+            return;
         }
 
         // Only use action count to end turn if no battle occurred and turn end is not deferred (e.g. pickable item at destination)
@@ -354,6 +366,13 @@ class GameTurn extends AggregateRoot
             return;
         }
 
+        // A tile placed this turn must be entered (or listened at) before the turn may end
+        if (!$command->force && $this->placedTileAwaitingEntry() !== null) {
+            error_log('WARN rule.refused ' . json_encode(['rule' => 'F-09', 'turnId' => $this->turnId->toString(), 'placed' => $this->placedTileAwaitingEntry()]));
+
+            throw new InvalidTurnActionException(TurnAction::END_TURN, TurnAction::PLACE_TILE);
+        }
+
         // Check if there's an unplaced tile
         $field = $messageContext->dispatch(new GetField($command->gameId));
         $unplacedTile = $field->getUnplacedTile();
@@ -455,6 +474,34 @@ class GameTurn extends AggregateRoot
     }
 
     /**
+     * The tile placed this turn that the hero has not entered yet ("x,y"), or null: placing a tile is entering an
+     * undiscovered zone, so the next step goes onto it (Lady Lorraine may listen instead, the Oracle chooses her token
+     * first).
+     */
+    public function placedTileAwaitingEntry(): ?string
+    {
+        for ($index = \count($this->actions) - 1; $index >= 0; --$index) {
+            $action = $this->actions[$index];
+            // an Unstoppable fight on the new tile is how the hero entered it
+            if (self::isUnstoppableBattle($action)) {
+                return null;
+            }
+            if (self::isBookkeepingAction($action) || $action['action'] === TurnAction::FATEWEAVER->value) {
+                continue;
+            }
+            if ($action['action'] !== TurnAction::PLACE_TILE->value) {
+                return null;
+            }
+            /** @var array<string, mixed> $data */
+            $data = $action['additionalData'] ?? [];
+
+            return \is_string($data['fieldPlace'] ?? null) ? $data['fieldPlace'] : null;
+        }
+
+        return null;
+    }
+
+    /**
      * Moves this turn may spend: 4, or 8 for Hanna's "Sprint".
      */
     public function maxMoves(): int
@@ -491,18 +538,56 @@ class GameTurn extends AggregateRoot
     }
 
     /**
+     * Swordsman "Unstoppable": the pickup is the reward of the fight just won with a 6 (nothing but bookkeeping since).
+     */
+    private function pickupFollowsUnstoppableWin(): bool
+    {
+        for ($index = \count($this->actions) - 2; $index >= 0; --$index) {
+            $action = $this->actions[$index];
+            if (\in_array($action['action'], [TurnAction::CURSE->value, TurnAction::USE_SPELL->value, TurnAction::LORD_KARAK->value], true)) {
+                continue;
+            }
+
+            return self::isUnstoppableBattle($action);
+        }
+
+        return false;
+    }
+
+    private function endTurnByPickup(PerformTurnAction $command, MessageContext $messageContext): void
+    {
+        error_log('INFO turn.ended_by_pickup ' . json_encode(['turnId' => $this->turnId->toString(), 'item' => $command->additionalData['monster'] ?? null]));
+        $this->endTurn($command->at);
+        // the Game aggregate starts the next turn when it handles TurnEnded
+        $messageContext->dispatch(new TurnEnded(
+            turnId: $this->turnId,
+            gameId: $command->gameId,
+            playerId: $command->playerId,
+            endTime: $command->at,
+        ));
+    }
+
+    /**
      * The last action that constrains what may follow.
      * Unstoppable battles are transparent: the turn continues as if the fight had not interrupted it.
      */
     private function getLastAction(): ?TurnAction
     {
+        $unstoppableFight = false;
         for ($index = \count($this->actions) - 1; $index >= 0; --$index) {
             $action = $this->actions[$index];
             if (self::isBookkeepingAction($action)) {
+                $unstoppableFight = $unstoppableFight || self::isUnstoppableBattle($action);
+
                 continue;
             }
+            $last = TurnAction::from($action['action']);
+            // the step into an Unstoppable fight on a tile just placed entered it: the turn goes on as after a move
+            if ($unstoppableFight && ($last === TurnAction::PLACE_TILE || $last === TurnAction::FATEWEAVER)) {
+                return TurnAction::MOVE;
+            }
 
-            return TurnAction::from($action['action']);
+            return $last;
         }
 
         return null;

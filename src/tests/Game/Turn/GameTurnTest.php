@@ -726,9 +726,144 @@ final class GameTurnTest extends TestCase
                 performedAt: $this->fixedTime,
                 tileId: null,
                 additionalData: null,
-            )],
+            ), new TurnEnded($this->turnId, $this->gameId, $this->playerId, $this->fixedTime)],
             $messages,
         );
+        self::assertTrue($gameTurn->isEnded(), 'Collecting the loot ends the turn');
+    }
+
+    #[Test]
+    public function collectingAnItemMidwayEndsTheTurn(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        [, $messages] = $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_ITEM));
+
+        self::assertTrue($gameTurn->isEnded());
+        self::assertCount(1, array_filter($messages, static fn(object $m): bool => $m instanceof TurnEnded));
+    }
+
+    #[Test]
+    public function theRewardOfAnUnstoppableWinKeepsTheTurnGoing(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, ['result' => 'WIN', 'unstoppable' => true]));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_ITEM));
+
+        self::assertFalse($gameTurn->isEnded(), 'The Swordsman picks up and walks on');
+
+        // a later pickup elsewhere is an ordinary one
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_ITEM));
+        self::assertTrue($gameTurn->isEnded());
+    }
+
+    #[Test]
+    public function theRewardAfterAMagicSwapEndsTheTurn(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        // the swap onto a tile with a reward leaves it to pick up (the turn end is deferred)
+        $tester->handle($gameTurn->performAction(...), new PerformTurnAction(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            action: TurnAction::MAGIC_SWAP,
+            at: $this->fixedTime,
+            deferTurnEnd: true,
+        ));
+        self::assertFalse($gameTurn->isEnded());
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_ITEM));
+
+        self::assertTrue($gameTurn->isEnded());
+    }
+
+    #[Test]
+    public function aPlacedTileMustBeEnteredBeforeTheTurnEnds(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_TILE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PLACE_TILE, ['fieldPlace' => '1,0']));
+        self::assertSame('1,0', $gameTurn->placedTileAwaitingEntry());
+
+        foreach ([TurnAction::PICK_TILE, TurnAction::USE_SPELL, TurnAction::PICK_ITEM] as $refused) {
+            try {
+                $gameTurn->assertCanPerform($refused);
+                self::fail($refused->name . ' should wait until the tile is entered');
+            } catch (InvalidTurnActionException) {
+            }
+        }
+        $gameTurn->assertCanPerform(TurnAction::MOVE);
+        $gameTurn->assertCanPerform(TurnAction::LISTEN);
+
+        try {
+            $this->endTurn($gameTurn);
+            self::fail('The turn may not end before the placed tile is entered');
+        } catch (InvalidTurnActionException) {
+        }
+        self::assertFalse($gameTurn->isEnded());
+
+        // the stand-in for a seat whose time ran out still ends it
+        $this->endTurn($gameTurn, force: true);
+        self::assertTrue($gameTurn->isEnded());
+    }
+
+    #[Test]
+    public function enteringThePlacedTileFreesTheTurn(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_TILE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PLACE_TILE, ['fieldPlace' => '1,0']));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+
+        self::assertNull($gameTurn->placedTileAwaitingEntry());
+        $this->endTurn($gameTurn);
+        self::assertTrue($gameTurn->isEnded());
+    }
+
+    #[Test]
+    public function anUnstoppableFightOnThePlacedTileEntersIt(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_TILE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PLACE_TILE, ['fieldPlace' => '1,0']));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, ['result' => 'WIN', 'unstoppable' => true]));
+
+        self::assertNull($gameTurn->placedTileAwaitingEntry());
+        $gameTurn->assertCanPerform(TurnAction::PICK_ITEM);
+        $gameTurn->assertCanPerform(TurnAction::PICK_TILE);
+    }
+
+    private function endTurn(GameTurn $gameTurn, bool $force = false): void
+    {
+        $game = new class () {
+            public function getStatus(): object
+            {
+                return new class () {
+                    public function isFinished(): bool
+                    {
+                        return false;
+                    }
+                };
+            }
+        };
+        $field = new class () {
+            public function getUnplacedTile(): ?array
+            {
+                return null;
+            }
+        };
+        $player = new class () {
+            public function isAwaitingReincarnation(): bool
+            {
+                return false;
+            }
+        };
+        MessageBusTester::create(
+            static fn(\App\Game\GameLifecycle\GetGame $_query): object => $game,
+            static fn(\App\Game\Field\GetField $_query): object => $field,
+            static fn(\App\Game\Player\GetPlayer $_query): object => $player,
+        )->handle($gameTurn->end(...), new \App\Game\Turn\EndTurn($this->turnId, $this->gameId, $this->playerId, $this->fixedTime, $force));
     }
 
     #[Test]

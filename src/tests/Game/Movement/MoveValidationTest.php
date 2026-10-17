@@ -128,6 +128,15 @@ final class MoveValidationTest extends TestCase
     }
 
     #[Test]
+    public function afterPlacingATileTheStepGoesOntoItOnly(): void
+    {
+        $this->perform(TurnAction::PICK_TILE);
+        $this->perform(TurnAction::PLACE_TILE, additionalData: ['fieldPlace' => '0,1']);
+
+        $this->assertRefused(\App\Game\Movement\Exception\InvalidMovementException::class, monsterAhead: false);
+    }
+
+    #[Test]
     public function anAllowedStepStillMoves(): void
     {
         $this->tester(monsterAhead: false)->handle($this->movement->movePlayer(...), $this->move());
@@ -154,7 +163,7 @@ final class MoveValidationTest extends TestCase
         self::assertSame([], $this->seen, 'Nothing moved and no fight started');
     }
 
-    private function perform(TurnAction $action, bool $deferTurnEnd = false): void
+    private function perform(TurnAction $action, bool $deferTurnEnd = false, ?array $additionalData = null): void
     {
         // like on the real bus, the counter moves while the action is performed (the 4th move ends the turn)
         $turn = $this->turn;
@@ -165,6 +174,7 @@ final class MoveValidationTest extends TestCase
             action: $action,
             at: new \DateTimeImmutable(),
             deferTurnEnd: $deferTurnEnd,
+            additionalData: $additionalData,
         ));
     }
 

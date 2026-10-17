@@ -19,5 +19,10 @@ final readonly class EndTurn implements Message
         public Uuid $gameId,
         public Uuid $playerId,
         public \DateTimeImmutable $at = new \DateTimeImmutable(),
+        /**
+         * Ends the turn whatever state it is in (a seat played by the stand-in when the time ran out); a player's
+         * own end of turn obeys the rules (e.g. a placed tile must be entered first).
+         */
+        public bool $force = false,
     ) {}
 }

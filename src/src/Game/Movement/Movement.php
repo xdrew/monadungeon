@@ -222,6 +222,11 @@ class Movement extends AggregateRoot
             throw new InvalidMovementException('No such turn');
         }
         $turn->assertCanPerform(TurnAction::MOVE);
+        // a tile just placed is the only place the next step may go
+        $placed = $turn->placedTileAwaitingEntry();
+        if ($placed !== null && $placed !== $command->toPosition->toString()) {
+            throw new InvalidMovementException(sprintf('Step onto the tile you placed (%s) first', $placed));
+        }
 
         // Update position
         $this->playerPositions[$playerId] = $command->toPosition;
