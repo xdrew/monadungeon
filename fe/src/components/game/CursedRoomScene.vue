@@ -12,12 +12,12 @@
     @click.self="close"
   >
     <header class="curse-scene__head">
-      <span class="curse-scene__caption">{{ t('curseScene.caption') }}</span>
+      <span class="curse-scene__caption">{{ event.transfer ? t('curseScene.transferCaption') : t('curseScene.caption') }}</span>
       <h2 class="curse-scene__title">
-        {{ event.alreadyCursed ? t('curseScene.enters', { who: name }) : t('curseScene.rolls', { who: name }) }}
+        {{ event.transfer ? t('curseScene.transferTitle', { who: name }) : event.alreadyCursed ? t('curseScene.enters', { who: name }) : t('curseScene.rolls', { who: name }) }}
       </h2>
       <p class="curse-scene__rule">
-        {{ event.alreadyCursed ? t('curseScene.alreadyRule') : t('curseScene.rule') }}
+        {{ event.transfer ? t('curseScene.transferRule', { by: event.fromName }) : event.alreadyCursed ? t('curseScene.alreadyRule') : t('curseScene.rule') }}
       </p>
     </header>
 
@@ -30,7 +30,7 @@
       />
       <div class="curse-scene__middle">
         <div
-          v-if="!event.alreadyCursed"
+          v-if="!noDie"
           class="curse-scene__die"
         >
           <DieFace
@@ -41,7 +41,7 @@
           />
         </div>
         <div
-          v-if="!event.alreadyCursed"
+          v-if="!noDie"
           class="curse-scene__scale"
           aria-hidden="true"
         >
@@ -64,7 +64,7 @@
           class="curse-scene__outcome"
           data-testid="cursed-room-outcome"
         >
-          {{ event.alreadyCursed ? t('curseScene.already', { who: name }) : event.cursed ? t('curseScene.cursed', { who: name }) : t('curseScene.spared', { who: name }) }}
+          {{ event.transfer ? t('curseScene.transferred', { who: name }) : event.alreadyCursed ? t('curseScene.already', { who: name }) : event.cursed ? t('curseScene.cursed', { who: name }) : t('curseScene.spared', { who: name }) }}
         </p>
         <button
           v-if="stage === 'done'"
@@ -81,14 +81,14 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import FighterFigure from '@/components/game/fight/FighterFigure.vue';
 import DieFace from '@/components/game/fight/DieFace.vue';
 import { audio } from '@/services/audio/audioEngine';
 
 const props = defineProps({
-  /** state.roomEvent: { playerId, position, roll, cursed } */
+  /** state.roomEvent { playerId, position, roll, cursed, alreadyCursed }, or a passed-on curse { transfer, playerId, fromName } */
   event: { type: Object, required: true },
   name: { type: String, default: '' },
   sprite: { type: String, required: true },
@@ -97,14 +97,15 @@ const props = defineProps({
 });
 const emit = defineEmits(['close']);
 const { t } = useI18n();
+const noDie = computed(() => !!(props.event.alreadyCursed || props.event.transfer));
 
 // rolling → told (the die lies, the token moves) → done (the words and the button)
 const stage = ref('rolling');
 const token = ref(null);
 const timers = [];
 onMounted(() => {
-  // a hero already cursed does not roll: the scene only says so
-  if (props.event.alreadyCursed) {
+  // no die: a hero already cursed does not roll; a curse passed on by a mummy's slayer is not rolled for
+  if (noDie.value) {
     stage.value = 'done';
     audio.cue('curse');
     if (props.autoCloseMs) timers.push(setTimeout(close, props.autoCloseMs));

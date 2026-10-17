@@ -360,19 +360,6 @@
               </button>
             </div>
 
-            <!-- Karak: Regent — Battle Arena: choose the rival -->
-            <div
-              v-if="arenaChoiceForMe && !showBattleReportModal"
-              class="teleport-controls arena-controls"
-              data-testid="arena-banner"
-            >
-              <DuelOpponentPanel
-                :players="duelOpponentCandidates"
-                :disabled="loading || isRequestInProgress"
-                @choose="handleChooseDuelOpponent"
-              />
-            </div>
-
             <!-- Warrior "Reincarnation" Controls -->
             <div
               v-if="isReincarnationMode"
@@ -1022,6 +1009,14 @@
       </section>
     </div>
 
+    <!-- Karak: Regent — Battle Arena: the opener calls a rival out (a scene, before the duel's own) -->
+    <DuelOpponentPanel
+      v-if="arenaChoiceForMe && !showBattleReportModal && !isAiPlayingBack"
+      :players="duelOpponentCandidates"
+      :disabled="loading || isRequestInProgress"
+      @choose="handleChooseDuelOpponent"
+    />
+
     <!-- Karak: Regent — a Cursed Room: the die and the token -->
     <CursedRoomScene
       v-if="cursedRoomScene && !showBattleReportModal && !isAiPlayingBack"
@@ -1516,7 +1511,7 @@ const hasDecision = computed(() => isTeleportMode.value || isDarkThornMode.value
   || isMagicSwapMode.value || isLightningMode.value
   || showMissingKeyDialog.value
   || !!stealthPrompt.value || !!fateweaverPrompt.value
-  || (!showBattleReportModal.value && !!(arenaChoiceForMe.value || curseChoicePendingForMe.value || retreatChoiceForMe.value)));
+  || (!showBattleReportModal.value && !!(curseChoicePendingForMe.value || retreatChoiceForMe.value)));
 
 // Rings: the heal-limit popover and the Journal drawer
 const healLimitOpen = ref(false);
@@ -1608,6 +1603,8 @@ const duelOpponentCandidates = computed(() => (arenaChoiceForMe.value?.candidate
   .map((player) => ({
     id: player.id,
     label: playerChoiceLabel(player),
+    portrait: getHero(figureHeroKey(player)).image,
+    weapons: (player.inventory?.weapons || []).reduce((sum, item) => sum + getItemDamage(item), 0),
     treasures: (player.inventory?.treasures || []).length
   })));
 // label: for buttons and tables ("Aderyn (the thief, you)"); name: for sentences ("Aderyn wins the duel")
@@ -1848,6 +1845,15 @@ watch(() => gameData.value?.state?.roomEvent, (event) => {
   showActionNotice(t(notice, { who, roll: event.roll }), 'notice');
   cursedRoomScene.value = event;
 }, { flush: 'sync' }); // at once, not on the next tick: the AI's turn is checked right after the state loads
+// The Curse of Karak passed on by someone else (a mummy's slayer) gets the same scene: who gave it to whom
+watch(() => gameData.value?.state?.curse?.cursedPlayerId, (holder, was) => {
+  if (!roomEventsArmed || !holder || holder === was) return;
+  const by = gameData.value?.state?.currentPlayerId;
+  const byMe = isOnline.value ? by === mySeatId.value : !gameData.value?.players?.find((p) => p.id === by)?.isAi;
+  // my own choice was made on the fight scene: nothing to tell
+  if (byMe) return;
+  cursedRoomScene.value = { transfer: true, cursed: true, playerId: holder, fromName: heroNameById(by), position: null };
+}, { flush: 'sync' });
 const cursedRoomSceneMine = computed(() => {
   const playerId = cursedRoomScene.value?.playerId;
   if (!playerId) return false;
