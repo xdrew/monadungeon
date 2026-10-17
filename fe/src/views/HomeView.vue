@@ -1151,7 +1151,8 @@ const createNewGame = async () => {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 52px;
+  /* one height for every row (a title and two lines of hint): switching an option moves nothing */
+  height: 66px;
   padding: 8px 14px;
   box-sizing: border-box;
   border-bottom: 1px solid rgba(234, 220, 192, 0.12);
@@ -1191,6 +1192,11 @@ const createNewGame = async () => {
 .regent-toggle-text span {
   font-size: 14px;
   color: #a8957a;
+  /* at most two lines, so a row keeps its height whatever its hint says */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* the descent and the links */
@@ -1279,9 +1285,18 @@ const createNewGame = async () => {
     overflow: hidden;
   }
 
+  /* the panel is as tall as the screen: the account and the tabs on top, the options, Play and the links at
+     the bottom — always in the same place, whatever is switched on — and the hero picker between gives way */
   .game-panel {
     min-height: 0;
-    max-height: calc(100% - 48px);
+    height: calc(100% - 48px);
+  }
+
+  /* against the AI the options, Play and the links are one block at the bottom (the hero picker above takes
+     the rest); online the options stay on top and the links go down */
+  .game-panel > .hero-picker + .lobby-options,
+  .game-panel > .tables-panel + .lobby-links {
+    margin-top: auto;
   }
 
   .game-panel > * {
@@ -1290,6 +1305,16 @@ const createNewGame = async () => {
 
   .game-panel > .tables-panel {
     flex-shrink: 1;
+  }
+
+  /* with many heroes (Regent: 11) the roster and the card scroll inside, the Play button stays in sight */
+  .game-panel > .hero-picker {
+    flex-shrink: 1;
+    min-height: 120px;
+    overflow-y: auto;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--ember-rgb), 0.45) transparent;
   }
 }
 
@@ -1303,7 +1328,7 @@ const createNewGame = async () => {
 
   .game-panel {
     margin-top: 24px;
-    max-height: calc(100% - 24px);
+    height: calc(100% - 24px);
     gap: 12px;
   }
 
@@ -1318,7 +1343,7 @@ const createNewGame = async () => {
   }
 
   .regent-toggle {
-    min-height: 44px;
+    height: 60px;
     padding: 5px 12px;
   }
 

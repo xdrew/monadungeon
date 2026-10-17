@@ -32,6 +32,25 @@ test.describe('Pages', () => {
     await expect(page.getByTestId('hero-picker')).toHaveCount(0);
     expect(await pageScrolls()).toBe(false);
     await snap(page, SPEC, 'lobby-online');
+    console.log('[spec] the options and Play stay in one place: random heroes or not, the Regent roster (11 heroes) or not');
+    await page.getByTestId('lobby-tab-ai').click();
+    // a fresh browser has no name yet: the name card stands where Play will be
+    const play = page.locator('.primary-button, [data-testid="name-card"]').first();
+    const options = page.locator('.lobby-options');
+    const playTop = async () => `${Math.round((await options.boundingBox())?.y ?? -1)}/${Math.round((await play.boundingBox())?.y ?? -1)}`;
+    const tops = [await playTop()];
+    await page.getByTestId('random-heroes-toggle-input').check();
+    tops.push(await playTop());
+    await page.getByTestId('random-heroes-toggle-input').uncheck();
+    await page.getByTestId('regent-toggle-input').check();
+    await expect(page.getByTestId('hero-card')).toBeVisible();
+    tops.push(await playTop());
+    expect(new Set(tops).size, `options/Play at ${tops.join(', ')}`).toBe(1);
+    await expect(play).toBeInViewport({ ratio: 1 });
+    expect(await pageScrolls()).toBe(false);
+    await snap(page, SPEC, 'lobby-regent-fits');
+    await page.getByTestId('regent-toggle-input').uncheck();
+    await page.getByTestId('lobby-tab-online').click();
     console.log('[spec] the tab is kept for this browser');
     await page.reload();
     await expect(page.getByTestId('lobby-tab-online')).toHaveAttribute('aria-selected', 'true');
