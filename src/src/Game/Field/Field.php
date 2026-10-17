@@ -39,17 +39,14 @@ use App\Game\GameLifecycle\NextTurn;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
 use App\Game\Item\ItemType;
-use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Movement\Commands\ResetPlayerPosition;
 use App\Game\Movement\DoctrineDBAL\PlayerPositionMapType;
 use App\Game\Movement\Events\PlayerMoved;
 use App\Game\Movement\Events\PlayersSwapped;
 use App\Game\Movement\GetPlayerPosition;
 use App\Game\Movement\MovementService;
-use App\Game\Movement\MovementValidator;
 use App\Game\Player\AddItemToInventory;
 use App\Game\Player\CompleteReincarnation;
-use App\Game\Player\Error\InventoryFullException;
 use App\Game\Player\Error\MissingKeyException;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\GetPlayer;
@@ -1442,155 +1439,6 @@ class Field extends AggregateRoot
     {
         return $this->teleportationConnections;
     }
-
-    /**
-     * Handles player movement using MovementService for validation.
-     * @deprecated Movement logic has been extracted to Movement bounded context
-     */
-    // #[Handler] // Disabled - handled by Movement context
-    /*
-    public function movePlayerOld(MovePlayer $command, MessageContext $context): void
-    {
-        // Get current player
-        $currentPlayerId = $context->dispatch(new GetCurrentPlayer($command->gameId));
-
-        // Get player details
-        $player = $context->dispatch(new GetPlayer($command->playerId));
-
-        // Get current turn
-        $turn = $context->dispatch(new GetTurn($command->turnId));
-        if ($turn === null) {
-            throw new \RuntimeException('Turn not found');
-        }
-
-        // Create movement service with field data
-        $movementService = new MovementService(
-            $this->transitions,
-            $this->tiles,
-            $this->tilesCache,
-            $this->playerPositions,
-            $this->teleportationConnections,
-            $this->items,
-        );
-
-        // Create validator
-        $validator = new MovementValidator();
-
-        // Get player's actual position
-        $actualPosition = $this->playerPositions[$command->playerId->toString()] ?? null;
-
-        if (!$actualPosition) {
-            throw new \RuntimeException('Player position not found');
-        }
-
-        // Check if destination has a monster
-        $destinationKey = $command->toPosition->toString();
-        $destinationHasMonster = false;
-        $monsterItem = null;
-
-        if (isset($this->items[$destinationKey]) && !$command->ignoreMonster) {
-            $monsterItem = Item::fromAnything($this->items[$destinationKey]);
-            if (!$monsterItem->guardDefeated && $monsterItem->guardHP > 0) {
-                $destinationHasMonster = true;
-            }
-        }
-
-        // Validate movement
-        if ($currentPlayerId === null) {
-            throw new \RuntimeException('Current player not found');
-        }
-
-        $validator->validateMovement(
-            $command->playerId,
-            $currentPlayerId,
-            $command->fromPosition,
-            $command->toPosition,
-            $actualPosition,
-            $turn->hasBattleInTurn(),
-            $movementService->canTransition($command->fromPosition, $command->toPosition),
-            $player->getHp(),
-            $destinationHasMonster,
-        );
-
-        // Update player position
-        $this->playerPositions[$command->playerId->toString()] = $command->toPosition;
-
-        // Dispatch movement event
-        $context->dispatch(new PlayerMoved(
-            gameId: $command->gameId,
-            playerId: $command->playerId,
-            fromPosition: $command->fromPosition,
-            toPosition: $command->toPosition,
-            movedAt: new \DateTimeImmutable(),
-            isBattleReturn: $command->isBattleReturn,
-        ));
-
-        // Only record turn action if not a battle return and won't trigger battle
-        if (!$command->isBattleReturn && !$destinationHasMonster) {
-            $context->dispatch(new PerformTurnAction(
-                turnId: $command->turnId,
-                gameId: $command->gameId,
-                playerId: $command->playerId,
-                action: TurnAction::MOVE,
-                tileId: null,
-                additionalData: [
-                    'from' => $command->fromPosition->toString(),
-                    'to' => $command->toPosition->toString(),
-                ],
-            ));
-        }
-
-        // Handle post-movement effects
-        if (!$command->ignoreMonster && $destinationHasMonster && $monsterItem) {
-            // Start battle with monster
-            $battleId = Uuid::v7();
-            $context->dispatch(new StartBattle(
-                battleId: $battleId,
-                gameId: $command->gameId,
-                playerId: $command->playerId,
-                turnId: $command->turnId,
-                monster: $monsterItem,
-                fromPosition: $command->fromPosition,
-                toPosition: $command->toPosition,
-            ));
-            // Don't pick up items yet - wait for battle to be won
-        } elseif (isset($this->items[$destinationKey])) {
-            // Only pick up items if there's no monster or monster is already defeated
-            $itemAtDestination = $this->items[$destinationKey];
-
-            // Convert to Item object using fromAnything which handles both Item and array
-            $itemObj = Item::fromAnything($itemAtDestination);
-
-            // Check if item has an already defeated monster (guardDefeated = true)
-            if (!$itemObj->guardHP || $itemObj->guardDefeated) {
-                // Items without monsters or with defeated monsters can be picked up
-                try {
-                    $context->dispatch(new PickItem(
-                        gameId: $command->gameId,
-                        playerId: $command->playerId,
-                        turnId: $command->turnId,
-                        position: $command->toPosition,
-                        itemIdToReplace: null,
-                    ));
-
-                    $context->dispatch(new ItemPickedUp(
-                        gameId: $command->gameId,
-                        playerId: $command->playerId,
-                        item: $itemObj,
-                        position: $command->toPosition,
-                    ));
-
-                    // Remove items from field after pickup
-                    unset($this->items[$destinationKey]);
-                } catch (InventoryFullException) {
-                    // Inventory is full - leave the item on the field
-                    // The player can pick it up later with a replace action
-                    // This is not an error, just normal game behavior
-                }
-            }
-        }
-    }
-    */
 
     /**
      * Resets a player's position (for testing/demo purposes).

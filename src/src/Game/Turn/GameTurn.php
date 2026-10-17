@@ -548,7 +548,9 @@ class GameTurn extends AggregateRoot
     private function cursedDuringTheTurn(): bool
     {
         foreach ($this->actions as $action) {
-            if ($action['action'] === TurnAction::CURSED_ROOM->value && ($action['additionalData']['cursed'] ?? false) === true) {
+            // the turn's own hero cursed (not a hero swapped onto a room)
+            if ($action['action'] === TurnAction::CURSED_ROOM->value && ($action['additionalData']['cursed'] ?? false) === true
+                && ($action['additionalData']['player'] ?? $this->playerId->toString()) === $this->playerId->toString()) {
                 return true;
             }
         }

@@ -228,7 +228,7 @@ class Battle extends AggregateRoot
         // an automatic Warrior side uses Double Attack on a roll that cannot win: below the rival's total when it is
         // known (the summoned side), below an average roll otherwise
         if ($preset !== null && $command->duel->auto && $roller->getSkills()?->canRerollBattle() === true) {
-            $battle->autoRerollIfHopeless($command->duel->toBeat, $messageContext);
+            $battle->autoRerollIfHopeless($command->duel->toBeat, $preset['consumableIds'], $messageContext);
         }
         if ($preset !== null && ($command->duel->auto || $roller->getSkills()?->canRerollBattle() !== true)) {
             $battle->finalizeBattle(new FinalizeBattle(
@@ -639,19 +639,37 @@ class Battle extends AggregateRoot
         ];
     }
 
-    private function autoRerollIfHopeless(?int $toBeat, MessageContext $messageContext): void
+    /**
+     * @param list<string> $presetIds the spells this side chose before the roll
+     */
+    private function autoRerollIfHopeless(?int $toBeat, array $presetIds, MessageContext $messageContext): void
     {
-        $dice = array_sum($this->diceResults);
-        $hopeless = $toBeat !== null ? $this->totalDamage <= $toBeat : $dice < 7;
-        if (!$hopeless || $this->rerollUsed) {
+        if ($this->rerollUsed) {
             return;
-            }
-            error_log('DEBUG battle.reroll_auto ' . json_encode(['battleId' => $this->battleId->toString(), 'dice' => $this->diceResults, 'toBeat' => $toBeat]));
-            $this->firstDiceResults = $this->diceResults;
-            $this->rerollUsed = true;
-            $this->rollDice($messageContext);
-            $this->calculateInitialBattle($messageContext);
         }
+        // the roll with weapons, bonuses and the spells already chosen: does it beat the rival (a tie counts for a
+        // hero who wins ties)? Without a known total to beat, below an average roll is hopeless
+        $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
+        $total = $this->totalDamage + $player->calculateDamageFromItems($presetIds);
+        $hopeless = $toBeat !== null
+            ? $total < $toBeat + ($this->playerWinsTies($messageContext) ? 0 : 1)
+            : array_sum($this->diceResults) < 7;
+        if (!$hopeless) {
+            return;
+        }
+        error_log('DEBUG battle.reroll_auto ' . json_encode(['battleId' => $this->battleId->toString(), 'dice' => $this->diceResults, 'total' => $total, 'toBeat' => $toBeat]));
+        $this->firstDiceResults = $this->diceResults;
+        $this->rerollUsed = true;
+        $this->rollDice($messageContext);
+        $this->calculateInitialBattle($messageContext);
+        $messageContext->dispatch(new BattleDiceRerolled(
+            battleId: $this->battleId,
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            firstDiceResults: $this->firstDiceResults,
+            diceResults: $this->diceResults,
+        ));
+    }
 
     /**
      * Whether the fighting player's hero turns ties into victories (Thief "Backstab").

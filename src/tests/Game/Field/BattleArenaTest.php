@@ -123,6 +123,18 @@ final class BattleArenaTest extends TestCase
     }
 
     #[Test]
+    public function aWarriorWaitingToReincarnateCannotBeSummoned(): void
+    {
+        (new \ReflectionProperty(Player::class, 'awaitingReincarnation'))->setValue($this->players[$this->p3->toString()], true);
+
+        [, $messages] = $this->createTester()->handle($this->field->onPlayerMoved(...), $this->moved($this->p1));
+
+        $start = $this->findMessage($messages, StartDuel::class);
+        self::assertInstanceOf(StartDuel::class, $start);
+        self::assertTrue($start->opponentId->equals($this->p2), 'Only the fit rival is left');
+    }
+
+    #[Test]
     public function aRivalNeverChosenIsPickedWhenTheTurnEnds(): void
     {
         $tester = $this->createTester();

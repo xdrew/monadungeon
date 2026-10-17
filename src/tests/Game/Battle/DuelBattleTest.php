@@ -125,6 +125,30 @@ final class DuelBattleTest extends TestCase
     }
 
     #[Test]
+    public function anAutomaticWarriorRerollsOnlyARollThatCannotWinWithItsSpells(): void
+    {
+        // the rival's total is 6: 2 + 3 + the chosen fireball = 6 is only a tie → reroll (6 + 6 = 12 + 1)
+        $this->field->setTestDiceRolls([2, 3, 6, 6]);
+        $fireball = Item::createMummy();
+        $tester = $this->createTester($this->createPlayer(HeroType::WARRIOR, [$fireball], []));
+        [, $messages] = $tester->handle(
+            static fn(StartBattle $command, MessageContext $context): Battle => Battle::start($command, $context),
+            $this->startBattle(DuelSide::OPPONENT, 6, auto: true, preset: ['consumableIds' => [$fireball->itemId->toString()], 'sacrifice' => false]),
+        );
+        self::assertSame(13, $this->findMessage($messages, DuelSideCompleted::class)?->total, 'Double Attack on a hopeless roll');
+
+        // 3 + 3 + the fireball = 7 beats 6 with the spell already chosen: no reroll
+        $this->field->setTestDiceRolls([3, 3, 1, 1]);
+        $fireball = Item::createMummy();
+        $tester = $this->createTester($this->createPlayer(HeroType::WARRIOR, [$fireball], []));
+        [, $messages] = $tester->handle(
+            static fn(StartBattle $command, MessageContext $context): Battle => Battle::start($command, $context),
+            $this->startBattle(DuelSide::OPPONENT, 6, auto: true, preset: ['consumableIds' => [$fireball->itemId->toString()], 'sacrifice' => false]),
+        );
+        self::assertSame(7, $this->findMessage($messages, DuelSideCompleted::class)?->total, 'Its spell already wins');
+    }
+
+    #[Test]
     public function theChallengerAlwaysDecidesAndLocksInHisStrength(): void
     {
         $this->field->setTestDiceRolls([3, 4]);

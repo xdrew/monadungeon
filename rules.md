@@ -11,7 +11,7 @@ Monadungeon is a dungeon-crawling adventure game where players explore a labyrin
 - **Initial HP**: Each player starts with 5 HP tokens ✅
 - **Starting Tile**: A pre-placed starting tile is set at position (0,0) ✅
 - **Components** (exactly the box, never trimmed): 80 tiles — the start, 53 rooms, 20 corridors, 2 healing fountains, 4 teleportation gates; 53 tokens — 43 monsters with the dragon and 10 chests. Karak: Regent adds 18 tiles and 8 tokens ✅
-- **Turn Order**: every player rolls 2d6, the highest roll starts (a tie goes to the first of the tied players in seating order), then play goes clockwise; in test mode player 1 starts and no dice are spent ✅
+- **Turn Order**: every player rolls 2d6, the highest roll starts (the players tied for the highest roll again), then play goes clockwise; in test mode player 1 starts and no dice are spent ✅
 
 ## Turn Structure ✅
 Each player has **4 movement actions** per turn. During their turn, players can:
@@ -27,7 +27,7 @@ Each player has **4 movement actions** per turn. During their turn, players can:
 ### Tile Placement Rules ✅
 When entering an undiscovered zone:
 1. Draw a random tile from the deck ✅
-2. Place it connecting to the tile you're leaving from, then step onto it (only Lady Lorraine may listen instead); the turn cannot end before ✅
+2. Place it connecting to the tile you're leaving from (it must open toward that tile), then step onto it (only Lady Lorraine may listen instead); the turn cannot end before ✅
 3. The tile must have at least one matching open side ✅
 4. Other sides can be dead ends (walls) ✅
 
@@ -117,9 +117,9 @@ When entering an undiscovered zone:
   - Both figures stay on the arena; the duel ends the challenger's turn, like any fight
   - Only a hero fit to fight is summoned: not one lying unconscious or waiting to reincarnate. A virtual challenger picks the rival with the most treasures; a human summoned during a virtual player's turn decides for himself (the AI's turn waits); only a seat that is away is played automatically
   - The duel is not optional: nobody walks on before it is over, and a rival never chosen when the turn ends is picked (the most treasures) and the duel settled at once; an unfinished duel is settled at the turn end (no consumables, best loot automatically)
-  - The arena activates once; later entries are a normal corridor
+  - The arena activates once; later entries are a normal corridor; a retreat or a push-back onto it does not activate it
 - **Cursed Room** (a corridor) ✅
-  - Every hero entering it rolls a die: 1–3 → Curse of Karak, 4–6 → safe; an already cursed hero does not roll; being pushed back onto it after a lost fight rolls again
+  - Every hero entering it rolls a die: 1–3 → Curse of Karak, 4–6 → safe; an already cursed hero does not roll; being pushed back onto it after a lost fight rolls again; several rolls in one turn (a Sprint) are each shown
   - There is one curse token: a curse from a Cursed Room takes it from whoever carried it (that hero is free again), as a mummy curse does. A healing fountain or the Portal of Healing lifts it
 - **Monsters**: Giant Bat (6 HP) drops Dark Thorn; Skeleton Mage (11 HP) drops Frost Fist ✅
 - **Spells**: a Warrior losing his last HP to a Dark Thorn or in a duel reincarnates at the nearest discovered fountain automatically ✅
@@ -160,7 +160,8 @@ Heroes are dealt at random, as in the board game: the lobby switch **Random hero
 - **Reincarnation** ✅
   - When the Warrior loses his last HP he does not fall unconscious ✅
   - Instead he chooses any discovered healing fountain tile (the starting tile always has one) and teleports there ✅
-  - All HP are replenished ✅
+  - All of his HP are replenished (his own maximum) ✅
+  - Knocked out on his own turn (a fight, a duel he started) he chooses the fountain; knocked out off his turn (summoned to a duel, hit by a Dark Thorn) he goes to the nearest one at once ✅
   - The turn ends anyway ✅
 
 #### Aderyn, the Thief ✅
@@ -191,7 +192,7 @@ Heroes are dealt at random, as in the board game: the lobby switch **Random hero
   - As the first action of his turn the Warlock may trade places with any other hero: he moves to that hero's tile, the other hero to his ✅
   - It costs all 4 moves, so the turn ends right after the swap ✅
   - The ability of the new tile still applies: a reward lying there may be picked up (a locked chest still needs a key) and a healing fountain heals when the turn ends there ✅
-  - Arriving by swap never starts a battle and nothing else about the swapped hero changes ✅
+  - Arriving by swap never starts a battle and nothing else about the swapped hero changes; a hero standing on an undefeated monster (a Thief sneaking) cannot be swapped with ✅
 
 #### Argentus, the Wizard ✅
 - **Magical Affinity** ✅
@@ -241,11 +242,12 @@ The next four heroes come with the Karak: Regent expansion: the lobby shows them
 - **Sprint** ✅
   - Declared as the first action of the turn: up to 8 moves this turn, over discovered tiles only (no tile is picked or placed) ✅
   - Entering a monster's tile still starts a fight ✅
+  - Cursed by a Cursed Room on the way, she falls back to the normal 4 moves (the turn ends at once if 4 or more were spent) ✅
 
 #### Lady Lorraine, the Ranger ✅
-- **Bear Attack**: every die showing 1 counts as 6 (not while cursed) ✅
+- **Bear Attack**: every die showing 1 counts as 6 (not while cursed); for a Lord Karak who also has Combat Training the 1 stays a 6 and is not rerolled ✅
 - **Listening** ✅
-  - Right after placing a tile next to her she may listen instead of entering: one move, the tile's token is drawn, she stays where she is ✅
+  - Right after placing a tile next to her she may listen at that tile (only that one) instead of entering: one move, the tile's token is drawn, she stays where she is ✅
   - Entering that tile later is a normal move (a monster there is fought) ✅
   - A Battle Arena or Cursed Room explored this way is not triggered ✅
   - She may listen several times per turn, as long as moves remain ✅

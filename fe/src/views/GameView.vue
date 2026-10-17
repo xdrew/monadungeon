@@ -5920,6 +5920,8 @@ watch(() => getCurrentPlayerData.value?.awaitingReincarnation, (awaiting) => {
     isReincarnationMode.value = false;
     reincarnationFountainPositions.value = [];
   }
+  // a reincarnation done: the next fall (a later fight or a duel) asks again
+  if (!awaiting) reincarnationHandled.value = false;
 });
 
 // Actions already recorded in the current turn (the Magic Swap must be the first one)

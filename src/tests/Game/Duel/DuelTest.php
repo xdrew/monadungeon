@@ -327,6 +327,7 @@ final class DuelTest extends TestCase
         self::assertTrue($reincarnate->playerId->equals($this->opponent));
         $action = $this->findMessage($messages, PerformTurnAction::class);
         self::assertSame('0,0', $action?->additionalData['reincarnatedTo'] ?? null);
+        self::assertInstanceOf(EndTurn::class, $this->findMessage($messages, EndTurn::class), 'The duel over, the challenger\'s turn ends');
     }
 
     #[Test]
