@@ -82,6 +82,18 @@ final class MovementUnstoppableTest extends TestCase
     }
 
     #[Test]
+    public function aDuelSideDoesNotLockTheStepsOfTheRivalsNextTurn(): void
+    {
+        $this->movement->onBattleCompleted($this->battleCompleted(
+            unstoppable: false,
+            duel: ['duelId' => Uuid::v7()->toString(), 'role' => 'opponent', 'opponentId' => Uuid::v7()->toString(), 'toBeat' => 9],
+        ));
+
+        $locks = (new \ReflectionProperty(Movement::class, 'hasMovedAfterBattle'))->getValue($this->movement);
+        self::assertFalse($locks[$this->playerId->toString()] ?? false, 'The summoned rival walks on in his own turn');
+    }
+
+    #[Test]
     public function aRegularBattleStillLocksMovementForTheRestOfTheTurn(): void
     {
         $this->movement->onBattleCompleted($this->battleCompleted(unstoppable: false));
@@ -92,7 +104,10 @@ final class MovementUnstoppableTest extends TestCase
         $tester->handle($this->movement->movePlayer(...), $this->move());
     }
 
-    private function battleCompleted(bool $unstoppable): BattleCompleted
+    /**
+     * @param array{duelId: string, role: string, opponentId: string, toBeat: ?int}|null $duel
+     */
+    private function battleCompleted(bool $unstoppable, ?array $duel = null): BattleCompleted
     {
         return new BattleCompleted(
             battleId: Uuid::v7(),
@@ -105,6 +120,7 @@ final class MovementUnstoppableTest extends TestCase
             totalDamage: 8,
             monsterHP: 5,
             unstoppable: $unstoppable,
+            duel: $duel,
         );
     }
 

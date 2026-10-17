@@ -575,7 +575,9 @@ class Movement extends AggregateRoot
         // Only restrict movement after ACTUAL battles with monsters (guardHP > 0)
         // Chests typically have guardHP = 0 and should not restrict movement
         // Swordsman "Unstoppable": a battle with a 6 on the dice does not lock the rest of the turn
-        if ($event->monsterHP > 0 && !$event->unstoppable) {
+        // A duel side does not either: the duel ends the challenger's turn by itself, and the summoned rival
+        // fights out of his turn — a lock set for him would stay into his own next turn and refuse every step
+        if ($event->monsterHP > 0 && !$event->unstoppable && $event->duel === null) {
             // Mark that the player has battled this turn
             $this->hasMovedAfterBattle[$event->playerId->toString()] = true;
         }
