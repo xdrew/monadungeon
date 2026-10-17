@@ -8,6 +8,7 @@ use App\Game\Battle\FinalizeBattle;
 use App\Game\Battle\StartBattle;
 use App\Game\Field\AutoReincarnate;
 use App\Game\Field\FieldPlace;
+use App\Game\Field\GetField;
 use App\Game\GameLifecycle\GetCurrentPlayer;
 use App\Game\Item\Item;
 use App\Game\Item\ItemCategory;
@@ -736,6 +737,10 @@ class Duel extends AggregateRoot
     private function endChallengersTurn(MessageContext $messageContext): void
     {
         if ($messageContext->dispatch(new GetTurn($this->turnId))?->isEnded() !== false) {
+            return;
+        }
+        // fought inside the step onto the arena: that step ends the turn once it is recorded
+        if ($messageContext->dispatch(new GetField($this->gameId))?->isDuelFoughtInTheStep() === true) {
             return;
         }
         error_log('INFO duel.turn_ended ' . json_encode(['duelId' => $this->duelId->toString(), 'challenger' => $this->challengerId->toString(), 'result' => $this->result]));

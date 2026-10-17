@@ -86,6 +86,19 @@ final class RegentGameTest extends TestCase
     }
 
     #[Test]
+    public function aCursedRoomCursesInASoloGameToo(): void
+    {
+        [$game] = handle(Game::create(...), new CreateGame(gameId: $this->gameId, regent: true));
+        $tester = MessageBusTester::create();
+        $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->p1));
+        $tester->handle($game->start(...), new StartGame($this->gameId, new \DateTimeImmutable()));
+
+        $tester->handle($game->onCursedRoomEntered(...), $this->roomEntered($this->p1, cursed: true));
+
+        self::assertTrue($game->isPlayerCursed($this->p1), 'Only the mummy needs another player to curse');
+    }
+
+    #[Test]
     public function aFountainLiftsARoomCurse(): void
     {
         $game = $this->startedGame();

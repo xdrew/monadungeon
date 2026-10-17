@@ -548,7 +548,7 @@ class GameTurn extends AggregateRoot
                 continue;
             }
 
-            return self::isUnstoppableBattle($action);
+            return self::isUnstoppableBattle($action) && strtoupper((string) ($action['additionalData']['result'] ?? '')) === 'WIN';
         }
 
         return false;

@@ -105,6 +105,29 @@ final class RegentHeroFieldTest extends TestCase
     }
 
     #[Test]
+    public function valdukStillCollectsTheDragonsRuby(): void
+    {
+        $this->hero = HeroType::BARBARIAN;
+        $this->position = FieldPlace::fromString('1,0');
+        $this->setProperty('items', ['1,0' => Item::createDragon()]);
+
+        $this->createTester()->handle($this->field->onBattleCompleted(...), new \App\Game\Battle\BattleCompleted(
+            battleId: Uuid::v7(),
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            result: \App\Game\Battle\BattleResult::WIN,
+            diceResults: [6, 6],
+            diceRollDamage: 12,
+            itemDamage: 4,
+            totalDamage: 16,
+            monsterHP: 15,
+        ));
+
+        self::assertArrayNotHasKey('1,0', $this->field->getItems(), 'The ruby is taken: the game ends');
+        self::assertTrue($this->field->getLastBattleInfo()['reward']['autoCollected'] ?? false);
+    }
+
+    #[Test]
     public function anotherHerosGuardedChestIsCollectedAtOnce(): void
     {
         $this->hero = HeroType::WARRIOR;

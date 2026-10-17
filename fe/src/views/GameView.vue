@@ -1850,7 +1850,8 @@ watch(() => gameData.value?.state?.roomEvent, (event) => {
 watch(() => gameData.value?.state?.curse?.cursedPlayerId, (holder, was) => {
   if (!roomEventsArmed || !holder || holder === was) return;
   const room = gameData.value?.state?.roomEvent;
-  if (room?.playerId === holder && room.cursed && !room.alreadyCursed && room.turnId === gameData.value?.state?.currentTurnId) return;
+  // (the latest room roll cursed the new holder — also when the state comes after the turn has passed)
+  if (room?.playerId === holder && room.cursed && !room.alreadyCursed) return;
   const by = gameData.value?.state?.currentPlayerId;
   const byMe = isOnline.value ? by === mySeatId.value : !gameData.value?.players?.find((p) => p.id === by)?.isAi;
   // my own choice was made on the fight scene: nothing to tell

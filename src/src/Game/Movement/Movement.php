@@ -33,6 +33,7 @@ use App\Game\Movement\Exception\InvalidMovementException;
 use App\Game\Movement\Exception\NotYourTurnException;
 use App\Game\Player\GetPlayer;
 use App\Game\Player\PlayerStunned;
+use App\Game\Turn\EndTurn;
 use App\Game\Turn\GetCurrentTurn;
 use App\Game\Turn\GetTurn;
 use App\Game\Turn\PerformTurnAction;
@@ -285,6 +286,15 @@ class Movement extends AggregateRoot
                 at: new \DateTimeImmutable(),
                 deferTurnEnd: $hasPickableItem,
             ));
+
+            // Karak: Regent — a duel fought inside this step (nobody's answer was needed) ends the turn now
+            $duel = $context->dispatch(new GetField($this->gameId))->getDuelInfo();
+            if (($duel['turnId'] ?? null) === $command->turnId->toString()
+                && DuelPhase::tryFrom((string) ($duel['phase'] ?? ''))?->isSettled() === true
+                && $context->dispatch(new GetTurn($command->turnId))?->isEnded() === false) {
+                error_log('INFO duel.turn_ended_after_step ' . json_encode(['turnId' => $command->turnId->toString()]));
+                $context->dispatch(new EndTurn($command->turnId, $command->gameId, $command->playerId));
+            }
         }
 
         // Start battle if moving to a monster tile

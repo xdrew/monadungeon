@@ -57,6 +57,9 @@ final class MoveValidationTest extends TestCase
     /** @var list<object> what the refused step must not have dispatched */
     private array $seen = [];
 
+    /** @var array<string, mixed>|null the field's duel */
+    private ?array $duel = null;
+
     protected function setUp(): void
     {
         $this->gameId = Uuid::v7();
@@ -137,6 +140,25 @@ final class MoveValidationTest extends TestCase
     }
 
     #[Test]
+    public function aDuelFoughtInsideTheStepEndsTheTurnOnceTheStepIsRecorded(): void
+    {
+        $this->duel = ['turnId' => $this->turnId->toString(), 'phase' => 'done'];
+
+        $this->tester(monsterAhead: false)->handle($this->movement->movePlayer(...), $this->move());
+
+        self::assertSame('1,0', $this->position(), 'The step onto the arena stands');
+        self::assertNotEmpty(array_filter($this->seen, static fn(object $m): bool => $m instanceof \App\Game\Turn\EndTurn));
+    }
+
+    #[Test]
+    public function aDuelStillOpenBlocksTheStep(): void
+    {
+        $this->duel = ['turnId' => $this->turnId->toString(), 'phase' => 'challenger_prepare'];
+
+        $this->assertRefused(\App\Game\Movement\Exception\InvalidMovementException::class, monsterAhead: false);
+    }
+
+    #[Test]
     public function anAllowedStepStillMoves(): void
     {
         $this->tester(monsterAhead: false)->handle($this->movement->movePlayer(...), $this->move());
@@ -197,8 +219,8 @@ final class MoveValidationTest extends TestCase
 
     private function tester(bool $monsterAhead): MessageBusTester
     {
-        $field = new class ($monsterAhead) {
-            public function __construct(private readonly bool $monsterAhead) {}
+        $field = new class ($monsterAhead, $this->duel) {
+            public function __construct(private readonly bool $monsterAhead, private readonly ?array $duel) {}
 
             /** @return array<string, list<string>> */
             public function getDebugTransitions(): array
@@ -235,7 +257,7 @@ final class MoveValidationTest extends TestCase
 
             public function getDuelInfo(): ?array
             {
-                return null;
+                return $this->duel;
             }
         };
 
@@ -265,6 +287,7 @@ final class MoveValidationTest extends TestCase
             static fn(PerformTurnAction $command) => null,
             function (PlayerMoved $event): void { $this->seen[] = $event; },
             function (StartBattle $command): void { $this->seen[] = $command; },
+            function (\App\Game\Turn\EndTurn $command): void { $this->seen[] = $command; },
         );
     }
 }

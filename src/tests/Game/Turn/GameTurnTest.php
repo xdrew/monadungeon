@@ -760,6 +760,17 @@ final class GameTurnTest extends TestCase
     }
 
     #[Test]
+    public function aPickupAfterALostUnstoppableFightEndsTheTurn(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, ['result' => 'LOSE', 'unstoppable' => true]));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::PICK_ITEM));
+
+        self::assertTrue($gameTurn->isEnded(), 'Only the reward of a won fight keeps the Swordsman going');
+    }
+
+    #[Test]
     public function theRewardAfterAMagicSwapEndsTheTurn(): void
     {
         [$gameTurn, $tester] = $this->countedTurn();

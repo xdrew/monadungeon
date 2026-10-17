@@ -97,6 +97,9 @@ use Telephantast\MessageBus\MessageContext;
 class Field extends AggregateRoot
 {
     /** @var array<string, Tile> */
+    /** not stored: true only while a duel is fought inside the step that entered the arena */
+    private bool $duelInTheStep = false;
+
     private array $tilesCache = [];
 
     /** @var array<string, Uuid|string> */
@@ -454,6 +457,15 @@ class Field extends AggregateRoot
     public function getActivatedArenas(): array
     {
         return $this->activatedArenas;
+    }
+
+    /**
+     * Karak: Regent — a duel is being fought inside the step onto the arena (nobody's answer was needed): the step
+     * ends the turn once it is recorded (Movement), the duel must not end it before.
+     */
+    public function isDuelFoughtInTheStep(): bool
+    {
+        return $this->duelInTheStep;
     }
 
     /**
@@ -2973,7 +2985,13 @@ class Field extends AggregateRoot
         $firstStep = $context->dispatch(new GetTurn($turnId))?->getPerformedActionsCount() === 0;
 
         if (\count($others) === 1 || $context->dispatch(new GetPlayer($playerId))->isAi()) {
-            $this->startDuel($playerId, $this->pickDuelOpponent($others, $context), $position, $turnId, $firstStep, $context);
+            $this->duelInTheStep = true;
+
+            try {
+                $this->startDuel($playerId, $this->pickDuelOpponent($others, $context), $position, $turnId, $firstStep, $context);
+            } finally {
+                $this->duelInTheStep = false;
+            }
 
             return;
         }
