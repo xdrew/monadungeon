@@ -31,8 +31,8 @@
         </button>
         <div class="party-member__body">
           <span class="party-member__name">{{ entry.name }}</span>
-          <span class="party-member__who">
-            <span class="party-member__who-part">{{ whoLabel(entry) }}</span><template v-if="entry.player.hero || entry.player.lordKarak"> · </template><span
+          <span class="party-member__who"><span class="party-member__who-line">
+            <span class="party-member__who-part">{{ whoLabel(entry) }}</span><span
               v-if="entry.player.hero || entry.player.lordKarak"
               class="hero-badge"
               :class="{ 'awaiting-reincarnation': entry.player.awaitingReincarnation, cursed: entry.player.cursed, 'lord-karak': entry.player.lordKarak }"
@@ -52,8 +52,8 @@
               v-if="entry.player.lordKarak && entry.player.hero"
               class="lord-karak-was"
               data-testid="lord-karak-was"
-            > · {{ t('hud.was', { name: heroShortName(entry.player) }) }}</span>
-          </span>
+            >{{ t('hud.was', { name: heroShortName(entry.player) }) }}</span>
+          </span></span>
           <span class="party-member__stats">
             <span
               class="party-member__hearts"
@@ -302,12 +302,31 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 }
 
 .party-member__who {
+  display: block;
+  /* the dot before a part that wrapped to a new line sits left of the edge and is clipped: no dangling "YOU ·" */
+  overflow: hidden;
   font-size: 13px;
   letter-spacing: 0.1em;
-  /* breaks only between its parts ("IDLE · ACTING" / "THE WARRIOR"), never inside one ("THE / BATTLE MAGE") */
-  white-space: normal;
   font-variant-caps: all-small-caps;
   color: var(--text-muted);
+}
+
+/* breaks only between its parts ("IDLE · ACTING" / "THE WARRIOR"), never inside one ("THE / BATTLE MAGE") */
+.party-member__who-line {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: -1em;
+}
+
+.party-member__who-line > * {
+  position: relative;
+  margin-left: 1em;
+}
+
+.party-member__who-line > * + *::before {
+  content: '·';
+  position: absolute;
+  left: -0.7em;
 }
 
 .party-member__who-part,

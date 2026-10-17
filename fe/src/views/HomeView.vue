@@ -164,6 +164,7 @@
           <!-- roster: one medallion per hero; the skills live in the card below -->
           <div
             class="hero-roster"
+            :class="{ 'hero-roster--many': heroCards.length > 7 }"
             :aria-label="t('lobby.heroGroup')"
             role="radiogroup"
           >
@@ -1051,6 +1052,31 @@ const createNewGame = async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* Regent: 11 heroes in one row — small rings, the names left to the card below and the tooltip */
+.hero-roster--many {
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.hero-roster--many .hero-tile {
+  width: auto;
+}
+
+.hero-roster--many .hero-tile-figure {
+  width: 34px;
+  height: 34px;
+}
+
+.hero-roster--many .hero-tile-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .hero-tile {
