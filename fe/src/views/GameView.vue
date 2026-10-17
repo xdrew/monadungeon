@@ -799,6 +799,29 @@
                     />
                   </div>
 
+                  <!-- Karak: Regent — a Cursed Room roll on the field (the AI's, or a rival's online): FieldCurseRoll over the room -->
+                  <div
+                    v-if="aiRoomOverlay"
+                    class="ai-battle-overlay"
+                    :style="{
+                      left: `${(aiRoomOverlay.x - (gameData.field.size.minX || 0)) * tileSize}px`,
+                      top: `${(aiRoomOverlay.y - (gameData.field.size.minY || 0)) * tileSize}px`,
+                      width: `${tileSize}px`,
+                      height: `${tileSize}px`,
+                    }"
+                  >
+                    <FieldCurseRoll
+                      :key="aiRoomOverlay.key"
+                      :hero-key="aiRoomOverlay.heroKey"
+                      :name="aiRoomOverlay.name"
+                      :roll="aiRoomOverlay.event.roll"
+                      :cursed="!!aiRoomOverlay.event.cursed"
+                      :already-cursed="!!aiRoomOverlay.event.alreadyCursed"
+                      :speed="aiRoomOverlay.speed"
+                      @settled="onAiRoomRollSettled"
+                    />
+                  </div>
+
                   <!-- Fog of war overlay for unexplored positions -->
                   <div
                     v-for="fog in fogCells"
@@ -1080,6 +1103,7 @@ import CurseChoicePanel from '@/components/game/CurseChoicePanel.vue';
 import DuelOpponentPanel from '@/components/game/DuelOpponentPanel.vue';
 import DuelScene from '@/components/game/DuelScene.vue';
 import CursedRoomScene from '@/components/game/CursedRoomScene.vue';
+import FieldCurseRoll from '@/components/game/FieldCurseRoll.vue';
 import LordKarakRevealModal from '@/components/game/LordKarakRevealModal.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import GameHud from '@/components/game/hud/GameHud.vue';
@@ -1567,6 +1591,7 @@ const bannerHeadline = computed(() => {
       case 'move_player': return t('hud.headline.movesOn', { who });
       case 'place_tile': return t('hud.headline.seeksPath', { who });
       case 'end_turn': return t('hud.headline.rests', { who });
+      case 'cursed_room': return t('hud.headline.cursedRoom', { who });
       case undefined: return t('hud.headline.ponders', { who });
       default: return t('hud.headline.loot', { who });
     }
@@ -2607,6 +2632,38 @@ const showAiBattleOverlay = (action, playerId = null) => {
 
 const clearAiBattleOverlay = () => {
   aiBattleOverlay.value = null;
+  aiRoomOverlay.value = null;
+};
+
+// Karak: Regent — a Cursed Room roll played back on its step, over the room, instead of the full-screen scene at the end
+const aiRoomOverlay = ref(null);
+// the rolls of a played-back turn are its steps: the state that brings them later shows no scene for them
+const claimPlaybackRoomRolls = (rawActions) => {
+  const events = (rawActions || []).find((a) => a.type === 'room_events')?.details?.events || [];
+  events.forEach((event) => shownRoomEventIds.add(roomEventKey(event)));
+};
+const showAiRoomRoll = (action) => {
+  const event = action.event;
+  if (!event?.position) return;
+  aiBattleOverlay.value = null;
+  const [x, y] = event.position.split(',').map(Number);
+  const player = gameData.value?.players?.find((p) => p.id === event.playerId);
+  const who = heroNameById(event.playerId);
+  const notice = event.alreadyCursed ? 'game.notice.cursedRoomAlready' : event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe';
+  showActionNotice(t(notice, { who, roll: event.roll }), 'notice');
+  fieldFightKey += 1;
+  aiRoomOverlay.value = { key: fieldFightKey, x, y, event, name: who, heroKey: figureHeroKey(player), speed: aiPlayback.playbackSpeed.value || 1 };
+  centerViewOnTile(event.position);
+};
+// the outcome is shown: a cursed hero's token flies onto his card in the rail
+const onAiRoomRollSettled = (tokenRect) => {
+  const event = aiRoomOverlay.value?.event;
+  if (!event || event.alreadyCursed) return;
+  if (!event.cursed) {
+    audio.cue('curse_lifted');
+    return;
+  }
+  flyCurseToken(tokenRect, document.querySelector(`.party-member[data-player-id="${event.playerId}"] .party-member__medallion`));
 };
 
 const applyAiPlayerMovement = (action, playerId) => {
@@ -2771,12 +2828,14 @@ const checkAndHandleVirtualPlayerTurn = async () => {
           lastExecutedAITurn = currentTurnNumber;
 
           // Play back AI actions step by step before loading final state
+          claimPlaybackRoomRolls(response.actions);
           const filteredActions = aiPlayback.filterActions(response.actions || []);
           if (filteredActions.length > 0) {
             await aiPlayback.playActions(filteredActions, {
               onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
               onMovePlayer: (action) => { clearAiBattleOverlay(); applyAiPlayerMovement(action, currentPlayer); },
               onBattle: (action) => showAiBattleOverlay(action, currentPlayer),
+              onCursedRoom: (action) => showAiRoomRoll(action),
               onPickup: () => clearAiBattleOverlay(),
               onEndTurn: () => clearAiBattleOverlay(),
             });
@@ -2895,6 +2954,8 @@ const noticeOpponentFight = (data) => {
 
 // A turn the server played (an AI seat, or the AI standing in for an away player): played back like the AI's
 const playOnlineAiTurn = async (message) => {
+  // its Cursed Room rolls are played on their steps, not as scenes of a state loaded meanwhile
+  claimPlaybackRoomRolls(message.actions);
   onlinePlaybackQueue.push(message);
   if (onlinePlaybackActive) return;
   onlinePlaybackActive = true;
@@ -2912,6 +2973,7 @@ const playOnlineAiTurn = async (message) => {
           onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
           onMovePlayer: (action) => { clearAiBattleOverlay(); applyAiPlayerMovement(action, next.playerId); },
           onBattle: (action) => showAiBattleOverlay(action, next.playerId),
+          onCursedRoom: (action) => showAiRoomRoll(action),
           onPickup: () => clearAiBattleOverlay(),
           onEndTurn: () => clearAiBattleOverlay(),
         });
@@ -4915,6 +4977,7 @@ const replaceItem = async () => {
     turnId: currentTurnId,
     loadGameData,
     keepTurn: inventoryFullKeepsTurn.value,
+    heroPosition: gameData.value?.field?.playerPositions?.[currentPlayerId.value] || null,
     // the dialog stays open: the player can try again or leave the find
     onError: (message) => showActionNotice(message)
   });

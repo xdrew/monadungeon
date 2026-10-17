@@ -158,14 +158,12 @@
         </div>
 
         <template v-else>
-          <p class="hero-picker-title">
-            {{ t('lobby.chooseHero') }}
-          </p>
-          <!-- roster: one medallion per hero; the skills live in the card below -->
+          <!-- roster: one medallion per hero; the skills live in the card below (the medallions say what to do,
+               so the "Choose your hero" caption is left to the screen reader) -->
           <div
             class="hero-roster"
             :class="{ 'hero-roster--many': heroCards.length > 7 }"
-            :aria-label="t('lobby.heroGroup')"
+            :aria-label="t('lobby.chooseHero')"
             role="radiogroup"
           >
             <button
@@ -198,41 +196,44 @@
           >
             <div
               :key="selectedCard.testid"
-              class="hero-card"
+              class="hero-card hero-card--entry"
               data-testid="hero-card"
             >
-              <span class="hero-medallion hero-medallion--portrait">
-                <img
-                  :src="selectedCard.image"
-                  :alt="selectedCard.name"
-                  class="hero-card-image"
-                >
-              </span>
-              <div class="hero-card-body">
-                <span class="hero-card-role">{{ selectedCard.role }}</span>
-                <h3 class="hero-card-name">
-                  {{ selectedCard.shortName }}
-                </h3>
-                <ul
-                  v-if="selectedCard.skills.length"
-                  class="hero-skills"
-                >
-                  <li
-                    v-for="skill in selectedCard.skills"
-                    :key="skill.key"
-                    class="hero-skill"
+              <!-- the portrait beside the name, the skills under both across the whole card -->
+              <div class="hero-card-head">
+                <span class="hero-medallion hero-medallion--portrait">
+                  <img
+                    :src="selectedCard.image"
+                    :alt="selectedCard.name"
+                    class="hero-card-image"
                   >
-                    <span class="hero-skill-name">{{ skill.name }}</span>
-                    <span class="hero-skill-text">{{ skill.text }}</span>
-                  </li>
-                </ul>
-                <p
-                  v-else
-                  class="hero-skills-none"
-                >
-                  {{ t('lobby.noSkills') }}
-                </p>
+                </span>
+                <div class="hero-card-body">
+                  <span class="hero-card-role">{{ selectedCard.role }}</span>
+                  <h3 class="hero-card-name">
+                    {{ selectedCard.shortName }}
+                  </h3>
+                </div>
               </div>
+              <ul
+                v-if="selectedCard.skills.length"
+                class="hero-skills"
+              >
+                <li
+                  v-for="skill in selectedCard.skills"
+                  :key="skill.key"
+                  class="hero-skill"
+                >
+                  <span class="hero-skill-name">{{ skill.name }}</span>
+                  <span class="hero-skill-text">{{ skill.text }}</span>
+                </li>
+              </ul>
+              <p
+                v-else
+                class="hero-skills-none"
+              >
+                {{ t('lobby.noSkills') }}
+              </p>
             </div>
           </transition>
         </template>
@@ -925,19 +926,12 @@ const createNewGame = async () => {
   color: var(--text-muted);
 }
 
-.lobby-caption,
-.hero-picker-title {
+.lobby-caption {
   font-weight: 600;
   font-size: 13px;
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: var(--text-accent);
-}
-
-.hero-picker-title {
-  margin: 0;
-  letter-spacing: 0.2em;
-  color: var(--text-muted);
 }
 
 .hero-picker {
@@ -950,9 +944,9 @@ const createNewGame = async () => {
   display: flex;
   align-items: center;
   gap: 18px;
-  padding: 16px 18px;
-  border: 1px solid rgba(var(--ember-rgb), 0.35);
-  background: rgba(10, 6, 4, 0.7);
+  /* no frame: the card lies on the panel's darkness under the roster; the bottom padding holds the last
+     line's descenders, which reach a pixel below its line box */
+  padding: 4px;
 }
 
 .hero-medallion {
@@ -1036,41 +1030,81 @@ const createNewGame = async () => {
   color: var(--text-secondary);
 }
 
+/* the selected hero's entry: a header row (portrait, role, name), the skills below in running text, one or two
+   lines each — so two skills fit under the roster without a scroll */
+.hero-card--entry {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.hero-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero-card--entry .hero-medallion {
+  width: 60px;
+  height: 60px;
+}
+
+.hero-card--entry .hero-skills {
+  margin: 0;
+  gap: 6px;
+}
+
+/* a whole-pixel line: a fractional one leaves the picker a pixel taller than it is and shows its scrollbar */
+.hero-card--entry .hero-skill {
+  display: block;
+  line-height: 18px;
+}
+
+.hero-card--entry .hero-skill-name::after {
+  content: ' — ';
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* a fade only: a slide would push the card past the picker's edge and flash its scrollbar */
 .hero-card-enter-active,
 .hero-card-leave-active {
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transition: opacity var(--transition-fast);
 }
 
 .hero-card-enter-from,
 .hero-card-leave-to {
   opacity: 0;
-  transform: translateY(6px);
 }
 
-/* the roster: small medallions in a row */
+/* the roster: one row of medallions, the names left to the card below and the tooltip (7 base heroes in
+   bigger rings, the 11 of Regent in small ones) */
 .hero-roster {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* Regent: 11 heroes in one row — small rings, the names left to the card below and the tooltip */
-.hero-roster--many {
   flex-wrap: nowrap;
   justify-content: space-between;
   gap: 4px;
+  padding: 4px 4px 0;
 }
 
-.hero-roster--many .hero-tile {
+/* the rings shrink on a narrow phone rather than push the row out */
+.hero-roster .hero-tile {
+  flex: 0 1 auto;
   width: auto;
+  min-width: 0;
+}
+
+.hero-roster .hero-tile-figure {
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
 }
 
 .hero-roster--many .hero-tile-figure {
   width: 34px;
-  height: 34px;
 }
 
-.hero-roster--many .hero-tile-name {
+.hero-tile-name {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1109,12 +1143,6 @@ const createNewGame = async () => {
   height: 150%;
   object-fit: cover;
   object-position: top;
-}
-
-.hero-tile-name {
-  font-size: 12px;
-  line-height: 1.1;
-  text-align: center;
 }
 
 .hero-tile:hover .hero-tile-figure,
@@ -1308,6 +1336,7 @@ const createNewGame = async () => {
     height: 100vh;
     height: 100dvh;
     grid-template-rows: minmax(0, 1fr);
+    padding-bottom: 28px;
     overflow: hidden;
   }
 
@@ -1315,7 +1344,9 @@ const createNewGame = async () => {
      the bottom — always in the same place, whatever is switched on — and the hero picker between gives way */
   .game-panel {
     min-height: 0;
-    height: calc(100% - 48px);
+    margin-top: 0;
+    height: 100%;
+    gap: 14px;
   }
 
   /* against the AI the options, Play and the links are one block at the bottom (the hero picker above takes
@@ -1348,19 +1379,16 @@ const createNewGame = async () => {
 /* Desktop screens up to ~820px high: the right column tightens so "Descend against the AI" stays on screen */
 @media (min-width: 1025px) and (max-height: 820px) {
   .home-container {
-    padding-top: 36px;
-    padding-bottom: 24px;
+    padding-top: 28px;
+    padding-bottom: 20px;
   }
 
   .game-panel {
-    margin-top: 24px;
-    height: calc(100% - 24px);
-    gap: 12px;
+    gap: 10px;
   }
 
-  .hero-card {
-    padding: 10px 14px;
-    gap: 14px;
+  .hero-card--entry {
+    gap: 8px;
   }
 
   .hero-medallion {
@@ -1369,8 +1397,8 @@ const createNewGame = async () => {
   }
 
   .regent-toggle {
-    height: 60px;
-    padding: 5px 12px;
+    height: 56px;
+    padding: 4px 12px;
   }
 
   .primary-button {
@@ -1380,7 +1408,8 @@ const createNewGame = async () => {
 
 @media (max-width: 1024px) {
   .home-container {
-    grid-template-columns: 1fr;
+    /* minmax(0, …): the roster's eleven rings shrink to the screen instead of widening the column */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "title" "panel";
     padding: 72px 24px 32px;
     justify-items: center;

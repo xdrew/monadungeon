@@ -23,6 +23,7 @@ const BASE_DELAYS = {
   place_tile: 1500,
   move_player: 1000,
   battle: 2000,
+  cursed_room: 2000,
   pickup: 800,
   end_turn: 500,
 };
@@ -32,6 +33,7 @@ function getActionCategory(type) {
   if (type === 'move_player') return 'move_player';
   if (type === 'battle' || type === 'battle_detected' || type === 'finalize_battle') return 'battle';
   if (type === 'end_turn') return 'end_turn';
+  if (type === 'cursed_room') return 'cursed_room';
   return 'pickup';
 }
 
@@ -65,6 +67,8 @@ function getActionLabel(action) {
       return t('playback.chest');
     case 'end_turn':
       return t('playback.turnEnded');
+    case 'cursed_room':
+      return action.event?.alreadyCursed ? t('playback.cursedRoomAlready') : t('playback.cursedRoom', { roll: action.event?.roll });
     default:
       return action.type;
   }
@@ -189,12 +193,40 @@ export function useAiTurnPlayback() {
       deduped.push(action);
     }
 
+    const withRooms = placeRoomRolls(deduped, rawActions);
+
     // Enrich with labels and icons
-    return deduped.map(action => ({
+    return withRooms.map(action => ({
       ...action,
       label: action.label || getActionLabel(action),
       icon: action.icon || getActionIcon(action.type),
     }));
+  }
+
+  /**
+   * Karak: Regent — the turn's Cursed Room rolls (the AI's `room_events`, in order) as steps of their own, each
+   * right after the step that entered its room; a roll with no such step (a hero swapped onto the room) before
+   * the end of the turn.
+   */
+  function placeRoomRolls(steps, rawActions) {
+    const events = rawActions.find(a => a.type === 'room_events')?.details?.events || [];
+    if (events.length === 0) return steps;
+    const result = [...steps];
+    let from = 0;
+    for (const event of events) {
+      const roll = { type: 'cursed_room', event, playerId: event.playerId, position: event.position, label: '', icon: '' };
+      const at = result.findIndex((step, i) => i >= from && step.type === 'move_player' && step.details?.result?.to === event.position);
+      if (at >= 0) {
+        result.splice(at + 1, 0, roll);
+        from = at + 2;
+        continue;
+      }
+      const end = result.findIndex((step, i) => i >= from && step.type === 'end_turn');
+      const index = end >= 0 ? end : result.length;
+      result.splice(index, 0, roll);
+      from = index + 1;
+    }
+    return result;
   }
 
   /**
@@ -210,7 +242,7 @@ export function useAiTurnPlayback() {
 
   /**
    * Play filtered actions step by step with delays.
-   * callbacks: { onPlaceTile, onMovePlayer, onBattle, onPickup, onEndTurn }
+   * callbacks: { onPlaceTile, onMovePlayer, onBattle, onCursedRoom, onPickup, onEndTurn }
    */
   async function playActions(filteredActions, callbacks) {
     if (filteredActions.length === 0) return;
@@ -243,6 +275,10 @@ export function useAiTurnPlayback() {
             break;
           case 'end_turn':
             if (callbacks.onEndTurn) await callbacks.onEndTurn(action);
+            break;
+          case 'cursed_room':
+            if (callbacks.onCursedRoom) await callbacks.onCursedRoom(action);
+            if (!action.event?.alreadyCursed) audio.cue('dice_roll');
             break;
           default:
             if (callbacks.onPickup) await callbacks.onPickup(action);

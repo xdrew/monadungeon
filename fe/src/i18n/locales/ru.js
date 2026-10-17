@@ -116,7 +116,6 @@ export default {
     heroAwaits: 'Герой ждёт',
     eachGetsHero: 'Вы и ИИ получите разных героев.',
     eachGetsHeroRegent: 'Вы и ИИ получите разных героев, включая героев «Карак: Регент».',
-    heroGroup: 'Герой',
     noHero: 'Без героя',
     noSkills: 'Никаких навыков. Только кубики и удача.',
     regent: 'Дополнение «Карак: Регент»',
@@ -168,7 +167,8 @@ export default {
       chooseRetreat: 'Выберите, куда отступить',
       rests: '{who} отдыхает',
       ponders: '{who} размышляет',
-      loot: '{who} собирает добычу'
+      loot: '{who} собирает добычу',
+      cursedRoom: '{who} испытывает Проклятую комнату'
     },
     waitingAfter: 'Ваш ход после: {names}',
     waitingNext: 'Ваш ход следующий',
@@ -266,6 +266,7 @@ export default {
     }
   },
   fieldFight: { win: 'Победа', lose: 'Поражение', draw: 'Ничья' },
+  fieldCurse: { cursed: 'Проклят', spared: 'Обошлось', already: 'Уже проклят', label: '{who}, Проклятая комната: {roll}, {outcome}' },
   devSounds: {
     title: 'Звуковой стенд',
     intro: 'Все треки, короткие темы и звуки игры вместе с картинкой, к которой они относятся. Нажми на сцену или кнопку, чтобы послушать; сцена движется, пока звучит звук. Громкость — по кольцу звука.',
@@ -585,7 +586,9 @@ export default {
     pickedUp: 'Подобран предмет',
     treasure: 'Собрано сокровище',
     chest: 'Открываем сундук',
-    turnEnded: 'Ход окончен'
+    turnEnded: 'Ход окончен',
+    cursedRoom: 'Проклятая комната: выпало {roll}',
+    cursedRoomAlready: 'Проклятая комната: уже проклят'
   },
   battle: {
     caption: 'Бой во тьме',

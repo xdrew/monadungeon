@@ -49,6 +49,8 @@ export const selectItemToReplace = ({ selectedItemToReplace, item }) => {
  */
 /**
  * @param {boolean} [params.keepTurn] - Do not end the turn after replacing (Swordsman "Unstoppable")
+ * @param {string|null} [params.heroPosition] - The hero's tile ("x,y"): a reward after a fight comes without a
+ *   position, and a pickup is only ever made where the hero stands
  */
 export const replaceItem = async ({
   selectedItemToReplace,
@@ -63,6 +65,7 @@ export const replaceItem = async ({
   turnId,
   loadGameData,
   keepTurn = false,
+  heroPosition = null,
   // a failed swap is told by this (a short notice over the game) when given; the full-screen error is the fallback
   onError = null
 }) => {
@@ -73,12 +76,13 @@ export const replaceItem = async ({
     loadingStatus.value = 'Replacing item...';
 
     // The item still lies on the hero's tile: pick it up in exchange for the chosen one
-    if (!droppedItem.value.position) throw new Error('The item to pick up has no position');
+    const position = droppedItem.value.position || heroPosition;
+    if (!position) throw new Error('The item to pick up has no position');
     const pickupResponse = await gameApi.pickItem({
       gameId,
       playerId,
       turnId,
-      position: droppedItem.value.position,
+      position,
       itemIdToReplace: selectedItemToReplace.value.itemId
     });
     console.log('Item picked up and replaced successfully:', pickupResponse);

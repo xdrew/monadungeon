@@ -104,9 +104,43 @@ final class SmartVirtualPlayer implements AiTurnTaker
         // the chests tried in this turn only: the service outlives a turn (RoadRunner worker), and a chest
         // remembered by its position alone was skipped in later turns and in other games
         $this->collectedChests = [];
+        $turnId = $this->currentTurnId($gameId);
         $actions = $this->playTurn($gameId, $playerId, $strategyType);
 
-        return array_merge($actions, $this->skillActions);
+        return array_merge($actions, $this->skillActions, $this->roomEventsAction($gameId, $turnId));
+    }
+
+    private function currentTurnId(Uuid $gameId): ?string
+    {
+        try {
+            return $this->messageBus->dispatch(new GetCurrentTurn($gameId))?->toString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Karak: Regent — the Cursed Room rolls of the turn, in order: the playback shows each on the step that made it.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function roomEventsAction(Uuid $gameId, ?string $turnId): array
+    {
+        if ($turnId === null) {
+            return [];
+        }
+
+        try {
+            $field = $this->messageBus->dispatch(new GetField($gameId));
+            $events = array_values(array_filter(
+                $field->getRoomEvents(),
+                static fn(array $event): bool => ($event['turnId'] ?? null) === $turnId,
+            ));
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return $events === [] ? [] : [$this->createAction('room_events', ['events' => $events])];
     }
 
     /**

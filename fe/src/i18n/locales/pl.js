@@ -116,7 +116,6 @@ export default {
     heroAwaits: 'Bohater czeka',
     eachGetsHero: 'Ty i SI dostaniecie różnych bohaterów.',
     eachGetsHeroRegent: 'Ty i SI dostaniecie różnych bohaterów, także z dodatku Karak: Regent.',
-    heroGroup: 'Bohater',
     noHero: 'Bez bohatera',
     noSkills: 'Bez specjalnych umiejętności. Same kości i szczęście.',
     regent: 'Dodatek Karak: Regent',
@@ -168,7 +167,8 @@ export default {
       chooseRetreat: 'Wybierz, dokąd się wycofać',
       rests: '{who} odpoczywa',
       ponders: '{who} rozmyśla',
-      loot: '{who} zbiera łupy'
+      loot: '{who} zbiera łupy',
+      cursedRoom: '{who} kusi los w Przeklętej komnacie'
     },
     waitingAfter: 'Twoja tura po: {names}',
     waitingNext: 'Twoja tura jest następna',
@@ -266,6 +266,7 @@ export default {
     }
   },
   fieldFight: { win: 'Zwycięstwo', lose: 'Porażka', draw: 'Remis' },
+  fieldCurse: { cursed: 'Przeklęty', spared: 'Ocalał', already: 'Już przeklęty', label: '{who}, Przeklęta komnata: {roll}, {outcome}' },
   devSounds: {
     title: 'Stanowisko dźwięku',
     intro: 'Wszystkie utwory, krótkie motywy i dźwięki gry z obrazem, do którego należą. Kliknij scenę lub przycisk, by posłuchać; scena rusza się tak długo, jak trwa dźwięk. Głośność według pierścienia dźwięku.',
@@ -585,7 +586,9 @@ export default {
     pickedUp: 'Wzięto przedmiot',
     treasure: 'Zebrano skarb',
     chest: 'Otwieramy skrzynię',
-    turnEnded: 'Koniec tury'
+    turnEnded: 'Koniec tury',
+    cursedRoom: 'Przeklęta komnata: wypadło {roll}',
+    cursedRoomAlready: 'Przeklęta komnata: już przeklęty'
   },
   battle: {
     caption: 'Walka w ciemności',

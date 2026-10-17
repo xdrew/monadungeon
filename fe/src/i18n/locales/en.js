@@ -117,7 +117,6 @@ export default {
     heroAwaits: 'A hero awaits',
     eachGetsHero: 'You and the AI each get a different hero.',
     eachGetsHeroRegent: 'You and the AI each get a different hero, Karak: Regent heroes included.',
-    heroGroup: 'Hero',
     noHero: 'No hero',
     noSkills: 'No special skills. Plain dice, plain luck.',
     regent: 'Karak: Regent expansion',
@@ -169,7 +168,8 @@ export default {
       chooseRetreat: 'Choose where to retreat',
       rests: '{who} rests',
       ponders: '{who} ponders',
-      loot: '{who} gathers the loot'
+      loot: '{who} gathers the loot',
+      cursedRoom: '{who} tempts the Cursed Room'
     },
     waitingAfter: 'Your turn comes after {names}',
     waitingNext: 'Your turn is next',
@@ -267,6 +267,7 @@ export default {
     }
   },
   fieldFight: { win: 'Victory', lose: 'Defeat', draw: 'Draw' },
+  fieldCurse: { cursed: 'Cursed', spared: 'Spared', already: 'Already cursed', label: '{who}, Cursed Room: {roll}, {outcome}' },
   devSounds: {
     title: 'Sound bench',
     intro: 'Every track, sting and sound of the game with the picture it goes with. Click a scene or a button to hear it; the scene moves for as long as the sound lasts. Volumes follow the sound ring.',
@@ -586,7 +587,9 @@ export default {
     pickedUp: 'Picked up item',
     treasure: 'Collected treasure',
     chest: 'Opening chest',
-    turnEnded: 'Turn ended'
+    turnEnded: 'Turn ended',
+    cursedRoom: 'Cursed Room: rolled {roll}',
+    cursedRoomAlready: 'Cursed Room: already cursed'
   },
   battle: {
     caption: 'A fight in the dark',

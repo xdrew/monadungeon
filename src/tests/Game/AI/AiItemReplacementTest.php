@@ -97,6 +97,33 @@ final class AiItemReplacementTest extends TestCase
     }
 
     #[Test]
+    public function theTurnCarriesItsCursedRoomRollsForThePlayback(): void
+    {
+        $turnId = Uuid::v7()->toString();
+        $field = new class ($turnId) {
+            public function __construct(private readonly string $turnId) {}
+
+            /** @return list<array<string, mixed>> */
+            public function getRoomEvents(): array
+            {
+                return [
+                    ['turnId' => 'an-earlier-turn', 'position' => '0,1', 'roll' => 2],
+                    ['turnId' => $this->turnId, 'position' => '1,1', 'roll' => 5, 'cursed' => false],
+                ];
+            }
+        };
+        $bus = MessageBusTester::create(static fn(\App\Game\Field\GetField $_query): object => $field)->messageBus();
+        $ai = new SmartVirtualPlayer($bus, new BasicVirtualPlayerStrategy(), new VirtualPlayerApiClient($this->createMock(HttpKernelInterface::class)));
+        $rooms = new \ReflectionMethod(SmartVirtualPlayer::class, 'roomEventsAction');
+
+        $actions = $rooms->invoke($ai, Uuid::v7(), $turnId);
+
+        self::assertSame('room_events', $actions[0]['type'] ?? null);
+        self::assertSame(['1,1'], array_column($actions[0]['details']['events'], 'position'), 'Only the rolls of this turn');
+        self::assertSame([], $rooms->invoke($ai, Uuid::v7(), null));
+    }
+
+    #[Test]
     public function theAiSwapsThroughThePickUpOnItsOwnTile(): void
     {
         $requests = [];
