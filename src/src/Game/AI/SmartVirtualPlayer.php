@@ -4180,7 +4180,7 @@ final class SmartVirtualPlayer implements AiTurnTaker
             $targets = [$dragon['position']];
         }
 
-        $path = $this->nearestReachable($position, $targets, $field, self::SPRINT_MOVES);
+        $path = $this->nearestReachable($position, $targets, $field, self::SPRINT_MOVES, $this->sprintStops($field, $player));
         $distance = $path !== null ? \count($path) - 1 : null;
         if (!HeroTactics::shouldSprint($player->getSkills(), $distance)) {
             return false;
@@ -4226,6 +4226,39 @@ final class SmartVirtualPlayer implements AiTurnTaker
     }
 
     /**
+     * Tiles where a sprint would stop or turn: an undefeated monster, a fountain, an arena not yet opened, a Cursed
+     * Room (unless the hero is cursed already).
+     *
+     * @return list<string>
+     */
+    private function sprintStops($field, $player): array
+    {
+        $stops = [];
+        foreach ($field->getItems() as $itemPosition => $item) {
+            $item = Item::fromAnything($item);
+            if ($item->guardHP > 0 && !$item->guardDefeated) {
+                $stops[] = (string) $itemPosition;
+            }
+        }
+        $opened = array_map(static fn($place): string => FieldPlace::fromAnything($place)->toString(), $field->getActivatedArenas());
+
+        try {
+            foreach ($field->getTileFeatures($this->messageBus) as $tilePosition => $features) {
+                $names = array_map(static fn($feature): string => $feature instanceof TileFeature ? $feature->value : (string) $feature, $features);
+                if (\in_array(TileFeature::HEALING_FOUNTAIN->value, $names, true)
+                    || (\in_array(TileFeature::BATTLE_ARENA->value, $names, true) && !\in_array((string) $tilePosition, $opened, true))
+                    || (\in_array(TileFeature::CURSED_ROOM->value, $names, true) && !$player->isCursed())) {
+                    $stops[] = (string) $tilePosition;
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('DEBUG ai.sprint_stops_unknown ' . $e->getMessage());
+        }
+
+        return array_values(array_unique($stops));
+    }
+
+    /**
      * Unopened chests on the field that no monster guards any more.
      *
      * @return list<string>
@@ -4264,7 +4297,7 @@ final class SmartVirtualPlayer implements AiTurnTaker
      *
      * @return list<string>|null the path including the start, null when none is in reach
      */
-    private function nearestReachable(string $from, array $targets, $field, int $maxDistance): ?array
+    private function nearestReachable(string $from, array $targets, $field, int $maxDistance, array $stops = []): ?array
     {
         $best = null;
         foreach ($targets as $target) {
@@ -4272,6 +4305,13 @@ final class SmartVirtualPlayer implements AiTurnTaker
                 return [$from];
             }
             $path = $this->findPathToTarget($from, $target, $field->getPlacedTiles(), $field);
+            // a run that would stop on the way (a fight, a fountain, an arena, a Cursed Room) is no run to the goal
+            $onTheWay = \array_slice($path, 1, -1);
+            if ($path !== [] && array_intersect($onTheWay, $stops) !== []) {
+                error_log('DEBUG ai.sprint_path_blocked ' . json_encode(['path' => $path, 'stops' => array_values(array_intersect($onTheWay, $stops))]));
+
+                continue;
+            }
             if ($path !== [] && \count($path) - 1 <= $maxDistance && ($best === null || \count($path) < \count($best))) {
                 $best = $path;
             }
@@ -4399,7 +4439,18 @@ final class SmartVirtualPlayer implements AiTurnTaker
             }
         }
 
-        return $this->apiClient->movePlayer($gameId, $playerId, $turnId, $fromX, $fromY, $toX, $toY, $isTilePlacementMove, $ignoreMonster);
+        $result = $this->apiClient->movePlayer($gameId, $playerId, $turnId, $fromX, $fromY, $toX, $toY, $isTilePlacementMove, $ignoreMonster);
+        // the step onto a tile just placed is the only one the turn allows: a refused one is tried once more (a
+        // state that moved on in between), then given up — the turn limit's stand-in (EndTurn force) closes it online
+        if ($isTilePlacementMove && ($result['success'] ?? false) !== true) {
+            error_log('WARN ai.step_onto_placed_retry ' . json_encode(['to' => "{$toX},{$toY}", 'result' => $result['response'] ?? null]));
+            $result = $this->apiClient->movePlayer($gameId, $playerId, $turnId, $fromX, $fromY, $toX, $toY, $isTilePlacementMove, $ignoreMonster);
+            if (($result['success'] ?? false) !== true) {
+                error_log('ERROR ai.step_onto_placed_refused ' . json_encode(['to' => "{$toX},{$toY}", 'result' => $result['response'] ?? null]));
+            }
+        }
+
+        return $result;
     }
 
     /**

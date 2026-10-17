@@ -1834,16 +1834,25 @@ let roomEventsArmed = false;
 watch(gameData, (data) => {
   if (data && !roomEventsArmed) nextTick(() => { roomEventsArmed = true; });
 }, { flush: 'sync' });
-watch(() => gameData.value?.state?.roomEvent, (event) => {
-  if (!event) return;
-  const key = `${event.turnId}:${event.playerId}:${event.position}`;
-  if (key === shownRoomEventKey.value) return;
-  shownRoomEventKey.value = key;
-  if (!roomEventsArmed) return;
+// every roll of the turn gets its scene, one after the other (a Sprint may cross several Cursed Rooms)
+const shownRoomEventIds = new Set();
+const roomSceneQueue = [];
+const roomEventKey = (event) => event.id || `${event.turnId}:${event.playerId}:${event.position}`;
+const showNextRoomScene = () => {
+  if (cursedRoomScene.value || roomSceneQueue.length === 0) return;
+  const event = roomSceneQueue.shift();
   const who = heroNameById(event.playerId);
   const notice = event.alreadyCursed ? 'game.notice.cursedRoomAlready' : event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe';
   showActionNotice(t(notice, { who, roll: event.roll }), 'notice');
   cursedRoomScene.value = event;
+};
+watch(() => gameData.value?.state?.roomEvents ?? (gameData.value?.state?.roomEvent ? [gameData.value.state.roomEvent] : []), (events) => {
+  const fresh = (events || []).filter((event) => event && !shownRoomEventIds.has(roomEventKey(event)));
+  fresh.forEach((event) => shownRoomEventIds.add(roomEventKey(event)));
+  if (fresh.length > 0) shownRoomEventKey.value = roomEventKey(fresh[fresh.length - 1]);
+  if (!roomEventsArmed || fresh.length === 0) return;
+  roomSceneQueue.push(...fresh);
+  showNextRoomScene();
 }, { flush: 'sync' }); // at once, not on the next tick: the AI's turn is checked right after the state loads
 // The Curse of Karak passed on by someone else (a mummy's slayer) gets the same scene: who gave it to whom.
 // There is one token: a Cursed Room hands it over too, and the room's own scene already tells that.
@@ -1893,26 +1902,31 @@ const flyCurseToken = (fromRect, target) => {
 };
 // The AI waits while a Cursed Room's die is on screen: its turn (or its playback online) starts once it is closed
 let sceneWaiters = [];
-const whenRoomSceneClosed = () => (cursedRoomScene.value
+const whenRoomSceneClosed = () => (cursedRoomScene.value || roomSceneQueue.length > 0
   ? new Promise((resolve) => { sceneWaiters.push(resolve); })
   : Promise.resolve());
 const closeCursedRoomScene = (tokenRect) => {
   const event = cursedRoomScene.value;
   cursedRoomScene.value = null;
+  // the token flies to the hero's card, or back into the room (a hero already cursed keeps it where it was)
+  if (event && !event.alreadyCursed) {
+    nextTick(() => {
+      const target = event.cursed
+        ? document.querySelector(`.party-member[data-player-id="${event.playerId}"] .party-member__medallion`)
+        : document.querySelector(`.tile[data-position="${event.position}"]`);
+      flyCurseToken(tokenRect, target);
+    });
+  }
+  // the next roll of the same turn first; the AI and the playback wait for the last one
+  if (roomSceneQueue.length > 0) {
+    setTimeout(showNextRoomScene, 400);
+    return;
+  }
   const waiting = sceneWaiters;
   sceneWaiters = [];
   waiting.forEach((resolve) => resolve());
-  if (!event) return;
   // a turn of the AI held back by the scene
-  nextTick(() => checkAndHandleVirtualPlayerTurn());
-  // the token of a hero already cursed is where it was
-  if (event.alreadyCursed) return;
-  nextTick(() => {
-    const target = event.cursed
-      ? document.querySelector(`.party-member[data-player-id="${event.playerId}"] .party-member__medallion`)
-      : document.querySelector(`.tile[data-position="${event.position}"]`);
-    flyCurseToken(tokenRect, target);
-  });
+  if (event) nextTick(() => checkAndHandleVirtualPlayerTurn());
 };
 const handleCurseChoice = async (targetPlayerId) => {
   try {
@@ -2640,7 +2654,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       return;
     }
     // a Cursed Room's die is still on screen: the AI starts when it is closed (closeCursedRoomScene)
-    if (cursedRoomScene.value) {
+    if (cursedRoomScene.value || roomSceneQueue.length > 0) {
       return;
     }
     

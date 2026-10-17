@@ -192,6 +192,7 @@ final readonly class Response
                 'lordKarakVariant' => $game->isLordKarak(), // Karak: Regent — the Lord Karak variant is on
                 'lordKarak' => $game->getLordKarakReveal(), // Karak: Regent — who became Lord Karak and why (null until then)
                 'roomEvent' => $field?->getRoomEvent(), // Karak: Regent — the last Cursed Room roll
+                'roomEvents' => $field?->getRoomEvents() ?? [], // ... and every roll of the turn, in order
                 'arenaChoice' => $field?->getArenaChoice($game->getPlayers()), // Karak: Regent — a Battle Arena rival to choose
                 'duel' => $field?->getDuelInfo(), // Karak: Regent — the current (or last) Battle Arena duel
                 'retreatChoice' => $field?->getPendingRetreat(), // Baron Markul — where he may retreat after a Lightning Attack

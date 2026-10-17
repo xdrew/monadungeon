@@ -70,8 +70,15 @@ final class CursedRoomTest extends TestCase
 
         self::assertSame(
             ['playerId' => $this->playerId->toString(), 'position' => '1,0', 'roll' => 2, 'cursed' => true, 'turnId' => $this->turnId->toString()],
-            $this->field->getRoomEvent(),
+            array_diff_key($this->field->getRoomEvent() ?? [], ['id' => true]),
         );
+        self::assertSame([$this->field->getRoomEvent()], $this->field->getRoomEvents());
+
+        // a second room in the same turn (a Sprint): both rolls are kept, in order
+        $this->field->setTestDiceRolls([5]);
+        $this->createTester()->handle($this->field->onPlayerMoved(...), $this->moved());
+        self::assertCount(2, $this->field->getRoomEvents());
+        self::assertSame([2, 5], array_column($this->field->getRoomEvents(), 'roll'));
 
         $action = $this->findMessage($messages, PerformTurnAction::class);
         self::assertInstanceOf(PerformTurnAction::class, $action);

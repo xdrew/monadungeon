@@ -228,6 +228,15 @@ class Field extends AggregateRoot
     private ?array $roomEvent = null;
 
     /**
+     * Karak: Regent — every Cursed Room roll of the current turn (a Sprint may cross several), each with an id, so the
+     * UI shows them one after the other; $roomEvent stays the last one.
+     *
+     * @var list<array<string, mixed>>|null
+     */
+    #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
+    private ?array $roomEvents = null;
+
+    /**
      * Karak: Regent — Battle Arenas already activated (each one only once; later it is a normal corridor).
      * (The default matters: the column is NOT NULL and existing fields must migrate.).
      *
@@ -2848,6 +2857,14 @@ class Field extends AggregateRoot
         ));
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function getRoomEvents(): array
+    {
+        return $this->roomEvents ?? ($this->roomEvent !== null ? [$this->roomEvent] : []);
+    }
+
     protected function getTile(Uuid $tileId, MessageContext $messageContext): Tile
     {
         if ($cachedTile = $this->tilesCache[$tileId->toString()] ?? null) {
@@ -2902,6 +2919,23 @@ class Field extends AggregateRoot
     }
 
     /**
+     * @param array<string, mixed> $event
+     */
+    private function recordRoomEvent(array $event): void
+    {
+        $events = $this->roomEvents ?? [];
+        // the list is the current turn's: a roll of another turn starts it afresh
+        if ($events !== [] && ($events[0]['turnId'] ?? null) !== $event['turnId']) {
+            $events = [];
+        }
+        $event['id'] = Uuid::v7()->toString();
+        $events[] = $event;
+        $this->roomEvent = $event;
+        $this->roomEvents = $events;
+        error_log('DEBUG room.events ' . json_encode(['count' => \count($events), 'turnId' => $event['turnId']]));
+    }
+
+    /**
      * Karak: Regent — Cursed Room: 1–3 → the Curse of Karak, 4–6 → avoided; an already cursed hero does not roll.
      */
     private function rollCursedRoom(Uuid $playerId, FieldPlace $position, MessageContext $context): void
@@ -2909,14 +2943,14 @@ class Field extends AggregateRoot
         $player = $context->dispatch(new GetPlayer($playerId));
         if ($player->isCursed()) {
             // no roll for a hero already cursed; the entry is still told, so the room does not look idle
-            $this->roomEvent = [
+            $this->recordRoomEvent([
                 'playerId' => $playerId->toString(),
                 'position' => $position->toString(),
                 'roll' => null,
                 'cursed' => true,
                 'alreadyCursed' => true,
                 'turnId' => $context->dispatch(new GetCurrentTurn($this->gameId))?->toString(),
-            ];
+            ]);
 
             return;
         }
@@ -2925,13 +2959,13 @@ class Field extends AggregateRoot
         $cursed = $roll <= 3;
         $turnId = $context->dispatch(new GetCurrentTurn($this->gameId));
 
-        $this->roomEvent = [
+        $this->recordRoomEvent([
             'playerId' => $playerId->toString(),
             'position' => $position->toString(),
             'roll' => $roll,
             'cursed' => $cursed,
             'turnId' => $turnId?->toString(),
-        ];
+        ]);
 
         $context->dispatch(new CursedRoomEntered(
             gameId: $this->gameId,

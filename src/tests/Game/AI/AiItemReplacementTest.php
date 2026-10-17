@@ -58,6 +58,45 @@ final class AiItemReplacementTest extends TestCase
     }
 
     #[Test]
+    public function aSprintThatWouldStopOnTheWayIsNoRunToTheGoal(): void
+    {
+        $field = \App\Game\Field\Field::create(new \App\Game\GameLifecycle\GameCreated(Uuid::v7(), new \DateTimeImmutable(), 10), \App\Tests\Infrastructure\MessageBus\startMessageContext());
+        (new \ReflectionProperty(\App\Game\Field\Field::class, 'tiles'))->setValue($field, ['0,0' => Uuid::v7(), '1,0' => Uuid::v7(), '2,0' => Uuid::v7()]);
+        (new \ReflectionProperty(\App\Game\Field\Field::class, 'transitions'))->setValue($field, ['0,0' => ['1,0'], '1,0' => ['0,0', '2,0'], '2,0' => ['1,0']]);
+        $ai = new SmartVirtualPlayer(MessageBusTester::create()->messageBus(), new BasicVirtualPlayerStrategy(), new VirtualPlayerApiClient($this->createMock(HttpKernelInterface::class)));
+        $nearest = new \ReflectionMethod(SmartVirtualPlayer::class, 'nearestReachable');
+
+        self::assertSame(['0,0', '1,0', '2,0'], $nearest->invoke($ai, '0,0', ['2,0'], $field, 8, []));
+        self::assertNull($nearest->invoke($ai, '0,0', ['2,0'], $field, 8, ['1,0']), 'A Cursed Room on the way');
+        self::assertSame(['0,0', '1,0'], $nearest->invoke($ai, '0,0', ['1,0'], $field, 8, ['1,0']), 'The goal itself may be one');
+    }
+
+    #[Test]
+    public function aRefusedStepOntoThePlacedTileIsTriedOnceMore(): void
+    {
+        $calls = 0;
+        $kernel = $this->createMock(HttpKernelInterface::class);
+        $kernel->method('handle')->willReturnCallback(static function () use (&$calls): JsonResponse {
+            ++$calls;
+
+            return $calls === 1 ? new JsonResponse(['message' => 'refused'], 400) : new JsonResponse(['gameId' => 'x']);
+        });
+        $player = new class () {
+            public function getSkills(): ?\App\Game\Player\HeroSkills
+            {
+                return null;
+            }
+        };
+        $bus = MessageBusTester::create(static fn(\App\Game\Player\GetPlayer $_query): object => $player)->messageBus();
+        $ai = new SmartVirtualPlayer($bus, new BasicVirtualPlayerStrategy(), new VirtualPlayerApiClient($kernel));
+
+        $result = (new \ReflectionMethod(SmartVirtualPlayer::class, 'movePlayerSmart'))->invoke($ai, Uuid::v7(), Uuid::v7(), Uuid::v7(), 0, 0, 1, 0, true);
+
+        self::assertSame(2, $calls);
+        self::assertTrue($result['success']);
+    }
+
+    #[Test]
     public function theAiSwapsThroughThePickUpOnItsOwnTile(): void
     {
         $requests = [];
