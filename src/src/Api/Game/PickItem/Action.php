@@ -11,6 +11,7 @@ use App\Game\Player\Error\InventoryFullException;
 use App\Game\Player\Error\MissingKeyException;
 use App\Game\Player\PickItem;
 use App\Infrastructure\Uuid\Uuid;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Annotation\Route;
 use Telephantast\MessageBus\MessageBus;
@@ -19,6 +20,7 @@ final readonly class Action
 {
     public function __construct(
         private MessageBus $messageBus,
+        private LoggerInterface $logger,
     ) {}
 
     #[Route('/game/pick-item', methods: ['POST'])]
@@ -65,6 +67,14 @@ final readonly class Action
             );
         } catch (\Throwable $e) {
             // Handle position validation and other argument errors
+            $this->logger->warning('rule.refused', [
+                'rule' => 'pick_item',
+                'reason' => $e->getMessage(),
+                'gameId' => $request->gameId->toString(),
+                'playerId' => $request->playerId->toString(),
+                'position' => $request->position,
+            ]);
+
             return new Error(
                 code: Uuid::v7(),
                 message: $e->getMessage() ?: 'An error occurred while picking up the item',

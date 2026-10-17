@@ -215,6 +215,14 @@ class Movement extends AggregateRoot
             destinationHasMonster: $destinationHasMonster,
         );
 
+        // The turn decides first whether this step may be taken at all (an ended turn, the moves spent, a reward
+        // waiting, a step after a fight): a refused step leaves the hero where he stands
+        $turn = $context->dispatch(new GetTurn($command->turnId));
+        if ($turn === null) {
+            throw new InvalidMovementException('No such turn');
+        }
+        $turn->assertCanPerform(TurnAction::MOVE);
+
         // Update position
         $this->playerPositions[$playerId] = $command->toPosition;
 
@@ -253,29 +261,23 @@ class Movement extends AggregateRoot
                     : 'astral_walking';
             }
 
-            try {
-                $context->dispatch(new PerformTurnAction(
-                    turnId: $command->turnId,
-                    gameId: $command->gameId,
-                    playerId: $command->playerId,
-                    action: TurnAction::MOVE,
-                    tileId: null,
-                    additionalData: $additionalData,
-                    at: new \DateTimeImmutable(),
-                    deferTurnEnd: $hasPickableItem,
-                ));
-            } catch (\RuntimeException) {
-                // Ignore turn-related errors - the turn might have ended
-                // but we still want to allow the movement to complete
-            }
+            $context->dispatch(new PerformTurnAction(
+                turnId: $command->turnId,
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                action: TurnAction::MOVE,
+                tileId: null,
+                additionalData: $additionalData,
+                at: new \DateTimeImmutable(),
+                deferTurnEnd: $hasPickableItem,
+            ));
         }
 
         // Start battle if moving to a monster tile
         if ($destinationHasMonster && $monsterItem !== null && !$command->ignoreMonster) {
             $turnId = $context->dispatch(new GetCurrentTurn($command->gameId));
             if ($turnId === null) {
-                // No active turn, skip battle
-                return;
+                throw new InvalidMovementException('No active turn to fight in');
             }
 
             $context->dispatch(new StartBattle(

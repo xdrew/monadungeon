@@ -356,39 +356,6 @@ export const gameApi = {
   },
 
   /**
-   * Handle inventory actions (replace or skip)
-   * @param {Object} params - The parameters for the inventory action
-   * @param {string} params.gameId - The game ID
-   * @param {string} params.playerId - The player ID
-   * @param {string} params.action - The action to take ('replace' or 'skip')
-   * @param {Object} params.item - The item that was dropped
-   * @param {string} [params.itemIdToReplace] - For 'replace' action, the ID of the item to replace
-   * @returns {Promise<Object>} Promise with action result data
-   */
-  inventoryAction: async ({ gameId, playerId, action, item, itemIdToReplace }) => {
-    try {
-      const payload = {
-        gameId,
-        playerId,
-        action,
-        item
-      };
-      
-      // Add itemIdToReplace only if the action is 'replace'
-      if (action === 'replace' && itemIdToReplace) {
-        payload.itemIdToReplace = itemIdToReplace;
-      }
-      
-      const response = await apiClient.post('/game/inventory-action', payload);
-      console.log('Inventory action processed:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Error processing inventory action:', error);
-      throw error;
-    }
-  },
-  
-  /**
    * End the current turn
    * @param {Object} params - The parameters for ending a turn
    * @param {string} params.gameId - The game ID

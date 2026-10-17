@@ -340,17 +340,15 @@ class EnhancedAIPlayerTest extends TestCase
 
         // Should replace dagger (lowest value) with axe
         $this->apiClient->expects($this->once())
-            ->method('inventoryAction')
+            ->method('pickItem')
             ->with(
                 $gameId,
                 $playerId,
                 $turnId,
-                'replace',
                 $this->anything(),
-                $this->callback(function ($replacedItemId) use ($currentInventory) {
-                    // Should replace the dagger
-                    return $replacedItemId->toString() === $currentInventory[1]['itemId'];
-                })
+                $this->anything(),
+                // Should replace the dagger
+                $currentInventory[1]['itemId'],
             )
             ->willReturn(['success' => true]);
 

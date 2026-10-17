@@ -808,14 +808,9 @@ final class EnhancedAIPlayer implements VirtualPlayerStrategy
         $itemToReplace = $this->chooseItemToReplace($newItem, $currentInventory);
 
         if ($itemToReplace) {
-            $result = $this->apiClient->inventoryAction(
-                $gameId,
-                $playerId,
-                $turnId,
-                'replace',
-                Uuid::fromString($newItem['itemId']),
-                Uuid::fromString($itemToReplace['itemId']),
-            );
+            // the refused pickup left the item on the AI's tile: pick it up again in exchange
+            $position = FieldPlace::fromAnything($this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId)));
+            $result = $this->apiClient->pickItem($gameId, $playerId, $turnId, $position->positionX, $position->positionY, (string) $itemToReplace['itemId']);
 
             return $result['success'];
         }

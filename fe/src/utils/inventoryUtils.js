@@ -72,31 +72,16 @@ export const replaceItem = async ({
     loading.value = true;
     loadingStatus.value = 'Replacing item...';
 
-    // First, pick up the item from the field with the replacement
-    if (droppedItem.value.position) {
-      console.log('Picking up item from field with replacement');
-      const pickupResponse = await gameApi.pickItem({
-        gameId,
-        playerId,
-        turnId,
-        position: droppedItem.value.position,
-        itemIdToReplace: selectedItemToReplace.value.itemId
-      });
-      
-      console.log('Item picked up and replaced successfully:', pickupResponse);
-    } else {
-      // Fallback to inventory action if no position (shouldn't happen)
-      console.warn('No position for dropped item, using inventory action');
-      const response = await gameApi.inventoryAction({
-        gameId, 
-        playerId,
-        action: 'replace',
-        itemIdToReplace: selectedItemToReplace.value.itemId,
-        item: droppedItem.value
-      });
-      
-      console.log('Item replaced successfully:', response);
-    }
+    // The item still lies on the hero's tile: pick it up in exchange for the chosen one
+    if (!droppedItem.value.position) throw new Error('The item to pick up has no position');
+    const pickupResponse = await gameApi.pickItem({
+      gameId,
+      playerId,
+      turnId,
+      position: droppedItem.value.position,
+      itemIdToReplace: selectedItemToReplace.value.itemId
+    });
+    console.log('Item picked up and replaced successfully:', pickupResponse);
 
     // Close the dialog
     showInventoryFullDialog.value = false;

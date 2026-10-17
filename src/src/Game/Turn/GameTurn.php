@@ -205,50 +205,8 @@ class GameTurn extends AggregateRoot
             return;
         }
 
-        // For all other actions, ensure the turn hasn't ended
-        if ($this->endTime !== null) {
-            throw new TurnAlreadyEndedException();
-        }
-
-        // If turn end was deferred for item pickup, only allow PICK_ITEM or END_TURN
-        if ($this->pendingItemPickup && !\in_array($command->action, [
-            TurnAction::PICK_ITEM,
-            TurnAction::END_TURN,
-            TurnAction::CURSE,
-            TurnAction::USE_SPELL,
-            TurnAction::CURSED_ROOM,
-            TurnAction::DUEL,
-            TurnAction::DUEL_LOOT,
-            TurnAction::RETREAT,
-            TurnAction::LORD_KARAK,
-        ], true)) {
-            // Player tried to do something else — auto-end the turn
-            $this->endTurn($command->at);
-            $messageContext->dispatch(new TurnEnded(
-                turnId: $this->turnId,
-                gameId: $command->gameId,
-                playerId: $command->playerId,
-                endTime: $command->at,
-            ));
-
-            return;
-        }
-
-        // Hanna "Sprint": the run goes over discovered tiles only
-        if ($this->sprint && \in_array($command->action, [
-            TurnAction::PICK_TILE,
-            TurnAction::ROTATE_TILE,
-            TurnAction::PLACE_TILE,
-            TurnAction::DISCOVER_TILE,
-        ], true)) {
-            throw new InvalidTurnActionException($command->action, TurnAction::SPRINT);
-        }
-
-        // Check if the action is allowed based on turn action rules
-        $lastAction = $this->getLastAction();
-        if (!$command->action->isAllowedAfter($lastAction)) {
-            throw new InvalidTurnActionException($command->action, $lastAction);
-        }
+        // For all other actions: the turn is open, the action may follow the last one and the moves suffice
+        $this->assertCanPerform($command->action);
 
         $this->actions[] = [
             'action' => $command->action->value,
@@ -297,6 +255,57 @@ class GameTurn extends AggregateRoot
         }
     }
 
+    /**
+     * Throws when the action may not be performed now, by the same rules performAction applies, without recording
+     * it: a move changes the hero's position before it is recorded, so it is checked first (a refused move must leave
+     * the hero where he stands).
+     *
+     * @throws TurnAlreadyEndedException
+     * @throws InvalidTurnActionException
+     */
+    public function assertCanPerform(TurnAction $action): void
+    {
+        if ($this->endTime !== null) {
+            throw new TurnAlreadyEndedException();
+        }
+
+        // The 4th move ended on a reward: only picking it up, ending the turn or the bookkeeping may follow
+        if ($this->pendingItemPickup && !\in_array($action, [
+            TurnAction::PICK_ITEM,
+            TurnAction::END_TURN,
+            TurnAction::CURSE,
+            TurnAction::USE_SPELL,
+            TurnAction::CURSED_ROOM,
+            TurnAction::DUEL,
+            TurnAction::DUEL_LOOT,
+            TurnAction::RETREAT,
+            TurnAction::LORD_KARAK,
+        ], true)) {
+            throw new InvalidTurnActionException($action, TurnAction::PICK_ITEM);
+        }
+
+        // Hanna "Sprint": the run goes over discovered tiles only
+        if ($this->sprint && \in_array($action, [
+            TurnAction::PICK_TILE,
+            TurnAction::ROTATE_TILE,
+            TurnAction::PLACE_TILE,
+            TurnAction::DISCOVER_TILE,
+        ], true)) {
+            throw new InvalidTurnActionException($action, TurnAction::SPRINT);
+        }
+
+        // Check if the action is allowed based on turn action rules
+        $lastAction = $this->getLastAction();
+        if (!$action->isAllowedAfter($lastAction)) {
+            throw new InvalidTurnActionException($action, $lastAction);
+        }
+
+        // No move beyond the turn's moves (4, or 8 for Hanna's "Sprint")
+        if ($action->isIncreasesActionCounter() && $this->performedActionsCount + $action->moveCost() > $this->maxMoves()) {
+            throw new InvalidTurnActionException($action, $lastAction);
+        }
+    }
+
     #[Handler]
     public function updateActionCounter(TurnActionPerformed $event): void
     {
@@ -310,12 +319,15 @@ class GameTurn extends AggregateRoot
             return;
         }
 
-        // Do not increment action counter for FIGHT_MONSTER
-        // This prevents automatic turn ending when there's a battle
-        // so the client can display the battle dialog before moving to next turn
+        // A fight that ends the turn costs nothing (the turn is over anyway). A fight after which the turn goes on —
+        // Swordsman "Unstoppable" — spends the step that led into it, like any move; a Lightning Attack fight was
+        // paid with all 4 moves already
         if ($event->action === TurnAction::FIGHT_MONSTER) {
-            // Don't increase the counter, let the player end the turn manually
-            // after viewing the battle dialog
+            $data = $event->additionalData ?? [];
+            if (($data['unstoppable'] ?? false) === true && ($data['lightningAttack'] ?? false) !== true) {
+                ++$this->performedActionsCount;
+            }
+
             return;
         }
 

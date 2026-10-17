@@ -899,6 +899,17 @@ class Player extends AggregateRoot
             foreach ($items as $index => $item) {
                 $item = Item::fromAnything($item);
                 if ($item->itemId->equals($itemIdToReplace)) {
+                    // An item takes the place of one in its own kind of slot only (no key for a sword, no spell for
+                    // a weapon); Hanna's "Dagger Throwing" lets a dagger take a spell slot
+                    $newCategory = $this->getInventoryCategoryForItemType($command->newItem->type);
+                    $daggerIntoSpellSlot = $command->newItem->type === ItemType::DAGGER && $category === ItemCategory::SPELL->value
+                        && $this->getSkills()?->throwsDaggers() === true;
+                    if ($newCategory->value !== $category && !$daggerIntoSpellSlot) {
+                        error_log('WARN rule.refused ' . json_encode(['rule' => 'F-04', 'newCategory' => $newCategory->value, 'replacedCategory' => $category, 'playerId' => $this->playerId->toString()]));
+
+                        throw new \DomainException(sprintf('A %s cannot take the place of a %s', $newCategory->value, $category));
+                    }
+
                     // Store the old item for event dispatching
                     $oldItem = $item;
                     $replacedCategory = $category;

@@ -1987,16 +1987,16 @@ class Field extends AggregateRoot
             throw new NotYourTurnException();
         }
 
-        // Use the position from the command (where the item actually is)
-        // This is important because the player may have moved and the turn changed
-        // but we still want to pick up the item from where they moved to
         $positionString = $command->position->toString();
 
-        // Get the player's current position for validation
         try {
             $playerPosition = $messageContext->dispatch(new GetPlayerPosition($command->gameId, $command->playerId));
         } catch (\RuntimeException) {
             throw new \InvalidArgumentException('Player has no position on the field');
+        }
+        // A hero picks up only what lies on his own tile (a won fight leaves him on the monster's tile)
+        if (FieldPlace::fromAnything($playerPosition)->toString() !== $positionString) {
+            throw new \DomainException('You can only pick up items on your own tile');
         }
 
         // Check if there's an item at the player's current position

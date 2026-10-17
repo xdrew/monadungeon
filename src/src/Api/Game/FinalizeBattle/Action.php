@@ -6,6 +6,7 @@ namespace App\Api\Game\FinalizeBattle;
 
 use App\Api\Error;
 use App\Game\Battle\FinalizeBattle;
+use App\Game\Battle\GetBattle;
 use App\Game\Field\FieldPlace;
 use App\Game\Field\GetField;
 use App\Game\Player\GetPlayer;
@@ -59,7 +60,8 @@ final readonly class Action
                 battleId: $request->battleId,
                 gameId: $request->gameId,
                 playerId: $request->playerId,
-                finalTotalDamage: 0, // Will be updated by battle logic
+                // the real total (dice, weapons, spells, skills): the client tells the result from it
+                finalTotalDamage: $this->messageBus->dispatch(new GetBattle($request->battleId))?->getTotalDamage() ?? 0,
                 success: true,
                 itemPickedUp: $pickupItem,
                 awaitingReincarnation: $awaitingReincarnation,

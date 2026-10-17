@@ -390,10 +390,44 @@ class Battle extends AggregateRoot
             );
         }
 
+        // A fight is resolved once. One already resolved (a weapons-only win, a repeated request) takes only the
+        // player's loot decision: no new total, no spell spent, no HP lost again
+        if ($this->duelId === null && $this->battleCompleted) {
+            $this->finishResolvedFight($command, $messageContext);
+
+            return;
+        }
+        if (!$command->playerId->equals($this->playerId) || !$command->turnId->equals($this->turnId)) {
+            throw new \DomainException('This is not your fight');
+        }
+
         // Get player instance
         $player = $messageContext->dispatch(new GetPlayer(
             playerId: $command->playerId,
         ));
+
+        // Only the hero's own attack spells add to a fight (a magic bolt, a Frost Fist): any other id sent along —
+        // a weapon, a portal, one of Hanna's daggers in a spell slot — is ignored and never removed from the pack
+        $spellIds = [];
+        foreach ($player->getConsumableItems() as $spell) {
+            if ($spell->type->getDamage() > 0) {
+                $spellIds[] = $spell->itemId->toString();
+            }
+        }
+        $chosenIds = array_values(array_intersect($command->selectedConsumableIds, $spellIds));
+        if (\count($chosenIds) !== \count($command->selectedConsumableIds)) {
+            error_log('WARN rule.refused ' . json_encode(['rule' => 'F-06', 'battleId' => $this->battleId->toString(), 'ignored' => array_values(array_diff($command->selectedConsumableIds, $spellIds))]));
+            $command = new FinalizeBattle(
+                battleId: $command->battleId,
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                turnId: $command->turnId,
+                selectedConsumableIds: $chosenIds,
+                pickupItem: $command->pickupItem,
+                replaceItemId: $command->replaceItemId,
+                sacrificeHp: $command->sacrificeHp,
+            );
+        }
 
         // Warlock "Sacrifice": the HP is paid before the result is resolved
         if ($command->sacrificeHp) {
@@ -935,6 +969,47 @@ class Battle extends AggregateRoot
         ));
 
         $this->completeDuelSide($messageContext);
+    }
+
+    /**
+     * The loot decision on a fight that is already resolved: the reward is picked up (or left) and the turn ends as
+     * after any fight, unless it goes on (Unstoppable) or Valduk may still walk on (Tireless).
+     */
+    private function finishResolvedFight(FinalizeBattle $command, MessageContext $messageContext): void
+    {
+        if (!$command->playerId->equals($this->playerId) || !$command->turnId->equals($this->turnId)) {
+            throw new \DomainException('This is not your fight');
+        }
+        $monster = $this->getMonster();
+        $result = $monster !== null ? $this->resolveResult($monster, $messageContext) : null;
+        if ($result !== BattleResult::WIN || $this->toPosition === null) {
+            error_log('WARN rule.refused ' . json_encode(['rule' => 'F-05', 'battleId' => $this->battleId->toString(), 'result' => $result?->value]));
+
+            return;
+        }
+        error_log('DEBUG battle.loot_decision ' . json_encode(['battleId' => $this->battleId->toString(), 'pickup' => $command->pickupItem]));
+
+        if ($command->pickupItem) {
+            $messageContext->dispatch(new PickItem(
+                gameId: $command->gameId,
+                playerId: $command->playerId,
+                turnId: $this->turnId,
+                position: FieldPlace::fromString($this->toPosition),
+                itemIdToReplace: $command->replaceItemId ? Uuid::fromString($command->replaceItemId) : null,
+            ));
+        }
+
+        $unstoppable = $this->turnContinuesAfterBattle($result, 0, $messageContext);
+        $tirelessChoice = !$command->pickupItem
+            && $messageContext->dispatch(new GetPlayer($command->playerId))->getSkills()?->tireless() === true;
+        if (!$unstoppable && !$tirelessChoice) {
+            $messageContext->dispatch(new EndTurn(
+                turnId: $this->turnId,
+                gameId: $this->gameId,
+                playerId: $this->playerId,
+                at: new \DateTimeImmutable(),
+            ));
+        }
     }
 
     /**

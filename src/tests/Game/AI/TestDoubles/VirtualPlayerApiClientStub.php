@@ -82,18 +82,6 @@ class VirtualPlayerApiClientStub
         return $this->responses['pickItem'] ?? ['success' => true];
     }
 
-    public function inventoryAction(
-        Uuid $gameId,
-        Uuid $playerId,
-        Uuid $turnId,
-        string $action,
-        Uuid $itemId,
-        ?Uuid $replaceWithId = null
-    ): array {
-        $this->callHistory[] = ['method' => 'inventoryAction', 'params' => func_get_args()];
-        return $this->responses['inventoryAction'] ?? ['success' => true];
-    }
-
     public function endTurn(Uuid $gameId, Uuid $playerId, Uuid $turnId): array
     {
         $this->callHistory[] = ['method' => 'endTurn', 'params' => func_get_args()];

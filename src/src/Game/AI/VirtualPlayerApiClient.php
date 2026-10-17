@@ -258,50 +258,6 @@ final readonly class VirtualPlayerApiClient
     }
 
     /**
-     * Perform inventory action - replace/rearrange items (simulates frontend API call)
-     * Updated to match the actual API requirements.
-     */
-    public function inventoryAction(Uuid $gameId, Uuid $playerId, Uuid $turnId, string $action, ?array $item = null, ?Uuid $replaceItemId = null): array
-    {
-        $payload = [
-            'gameId' => $gameId->toString(),
-            'playerId' => $playerId->toString(),
-            'action' => $action,
-        ];
-
-        // For replace action, we need the full item object and itemIdToReplace
-        if ($action === 'replace') {
-            if ($item !== null) {
-                $payload['item'] = $item;
-            }
-            if ($replaceItemId !== null) {
-                $payload['itemIdToReplace'] = $replaceItemId->toString();
-            }
-        } elseif ($action === 'skip' && $item !== null) {
-            $payload['item'] = $item;
-        }
-
-        $request = Request::create(
-            uri: '/api/game/inventory-action',
-            method: 'POST',
-            content: json_encode($payload),
-        );
-        $request->headers->set('Content-Type', 'application/json');
-
-        $response = $this->send($request);
-
-        return [
-            'success' => $response->getStatusCode() === 200,
-            'action' => 'inventory_action',
-            'inventoryAction' => $action,
-            'item' => $item,
-            'replaceItemId' => $replaceItemId?->toString(),
-            'statusCode' => $response->getStatusCode(),
-            'response' => json_decode($response->getContent(), true),
-        ];
-    }
-
-    /**
      * Horan "Double Attack": reroll both dice of the current battle once.
      */
     public function rerollBattle(Uuid $gameId, Uuid $playerId, Uuid $turnId, Uuid $battleId): array

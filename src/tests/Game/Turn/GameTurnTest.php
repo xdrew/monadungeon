@@ -839,39 +839,52 @@ final class GameTurnTest extends TestCase
     #[Test]
     public function itAppliesTheActionCapAgainAfterAnUnstoppableBattle(): void
     {
-        $startTurn = new StartTurn(
-            gameId: $this->gameId,
-            playerId: $this->playerId,
-            turnNumber: 1,
-            turnId: $this->turnId,
-            at: $this->fixedTime,
-        );
-        [$gameTurn] = handle(GameTurn::start(...), $startTurn);
-        $tester = MessageBusTester::create();
-
-        // Swordsman "Unstoppable": the fight is recorded, but the turn goes on as if nothing had happened
-        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
-        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, [
+        [$gameTurn, $tester] = $this->countedTurn();
+        $fight = [
             'monster' => ['name' => 'giant_rat', 'hp' => 5],
             'result' => 'LOSE',
             'unstoppable' => true,
-        ]));
+        ];
+
+        // Swordsman "Unstoppable": the fight is recorded, the turn goes on, and the step into the fight is a move
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, $fight));
         self::assertFalse($gameTurn->hasBattleInTurn(), 'An unstoppable battle does not lock the turn');
+        self::assertSame(2, $gameTurn->getPerformedActionsCount(), 'The step into the fight is one of the 4 moves');
 
         // Moving again is allowed and counted
         $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
-        $tester->handle($gameTurn->updateActionCounter(...), $this->performed(TurnAction::MOVE));
-        $tester->handle($gameTurn->updateActionCounter(...), $this->performed(TurnAction::MOVE));
-        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
-        $tester->handle($gameTurn->updateActionCounter(...), $this->performed(TurnAction::MOVE));
         self::assertFalse($gameTurn->isEnded());
 
-        // The 4th move ends the turn exactly like in a turn without any battle
-        $tester->handle($gameTurn->updateActionCounter(...), $this->performed(TurnAction::MOVE));
+        // The 4th step ends the turn exactly like in a turn without any battle
         [, $messages] = $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
 
         self::assertTrue($gameTurn->isEnded());
         self::assertCount(1, array_filter($messages, static fn(object $message): bool => $message instanceof TurnEnded));
+    }
+
+    #[Test]
+    public function anUnstoppableFightOnTheFourthStepLeavesNoMoveForAFifth(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        for ($step = 0; $step < 3; ++$step) {
+            $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        }
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, ['result' => 'LOSE', 'unstoppable' => true]));
+
+        self::assertSame(4, $gameTurn->getPerformedActionsCount());
+        $this->expectException(InvalidTurnActionException::class);
+        $gameTurn->assertCanPerform(TurnAction::MOVE);
+    }
+
+    #[Test]
+    public function aLightningAttackFightCostsNothingMoreThanItsFourMoves(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::LIGHTNING_ATTACK));
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::FIGHT_MONSTER, ['result' => 'WIN', 'unstoppable' => true, 'lightningAttack' => true]));
+
+        self::assertSame(4, $gameTurn->getPerformedActionsCount());
     }
 
     #[Test]
@@ -1170,7 +1183,7 @@ final class GameTurnTest extends TestCase
         );
     }
 
-    private function performed(TurnAction $action): TurnActionPerformed
+    private function performed(TurnAction $action, ?array $additionalData = null): TurnActionPerformed
     {
         return new TurnActionPerformed(
             turnId: $this->turnId,
@@ -1178,6 +1191,7 @@ final class GameTurnTest extends TestCase
             playerId: $this->playerId,
             action: $action,
             performedAt: $this->fixedTime,
+            additionalData: $additionalData,
         );
     }
 

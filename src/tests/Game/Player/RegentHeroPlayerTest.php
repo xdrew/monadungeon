@@ -265,6 +265,50 @@ final class RegentHeroPlayerTest extends TestCase
         self::assertNotContains(true, $player->getSkills()?->flags() ?? []);
     }
 
+    #[Test]
+    public function aKeyCannotTakeTheSlotOfASword(): void
+    {
+        $player = $this->createPlayer(HeroType::WARRIOR, 5);
+        $sword = $this->sword();
+        $this->setInventory($player, weapons: [$sword, $this->dagger()]);
+
+        $this->expectException(\DomainException::class);
+        $this->tester()->handle($player->replaceInventoryItem(...), new ReplaceInventoryItem(
+            $this->playerId,
+            $this->gameId,
+            $sword->itemId,
+            new Item(ItemName::SKELETON_TURNKEY, ItemType::KEY, 8, 0, true),
+        ));
+    }
+
+    #[Test]
+    public function aSpellCannotTakeTheSlotOfAWeaponAndThePackStaysAsItWas(): void
+    {
+        $player = $this->createPlayer(HeroType::WARRIOR, 5);
+        $sword = $this->sword();
+        $this->setInventory($player, weapons: [$sword, $this->dagger()]);
+
+        try {
+            $this->tester()->handle($player->replaceInventoryItem(...), new ReplaceInventoryItem($this->playerId, $this->gameId, $sword->itemId, $this->fireball()));
+            self::fail('A spell does not go into a weapon slot');
+        } catch (\DomainException) {
+        }
+        self::assertCount(2, $player->getInventory()[ItemCategory::WEAPON->value]);
+        self::assertSame([], $player->getInventory()[ItemCategory::SPELL->value]);
+    }
+
+    #[Test]
+    public function aCursedHannaCannotPutADaggerIntoASpellSlot(): void
+    {
+        $hanna = $this->createPlayer(HeroType::ACROBAT, 5);
+        $fireball = $this->fireball();
+        $this->setInventory($hanna, weapons: [$this->sword(), $this->dagger()], spells: [$fireball]);
+        $hanna->onPlayerCursed(new PlayerCursed($this->gameId, $this->playerId, $this->playerId));
+
+        $this->expectException(\DomainException::class);
+        $this->tester()->handle($hanna->replaceInventoryItem(...), new ReplaceInventoryItem($this->playerId, $this->gameId, $fireball->itemId, $this->dagger()));
+    }
+
     private function createPlayer(?HeroType $hero, int $hp): Player
     {
         [$player] = handle(Player::onPlayerAddedToGame(...), new PlayerAdded(
@@ -302,13 +346,9 @@ final class RegentHeroPlayerTest extends TestCase
             }
 
             public function isOnline(): bool
-
             {
-
                 return false;
-
             }
-
 
             public function isRandomHeroes(): bool
             {

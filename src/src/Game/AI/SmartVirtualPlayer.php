@@ -3648,8 +3648,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
     /**
      * Handle post-pickup replacement when inventory is full
      * This is called after successfully picking up an item when inventory becomes full
-     * At this point, the item is already picked up, so we need to use inventory-action API
-     * to replace one of the existing items.
+     * The pickup was refused for a full pack, so the item still lies on the AI's tile: it is picked up again in
+     * exchange for the weakest weapon (PickItem with itemIdToReplace).
      */
     private function handlePostPickupReplacement(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array $pickupResponse, array &$actions): void
     {
@@ -3706,8 +3706,6 @@ final class SmartVirtualPlayer implements AiTurnTaker
                 'reason' => $replaceReason,
             ]);
 
-            // Use the inventory-action API to replace the item
-            // We need to pass the full item object and the ID of item to replace
             $replaceResult = $this->callInventoryReplaceAction(
                 $gameId,
                 $playerId,
@@ -3729,23 +3727,14 @@ final class SmartVirtualPlayer implements AiTurnTaker
     }
 
     /**
-     * Call the inventory-action API to replace an item.
+     * Picks up the item lying on the AI's tile in exchange for one in its pack.
      */
     private function callInventoryReplaceAction(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array $newItem, string $itemIdToReplace, array &$actions): bool
     {
-        error_log('DEBUG AI calling inventory-action API to replace item');
-        error_log('DEBUG AI newItem: ' . json_encode($newItem));
-        error_log('DEBUG AI itemIdToReplace: ' . $itemIdToReplace);
+        $position = FieldPlace::fromAnything($this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId)));
+        error_log('INFO AI replaces an item via PickItem: ' . json_encode(['itemId' => $newItem['itemId'] ?? null, 'replacedItemId' => $itemIdToReplace, 'position' => $position->toString()]));
 
-        // Call the updated inventoryAction method with correct parameters
-        $result = $this->apiClient->inventoryAction(
-            $gameId,
-            $playerId,
-            $currentTurnId,
-            'replace',
-            $newItem,  // Pass the full item object
-            Uuid::fromString($itemIdToReplace),  // ID of item to replace
-        );
+        $result = $this->apiClient->pickItem($gameId, $playerId, $currentTurnId, $position->positionX, $position->positionY, $itemIdToReplace);
 
         $actions[] = $this->createAction('inventory_replace', ['result' => $result]);
 
@@ -3876,50 +3865,6 @@ final class SmartVirtualPlayer implements AiTurnTaker
 
         // Continue playing regardless of pickup result
         $this->continueAfterAction($gameId, $playerId, $currentTurnId, $actions);
-    }
-
-    /**
-     * Handle inventory full situation: analyze and replace items if new one is better.
-     * @deprecated Use handleInventoryFullWithReplacement instead
-     */
-    private function handleInventoryFullPickup(Uuid $gameId, Uuid $playerId, Uuid $currentTurnId, array $pickupResponse, array &$actions): void
-    {
-        $currentInventory = $pickupResponse['currentInventory'] ?? [];
-        $newItem = $pickupResponse['item'] ?? [];
-
-        if (empty($newItem) || empty($currentInventory)) {
-            // Can't analyze, just end turn
-            $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-            $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
-
-            return;
-        }
-
-        $newItemType = $newItem['type'] ?? '';
-        $itemToReplace = $this->findItemToReplace($currentInventory, $newItemType);
-
-        $actions[] = $this->createAction('inventory_analysis', [
-            'newItemType' => $newItemType,
-            'itemToReplace' => $itemToReplace,
-        ]);
-
-        if ($itemToReplace !== null) {
-            // New item is better, replace the old one
-            $replaceResult = $this->apiClient->inventoryAction(
-                $gameId,
-                $playerId,
-                $currentTurnId,
-                'replace',
-                Uuid::fromString($newItem['itemId']),
-                Uuid::fromString($itemToReplace['itemId']),
-            );
-
-            $actions[] = $this->createAction('inventory_replace', ['result' => $replaceResult]);
-        }
-
-        // Always end turn after inventory handling
-        $endResult = $this->apiClient->endTurn($gameId, $playerId, $currentTurnId);
-        $actions[] = $this->createAction('end_turn', ['result' => $endResult]);
     }
 
     /**

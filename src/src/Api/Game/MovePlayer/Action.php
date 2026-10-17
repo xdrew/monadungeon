@@ -13,14 +13,25 @@ use App\Game\Movement\Commands\MovePlayer;
 use App\Game\Player\GetActivePlayers;
 use App\Game\Player\QueryPlayerInventory;
 use App\Infrastructure\Uuid\Uuid;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 use Telephantast\MessageBus\MessageBus;
 
 final readonly class Action
 {
+    /**
+     * @param array<array-key, mixed>|null $battleInfo
+     */
+    private static function battleId(?array $battleInfo): ?string
+    {
+        $battleId = $battleInfo['battleId'] ?? null;
+
+        return \is_string($battleId) ? $battleId : null;
+    }
+
     #[Route('/game/move-player', methods: ['POST'])]
-    public function __invoke(#[MapRequestPayload] Request $request, MessageBus $messageBus): Response|Error
+    public function __invoke(#[MapRequestPayload] Request $request, MessageBus $messageBus, LoggerInterface $logger): Response|Error
     {
         try {
             // The battle the field remembers before this move: a hero who keeps playing after a fight
@@ -100,6 +111,15 @@ final readonly class Action
             // If no battle or item info was found, just return the game ID
             return new Response($request->gameId);
         } catch (\Throwable $e) {
+            // a refused step leaves the hero where he stood (the turn checks it before the position changes)
+            $logger->warning('rule.refused', [
+                'rule' => 'move',
+                'reason' => $e->getMessage(),
+                'gameId' => $request->gameId->toString(),
+                'playerId' => $request->playerId->toString(),
+                'to' => $request->toPosition->toString(),
+            ]);
+
             return new Error(Uuid::v7(), 'Player move failed: ' . $e->getMessage());
         }
     }
@@ -145,15 +165,5 @@ final readonly class Action
         }
 
         return true;
-    }
-
-    /**
-     * @param array<array-key, mixed>|null $battleInfo
-     */
-    private static function battleId(?array $battleInfo): ?string
-    {
-        $battleId = $battleInfo['battleId'] ?? null;
-
-        return \is_string($battleId) ? $battleId : null;
     }
 }
