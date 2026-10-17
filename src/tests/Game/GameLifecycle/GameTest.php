@@ -684,6 +684,18 @@ final class GameTest extends TestCase
     }
 
     #[Test]
+    public function tiedStartingRollsAreRolledAgain(): void
+    {
+        $rolls = [7, 7, 5, 9];
+        [$starter, $kept] = (new \ReflectionMethod(Game::class, 'pickStarter'))->invoke(null, [$this->player1Id, $this->player2Id], static function () use (&$rolls): int {
+            return array_shift($rolls);
+        });
+
+        self::assertTrue($starter->equals($this->player2Id), '7-7 is rolled again: 5 against 9');
+        self::assertSame([$this->player1Id->toString() => 5, $this->player2Id->toString() => 9], $kept);
+    }
+
+    #[Test]
     public function equalTopScoresShareTheVictory(): void
     {
         [$game] = handle(Game::create(...), new CreateGame(gameId: $this->gameId, at: $this->fixedTime, deckSize: 88));

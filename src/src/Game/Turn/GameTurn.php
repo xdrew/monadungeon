@@ -250,7 +250,9 @@ class GameTurn extends AggregateRoot
 
         // Only use action count to end turn if no battle occurred and turn end is not deferred (e.g. pickable item at destination)
         // Markul "Lightning Attack" spends all moves but the fight that follows decides how the turn ends
-        $movesRunOut = $this->performedActionsCount >= $this->maxMoves() && $command->action !== TurnAction::LIGHTNING_ATTACK;
+        // (bookkeeping — a Cursed Room roll inside a step — never ends the turn itself: the step does, once recorded)
+        $movesRunOut = $this->performedActionsCount >= $this->maxMoves() && $command->action !== TurnAction::LIGHTNING_ATTACK
+            && !self::isBookkeepingAction(end($this->actions) ?: ['action' => '', 'tileId' => null, 'additionalData' => null, 'performedAt' => '']);
         if ((!$hasBattleInTurn && !$command->deferTurnEnd && $movesRunOut) || $command->action->isEndOfTurn()) {
             $this->endTurn($command->at);
             $messageContext->dispatch(new TurnEnded(
@@ -312,8 +314,11 @@ class GameTurn extends AggregateRoot
             throw new InvalidTurnActionException($action, $lastAction);
         }
 
-        // No move beyond the turn's moves (4, or 8 for Hanna's "Sprint")
-        if ($action->isIncreasesActionCounter() && $this->performedActionsCount + $action->moveCost() > $this->maxMoves()) {
+        // No move beyond the turn's moves (4, or 8 for Hanna's "Sprint"). The step during which a Cursed Room cut a
+        // Sprint back to 4 was already under way: it is still recorded (and ends the turn)
+        $last = end($this->actions) ?: null;
+        $stepUnderWay = $last !== null && $last['action'] === TurnAction::CURSED_ROOM->value;
+        if ($action->isIncreasesActionCounter() && !$stepUnderWay && $this->performedActionsCount + $action->moveCost() > $this->maxMoves()) {
             throw new InvalidTurnActionException($action, $lastAction);
         }
     }
@@ -506,7 +511,7 @@ class GameTurn extends AggregateRoot
      */
     public function maxMoves(): int
     {
-        return $this->sprint ? 8 : self::MAX_ACTIONS_PER_TURN;
+        return $this->sprint && !$this->cursedDuringTheTurn() ? 8 : self::MAX_ACTIONS_PER_TURN;
     }
 
     /**
@@ -535,6 +540,20 @@ class GameTurn extends AggregateRoot
     public function setTestMaxActions(int $maxActions): void
     {
         $this->maxActions = max(1, $maxActions);
+    }
+
+    /**
+     * A Cursed Room cursed the hero this turn: Hanna's Sprint falls back to the normal 4 moves (user decision).
+     */
+    private function cursedDuringTheTurn(): bool
+    {
+        foreach ($this->actions as $action) {
+            if ($action['action'] === TurnAction::CURSED_ROOM->value && ($action['additionalData']['cursed'] ?? false) === true) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

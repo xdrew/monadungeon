@@ -115,6 +115,17 @@ final class MagicSwapTest extends TestCase
     }
 
     #[Test]
+    public function noSwapWithAHeroStandingOnAMonster(): void
+    {
+        // a Thief sneaked onto a monster's tile: the Warlock would land on it without a fight
+        $tester = $this->createTester(HeroType::WARLOCK, items: ['1,0' => Item::createGiantRat()]);
+
+        $this->expectException(InvalidMovementException::class);
+        $this->expectExceptionMessage('That hero stands on a monster');
+        $tester->handle($this->movement->magicSwap(...), $this->swap());
+    }
+
+    #[Test]
     public function swapIsOnlyPossibleAtTheBeginningOfTheTurn(): void
     {
         $tester = $this->createTester(HeroType::WARLOCK, actionsBefore: [TurnAction::MOVE]);

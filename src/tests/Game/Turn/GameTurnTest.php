@@ -771,6 +771,38 @@ final class GameTurnTest extends TestCase
     }
 
     #[Test]
+    public function aSprintCursedOnTheWayFallsBackToFourMoves(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::SPRINT));
+        for ($step = 0; $step < 3; ++$step) {
+            $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        }
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::CURSED_ROOM, ['cursed' => true]));
+
+        self::assertSame(4, $gameTurn->maxMoves());
+        $gameTurn->assertCanPerform(TurnAction::MOVE);
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        self::assertTrue($gameTurn->isEnded(), 'One move was left of the four');
+    }
+
+    #[Test]
+    public function aSprintCursedOnItsFifthStepEndsWithThatStep(): void
+    {
+        [$gameTurn, $tester] = $this->countedTurn();
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::SPRINT));
+        for ($step = 0; $step < 4; ++$step) {
+            $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+        }
+        // the room is rolled inside the 5th step, before that step is recorded
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::CURSED_ROOM, ['cursed' => true]));
+        self::assertFalse($gameTurn->isEnded(), 'The roll itself does not end the turn: the step does');
+        $tester->handle($gameTurn->performAction(...), $this->action(TurnAction::MOVE));
+
+        self::assertTrue($gameTurn->isEnded());
+    }
+
+    #[Test]
     public function theRewardAfterAMagicSwapEndsTheTurn(): void
     {
         [$gameTurn, $tester] = $this->countedTurn();

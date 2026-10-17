@@ -366,6 +366,15 @@ class Movement extends AggregateRoot
             throw new InvalidMovementException('Magic Swap costs 4 moves and is only possible at the beginning of the turn');
         }
 
+        // a Thief sneaking on a monster's tile: swapping there would put the Warlock on it without a fight
+        $items = $context->dispatch(new GetField($this->gameId))->getItems();
+        $there = isset($items[$playerTo->toString()]) ? Item::fromAnything($items[$playerTo->toString()]) : null;
+        if ($there !== null && $there->guardHP > 0 && !$there->guardDefeated) {
+            error_log('WARN rule.refused ' . json_encode(['rule' => 'F-27', 'target' => $targetId, 'position' => $playerTo->toString()]));
+
+            throw new InvalidMovementException('That hero stands on a monster');
+        }
+
         $this->playerPositions[$playerId] = $playerTo;
         $this->playerPositions[$targetId] = $playerFrom;
 

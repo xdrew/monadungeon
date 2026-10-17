@@ -761,7 +761,7 @@
                     @unhighlight="unhighlightTile"
                     @center-view="centerViewOnTile"
                     @item-click="handleItemClick"
-                    :swap-targetable="isMagicSwapMode && !isPlayerPosition(tile.position)"
+                    :swap-targetable="isMagicSwapMode && !isPlayerPosition(tile.position) && !hasUndefeatedMonster(tile.position)"
                     @player-click="handlePlayerFigureClick"
                   />
 
@@ -5923,6 +5923,12 @@ const otherPlayersWithPosition = computed(() => {
 });
 
 // Warlock "Magic Swap" is offered only as the first action of the turn
+// a hero sneaking on a monster's tile cannot be swapped with (the server refuses it too)
+const hasUndefeatedMonster = (position) => {
+  const item = gameData.value?.field?.items?.[position];
+  return !!item && Number(item.guardHP) > 0 && !item.guardDefeated;
+};
+
 const canMagicSwapNow = computed(() => {
   if (!isPlayerTurn.value || isReplaying.value || isProcessingAI.value) return false;
   if (gameData.value?.state?.status === 'finished') return false;

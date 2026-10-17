@@ -380,8 +380,9 @@ class Field extends AggregateRoot
         // 4. GameTurn when MAX_ACTIONS_PER_TURN is reached
         // Regular movement does NOT end turns - players get up to 4 movement actions
 
-        // Karak: Regent — the Lord Karak rooms react to every entry, battle returns included
-        $this->enterTile($event->playerId, $event->toPosition, $context);
+        // Karak: Regent — a Cursed Room reacts to every entry, battle returns included; an arena only to a hero who
+        // walks in (a retreat or a push-back does not open it)
+        $this->enterTile($event->playerId, $event->toPosition, $context, arena: !$event->isBattleReturn);
     }
 
     /**
@@ -890,6 +891,16 @@ class Field extends AggregateRoot
                     throw new FieldPlaceIsNotAvailable("Cannot place tile at {$command->fieldPlace->toString()} - not reachable from player's current position at {$playerPosition->toString()}.");
                 }
             }
+
+            // Whatever the client claims, the new tile must open toward the hero who steps onto it
+            foreach (FieldPlace::fromAnything($playerPosition)->getAllSiblingsBySides() as $side => $sibling) {
+                if ($sibling->toString() === $command->fieldPlace->toString()
+                    && !$tile->getOrientation()->isOpenedSide(TileSide::from($side)->getOppositeSide())) {
+                    error_log('WARN rule.refused ' . json_encode(['rule' => 'F-28', 'place' => $command->fieldPlace->toString(), 'side' => $side]));
+
+                    throw new TileCannotBePlacedHere("Cannot place tile at {$command->fieldPlace->toString()}: it must open toward your tile");
+                }
+            }
         }
 
         // Before placing the tile, check if this field place was previously marked as an empty space in transitions
@@ -1219,6 +1230,13 @@ class Field extends AggregateRoot
         $adjacent = array_map(static fn(FieldPlace $place): string => $place->toString(), array_values($playerPosition->getAllSiblingsBySides()));
         if (!\in_array($key, $adjacent, true)) {
             throw new \DomainException('Listening works only on an adjacent tile');
+        }
+        // Listening explores the tile just placed (after its Fateweaver choice), not any adjacent tile
+        $placed = $context->dispatch(new GetTurn($command->turnId))?->placedTileAwaitingEntry();
+        if ($placed !== $key) {
+            error_log('WARN rule.refused ' . json_encode(['rule' => 'F-21', 'position' => $key, 'placed' => $placed]));
+
+            throw new \DomainException('Listen at the tile you just placed');
         }
 
         $item = isset($this->items[$key]) ? Item::fromAnything($this->items[$key]) : null;
@@ -1753,8 +1771,8 @@ class Field extends AggregateRoot
         // Always get tile placement places - remove deck empty check (doors only, even for the Wizard)
         $placeTilePlaces = $this->getAvailablePlaceTilePlaces($positionX, $positionY, $playerId, $messageBus);
 
-        // Hanna "Sprint": the run goes over discovered tiles only
-        if ($hero?->sprints() === true) {
+        // Hanna "Sprint": the run goes over discovered tiles only (also once a Cursed Room took her skills on the way)
+        if ($hero?->sprints() === true || $hero === null) {
             $currentTurnId = $messageBus->dispatch(new GetCurrentTurn($this->gameId));
             $turn = $currentTurnId !== null ? $messageBus->dispatch(new GetTurn($currentTurnId)) : null;
             if ($turn !== null && $turn->isSprint() && $turn->getPlayerId()->equals($playerId)) {
@@ -2865,7 +2883,7 @@ class Field extends AggregateRoot
     /**
      * Karak: Regent — a hero stands on a new tile: a Cursed Room makes him roll, a Battle Arena may summon a rival.
      */
-    private function enterTile(Uuid $playerId, FieldPlace $position, MessageContext $context): void
+    private function enterTile(Uuid $playerId, FieldPlace $position, MessageContext $context, bool $arena = true): void
     {
         $tile = $this->tileAt($position, $context);
         if ($tile === null) {
@@ -2876,8 +2894,10 @@ class Field extends AggregateRoot
             $this->rollCursedRoom($playerId, $position, $context);
         }
 
-        if ($tile->hasFeature(TileFeature::BATTLE_ARENA)) {
+        if ($tile->hasFeature(TileFeature::BATTLE_ARENA) && $arena) {
             $this->enterArena($playerId, $position, $context);
+        } elseif ($tile->hasFeature(TileFeature::BATTLE_ARENA)) {
+            error_log('DEBUG arena.not_by_retreat ' . json_encode(['position' => $position->toString()]));
         }
     }
 

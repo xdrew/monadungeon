@@ -267,6 +267,18 @@ final class RegentHeroFieldTest extends TestCase
     }
 
     #[Test]
+    public function listeningIsOnlyAtTheTileJustPlaced(): void
+    {
+        $this->hero = HeroType::RANGER;
+        $this->placed = '0,1';
+        $this->seedTiles(['0,0' => 'fourSideRoom', '1,0' => 'fourSideRoom', '0,1' => 'fourSideRoom']);
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Listen at the tile you just placed');
+        $this->createTester()->handle($this->field->listen(...), new Listen($this->gameId, $this->playerId, $this->turnId, FieldPlace::fromString('1,0')));
+    }
+
+    #[Test]
     public function listeningNeedsLorraineAndAnAdjacentPlacedTile(): void
     {
         $this->hero = HeroType::THIEF;
@@ -346,6 +358,25 @@ final class RegentHeroFieldTest extends TestCase
         $this->setProperty('tilesCache', $cache);
     }
 
+    /** where this turn placed its tile (Listening explores only that one) */
+    private string $placed = '1,0';
+
+    private function turnWithPlacedTile(): \App\Game\Turn\GameTurn
+    {
+        [$turn] = \App\Tests\Infrastructure\MessageBus\handle(\App\Game\Turn\GameTurn::start(...), new \App\Game\Turn\StartTurn($this->gameId, $this->playerId, 1, $this->turnId, new \DateTimeImmutable()));
+        foreach ([[TurnAction::PICK_TILE, null], [TurnAction::PLACE_TILE, ['fieldPlace' => $this->placed]]] as [$action, $data]) {
+            \App\Tests\Infrastructure\MessageBus\handle($turn->performAction(...), new PerformTurnAction(
+                turnId: $this->turnId,
+                gameId: $this->gameId,
+                playerId: $this->playerId,
+                action: $action,
+                additionalData: $data,
+            ));
+        }
+
+        return $turn;
+    }
+
     private function setProperty(string $name, mixed $value): void
     {
         (new \ReflectionProperty(Field::class, $name))->setValue($this->field, $value);
@@ -386,6 +417,7 @@ final class RegentHeroFieldTest extends TestCase
             fn(GetCurrentPlayer $_query): Uuid => $this->playerId,
             fn(GetCurrentTurn $_query): Uuid => $this->turnId,
             fn(GetPlayerPosition $_query): FieldPlace => $this->position,
+            fn(\App\Game\Turn\GetTurn $_query): \App\Game\Turn\GameTurn => $this->turnWithPlacedTile(),
             static fn(\App\Game\Player\AddItemToInventory $_command) => null,
         );
     }

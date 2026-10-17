@@ -185,6 +185,34 @@ final class FieldTest extends TestCase
     }
 
     #[Test]
+    public function aTileThatIsClosedTowardTheHeroCannotBePlaced(): void
+    {
+        $gameId = Uuid::v7();
+        $playerId = Uuid::v7();
+        $turnId = Uuid::v7();
+        // a straight tile open top and bottom, placed east of the hero: its west side (toward him) is a wall
+        $tile = Tile::fromDeckTile(Uuid::v7(), \App\Game\Deck\DeckTile::createFromName('twoSideStraight'));
+        (new \ReflectionProperty(Tile::class, 'orientation'))->setValue($tile, TileOrientation::twoSideStraight());
+        $tester = MessageBusTester::create(
+            static fn (GetTile $_query): Tile => $tile,
+            static fn (GetCurrentPlayer $_query): Uuid => $playerId,
+            static fn (GetCurrentTurn $_query): Uuid => $turnId,
+            /** @psalm-suppress InvalidArgument */
+            static fn (GetDeck $_query): Deck => Deck::createClassic(new GameCreated($gameId, new \DateTimeImmutable()), startMessageContext()),
+            static fn (\App\Game\GameLifecycle\GetGame $_query): Game => Game::create(new \App\Game\GameLifecycle\CreateGame($gameId, new \DateTimeImmutable()), startMessageContext()),
+            static fn (\App\Game\Movement\GetPlayerPosition $_query): FieldPlace => FieldPlace::fromString('0,0'),
+        );
+        [$field] = $tester->handle(Field::create(...), new GameCreated(gameId: $gameId, gameCreateTime: new \DateTimeImmutable()));
+        $tester->handle([$field, 'placeFirstTile'], new \App\Game\GameLifecycle\GameStarted($gameId, new \DateTimeImmutable()));
+        // the door east of the start leads to an open place
+        (new \ReflectionProperty(Field::class, 'availableFieldPlaces'))->setValue($field, [FieldPlace::fromString('1,0')]);
+        (new \ReflectionProperty(Field::class, 'transitions'))->setValue($field, ['0,0' => ['1,0']]);
+
+        $this->expectException(\App\Game\Field\Error\TileCannotBePlacedHere::class);
+        $tester->handle($field->placeTile(...), new PlaceTile($gameId, $tile->tileId, FieldPlace::fromString('1,0'), $playerId, $turnId));
+    }
+
+    #[Test]
     #[Depends('itPicksTile')]
     public function itCannotPlaceTileAtUnavailablePlace(Tile $tile): void
     {

@@ -140,6 +140,25 @@ final class BattleArenaTest extends TestCase
     }
 
     #[Test]
+    public function aRetreatOntoAnArenaDoesNotOpenIt(): void
+    {
+        $retreat = new PlayerMoved(
+            gameId: $this->gameId,
+            playerId: $this->p1,
+            fromPosition: FieldPlace::fromString('0,0'),
+            toPosition: FieldPlace::fromString('1,0'),
+            movedAt: new \DateTimeImmutable(),
+            isBattleReturn: true,
+        );
+
+        [, $messages] = $this->createTester()->handle($this->field->onPlayerMoved(...), $retreat);
+
+        self::assertSame([], $this->field->getActivatedArenas(), 'Only a hero who walks in opens the arena');
+        self::assertNull($this->findMessage($messages, StartDuel::class));
+        self::assertNull($this->field->getPendingArena());
+    }
+
+    #[Test]
     public function aMoveSpentBeforeTheArenaIsNotTheFirstStep(): void
     {
         $this->movesSpent = 2;

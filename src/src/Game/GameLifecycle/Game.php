@@ -305,6 +305,33 @@ class Game extends AggregateRoot
         return [$tied[0], 'roll', $standings];
     }
 
+    /**
+     * Everyone rolls 2d6, the highest starts; the players tied for the highest roll again until one is highest.
+     * The rolls kept are each player's last.
+     *
+     * @param list<Uuid> $players
+     * @param callable(): int $roll
+     * @return array{Uuid, array<string, int>}
+     */
+    private static function pickStarter(array $players, callable $roll): array
+    {
+        $rolls = [];
+        $contenders = $players;
+
+        while (true) {
+            $round = [];
+            foreach ($contenders as $playerId) {
+                $round[$playerId->toString()] = $roll();
+            }
+            $rolls = array_merge($rolls, $round);
+            $best = max($round);
+            $contenders = array_values(array_filter($contenders, static fn(Uuid $id): bool => $round[$id->toString()] === $best));
+            if (\count($contenders) === 1) {
+                return [$contenders[0], $rolls];
+            }
+        }
+    }
+
     #[Handler]
     public function getPlayer(GetActivePlayers $message): array
     {
@@ -1042,16 +1069,8 @@ class Game extends AggregateRoot
             return $this->players[0];
         }
 
-        $starter = $this->players[0];
-        $best = 0;
-        foreach ($this->players as $playerId) {
-            $roll = random_int(1, 6) + random_int(1, 6);
-            $this->startingRolls[$playerId->toString()] = $roll;
-            if ($roll > $best) {
-                $best = $roll;
-                $starter = $playerId;
-            }
-        }
+        [$starter, $this->startingRolls] = self::pickStarter($this->players, static fn(): int => random_int(1, 6) + random_int(1, 6));
+        error_log('INFO game.start_roll ' . json_encode(['rolls' => $this->startingRolls, 'starter' => $starter->toString()]));
 
         return $starter;
     }
