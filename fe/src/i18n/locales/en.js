@@ -369,6 +369,8 @@ export default {
     dir: { n: 'north', s: 'south', e: 'east', w: 'west', ne: 'north-east', nw: 'north-west', se: 'south-east', sw: 'south-west', here: 'here' },
     lightning: { title: 'Lightning Attack', text: 'Choose a monster to strike. It costs all 4 moves; if you do not win you pick where to retreat.' },
     over: 'Game Over',
+    overShared: 'Shared victory: {who}',
+    victoryShared: 'Shared victory!',
     overYouWin: 'You win!',
     overWins: '{who} wins',
     overResults: 'The game is over',

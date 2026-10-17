@@ -63,6 +63,18 @@ final class UpdateLeaderboardOnGameEndTest extends TestCase
         self::assertSame('Bob', $persisted[0]->getUsername());
     }
 
+    #[Test]
+    public function sharedWinnersEachCountAVictory(): void
+    {
+        $ada = $this->player('acc-ada', 'Ada');
+        $bob = $this->player('acc-bob', 'Bob');
+        $persisted = [];
+
+        ($this->updater([$ada, $bob], [], $persisted))(new GameEnded($this->gameId, $ada->getPlayerId(), [], [$ada->getPlayerId(), $bob->getPlayerId()]));
+
+        self::assertSame([1, 1], array_map(static fn(Leaderboard $row): int => $row->getVictories(), $persisted));
+    }
+
     private function player(?string $account, ?string $name, bool $isAi = false): Player
     {
         [$player] = handle(Player::onPlayerAddedToGame(...), new PlayerAdded(

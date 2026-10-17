@@ -30,7 +30,12 @@ final readonly class Action
             $rows = $this->connection->fetchAllAssociative(<<<'SQL'
                     SELECT p.hero AS hero,
                            COUNT(*) AS games,
-                           SUM(CASE WHEN g.winner_id = p.player_id THEN 1 ELSE 0 END) AS victories
+                           -- every top score wins (equal top scores share the victory); old games without scores: winner_id
+                           SUM(CASE WHEN (g.leaderboard ->> p.player_id::text) IS NOT NULL
+                                         AND (g.leaderboard ->> p.player_id::text)::numeric
+                                             = (SELECT MAX(s.value::numeric) FROM jsonb_each_text(g.leaderboard) s)
+                                    OR (g.leaderboard = '{}'::jsonb OR g.leaderboard = '[]'::jsonb) AND g.winner_id = p.player_id
+                                    THEN 1 ELSE 0 END) AS victories
                     FROM player.player p
                     JOIN game.game g ON g.game_id = p.game_id
                     WHERE g.status = 'finished' AND g.end_reason IS NULL AND p.hero IS NOT NULL

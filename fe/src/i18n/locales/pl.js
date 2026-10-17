@@ -368,6 +368,8 @@ export default {
     dir: { n: 'na północy', s: 'na południu', e: 'na wschodzie', w: 'na zachodzie', ne: 'na północnym wschodzie', nw: 'na północnym zachodzie', se: 'na południowym wschodzie', sw: 'na południowym zachodzie', here: 'tutaj' },
     lightning: { title: 'Błyskawiczny atak', text: 'Wybierz potwora do ataku. Kosztuje to 4 ruchy; jeśli nie wygrasz, wybierzesz, dokąd się wycofać.' },
     over: 'Koniec gry',
+    overShared: 'Wspólne zwycięstwo: {who}',
+    victoryShared: 'Wspólne zwycięstwo!',
     overYouWin: 'Wygrywasz!',
     overWins: 'Wygrywa {who}',
     overResults: 'Koniec gry',

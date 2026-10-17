@@ -6,6 +6,7 @@ namespace App\Game\Leaderboard;
 
 use App\Game\GameLifecycle\GameEnded;
 use App\Game\Player\Player;
+use App\Infrastructure\Uuid\Uuid;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Telephantast\MessageBus\Handler\Mapping\Handler;
@@ -45,7 +46,9 @@ final readonly class UpdateLeaderboardOnGameEnd
             }
 
             $playerId = $player->getPlayerId();
-            $isWinner = $event->winnerId && $event->winnerId->equals($playerId);
+            // equal top scores share the victory: each of them counts a win
+            $winners = $event->winnerIds !== [] ? $event->winnerIds : array_filter([$event->winnerId]);
+            $isWinner = array_filter($winners, static fn(Uuid $id): bool => $id->equals($playerId)) !== [];
             $username = $player->getUsername() ?: 'Adventurer';
 
             $leaderboardEntry = $leaderboardRepository->findOneBy(['externalId' => $externalId]);

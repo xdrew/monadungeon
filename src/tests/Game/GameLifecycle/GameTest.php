@@ -684,6 +684,34 @@ final class GameTest extends TestCase
     }
 
     #[Test]
+    public function equalTopScoresShareTheVictory(): void
+    {
+        [$game] = handle(Game::create(...), new CreateGame(gameId: $this->gameId, at: $this->fixedTime, deckSize: 88));
+        $tester = MessageBusTester::create();
+        $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player1Id));
+        $tester->handle($game->addPlayer(...), new AddPlayer($this->gameId, $this->player2Id));
+
+        [$player1] = handle(Player::onPlayerAddedToGame(...), new PlayerAdded(gameId: $this->gameId, playerId: $this->player1Id));
+        [$player2] = handle(Player::onPlayerAddedToGame(...), new PlayerAdded(gameId: $this->gameId, playerId: $this->player2Id));
+        $adder = MessageBusTester::create(static fn (GetGame $_query): Game => $game);
+        $adder->handle($player1->addItem(...), new AddItemToInventory($this->gameId, $this->player1Id, new Item(ItemName::DRAGON, ItemType::RUBY_CHEST))); // 3
+        $adder->handle($player2->addItem(...), new AddItemToInventory($this->gameId, $this->player2Id, new Item(ItemName::FALLEN, ItemType::CHEST))); // 2
+        $adder->handle($player2->addItem(...), new AddItemToInventory($this->gameId, $this->player2Id, new Item(ItemName::TREASURE_CHEST, ItemType::CHEST))); // 2
+
+        $player1Id = $this->player1Id;
+        [, $messages] = MessageBusTester::create(
+            static fn (GetPlayer $query): Player => $query->playerId->equals($player1Id) ? $player1 : $player2,
+        )->handle($game->endGame(...), new EndGame($this->gameId));
+
+        // 3 against 4: one winner
+        self::assertEquals([$this->player2Id], $messages[0]->winnerIds);
+
+        // 4 against 4: both win
+        (new \ReflectionProperty(Game::class, 'leaderboard'))->setValue($game, [$this->player1Id->toString() => 4, $this->player2Id->toString() => 4]);
+        self::assertEquals([$this->player1Id, $this->player2Id], $game->getWinnerIds());
+    }
+
+    #[Test]
     public function itReturnsCurrentPlayer(): void
     {
         $createGame = new CreateGame(

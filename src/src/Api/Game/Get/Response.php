@@ -166,6 +166,8 @@ final readonly class Response
             createdAt: null, // If createdAt is not available on GameLifecycleGame
             state: [
                 'status' => $game->getStatus()->value,
+                // the winners of a finished game: every top score (equal top scores share the victory)
+                'winnerIds' => $game->getStatus()->isFinished() ? array_map(static fn(Uuid $id): string => $id->toString(), $game->getWinnerIds()) : [],
                 'turn' => $game->getCurrentTurnNumber(),
                 'startingRolls' => $game->getStartingRolls(), // who rolled what for the starting player (empty in test mode)
                 'currentPlayerId' => (string) $currentPlayerId,

@@ -955,14 +955,36 @@ class Game extends AggregateRoot
         arsort($scores);
         $this->leaderboard = $scores;
 
-        if (\count($scores) > 0) {
-            $this->winnerId = Uuid::fromString(array_key_first($scores));
-        }
+        $winnerIds = $this->getWinnerIds();
+        $this->winnerId = $winnerIds[0] ?? null;
+        error_log('INFO game.ended ' . json_encode(['gameId' => $this->gameId->toString(), 'winners' => array_map(static fn(Uuid $id): string => $id->toString(), $winnerIds), 'scores' => $scores]));
         $messageContext->dispatch(new GameEnded(
             gameId: $event->gameId,
             winnerId: $this->winnerId,
             scores: $scores,
+            winnerIds: $winnerIds,
         ));
+    }
+
+    /**
+     * Every player with the top score of a finished game (equal top scores share the victory).
+     *
+     * @return list<Uuid>
+     */
+    public function getWinnerIds(): array
+    {
+        if ($this->leaderboard === []) {
+            return $this->winnerId !== null ? [$this->winnerId] : [];
+        }
+        $top = max($this->leaderboard);
+        $winners = [];
+        foreach ($this->leaderboard as $playerId => $score) {
+            if ($score === $top) {
+                $winners[] = Uuid::fromString((string) $playerId);
+            }
+        }
+
+        return $winners;
     }
 
     /**

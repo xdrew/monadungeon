@@ -19,5 +19,11 @@ final readonly class GameEnded implements Event
         public Uuid $gameId,
         public ?Uuid $winnerId,
         public array $scores,
+        /**
+         * Every player with the top score: equal top scores share the victory ($winnerId is the first of them).
+         *
+         * @var list<Uuid>
+         */
+        public array $winnerIds = [],
     ) {}
 }

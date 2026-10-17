@@ -502,7 +502,7 @@
         class="game-finished-banner"
       >
         <span class="trophy-icon"><GameIcon name="trophy" :size="22" /></span>
-        <span class="finished-text">{{ isCurrentUserWinner() ? t('game.overYouWin') : winnerId ? t('game.overWins', { who: heroNameById(winnerId) }) : t('game.overResults') }}</span>
+        <span class="finished-text">{{ winnerIds.length > 1 ? t('game.overShared', { who: winnerNames }) : isCurrentUserWinner() ? t('game.overYouWin') : winnerId ? t('game.overWins', { who: heroNameById(winnerId) }) : t('game.overResults') }}</span>
         <button
           type="button"
           class="btn btn--ghost btn--sm view-results-button"
@@ -896,7 +896,7 @@
             :name="isCurrentUserWinner() ? 'trophy' : 'skull'"
             :size="30"
           />
-          <span class="result-text">{{ isCurrentUserWinner() ? t('game.victory') : t('game.opponentWinsName', { who: heroNameById(winnerId) }) }}</span>
+          <span class="result-text">{{ winnerIds.length > 1 ? (isCurrentUserWinner() ? t('game.victoryShared') : t('game.overShared', { who: winnerNames })) : isCurrentUserWinner() ? t('game.victory') : t('game.opponentWinsName', { who: heroNameById(winnerId) }) }}</span>
         </div>
 
         <ol class="leaderboard-entries">
@@ -905,7 +905,7 @@
             :key="entry.playerId"
             class="lb-entry"
             :class="{
-              'lb-winner': entry.playerId === winnerId,
+              'lb-winner': winnerIds.includes(entry.playerId),
               'lb-you': isCurrentUserEntry(entry),
               'lb-first': idx === 0
             }"
@@ -921,12 +921,12 @@
               <span class="lb-hero">{{ heroNameById(entry.playerId) }}</span>
               <span class="lb-role">
                 <GameIcon
-                  v-if="entry.playerId === winnerId"
+                  v-if="winnerIds.includes(entry.playerId)"
                   name="crown"
                   :size="13"
                   :title="t('game.winner')"
                 />
-                {{ [entry.playerId === winnerId ? t('game.winner') : '', isCurrentUserEntry(entry) ? t('game.youBadge') : ''].filter(Boolean).join(' · ') }}
+                {{ [winnerIds.includes(entry.playerId) ? t('game.winner') : '', isCurrentUserEntry(entry) ? t('game.youBadge') : ''].filter(Boolean).join(' · ') }}
               </span>
             </span>
             <span
@@ -6239,19 +6239,21 @@ const isVirtualPlayer = (playerId) => {
   return false;
 };
 
-// Helper to check if current user is the winner
+// Every player with the top score wins: equal top scores share the victory
+const winnerIds = computed(() => {
+  const entries = leaderboard.value || [];
+  if (entries.length === 0) return [];
+  const top = Math.max(...entries.map((entry) => Number(entry.treasure) || 0));
+  return entries.filter((entry) => (Number(entry.treasure) || 0) === top).map((entry) => entry.playerId);
+});
+const winnerNames = computed(() => winnerIds.value.map((playerId) => heroNameById(playerId)).join(', '));
+
+// Helper to check if current user is (one of) the winner(s)
 const isCurrentUserWinner = () => {
-  // First priority: Check if any entry in the leaderboard is the current user and is #1
-  if (leaderboard.value?.length > 0) {
-    const winner = leaderboard.value[0]; // First place
-
-    if (humanPlayerId.value && !isVirtualPlayer(humanPlayerId.value)) {
-      const isWinner = winner.playerId === humanPlayerId.value;
-
-      return isWinner;
-    }
+  if (humanPlayerId.value && !isVirtualPlayer(humanPlayerId.value)) {
+    return winnerIds.value.includes(humanPlayerId.value);
   }
-  
+
   return false;
 };
 
