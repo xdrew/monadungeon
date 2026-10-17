@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Game\Duel;
 
+use App\Game\AI\BattleOdds;
 use App\Game\Battle\FinalizeBattle;
 use App\Game\Battle\StartBattle;
 use App\Game\Field\AutoReincarnate;
@@ -565,7 +566,16 @@ class Duel extends AggregateRoot
         foreach ($this->presetSummary($rival, $rivalPrep ?? ['consumableIds' => [], 'sacrifice' => false]) as $item) {
             $rivalSpells += ItemType::from($item['type'])->getDamage();
         }
-        $needed = ($rival->calculateWeaponDamage() + 7 + $rivalSpells + 1) - ($self->calculateWeaponDamage() + 7);
+        // what each side should roll on average with its dice skills (Combat Training, Bear Attack) and its bonuses
+        // (Berserk, Farseeing: the summoned Oracle always, the challenger on his first step)
+        $expected = function (Player $player, Uuid $id): float {
+            $skills = $player->getSkills();
+            $firstMove = $id->equals($this->challengerId) ? $this->firstStep : true;
+
+            return BattleOdds::expectedRoll($skills) + $player->calculateWeaponDamage() + BattleOdds::skillBonus($skills, $player->getHP(), $firstMove);
+        };
+        $needed = (int) ceil($expected($rival, $rivalId) + $rivalSpells + 1 - $expected($self, $playerId));
+        error_log('DEBUG duel.ai_preset ' . json_encode(['playerId' => $playerId->toString(), 'needed' => $needed]));
 
         $spells = array_values(array_filter(
             array_map(static fn(Item|array $item): Item => Item::fromAnything($item), $self->getConsumableItems()),
@@ -658,8 +668,14 @@ class Duel extends AggregateRoot
                 turnId: $this->turnId,
             ));
 
-            // A Warrior knocked out by the duel reincarnates at the nearest fountain right away
-            if ($messageContext->dispatch(new GetPlayer($loserId))->isAwaitingReincarnation()) {
+            // A Warrior knocked out by the duel reincarnates. The challenger, whose turn it is, chooses the fountain
+            // himself (like after a monster fight; choosing ends his turn); a summoned hero cannot answer now and
+            // goes to the nearest one
+            $loser = $messageContext->dispatch(new GetPlayer($loserId));
+            $choosesHimself = $loserId->equals($this->challengerId) && !$loser->isAi() && !$loser->isAway();
+            if ($loser->isAwaitingReincarnation() && $choosesHimself) {
+                error_log('INFO reincarnation.choice_pending ' . json_encode(['playerId' => $loserId->toString(), 'by' => 'duel']));
+            } elseif ($loser->isAwaitingReincarnation()) {
                 $messageContext->dispatch(new AutoReincarnate(gameId: $this->gameId, playerId: $loserId));
                 $this->reincarnatedTo = $messageContext->dispatch(new GetPlayerPosition($this->gameId, $loserId))->toString();
             }
@@ -737,6 +753,10 @@ class Duel extends AggregateRoot
     private function endChallengersTurn(MessageContext $messageContext): void
     {
         if ($messageContext->dispatch(new GetTurn($this->turnId))?->isEnded() !== false) {
+            return;
+        }
+        // a fallen Warrior challenger first chooses his fountain: Field::reincarnate ends the turn
+        if ($messageContext->dispatch(new GetPlayer($this->challengerId))->isAwaitingReincarnation()) {
             return;
         }
         // fought inside the step onto the arena: that step ends the turn once it is recorded

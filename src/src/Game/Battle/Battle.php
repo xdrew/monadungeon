@@ -225,6 +225,11 @@ class Battle extends AggregateRoot
         // Karak: Regent — the spells were chosen before the roll: locked in with them now, unless a human
         // Warrior may still reroll (then he is asked, without the spells, as the fight scene does)
         $preset = $command->duel?->preset;
+        // an automatic Warrior side uses Double Attack on a roll that cannot win: below the rival's total when it is
+        // known (the summoned side), below an average roll otherwise
+        if ($preset !== null && $command->duel->auto && $roller->getSkills()?->canRerollBattle() === true) {
+            $battle->autoRerollIfHopeless($command->duel->toBeat, $messageContext);
+        }
         if ($preset !== null && ($command->duel->auto || $roller->getSkills()?->canRerollBattle() !== true)) {
             $battle->finalizeBattle(new FinalizeBattle(
                 battleId: $battle->battleId,
@@ -633,6 +638,20 @@ class Battle extends AggregateRoot
             'endsGame' => $monster->endsGame,
         ];
     }
+
+    private function autoRerollIfHopeless(?int $toBeat, MessageContext $messageContext): void
+    {
+        $dice = array_sum($this->diceResults);
+        $hopeless = $toBeat !== null ? $this->totalDamage <= $toBeat : $dice < 7;
+        if (!$hopeless || $this->rerollUsed) {
+            return;
+            }
+            error_log('DEBUG battle.reroll_auto ' . json_encode(['battleId' => $this->battleId->toString(), 'dice' => $this->diceResults, 'toBeat' => $toBeat]));
+            $this->firstDiceResults = $this->diceResults;
+            $this->rerollUsed = true;
+            $this->rollDice($messageContext);
+            $this->calculateInitialBattle($messageContext);
+        }
 
     /**
      * Whether the fighting player's hero turns ties into victories (Thief "Backstab").
@@ -1097,7 +1116,8 @@ class Battle extends AggregateRoot
         // Swordsman "Combat Training": a die showing 1 is rerolled until it shows something better
         $this->onesRerolled = 0;
         $player = $messageContext->dispatch(new GetPlayer(playerId: $this->playerId));
-        if ($player->getSkills()?->rerollsOnes() === true) {
+        // (Lord Karak with Lady Lorraine's Bear Attack too: a 1 is a 6 for him, it is not rerolled away)
+        if ($player->getSkills()?->rerollsOnes() === true && $player->getSkills()?->bearAttack() !== true) {
             foreach ($this->diceResults as $index => $value) {
                 while ($value === 1) {
                     ++$this->onesRerolled;

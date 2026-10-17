@@ -195,6 +195,24 @@ final class HeroTest extends TestCase
     }
 
     #[Test]
+    public function reincarnationHealsToTheHerosOwnMaximum(): void
+    {
+        $player = $this->createPlayer(HeroType::WARRIOR, 1);
+        $player->setTestMaxHp(3);
+        handle(
+            static fn(ReducePlayerHP $command, MessageContext $context) => $player->reduceHP($command, $context),
+            new ReducePlayerHP($this->playerId, $this->gameId, 1, $this->turnId),
+        );
+
+        handle(
+            static fn(CompleteReincarnation $command, MessageContext $context) => $player->completeReincarnation($command, $context),
+            new CompleteReincarnation($this->gameId, $this->playerId, FieldPlace::fromString('0,0')),
+        );
+
+        self::assertSame(3, $player->getHP());
+    }
+
+    #[Test]
     public function reincarnationRequiresPendingState(): void
     {
         $player = $this->createPlayer(HeroType::WARRIOR, 5);

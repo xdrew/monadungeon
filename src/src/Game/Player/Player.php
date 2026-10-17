@@ -274,7 +274,9 @@ class Player extends AggregateRoot
         }
 
         $this->awaitingReincarnation = false;
-        $this->hp = self::MAX_HP;
+        // all of this hero's HP (a test-mode maximum too); a full heal by the book, Valduk's heal limit aside
+        $this->hp = $this->maxHp;
+        error_log('DEBUG player.reincarnated ' . json_encode(['playerId' => $this->playerId->toString(), 'hp' => $this->hp]));
 
         $messageContext->dispatch(new PlayerReincarnated(
             gameId: $command->gameId,

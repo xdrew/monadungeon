@@ -160,6 +160,20 @@ final class RegentHeroBattleTest extends TestCase
     }
 
     #[Test]
+    public function bearAttackKeepsItsSixWhenLordKarakAlsoHasCombatTraining(): void
+    {
+        $this->field->setTestDiceRolls([1, 3, 2]);
+        $lordKarak = $this->createPlayer(HeroType::THIEF, 5);
+        $lordKarak->onLordKarakRevealed(new LordKarakRevealed($this->gameId, $this->playerId, [HeroType::RANGER, HeroType::SWORDSMAN], false, 'treasure'));
+
+        [, $messages] = $this->createTester($lordKarak)->handle(Battle::start(...), $this->startBattle(Item::createGiantRat()));
+
+        $completed = $this->lastBattleCompleted($messages);
+        self::assertSame([6, 3], $completed->diceResults, 'The 1 is a 6, not rerolled away');
+        self::assertSame(0, $completed->onesRerolled);
+    }
+
+    #[Test]
     public function lordKarakLosesHisOwnSkillsWithMoreThanTwoPlayers(): void
     {
         $this->field->setTestDiceRolls([1, 3]);

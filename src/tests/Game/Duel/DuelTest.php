@@ -290,6 +290,33 @@ final class DuelTest extends TestCase
     }
 
     #[Test]
+    public function theAiPresetCountsTheHerosSkills(): void
+    {
+        // the AI Barbarian at 2 HP fights at +2 (Berserk): even with a rival's sword he needs no spell
+        $this->addPlayer($this->challenger, isAi: true, hero: HeroType::BARBARIAN, hp: 2, inventory: ['mummy']);
+        $this->addPlayer($this->opponent, inventory: ['skeleton_warrior']);
+        $tester = $this->createTester();
+        [$duel] = $tester->handle(Duel::start(...), $this->startDuel(firstStep: false));
+
+        $preset = (new \ReflectionMethod(Duel::class, 'aiPreset'))->invoke($duel, $this->challenger, $this->opponent, null, $tester->createMessageContext());
+
+        // Berserk +2 matches the rival's sword +2: one point more wins, the fireball gives it (counting "weapons + 7"
+        // only, the AI saw a 3-point gap and spent nothing)
+        self::assertCount(1, $preset['consumableIds']);
+    }
+
+    #[Test]
+    public function aFallenWarriorChallengerChoosesHisFountainHimself(): void
+    {
+        $this->addPlayer($this->challenger, hero: HeroType::WARRIOR, hp: 1);
+        [, $messages] = $this->resolvedDuel(5, 10);
+
+        self::assertNull($this->findMessage($messages, AutoReincarnate::class), 'His turn: he picks the fountain');
+        self::assertTrue($this->players[$this->challenger->toString()]->isAwaitingReincarnation());
+        self::assertNull($this->findMessage($messages, EndTurn::class), 'Choosing the fountain ends the turn');
+    }
+
+    #[Test]
     public function aKnockedOutWarriorReincarnatesAtOnce(): void
     {
         $this->addPlayer($this->opponent, hero: HeroType::WARRIOR, hp: 1);

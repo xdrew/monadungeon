@@ -271,6 +271,11 @@ final class MoveValidationTest extends TestCase
             {
                 return null;
             }
+
+            public function isAwaitingReincarnation(): bool
+            {
+                return false;
+            }
         };
 
         $turn = $this->turn;

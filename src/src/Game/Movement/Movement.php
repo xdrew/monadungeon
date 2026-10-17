@@ -291,7 +291,8 @@ class Movement extends AggregateRoot
             $duel = $context->dispatch(new GetField($this->gameId))->getDuelInfo();
             if (($duel['turnId'] ?? null) === $command->turnId->toString()
                 && DuelPhase::tryFrom((string) ($duel['phase'] ?? ''))?->isSettled() === true
-                && $context->dispatch(new GetTurn($command->turnId))?->isEnded() === false) {
+                && $context->dispatch(new GetTurn($command->turnId))?->isEnded() === false
+                && !$context->dispatch(new GetPlayer($command->playerId))->isAwaitingReincarnation()) {
                 error_log('INFO duel.turn_ended_after_step ' . json_encode(['turnId' => $command->turnId->toString()]));
                 $context->dispatch(new EndTurn($command->turnId, $command->gameId, $command->playerId));
             }
