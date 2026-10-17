@@ -204,6 +204,11 @@ final class AstralWalkingTest extends TestCase
             {
                 return null;
             }
+
+            public function getDuelInfo(): ?array
+            {
+                return null;
+            }
         };
 
         $player = new class ($hero) {

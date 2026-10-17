@@ -1845,9 +1845,12 @@ watch(() => gameData.value?.state?.roomEvent, (event) => {
   showActionNotice(t(notice, { who, roll: event.roll }), 'notice');
   cursedRoomScene.value = event;
 }, { flush: 'sync' }); // at once, not on the next tick: the AI's turn is checked right after the state loads
-// The Curse of Karak passed on by someone else (a mummy's slayer) gets the same scene: who gave it to whom
+// The Curse of Karak passed on by someone else (a mummy's slayer) gets the same scene: who gave it to whom.
+// There is one token: a Cursed Room hands it over too, and the room's own scene already tells that.
 watch(() => gameData.value?.state?.curse?.cursedPlayerId, (holder, was) => {
   if (!roomEventsArmed || !holder || holder === was) return;
+  const room = gameData.value?.state?.roomEvent;
+  if (room?.playerId === holder && room.cursed && !room.alreadyCursed && room.turnId === gameData.value?.state?.currentTurnId) return;
   const by = gameData.value?.state?.currentPlayerId;
   const byMe = isOnline.value ? by === mySeatId.value : !gameData.value?.players?.find((p) => p.id === by)?.isAi;
   // my own choice was made on the fight scene: nothing to tell
@@ -2661,7 +2664,8 @@ const checkAndHandleVirtualPlayerTurn = async () => {
 
     
     if (!isAITurn) {
-      // Human turn - clear all AI flags
+      // Human turn - clear all AI flags (a paused AI turn ended with its duel)
+      if (aiPausedForDuel && !visibleDuel.value) aiPausedForDuel = false;
       if (isProcessingAI.value) {
 
         isProcessingAI.value = false;
@@ -2678,11 +2682,12 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       return;
     }
     
-    // The AI waits for my duel: my roll, my loot, then the outcome closed
+    // The AI waits for my duel: my spells, my roll, my loot, then the outcome closed. The duel ends the AI's turn,
+    // so once it is over this is usually the next player's turn already (or the AI's own when it was settled early)
     if (aiPausedForDuel) {
       const phase = gameData.value.state.duel?.phase;
-      if (['opponent_roll', 'loot'].includes(phase) || visibleDuel.value) return;
-      console.info('[duel] the duel is over: the AI goes on with its turn');
+      if (['opponent_prepare', 'opponent_roll', 'loot'].includes(phase) || visibleDuel.value) return;
+      console.info('[duel] the duel is over: the turn goes on from the server state');
       aiPausedForDuel = false;
     }
 

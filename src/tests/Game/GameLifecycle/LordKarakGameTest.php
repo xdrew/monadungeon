@@ -205,7 +205,6 @@ final class LordKarakGameTest extends TestCase
         self::assertTrue($game->getLordKarakPlayerId()?->equals($p2));
         self::assertFalse($game->isPlayerCursed($p2));
         self::assertNull($game->getCursedPlayerId());
-        self::assertSame([], $game->getRoomCursedPlayerIds());
         $lifted = $this->find($messages, CurseLifted::class);
         self::assertInstanceOf(CurseLifted::class, $lifted);
         self::assertTrue($lifted->playerId->equals($p2));

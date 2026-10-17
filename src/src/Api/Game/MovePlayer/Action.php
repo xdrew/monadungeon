@@ -99,7 +99,8 @@ final readonly class Action
                                 'guardDefeated' => $item->guardDefeated,
                                 'guardHP' => $item->guardHP,
                             ],
-                            'requiresKey' => \in_array($item->type->value, ['chest', 'ruby_chest'], true),
+                            // the chest of a defeated guard (the Fallen's) is loot: only a chest that never had a guard is locked
+                            'requiresKey' => \in_array($item->type->value, ['chest', 'ruby_chest'], true) && $item->isLocked(),
                             'hasKey' => ($playerInventory[ItemCategory::KEY->value] ?? []) !== [],
                         ];
 
@@ -136,7 +137,7 @@ final readonly class Action
 
         // Check if it's a chest that requires a key
         // (the inventory is keyed by ItemCategory values, singular: "key", not "keys")
-        if (\in_array($item->type->value, ['chest', 'ruby_chest'], true)) {
+        if (\in_array($item->type->value, ['chest', 'ruby_chest'], true) && $item->isLocked()) {
             // Skip if player has no keys
             $keys = $playerInventory[ItemCategory::KEY->value] ?? [];
             if (\count($keys) === 0) {

@@ -112,6 +112,11 @@ class MovementAfterBattleTest extends TestCase
             {
                 return null;
             }
+
+            public function getDuelInfo(): ?array
+            {
+                return null;
+            }
         };
         
         // Create movement aggregate and initialize positions

@@ -398,6 +398,8 @@ class Duel extends AggregateRoot
         } catch (\RuntimeException) {
             // The turn log is bookkeeping: the loot changed hands either way
         }
+
+        $this->endChallengersTurn($messageContext);
     }
 
     /**
@@ -722,16 +724,26 @@ class Duel extends AggregateRoot
             // The turn log is bookkeeping: the duel is resolved either way
         }
 
-        // The duel never ends the turn, except that a knocked-out challenger is done (like after a lost monster fight)
-        if ($this->loserId?->equals($this->challengerId) === true && $this->reincarnatedTo === null
-            && $messageContext->dispatch(new GetPlayer($this->challengerId))->getHP() === 0
-            && $messageContext->dispatch(new GetTurn($this->turnId))?->isEnded() === false) {
-            $messageContext->dispatch(new EndTurn(
-                turnId: $this->turnId,
-                gameId: $this->gameId,
-                playerId: $this->challengerId,
-            ));
+        // A duel ends the challenger's turn like any fight — once the loot, if any, has been taken
+        if ($this->phase === DuelPhase::DONE) {
+            $this->endChallengersTurn($messageContext);
         }
+    }
+
+    /**
+     * The duel is over: so is the challenger's turn (unless the turn end is what settled the duel).
+     */
+    private function endChallengersTurn(MessageContext $messageContext): void
+    {
+        if ($messageContext->dispatch(new GetTurn($this->turnId))?->isEnded() !== false) {
+            return;
+        }
+        error_log('INFO duel.turn_ended ' . json_encode(['duelId' => $this->duelId->toString(), 'challenger' => $this->challengerId->toString(), 'result' => $this->result]));
+        $messageContext->dispatch(new EndTurn(
+            turnId: $this->turnId,
+            gameId: $this->gameId,
+            playerId: $this->challengerId,
+        ));
     }
 
     /**

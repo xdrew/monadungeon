@@ -426,6 +426,11 @@ class Field extends AggregateRoot
         if (!$known) {
             throw new \DomainException('Unknown player');
         }
+        if (isset($pending['candidates']) && !\in_array($command->opponentId->toString(), $pending['candidates'], true)) {
+            error_log('WARN rule.refused ' . json_encode(['rule' => 'DEC-7', 'opponent' => $command->opponentId->toString()]));
+
+            throw new \DomainException('This hero cannot be summoned (unconscious or reincarnating)');
+        }
 
         $this->pendingArena = null;
         $this->startDuel(
@@ -452,7 +457,7 @@ class Field extends AggregateRoot
     }
 
     /**
-     * @return array{position: string, playerId: string, turnId: string, firstStep: bool}|null
+     * @return array{position: string, playerId: string, turnId: string, firstStep: bool, candidates?: list<string>}|null
      */
     public function getPendingArena(): ?array
     {
@@ -470,10 +475,14 @@ class Field extends AggregateRoot
         if ($this->pendingArena === null) {
             return null;
         }
-        $candidates = [];
-        foreach ($activePlayerIds as $playerId) {
-            if ($playerId->toString() !== $this->pendingArena['playerId']) {
-                $candidates[] = $playerId->toString();
+        // the fit rivals, decided when the arena was entered (older pending choices: everyone else)
+        $candidates = $this->pendingArena['candidates'] ?? null;
+        if ($candidates === null) {
+            $candidates = [];
+            foreach ($activePlayerIds as $playerId) {
+                if ($playerId->toString() !== $this->pendingArena['playerId']) {
+                    $candidates[] = $playerId->toString();
+                }
             }
         }
 
@@ -1871,8 +1880,15 @@ class Field extends AggregateRoot
             // This ensures Doctrine properly tracks the change
             $defeatedItem = $item->defeatMonster();
 
-            // Check if this is a chest item - if so, automatically collect it
+            // Check if this is a chest item - if so, automatically collect it. Valduk "Tireless" may leave a
+            // guarded chest on the tile and walk on, so his is left for him to decide; the dragon's ruby is always
+            // collected (its fall ends the game)
             $isChest = $defeatedItem->type->value === 'chest' || $defeatedItem->type->value === 'ruby_chest';
+            if ($isChest && $defeatedItem->type->value === 'chest'
+                && $messageContext->dispatch(new GetPlayer($event->playerId))->getSkills()?->tireless() === true) {
+                error_log('INFO chest.left_for_tireless ' . json_encode(['position' => $positionString, 'playerId' => $event->playerId->toString()]));
+                $isChest = false;
+            }
 
             if ($isChest) {
                 // For chests guarded by monsters, automatically add to player inventory without requiring a key
@@ -2032,8 +2048,9 @@ class Field extends AggregateRoot
             $item = $item->defeatMonster();
         }
 
-        // Check if the item is a chest - if so, the player needs a key
-        if ($item->type->value === 'chest') {
+        // A locked chest needs a key; the chest of a defeated guard (the Fallen's treasure) is loot like any other
+        error_log('DEBUG chest.pickup ' . json_encode(['type' => $item->type->value, 'locked' => $item->isLocked()]));
+        if ($item->type->value === 'chest' && $item->isLocked()) {
             // Query the player's inventory to check for keys
             /** @var array{key: array<Item>, weapon: array<Item>, spell: array<Item>, treasure: array<Item>} $playerInventory */
             $playerInventory = $messageContext->dispatch(new QueryPlayerInventory(
@@ -2292,9 +2309,27 @@ class Field extends AggregateRoot
     #[Handler]
     public function onTurnEnded(TurnEnded $event, MessageContext $messageContext): void
     {
-        // Karak: Regent — a rival never chosen means no duel (the arena stays activated); an open duel is settled
+        // Karak: Regent — the duel is not optional: a rival never chosen is picked (the most treasures) and the duel is
+        // fought at once, settled automatically below like any duel left open
         if ($this->pendingArena !== null && $this->pendingArena['turnId'] === $event->turnId->toString()) {
+            $pending = $this->pendingArena;
             $this->pendingArena = null;
+            $candidates = $this->fitRivals(array_map(
+                static fn(string $id): Uuid => Uuid::fromString($id),
+                $pending['candidates'] ?? [],
+            ), $messageContext);
+            if ($candidates !== []) {
+                $rival = $this->pickDuelOpponent($candidates, $messageContext);
+                error_log('INFO duel.auto_rival ' . json_encode(['challenger' => $pending['playerId'], 'rival' => $rival->toString()]));
+                $this->startDuel(
+                    Uuid::fromString($pending['playerId']),
+                    $rival,
+                    FieldPlace::fromString($pending['position']),
+                    $event->turnId,
+                    $pending['firstStep'],
+                    $messageContext,
+                );
+            }
         }
         $duelPhase = DuelPhase::tryFrom((string) ($this->duelInfo['phase'] ?? ''));
         if ($duelPhase !== null && !$duelPhase->isSettled() && \is_string($this->duelInfo['duelId'] ?? null)) {
@@ -2925,10 +2960,11 @@ class Field extends AggregateRoot
 
         $this->activatedArenas[] = $position;
 
-        $others = array_values(array_filter(
+        // only a hero fit to fight is summoned: not one lying unconscious or waiting to reincarnate
+        $others = $this->fitRivals(array_values(array_filter(
             $context->dispatch(new GetActivePlayers($this->gameId)),
             static fn(Uuid $id): bool => !$id->equals($playerId),
-        ));
+        )), $context);
         if ($others === []) {
             return;
         }
@@ -2947,6 +2983,7 @@ class Field extends AggregateRoot
             'playerId' => $playerId->toString(),
             'turnId' => $turnId->toString(),
             'firstStep' => $firstStep,
+            'candidates' => array_map(static fn(Uuid $id): string => $id->toString(), $others),
         ];
         $context->dispatch(new ArenaEntered(gameId: $this->gameId, playerId: $playerId, position: $position));
     }
@@ -2956,6 +2993,19 @@ class Field extends AggregateRoot
      *
      * @param non-empty-list<Uuid> $candidates
      */
+    /**
+     * @param list<Uuid> $candidates
+     * @return list<Uuid>
+     */
+    private function fitRivals(array $candidates, MessageContext $context): array
+    {
+        return array_values(array_filter($candidates, static function (Uuid $id) use ($context): bool {
+            $player = $context->dispatch(new GetPlayer($id));
+
+            return !$player->isDefeated() && !$player->isAwaitingReincarnation();
+        }));
+    }
+
     private function pickDuelOpponent(array $candidates, MessageContext $context): Uuid
     {
         $best = $candidates[0];

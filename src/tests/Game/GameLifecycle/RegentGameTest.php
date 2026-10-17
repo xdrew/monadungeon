@@ -61,7 +61,7 @@ final class RegentGameTest extends TestCase
     }
 
     #[Test]
-    public function aCursedRoomRollOfOneToThreeCursesTheHero(): void
+    public function aCursedRoomRollOfOneToThreeHandsTheHeroTheToken(): void
     {
         $game = $this->startedGame();
         $tester = MessageBusTester::create();
@@ -74,16 +74,19 @@ final class RegentGameTest extends TestCase
         $cursed = $this->findMessage($messages, PlayerCursed::class);
         self::assertInstanceOf(PlayerCursed::class, $cursed);
         self::assertTrue($cursed->playerId->equals($this->p2));
-        self::assertTrue($game->isPlayerCursed($this->p2));
-        self::assertNull($game->getCursedPlayerId(), 'The mummy token is not involved');
+        self::assertTrue($game->getCursedPlayerId()?->equals($this->p2), 'There is one curse token: the room hands it over');
 
-        $tester->handle($game->onCursedRoomEntered(...), $this->roomEntered($this->p2, cursed: true));
-        $tester->handle($game->onCursedRoomEntered(...), $this->roomEntered($this->p3, cursed: true));
-        self::assertCount(2, $game->getRoomCursedPlayerIds(), 'Several heroes may be cursed at once, each one once');
+        // another hero cursed by a room takes the token: the first one is free
+        [, $messages] = $tester->handle($game->onCursedRoomEntered(...), $this->roomEntered($this->p3, cursed: true));
+        $lifted = $this->findMessage($messages, CurseLifted::class);
+        self::assertInstanceOf(CurseLifted::class, $lifted);
+        self::assertTrue($lifted->playerId->equals($this->p2));
+        self::assertTrue($game->isPlayerCursed($this->p3));
+        self::assertFalse($game->isPlayerCursed($this->p2));
     }
 
     #[Test]
-    public function aFountainLiftsBothCurseSourcesWithOneEvent(): void
+    public function aFountainLiftsARoomCurse(): void
     {
         $game = $this->startedGame();
         $tester = MessageBusTester::create();
@@ -91,47 +94,35 @@ final class RegentGameTest extends TestCase
 
         [, $messages] = $tester->handle($game->onPlayerHealedAtFountain(...), $this->healed($this->p2));
         self::assertCount(1, array_filter($messages, static fn(object $m): bool => $m instanceof CurseLifted));
-        self::assertSame([], $game->getRoomCursedPlayerIds());
         self::assertFalse($game->isPlayerCursed($this->p2));
-
-        // The token holder is room-cursed too
-        $tester->handle($game->onCursedRoomEntered(...), $this->roomEntered($this->p3, cursed: true));
-        (new \ReflectionProperty(Game::class, 'cursedPlayerId'))->setValue($game, $this->p3);
-        [, $messages] = $tester->handle($game->onPlayerHealedAtFountain(...), $this->healed($this->p3));
-        self::assertCount(1, array_filter($messages, static fn(object $m): bool => $m instanceof CurseLifted));
         self::assertNull($game->getCursedPlayerId());
-        self::assertSame([], $game->getRoomCursedPlayerIds());
 
         [, $messages] = $tester->handle($game->onPlayerHealedAtFountain(...), $this->healed($this->p1));
         self::assertSame([], $messages, 'An uncursed hero healing lifts nothing');
     }
 
     #[Test]
-    public function theMummyTokenRespectsARoomCurse(): void
+    public function theMummyAndTheRoomPassTheSameToken(): void
     {
         $game = $this->startedGame();
         $tester = $this->humanTester();
         $tester->handle($game->onCursedRoomEntered(...), $this->roomEntered($this->p2, cursed: true));
-        (new \ReflectionProperty(Game::class, 'cursedPlayerId'))->setValue($game, $this->p2);
 
-        // P1 beats a mummy and moves the token from P2 to P3: P2 stays cursed by the room
+        // P1 beats a mummy and gives the token to P3: P2, cursed by the room, is freed
         $tester->handle($game->onMummyDefeated(...), new MummyDefeated($this->gameId, $this->p1, $this->turnId($game)));
         [, $messages] = $tester->handle($game->cursePlayer(...), new CursePlayer($this->gameId, $this->p1, $this->turnId($game), $this->p3));
-
-        self::assertNull($this->findMessage($messages, CurseLifted::class));
-        self::assertTrue($game->isPlayerCursed($this->p2));
-        self::assertTrue($game->isPlayerCursed($this->p3));
-
-        // The token lands on a room-cursed hero: still announced (the Player flag is idempotent)
-        (new \ReflectionProperty(Game::class, 'curseChoiceTurnId'))->setValue($game, null);
-        $tester->handle($game->onMummyDefeated(...), new MummyDefeated($this->gameId, $this->p1, $this->turnId($game)));
-        [, $messages] = $tester->handle($game->cursePlayer(...), new CursePlayer($this->gameId, $this->p1, $this->turnId($game), $this->p2));
-        $cursed = $this->findMessage($messages, PlayerCursed::class);
-        self::assertInstanceOf(PlayerCursed::class, $cursed);
-        self::assertTrue($cursed->playerId->equals($this->p2));
         $lifted = $this->findMessage($messages, CurseLifted::class);
-        self::assertInstanceOf(CurseLifted::class, $lifted, 'P3 held only the token');
+        self::assertInstanceOf(CurseLifted::class, $lifted);
+        self::assertTrue($lifted->playerId->equals($this->p2));
+        self::assertTrue($game->isPlayerCursed($this->p3));
+        self::assertFalse($game->isPlayerCursed($this->p2));
+
+        // a room curse frees the mummy's victim
+        [, $messages] = $tester->handle($game->onCursedRoomEntered(...), $this->roomEntered($this->p1, cursed: true));
+        $lifted = $this->findMessage($messages, CurseLifted::class);
+        self::assertInstanceOf(CurseLifted::class, $lifted);
         self::assertTrue($lifted->playerId->equals($this->p3));
+        self::assertTrue($game->getCursedPlayerId()?->equals($this->p1));
     }
 
     private function startedGame(): Game

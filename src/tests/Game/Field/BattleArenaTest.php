@@ -27,6 +27,7 @@ use App\Game\Turn\Error\NotYourTurnException;
 use App\Game\Turn\GameTurn;
 use App\Game\Turn\GetCurrentTurn;
 use App\Game\Turn\GetTurn;
+use App\Game\Item\Item;
 use App\Game\Turn\StartTurn;
 use App\Game\Turn\TurnAction;
 use App\Game\Turn\TurnActionPerformed;
@@ -92,10 +93,12 @@ final class BattleArenaTest extends TestCase
     {
         [, $messages] = $this->createTester()->handle($this->field->onPlayerMoved(...), $this->moved($this->p1));
 
+        $pending = $this->field->getPendingArena();
         self::assertSame(
             ['position' => '1,0', 'playerId' => $this->p1->toString(), 'turnId' => $this->turnId->toString(), 'firstStep' => true],
-            $this->field->getPendingArena(),
+            array_diff_key($pending ?? [], ['candidates' => true]),
         );
+        self::assertNotContains($this->p1->toString(), $pending['candidates'] ?? [], 'The rivals are the others');
         self::assertInstanceOf(ArenaEntered::class, $this->findMessage($messages, ArenaEntered::class));
         self::assertNull($this->findMessage($messages, StartDuel::class));
         self::assertSame(['1,0'], array_map(static fn(FieldPlace $p): string => $p->toString(), $this->field->getActivatedArenas()));
@@ -103,6 +106,37 @@ final class BattleArenaTest extends TestCase
             ['position' => '1,0', 'playerId' => $this->p1->toString(), 'candidates' => [$this->p2->toString(), $this->p3->toString()]],
             $this->field->getArenaChoice($this->activePlayers),
         );
+    }
+
+    #[Test]
+    public function anUnconsciousHeroCannotBeSummoned(): void
+    {
+        (new \ReflectionProperty(Player::class, 'hp'))->setValue($this->players[$this->p2->toString()], 0);
+
+        [, $messages] = $this->createTester()->handle($this->field->onPlayerMoved(...), $this->moved($this->p1));
+
+        // the only fit rival is summoned at once
+        $start = $this->findMessage($messages, StartDuel::class);
+        self::assertInstanceOf(StartDuel::class, $start);
+        self::assertTrue($start->opponentId->equals($this->p3));
+        self::assertNull($this->field->getPendingArena());
+    }
+
+    #[Test]
+    public function aRivalNeverChosenIsPickedWhenTheTurnEnds(): void
+    {
+        $tester = $this->createTester();
+        $tester->handle($this->field->onPlayerMoved(...), $this->moved($this->p1));
+        (new \ReflectionProperty(Player::class, 'inventory'))->setValue($this->players[$this->p3->toString()], [
+            'key' => [], 'weapon' => [], 'spell' => [], 'treasure' => [Item::createTreasureChest()],
+        ]);
+
+        [, $messages] = $tester->handle($this->field->onTurnEnded(...), new TurnEnded($this->turnId, $this->gameId, $this->p1, new \DateTimeImmutable()));
+
+        $start = $this->findMessage($messages, StartDuel::class);
+        self::assertInstanceOf(StartDuel::class, $start, 'The duel is not optional');
+        self::assertTrue($start->opponentId->equals($this->p3), 'The rival with the most treasures');
+        self::assertNull($this->field->getPendingArena());
     }
 
     #[Test]

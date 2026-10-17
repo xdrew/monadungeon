@@ -152,15 +152,6 @@ class Game extends AggregateRoot
     private ?array $lordKarakReveal = null;
 
     /**
-     * Karak: Regent — heroes cursed by a Cursed Room; independent of the mummy token, several at once.
-     * (The default matters: the column is NOT NULL and existing games must migrate.).
-     *
-     * @var list<Uuid>
-     */
-    #[Column(type: UuidArrayJsonType::class, options: ['default' => '[]'])]
-    private array $roomCursedPlayerIds = [];
-
-    /**
      * An online table: every human seat plays from its own browser and the server plays the AI seats.
      */
     #[Column(type: BooleanType::class, options: ['default' => false])]
@@ -683,15 +674,10 @@ class Game extends AggregateRoot
         if (!$event->cursed || !$this->status->isInProgress()) {
             return;
         }
-        if (!$this->isRoomCursed($event->playerId)) {
-            $this->roomCursedPlayerIds[] = $event->playerId;
-        }
 
-        $messageContext->dispatch(new PlayerCursed(
-            gameId: $this->gameId,
-            playerId: $event->playerId,
-            byPlayerId: $event->playerId,
-        ));
+        // There is one curse token: the room hands it to the hero who entered, whoever held it is freed
+        // (also in a solo game: only the mummy needs another player to curse)
+        $this->moveCurseToken($event->playerId, $event->playerId, 'room', $messageContext);
     }
 
     /**
@@ -699,15 +685,7 @@ class Game extends AggregateRoot
      */
     public function isPlayerCursed(Uuid $playerId): bool
     {
-        return $this->cursedPlayerId?->equals($playerId) === true || $this->isRoomCursed($playerId);
-    }
-
-    /**
-     * @return list<Uuid>
-     */
-    public function getRoomCursedPlayerIds(): array
-    {
-        return $this->roomCursedPlayerIds;
+        return $this->cursedPlayerId?->equals($playerId) === true;
     }
 
     public function getCursedPlayerId(): ?Uuid
@@ -1016,25 +994,14 @@ class Game extends AggregateRoot
     }
 
     /**
-     * Karak: the dice decide who starts (highest 2d6, a tie goes to the first of the tied players in seating order).
-     * In test mode the first player starts and no dice are spent, so scripted games stay predictable.
-     */
-    /**
-     * Curse of Karak: lift the curse from a player — the mummy token and a Cursed Room curse alike.
+     * Curse of Karak: lift the curse from a player (the token, whether a mummy or a Cursed Room gave it).
      */
     private function liftCurse(Uuid $playerId, MessageContext $messageContext): void
     {
-        if (!$this->isPlayerCursed($playerId)) {
+        if ($this->cursedPlayerId?->equals($playerId) !== true) {
             return;
         }
-
-        if ($this->cursedPlayerId?->equals($playerId) === true) {
-            $this->cursedPlayerId = null;
-        }
-        $this->roomCursedPlayerIds = array_values(array_filter(
-            $this->roomCursedPlayerIds,
-            static fn(Uuid $id): bool => !$id->equals($playerId),
-        ));
+        $this->cursedPlayerId = null;
 
         $messageContext->dispatch(new CurseLifted(
             gameId: $this->gameId,
@@ -1042,6 +1009,10 @@ class Game extends AggregateRoot
         ));
     }
 
+    /**
+     * Karak: the dice decide who starts (highest 2d6, a tie goes to the first of the tied players in seating order).
+     * In test mode the first player starts and no dice are spent, so scripted games stay predictable.
+     */
     private function rollForStartingPlayer(): Uuid
     {
         $this->startingRolls = [];
@@ -1076,9 +1047,22 @@ class Game extends AggregateRoot
         if ($targetPlayerId === null || ($previous !== null && $previous->equals($targetPlayerId))) {
             return ['previous' => $previous?->toString(), 'kept' => true];
         }
+        $this->moveCurseToken($byPlayerId, $targetPlayerId, 'mummy', $messageContext);
 
-        // The token moves on; a previous holder cursed by a Cursed Room as well stays cursed
-        if ($previous !== null && !$this->isRoomCursed($previous)) {
+        return ['previous' => $previous?->toString(), 'kept' => false];
+    }
+
+    /**
+     * The single curse token goes to the target: its previous holder is freed.
+     */
+    private function moveCurseToken(Uuid $byPlayerId, Uuid $targetPlayerId, string $by, MessageContext $messageContext): void
+    {
+        $previous = $this->cursedPlayerId;
+        if ($previous !== null && $previous->equals($targetPlayerId)) {
+            return;
+        }
+        error_log('INFO curse.moved ' . json_encode(['gameId' => $this->gameId->toString(), 'from' => $previous?->toString(), 'to' => $targetPlayerId->toString(), 'by' => $by]));
+        if ($previous !== null) {
             $messageContext->dispatch(new CurseLifted(
                 gameId: $this->gameId,
                 playerId: $previous,
@@ -1091,8 +1075,6 @@ class Game extends AggregateRoot
             playerId: $targetPlayerId,
             byPlayerId: $byPlayerId,
         ));
-
-        return ['previous' => $previous?->toString(), 'kept' => false];
     }
 
     /**
@@ -1113,17 +1095,6 @@ class Game extends AggregateRoot
         }
 
         return $fallback;
-    }
-
-    private function isRoomCursed(Uuid $playerId): bool
-    {
-        foreach ($this->roomCursedPlayerIds as $cursedId) {
-            if ($cursedId->equals($playerId)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

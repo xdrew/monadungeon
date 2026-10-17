@@ -12,6 +12,7 @@ use App\Game\GameLifecycle\GetGame;
 use App\Game\Item\Item;
 use App\Game\Movement\GetPlayerPosition;
 use App\Game\Player\AddItemToInventory;
+use App\Game\Player\Error\MissingKeyException;
 use App\Game\Player\PickItem;
 use App\Game\Player\QueryPlayerInventory;
 use App\Game\Player\RemoveItemFromInventory;
@@ -79,6 +80,35 @@ final class PickItemTest extends TestCase
 
         self::assertArrayNotHasKey('1,0', $this->field->getItems());
         self::assertNotEmpty(array_filter($this->seen, static fn(object $m): bool => $m instanceof AddItemToInventory));
+    }
+
+    #[Test]
+    public function aChestThatNeverHadAGuardNeedsAndSpendsAKey(): void
+    {
+        $this->setItems(['1,0' => Item::createTreasureChest()]);
+
+        try {
+            $this->pick('1,0');
+            self::fail('A locked chest needs a key');
+        } catch (MissingKeyException) {
+        }
+        self::assertArrayHasKey('1,0', $this->field->getItems());
+
+        $this->keys = [Item::createSkeletonTurnkey()->defeatMonster()];
+        $this->pick('1,0');
+        self::assertNotEmpty(array_filter($this->seen, static fn(object $m): bool => $m instanceof RemoveItemFromInventory), 'The key is spent');
+        self::assertArrayNotHasKey('1,0', $this->field->getItems());
+    }
+
+    #[Test]
+    public function theChestOfADefeatedGuardIsPickedUpWithoutAKey(): void
+    {
+        $this->setItems(['1,0' => Item::createFallen()->defeatMonster()]);
+
+        $this->pick('1,0');
+
+        self::assertArrayNotHasKey('1,0', $this->field->getItems());
+        self::assertSame([], array_values(array_filter($this->seen, static fn(object $m): bool => $m instanceof RemoveItemFromInventory)), 'No key spent');
     }
 
     private function pick(string $position): void

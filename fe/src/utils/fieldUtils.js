@@ -448,7 +448,7 @@ const handlePlayerMovement = async (params) => {
         itemInfo: {
           position: position,
           item: itemAtPosition,
-          requiresKey: itemAtPosition.type === 'chest' || itemAtPosition.type === 'ruby_chest',
+          requiresKey: (itemAtPosition.type === 'chest' || itemAtPosition.type === 'ruby_chest') && !(itemAtPosition.guardHP > 0 && itemAtPosition.guardDefeated),
           hasKey: updatedGameState?.state?.players?.[currentPlayerId.value]?.inventory?.keys?.length > 0
         }
       };
@@ -489,7 +489,7 @@ const handlePlayerMovement = async (params) => {
               itemInfo: {
                 position: position,
                 item: itemAtPosition,
-                requiresKey: itemAtPosition.type === 'chest' || itemAtPosition.type === 'ruby_chest',
+                requiresKey: (itemAtPosition.type === 'chest' || itemAtPosition.type === 'ruby_chest') && !(itemAtPosition.guardHP > 0 && itemAtPosition.guardDefeated),
                 hasKey: updatedGameState?.state?.players?.[currentPlayerId.value]?.inventory?.keys?.length > 0
               }
             };

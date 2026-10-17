@@ -178,8 +178,6 @@ final readonly class Response
                 'curse' => [ // Curse of Karak: who carries the token and who still has to place it
                     'cursedPlayerId' => $game->getCursedPlayerId()?->toString(),
                     'pendingBy' => $game->getCurseChoicePendingBy()?->toString(),
-                    // Karak: Regent — heroes cursed by a Cursed Room (several at once)
-                    'roomCursedPlayerIds' => array_map(static fn(Uuid $id): string => $id->toString(), $game->getRoomCursedPlayerIds()),
                 ],
                 'regent' => $game->isRegent(), // Karak: Regent expansion on
                 'online' => $game->isOnline(), // an online table: every human seat plays from its own browser
@@ -187,7 +185,7 @@ final readonly class Response
                 'randomHeroes' => $game->isRandomHeroes(),
                 'endReason' => $game->getEndReason(), // 'abandoned': the host closed the table before the start
                 'turnSeconds' => $game->getTurnSeconds(), // an online table's turn time limit (null: none)
-                'turnDeadline' => $game->getTurnDeadline()?->format(\DATE_ATOM), // when the current turn runs out
+                'turnDeadline' => $game->getTurnDeadline()?->format(DATE_ATOM), // when the current turn runs out
                 'serverTime' => (int) (new \DateTimeImmutable())->format('Uv'), // ms, for the countdown's clock offset
                 'lordKarakVariant' => $game->isLordKarak(), // Karak: Regent — the Lord Karak variant is on
                 'lordKarak' => $game->getLordKarakReveal(), // Karak: Regent — who became Lord Karak and why (null until then)

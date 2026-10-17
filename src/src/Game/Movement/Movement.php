@@ -6,6 +6,7 @@ namespace App\Game\Movement;
 
 use App\Game\Battle\BattleCompleted;
 use App\Game\Battle\StartBattle;
+use App\Game\Duel\DuelPhase;
 use App\Game\Field\Field;
 use App\Game\Field\FieldPlace;
 use App\Game\Field\GetField;
@@ -161,6 +162,14 @@ class Movement extends AggregateRoot
         // Karak: Regent — a hero who opened a Battle Arena summons his rival before he walks on
         if ($field->getPendingArena() !== null) {
             throw new InvalidMovementException('Choose your rival on the arena first');
+        }
+        // ... and fights it out before walking on (the duel ends the turn anyway)
+        $duel = $field->getDuelInfo();
+        if ($duel !== null && ($duel['turnId'] ?? null) === $command->turnId->toString()
+            && !(DuelPhase::tryFrom((string) ($duel['phase'] ?? ''))?->isSettled() ?? true)) {
+            error_log('WARN rule.refused ' . json_encode(['rule' => 'F-24', 'playerId' => $command->playerId->toString()]));
+
+            throw new InvalidMovementException('Finish the duel first');
         }
 
         // Create movement service to check transitions

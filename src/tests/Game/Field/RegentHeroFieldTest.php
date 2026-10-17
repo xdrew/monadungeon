@@ -87,6 +87,37 @@ final class RegentHeroFieldTest extends TestCase
     }
 
     #[Test]
+    public function valdukMayLeaveAGuardedChestAndWalkOn(): void
+    {
+        $this->hero = HeroType::BARBARIAN;
+        $this->position = FieldPlace::fromString('1,0');
+        $this->setProperty('items', ['1,0' => Item::createFallen()]);
+
+        $tester = $this->createTester();
+        $tester->handle($this->field->onBattleCompleted(...), $this->wonAgainstTheFallen());
+
+        self::assertArrayHasKey('1,0', $this->field->getItems(), 'Valduk\'s chest is not collected for him');
+        self::assertFalse($this->field->getLastBattleInfo()['reward']['autoCollected'] ?? true);
+
+        [, $messages] = $tester->handle($this->field->continueAfterVictory(...), new ContinueAfterVictory($this->gameId, $this->playerId, $this->turnId));
+        $action = $this->findMessage($messages, PerformTurnAction::class);
+        self::assertSame(TurnAction::TIRELESS, $action?->action);
+    }
+
+    #[Test]
+    public function anotherHerosGuardedChestIsCollectedAtOnce(): void
+    {
+        $this->hero = HeroType::WARRIOR;
+        $this->position = FieldPlace::fromString('1,0');
+        $this->setProperty('items', ['1,0' => Item::createFallen()]);
+
+        $this->createTester()->handle($this->field->onBattleCompleted(...), $this->wonAgainstTheFallen());
+
+        self::assertArrayNotHasKey('1,0', $this->field->getItems());
+        self::assertTrue($this->field->getLastBattleInfo()['reward']['autoCollected'] ?? false);
+    }
+
+    #[Test]
     public function tirelessIsValdukOnly(): void
     {
         $this->hero = HeroType::WARRIOR;
@@ -250,6 +281,21 @@ final class RegentHeroFieldTest extends TestCase
         ]);
     }
 
+    private function wonAgainstTheFallen(): \App\Game\Battle\BattleCompleted
+    {
+        return new \App\Game\Battle\BattleCompleted(
+            battleId: Uuid::v7(),
+            gameId: $this->gameId,
+            playerId: $this->playerId,
+            result: \App\Game\Battle\BattleResult::WIN,
+            diceResults: [6, 6],
+            diceRollDamage: 12,
+            itemDamage: 1,
+            totalDamage: 13,
+            monsterHP: 12,
+        );
+    }
+
     private function retreatRequired(string $position, string $from): RetreatRequired
     {
         return new RetreatRequired(
@@ -317,6 +363,7 @@ final class RegentHeroFieldTest extends TestCase
             fn(GetCurrentPlayer $_query): Uuid => $this->playerId,
             fn(GetCurrentTurn $_query): Uuid => $this->turnId,
             fn(GetPlayerPosition $_query): FieldPlace => $this->position,
+            static fn(\App\Game\Player\AddItemToInventory $_command) => null,
         );
     }
 

@@ -282,7 +282,11 @@ final class DuelTest extends TestCase
         self::assertSame($challengerTotal, $action->additionalData['challengerTotal'] ?? null);
         self::assertSame($opponentTotal, $action->additionalData['opponentTotal'] ?? null);
         self::assertSame($expected, $action->additionalData['result'] ?? null);
-        self::assertNull($this->findMessage($messages, EndTurn::class), 'The duel does not end the turn');
+        if ($duel->getPhase() === DuelPhase::DONE) {
+            self::assertInstanceOf(EndTurn::class, $this->findMessage($messages, EndTurn::class), 'A duel over ends the challenger\'s turn');
+        } else {
+            self::assertNull($this->findMessage($messages, EndTurn::class), 'The turn waits for the winner\'s loot');
+        }
     }
 
     #[Test]
