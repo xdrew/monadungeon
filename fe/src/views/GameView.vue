@@ -1835,7 +1835,7 @@ const cursedRoomScene = ref(null);
 let roomEventsArmed = false;
 watch(gameData, (data) => {
   if (data && !roomEventsArmed) nextTick(() => { roomEventsArmed = true; });
-});
+}, { flush: 'sync' });
 watch(() => gameData.value?.state?.roomEvent, (event) => {
   if (!event) return;
   const key = `${event.turnId}:${event.playerId}:${event.position}`;
@@ -1845,7 +1845,7 @@ watch(() => gameData.value?.state?.roomEvent, (event) => {
   const who = heroNameById(event.playerId);
   showActionNotice(t(event.cursed ? 'game.notice.cursedRoomCursed' : 'game.notice.cursedRoomSafe', { who, roll: event.roll }), 'notice');
   cursedRoomScene.value = event;
-});
+}, { flush: 'sync' }); // at once, not on the next tick: the AI's turn is checked right after the state loads
 const cursedRoomSceneMine = computed(() => {
   const playerId = cursedRoomScene.value?.playerId;
   if (!playerId) return false;
@@ -1879,10 +1879,20 @@ const flyCurseToken = (fromRect, target) => {
     setTimeout(() => target.classList.remove('curse-token-landed'), 1200);
   };
 };
+// The AI waits while a Cursed Room's die is on screen: its turn (or its playback online) starts once it is closed
+let sceneWaiters = [];
+const whenRoomSceneClosed = () => (cursedRoomScene.value
+  ? new Promise((resolve) => { sceneWaiters.push(resolve); })
+  : Promise.resolve());
 const closeCursedRoomScene = (tokenRect) => {
   const event = cursedRoomScene.value;
   cursedRoomScene.value = null;
+  const waiting = sceneWaiters;
+  sceneWaiters = [];
+  waiting.forEach((resolve) => resolve());
   if (!event) return;
+  // a turn of the AI held back by the scene
+  nextTick(() => checkAndHandleVirtualPlayerTurn());
   nextTick(() => {
     const target = event.cursed
       ? document.querySelector(`.party-member[data-player-id="${event.playerId}"] .party-member__medallion`)
@@ -2615,6 +2625,10 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     if (gameData.value.state.online) {
       return;
     }
+    // a Cursed Room's die is still on screen: the AI starts when it is closed (closeCursedRoomScene)
+    if (cursedRoomScene.value) {
+      return;
+    }
     
     // First check if there's actually an AI player in the game
     const hasAIPlayer = gameData.value.players?.some(p => p.isAi === true);
@@ -2857,6 +2871,8 @@ const playOnlineAiTurn = async (message) => {
   isProcessingAI.value = true;
   try {
     while (onlinePlaybackQueue.length) {
+      // a Cursed Room's die on screen is read first
+      await whenRoomSceneClosed();
       const next = onlinePlaybackQueue.shift();
       const actions = aiPlayback.filterActions(next.actions || []);
       console.info('[online] playing back the server turn of', next.playerId, `(${actions.length} actions${next.standIn ? ', stand-in' : ''})`);

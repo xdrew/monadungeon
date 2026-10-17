@@ -217,7 +217,7 @@ class Field extends AggregateRoot
     private ?array $pendingFateweaver = null;
 
     /**
-     * Karak: Regent — the last Cursed Room roll, for the UI (cleared when the next turn starts).
+     * Karak: Regent — the last Cursed Room roll, for the UI (kept until the next roll).
      *
      * @var array{playerId: string, position: string, roll: int, cursed: bool, turnId: ?string}|null
      */
@@ -302,7 +302,7 @@ class Field extends AggregateRoot
     public function turnStarted(TurnStarted $turnStarted, MessageContext $messageContext): void
     {
         $this->lastBattleInfo = [];
-        $this->roomEvent = null;
+        // the last Cursed Room roll is kept: a roll on the last step of a turn would vanish before a browser read it
 
         // Get the player's HP
         $player = $messageContext->dispatch(new GetPlayer($turnStarted->playerId));
@@ -597,7 +597,7 @@ class Field extends AggregateRoot
     }
 
     /**
-     * Karak: Regent — the last Cursed Room roll (null once the next turn started).
+     * Karak: Regent — the last Cursed Room roll, until the next one (the browser shows each roll once, by its turn and hero).
      *
      * @return array{playerId: string, position: string, roll: int, cursed: bool, turnId: ?string}|null
      */

@@ -116,15 +116,17 @@ final class CursedRoomTest extends TestCase
     }
 
     #[Test]
-    public function theNextTurnClearsTheRoll(): void
+    public function theRollOutlivesTheTurnSoARollOnTheLastStepIsSeen(): void
     {
         $this->field->setTestDiceRolls([5]);
         $tester = $this->createTester();
         $tester->handle($this->field->onPlayerMoved(...), $this->moved());
-        self::assertNotNull($this->field->getRoomEvent());
+        $roll = $this->field->getRoomEvent();
+        self::assertNotNull($roll);
 
+        // the step was the turn's last: the next turn starts before any browser reads the state
         $tester->handle($this->field->turnStarted(...), new TurnStarted(Uuid::v7(), $this->gameId, $this->playerId, 2, new \DateTimeImmutable()));
-        self::assertNull($this->field->getRoomEvent());
+        self::assertSame($roll, $this->field->getRoomEvent());
     }
 
     private function moved(bool $isBattleReturn = false): PlayerMoved
