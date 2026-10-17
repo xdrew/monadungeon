@@ -6,6 +6,7 @@ namespace App\Tests\Game\GameLifecycle;
 
 use App\Game\GameLifecycle\AddAiToTable;
 use App\Game\GameLifecycle\AddPlayer;
+use App\Game\GameLifecycle\CloseIdleTable;
 use App\Game\GameLifecycle\CreateTable;
 use App\Game\GameLifecycle\Error\CannotAddPlayerToAlreadyFullGame;
 use App\Game\GameLifecycle\Error\TableRuleBroken;
@@ -193,6 +194,31 @@ final class TableTest extends TestCase
         self::assertTrue($this->game->getStatus()->isFinished());
         self::assertSame('abandoned', $this->game->getEndReason());
         self::assertNotEmpty(array_filter($messages, static fn(object $m): bool => $m instanceof TableClosed));
+    }
+
+    #[Test]
+    public function aTableIdleForAnHourIsClosedAndABusyOneIsNot(): void
+    {
+        $this->openTable(3);
+        $this->seat(self::HOST);
+        $close = fn(string $later): array => $this->bus->handle($this->game->closeIdleTable(...), new CloseIdleTable($this->game->getGameId(), new \DateTimeImmutable($later)));
+
+        [$closed] = $close('+30 minutes');
+        self::assertFalse($closed);
+        self::assertTrue($this->game->getStatus()->isPreparing());
+
+        [$closed, $messages] = $close('+61 minutes');
+        self::assertTrue($closed);
+        self::assertSame('abandoned', $this->game->getEndReason());
+        self::assertNotEmpty(array_filter($messages, static fn(object $m): bool => $m instanceof TableClosed));
+
+        // a started game is never closed this way
+        $this->openTable(2, randomHeroes: true);
+        $this->seat(self::HOST);
+        $this->seat('guest');
+        $this->bus->handle($this->game->startTable(...), new StartTable($this->game->getGameId(), self::HOST));
+        [$closed] = $close('+2 hours');
+        self::assertFalse($closed);
     }
 
     #[Test]

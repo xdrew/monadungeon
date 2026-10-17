@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Game\Console;
 
 use App\Game\AI\ServerAiDriver;
+use App\Game\GameLifecycle\CloseIdleTable;
+use App\Infrastructure\Push\Publisher;
+use App\Infrastructure\Push\Topics;
 use App\Infrastructure\Uuid\Uuid;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -14,10 +17,12 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Telephantast\MessageBus\MessageBus;
 
 /**
  * Online tables with a turn time limit: every few seconds, the turns whose deadline passed are played by the AI
- * for their seat (the seat is marked away). Runs as its own service (`turnwatch` in compose).
+ * for their seat (the seat is marked away); a table left idle in the lobby is closed. Runs as its own service
+ * (`turnwatch` in compose).
  */
 #[AsCommand(name: 'app:turn-watch', description: 'Let the AI play the overdue turns of online tables')]
 final class TurnWatchCommand extends Command
@@ -28,6 +33,8 @@ final class TurnWatchCommand extends Command
         private readonly Connection $connection,
         private readonly ServerAiDriver $aiDriver,
         private readonly EntityManagerInterface $entityManager,
+        private readonly MessageBus $messageBus,
+        private readonly Publisher $publisher,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
@@ -59,6 +66,34 @@ final class TurnWatchCommand extends Command
         return $played;
     }
 
+    /**
+     * Closes the lobby tables nothing happened at for CloseIdleTable::IDLE_MINUTES; the lists are told.
+     */
+    public function closeIdleTables(\DateTimeImmutable $now = new \DateTimeImmutable()): int
+    {
+        /** @var list<string> $idle */
+        $idle = $this->connection->fetchFirstColumn(<<<'SQL'
+                SELECT g.game_id FROM game.game g
+                WHERE g.online AND g.status = 'lobby'
+                  AND (g.table_active_at IS NULL OR g.table_active_at < :since)
+                LIMIT 20
+            SQL, ['since' => $now->modify(sprintf('-%d minutes', CloseIdleTable::IDLE_MINUTES))->format(DATE_ATOM)]);
+        $closed = 0;
+        foreach ($idle as $gameId) {
+            $this->entityManager->clear();
+            if ($this->messageBus->dispatch(new CloseIdleTable(Uuid::fromString((string) $gameId), $now)) === true) {
+                ++$closed;
+                $this->logger->info('table.closed_idle', ['gameId' => $gameId]);
+                $this->publisher->publish(Topics::game((string) $gameId), ['type' => 'game.changed', 'gameId' => $gameId, 'status' => 'finished']);
+            }
+        }
+        if ($closed > 0) {
+            $this->publisher->publish(Topics::TABLES, ['type' => 'tables.changed']);
+        }
+
+        return $closed;
+    }
+
     protected function configure(): void
     {
         $this->addOption('once', null, InputOption::VALUE_NONE, 'One pass, then exit');
@@ -73,6 +108,10 @@ final class TurnWatchCommand extends Command
                 $played = $this->tick();
                 if ($played > 0) {
                     $output->writeln(sprintf('turn-watch: %d overdue turn(s) played', $played));
+                }
+                $closed = $this->closeIdleTables();
+                if ($closed > 0) {
+                    $output->writeln(sprintf('turn-watch: %d idle table(s) closed', $closed));
                 }
             } catch (\Throwable $e) {
                 // a failed write leaves Doctrine's EntityManager closed, and it cannot be reopened in this

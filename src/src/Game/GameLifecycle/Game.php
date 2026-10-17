@@ -196,6 +196,13 @@ class Game extends AggregateRoot
     #[Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $turnDeadline = null;
 
+    /**
+     * When something last happened at an online table in the lobby (opened, a seat taken or freed): a table idle
+     * for CloseIdleTable::IDLE_MINUTES is closed.
+     */
+    #[Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $tableActiveAt = null;
+
     private function __construct(
         #[Id]
         #[Column(type: UuidType::class)]
@@ -244,6 +251,7 @@ class Game extends AggregateRoot
         $game->hostAccountId = $command->hostAccountId;
         $game->seats = $command->seats;
         $game->turnSeconds = $command->turnSeconds;
+        $game->tableActiveAt = $command->at;
 
         return $game;
     }
@@ -336,6 +344,10 @@ class Game extends AggregateRoot
             throw new \DomainException($command->hero->label() . ' needs the Karak: Regent expansion');
         }
 
+        if ($this->online) {
+            $this->tableActiveAt = new \DateTimeImmutable();
+        }
+
         $hero = $command->hero;
         if ($hero === null && ($command->isAi || $this->randomHeroes)) {
             $hero = $this->dealHero($messageContext);
@@ -396,7 +408,26 @@ class Game extends AggregateRoot
             return;
         }
         $this->players = array_values(array_filter($this->players, static fn(Uuid $id): bool => !$id->equals($seat)));
+        $this->tableActiveAt = new \DateTimeImmutable();
         $messageContext->dispatch(new PlayerLeftTable($this->gameId, $seat));
+    }
+
+    #[Handler]
+    public function closeIdleTable(CloseIdleTable $command, MessageContext $messageContext): bool
+    {
+        if (!$this->online || !$this->status->isPreparing()) {
+            return false;
+        }
+        $idleSince = $command->at->modify(sprintf('-%d minutes', CloseIdleTable::IDLE_MINUTES));
+        // a table from before the clock was kept has no time: it is idle
+        if ($this->tableActiveAt !== null && $this->tableActiveAt > $idleSince) {
+            return false;
+        }
+        $this->status = GameStatus::FINISHED;
+        $this->endReason = 'abandoned';
+        $messageContext->dispatch(new TableClosed($this->gameId));
+
+        return true;
     }
 
     #[Handler]
