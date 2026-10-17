@@ -69,59 +69,17 @@ class Deck extends AggregateRoot
     #[Handler]
     public static function createClassic(GameCreated $command, MessageContext $messageContext): self
     {
-        //                return self::createOnlyCrossroads($command, $messageContext);
-        // count: 1,     4 side heal start
-        // count: 2,     2 side corner heal
-        // count: 4,     2 side straight
-        // count: 4,     2 side straight portal
-        // count: 4,     2 side corner
-        // count: 4,     4 side curse
-        // count: 5,     3 side
-        // count: 6,     2 side straight arena
-        // count: 7,     4 side
-        // count: 13,    2 side room straight
-        // count: 15,    2 side room corner
-        // count: 16,    4 side room
-        // count: 17,    3 side room
-        // total: 98
-
-        // count: 1,     4 side heal start
-        // count: 27,    4 side
-        // count: 22,    3 side
-        // count: 21,    2 side corner
-        // count: 29,    2 side straight
-        // total: 100
+        // The box: 80 tiles — the start (a 4-side fountain), 53 rooms, 20 corridors, 2 corner fountains and 4 straight
+        // teleportation gates. Karak: Regent adds its 18 (regentTiles).
         $tiles = [
-            ...DeckTile::create(
-                orientation: TileOrientation::fourSide(),
-                room: true,
-                amount: 16,
-            ),
-            ...DeckTile::create(
-                orientation: TileOrientation::fourSide(),
-                room: false,
-                amount: 11,
-            ),
-            ...DeckTile::create(
-                orientation: TileOrientation::threeSide(),
-                room: true,
-                amount: 17,
-            ),
-            ...DeckTile::create(
-                orientation: TileOrientation::threeSide(),
-                room: false,
-                amount: 5,
-            ),
-            ...DeckTile::create(
-                orientation: TileOrientation::twoSideCorner(),
-                room: true,
-                amount: 15,
-            ),
-            ...DeckTile::create(
-                orientation: TileOrientation::twoSideCorner(),
-                room: false,
-                amount: 4,
-            ),
+            ...DeckTile::create(orientation: TileOrientation::fourSide(), room: true, amount: 14),
+            ...DeckTile::create(orientation: TileOrientation::threeSide(), room: true, amount: 15),
+            ...DeckTile::create(orientation: TileOrientation::twoSideCorner(), room: true, amount: 13),
+            ...DeckTile::create(orientation: TileOrientation::twoSideStraight(), room: true, amount: 11),
+            ...DeckTile::create(orientation: TileOrientation::fourSide(), room: false, amount: 7),
+            ...DeckTile::create(orientation: TileOrientation::threeSide(), room: false, amount: 5),
+            ...DeckTile::create(orientation: TileOrientation::twoSideCorner(), room: false, amount: 4),
+            ...DeckTile::create(orientation: TileOrientation::twoSideStraight(), room: false, amount: 4),
             ...DeckTile::create(
                 orientation: TileOrientation::twoSideCorner(),
                 room: false,
@@ -130,31 +88,11 @@ class Deck extends AggregateRoot
             ),
             ...DeckTile::create(
                 orientation: TileOrientation::twoSideStraight(),
-                room: true,
-                amount: 13,
-            ),
-            ...DeckTile::create(
-                orientation: TileOrientation::twoSideStraight(),
                 room: false,
-                amount: 14,
-            ),
-            ...DeckTile::create(
-                orientation: TileOrientation::twoSideStraight(),
-                room: false,
-                amount: 2,
+                amount: 4,
                 features: [TileFeature::TELEPORTATION_GATE],
             ),
         ];
-        //        $tiles = [
-        //            ...DeckTile::create(TileOrientation::fourSide(), true, random_int(125, 200)),
-        //            ...DeckTile::create(TileOrientation::fourSide(), false, random_int(125, 200)),
-        //            ...DeckTile::create(TileOrientation::threeSide(), true, random_int(125, 200)),
-        //            ...DeckTile::create(TileOrientation::threeSide(), false, random_int(125, 200)),
-        //            ...DeckTile::create(TileOrientation::twoSideCorner(), true, random_int(125, 200)),
-        //            ...DeckTile::create(TileOrientation::twoSideCorner(), false, random_int(125, 200)),
-        //            ...DeckTile::create(TileOrientation::twoSideStraight(), true, random_int(125, 200)),
-        //            ...DeckTile::create(TileOrientation::twoSideStraight(), false, random_int(125, 200)),
-        //        ];
 
         $testMode = TestMode::getInstance();
         $fixedDeck = $testMode->getFixedDeck($command->gameId->toString());
@@ -195,21 +133,13 @@ class Deck extends AggregateRoot
 
             return $deck;
         }
+        // every tile of the box is in play (deckSize only shapes the console demos' scripted games)
+        if ($command->deckSize !== \count($tiles)) {
+            error_log('INFO deck.size_ignored ' . json_encode(['deckSize' => $command->deckSize, 'tiles' => \count($tiles)]));
+        }
         shuffle($tiles);
 
-        $missingTiles = $command->deckSize + 1 - \count($tiles);
-        if ($missingTiles > 0) {
-            $createdTiles = DeckTile::create(TileOrientation::random(), (bool) random_int(0, 1), $missingTiles);
-            if ($createdTiles instanceof DeckTile) {
-                $tiles[] = $createdTiles;
-            } else {
-                $tiles = array_merge($tiles, $createdTiles);
-            }
-        } else {
-            $tiles = \array_slice($tiles, 0, \count($tiles) + $missingTiles - 1);
-        }
-
-        // Karak: Regent — the 18 expansion tiles are mixed into the whole deck after the base slice, so every one of them is in play
+        // Karak: Regent — the 18 expansion tiles are mixed into the deck
         if ($command->regent) {
             $tiles = [...$tiles, ...self::regentTiles()];
             shuffle($tiles);
@@ -219,6 +149,7 @@ class Deck extends AggregateRoot
         array_unshift($tiles, DeckTile::create(TileOrientation::fourSide(), false, 1, [TileFeature::HEALING_FOUNTAIN]));
 
         $deck = new self($command->gameId, $tiles);
+        error_log('INFO deck.created ' . json_encode(['tiles' => \count($tiles), 'rooms' => $deck->roomCount, 'regent' => $command->regent]));
         $messageContext->dispatch(new DeckCreated(gameId: $command->gameId, roomCount: $deck->roomCount, regent: $command->regent));
 
         return $deck;

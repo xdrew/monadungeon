@@ -128,7 +128,7 @@ class Bag extends AggregateRoot
             $items[] = Item::createSkeletonKing();
         }
 
-        // 5 skeleton warriors (assuming this is the count from the rulebook)
+        // 5 skeleton warriors
         for ($i = 0; $i < 5; ++$i) {
             $items[] = Item::createSkeletonWarrior();
         }
@@ -167,21 +167,13 @@ class Bag extends AggregateRoot
                 $items[] = Item::createSkeletonMage();
             }
         }
-        shuffle($items);
-
-        $itemCount = \count($items);
-
-        if ($event->roomCount - 1 > $itemCount) {
-            for ($i = 0; $i < ($event->roomCount - 1 - $itemCount); ++$i) {
-                $items[] = Item::createRandom();
-            }
-        } elseif ($event->roomCount - 1 < $itemCount) {
-            $items = \array_slice($items, 0, $event->roomCount - 1);
+        // the box's tokens, no more and no fewer: one per room (the dragon is the 53rd, with Regent the 61st)
+        if ($event->roomCount !== \count($items) + 1) {
+            error_log('WARN bag.room_mismatch ' . json_encode(['rooms' => $event->roomCount, 'tokens' => \count($items) + 1]));
         }
-        // ensure dragon is always in the bag
         $items[] = Item::createDragon();
-
         shuffle($items);
+        error_log('INFO bag.created ' . json_encode(['tokens' => \count($items), 'regent' => $event->regent]));
 
         return new self($event->gameId, $items);
     }

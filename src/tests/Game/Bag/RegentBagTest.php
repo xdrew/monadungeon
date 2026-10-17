@@ -29,7 +29,8 @@ final class RegentBagTest extends TestCase
     #[Test]
     public function theRegentBagHoldsTheNewTokens(): void
     {
-        $items = $this->drawAll(Bag::createClassic(new DeckCreated(Uuid::v7(), roomCount: 100, regent: true)));
+        $items = $this->drawAll(Bag::createClassic(new DeckCreated(Uuid::v7(), roomCount: 61, regent: true)));
+        self::assertCount(61, $items, 'The box tokens + 6 bats + 2 mages, one per room');
 
         $bats = array_filter($items, static fn(Item $i): bool => $i->name === ItemName::GIANT_BAT);
         $mages = array_filter($items, static fn(Item $i): bool => $i->name === ItemName::SKELETON_MAGE);
@@ -49,12 +50,37 @@ final class RegentBagTest extends TestCase
     #[Test]
     public function theBaseBagHasNoRegentTokens(): void
     {
-        $items = $this->drawAll(Bag::createClassic(new DeckCreated(Uuid::v7(), roomCount: 100)));
+        $items = $this->drawAll(Bag::createClassic(new DeckCreated(Uuid::v7(), roomCount: 53)));
+        self::assertCount(53, $items);
 
         self::assertSame([], array_values(array_filter(
             $items,
             static fn(Item $i): bool => \in_array($i->name, [ItemName::GIANT_BAT, ItemName::SKELETON_MAGE], true),
         )));
+    }
+
+    #[Test]
+    public function theBaseBagHoldsExactlyTheTokensOfTheBox(): void
+    {
+        $counts = [];
+        foreach ($this->drawAll(Bag::createClassic(new DeckCreated(Uuid::v7(), roomCount: 53))) as $item) {
+            $counts[$item->name->value] = ($counts[$item->name->value] ?? 0) + 1;
+        }
+        ksort($counts);
+
+        $expected = [
+            ItemName::DRAGON->value => 1,
+            ItemName::FALLEN->value => 2,
+            ItemName::GIANT_RAT->value => 8,
+            ItemName::GIANT_SPIDER->value => 4,
+            ItemName::MUMMY->value => 8,
+            ItemName::SKELETON_KING->value => 3,
+            ItemName::SKELETON_TURNKEY->value => 12,
+            ItemName::SKELETON_WARRIOR->value => 5,
+            ItemName::TREASURE_CHEST->value => 10,
+        ];
+        ksort($expected);
+        self::assertSame($expected, $counts, 'No token dropped, none invented');
     }
 
     #[Test]

@@ -36,7 +36,7 @@ final class BagTest extends TestCase
     {
         $deckCreated = new DeckCreated(
             gameId: $this->gameId,
-            roomCount: 88, // Classic rulebook count
+            roomCount: 53, // the box: one token per room
         );
 
         [$bag, $messages] = handle(Bag::createClassic(...), $deckCreated);
@@ -61,9 +61,8 @@ final class BagTest extends TestCase
             // This is expected when bag is empty
         }
 
-        // Classic bag should have exactly 88 items total
-        // (roomCount - 1) items adjusted to fit + dragon = 88 total
-        self::assertEquals(88, $itemCount);
+        // the box: 43 monsters (with the dragon) + 10 chests
+        self::assertEquals(53, $itemCount);
     }
 
     #[Test]
