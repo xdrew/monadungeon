@@ -709,6 +709,7 @@ import FighterFigure from '@/components/game/fight/FighterFigure.vue';
 import ConsumableCard from '@/components/game/fight/ConsumableCard.vue';
 import { getHero } from '@/theme';
 import { audio } from '@/services/audio/audioEngine';
+import { isLetterKey } from '@/utils/keyboardUtils';
 
 const props = defineProps({
   /** HeroType of the fighting player (null = no hero) — picks the theme's hero portrait */
@@ -1442,7 +1443,7 @@ const onKeyDown = (e) => {
       duelPrimaryAction();
       e.preventDefault();
       e.stopPropagation();
-    } else if ((e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') && duelAwaitsDecision.value && props.battleInfo?.canReroll) {
+    } else if (isLetterKey(e, 'r') && duelAwaitsDecision.value && props.battleInfo?.canReroll) {
       rerollDice();
       e.preventDefault();
       e.stopPropagation();
@@ -1481,7 +1482,7 @@ const onKeyDown = (e) => {
     leaveItemAndEndTurn();
     e.preventDefault();
     e.stopPropagation();
-  } else if ((e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') && props.battleInfo?.canReroll && !battleFinalized.value) {
+  } else if (isLetterKey(e, 'r') && props.battleInfo?.canReroll && !battleFinalized.value) {
     rerollDice();
     e.preventDefault();
     e.stopPropagation();

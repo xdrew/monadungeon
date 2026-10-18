@@ -56,7 +56,8 @@
 
 <script setup>
 import GameIcon from '@/components/ui/GameIcon.vue';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
+import { audio } from '@/services/audio/audioEngine';
 import { getHero } from '@/theme';
 import { I18nT } from 'vue-i18n';
 import { t } from '@/i18n';
@@ -70,6 +71,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
+
+// the music comes with the reveal itself, after the scene of the tile that brought it
+onMounted(() => audio.sting('lord_karak'));
 
 const CRITERIA = ['treasure', 'weapons', 'items', 'roll'];
 

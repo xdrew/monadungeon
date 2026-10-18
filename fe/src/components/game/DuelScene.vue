@@ -20,7 +20,7 @@
         v-for="side in [left, right]"
         :key="side.role"
         class="duel-side"
-        :class="[`duel-side--${side.place}`, { 'duel-side--loser': duel.loser === side.id, 'duel-side--winner': winnerId === side.id }]"
+        :class="[`duel-side--${side.place}`, { 'duel-side--loser': revealed && duel.loser === side.id, 'duel-side--winner': revealed && winnerId === side.id }]"
         :data-testid="`duel-side-${side.role}`"
       >
         <FighterFigure
@@ -90,9 +90,9 @@
             v-for="side in [left, right]"
             :key="`board-${side.role}`"
             class="duel-side__roll"
-            :class="{ 'duel-side--loser': duel.loser === side.id, 'duel-side--winner': winnerId === side.id }"
+            :class="{ 'duel-side--loser': revealed && duel.loser === side.id, 'duel-side--winner': revealed && winnerId === side.id }"
           >
-            <template v-if="side.total !== null">
+            <template v-if="side.total !== null && (thrown[side.role] || rolling[side.role])">
               <div class="duel-side__dice">
                 <DieFace
                   v-for="(value, i) in side.dice"
@@ -106,14 +106,14 @@
               </div>
               <div
                 class="duel-side__total"
-                :class="{ 'duel-side__total--shown': !rolling[side.role] }"
+                :class="{ 'duel-side__total--shown': thrown[side.role] }"
                 :data-testid="`duel-total-${side.role}`"
               >
                 {{ side.total }}
               </div>
               <div
                 class="duel-side__breakdown"
-                :class="{ 'duel-side__total--shown': !rolling[side.role] }"
+                :class="{ 'duel-side__total--shown': thrown[side.role] }"
               >
                 {{ side.breakdown }}
               </div>
@@ -210,6 +210,12 @@
     </div>
   </div>
 </template>
+
+<script>
+// the duel sides already thrown on this page, and the duels a scene has shown: a side's dice tumble once
+const thrownSides = new Set();
+const knownDuels = new Set();
+</script>
 
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
@@ -315,37 +321,60 @@ const go = () => {
   timers.push(setTimeout(() => { sending.value = false; }, 4000));
 };
 
-// The rolls: each side's dice tumble once when its total arrives; the outcome waits for the last die
+// The rolls: one after the other, the challenger's first, then the summoned hero's; a side's dice, total and
+// breakdown wait hidden for its throw, the winner and the loser for the outcome. A side is thrown once per duel,
+// also when the scene is shown again (a reload, the end of a playback): a scene that opens on a duel it has never
+// seen shows the totals as they are
 const rolling = reactive({ challenger: false, opponent: false });
-const revealed = ref(!!props.duel.result);
+const thrown = reactive({ challenger: false, opponent: false });
+const revealed = ref(false);
 const timers = [];
 const ROLL_MS = 1000;
-const seen = { challenger: props.duel.challengerTotal != null, opponent: props.duel.opponentTotal != null };
-const roll = (role) => {
+const duelKey = props.duel.duelId || '';
+const firstSight = !knownDuels.has(duelKey);
+knownDuels.add(duelKey);
+const totalOf = (role) => (role === 'challenger' ? props.duel.challengerTotal : props.duel.opponentTotal);
+let busyUntil = 0;
+const throwSide = (role) => {
   rolling[role] = true;
   audio.cue('dice_roll');
-  timers.push(setTimeout(() => { rolling[role] = false; }, ROLL_MS));
+  timers.push(setTimeout(() => {
+    rolling[role] = false;
+    thrown[role] = true;
+    revealIfDone();
+  }, ROLL_MS));
 };
-watch(() => [props.duel.challengerTotal, props.duel.opponentTotal], ([c, o]) => {
-  // both totals may come in one answer: the challenger's dice first, then the summoned hero's
-  let delay = 0;
-  if (c != null && !seen.challenger) {
-    seen.challenger = true;
-    roll('challenger');
-    delay = ROLL_MS + 200;
-  }
-  if (o != null && !seen.opponent) {
-    seen.opponent = true;
-    timers.push(setTimeout(() => roll('opponent'), delay));
+const allThrown = () => ['challenger', 'opponent'].every((role) => totalOf(role) == null || thrown[role]);
+function revealIfDone() {
+  if (props.duel.result && !revealed.value && allThrown()) timers.push(setTimeout(reveal, 150));
+}
+const queueThrows = (initial) => {
+  let delay = Math.max(0, busyUntil - Date.now());
+  for (const role of ['challenger', 'opponent']) {
+    if (totalOf(role) == null) continue;
+    const key = `${duelKey}:${role}`;
+    if (thrownSides.has(key)) {
+      if (!rolling[role]) thrown[role] = true;
+      continue;
+    }
+    thrownSides.add(key);
+    if (initial && firstSight) {
+      thrown[role] = true;
+      continue;
+    }
+    timers.push(setTimeout(() => throwSide(role), delay));
     delay += ROLL_MS + 200;
   }
-  if (props.duel.result && !revealed.value) {
-    timers.push(setTimeout(reveal, delay + 150));
+  busyUntil = Date.now() + delay;
+  if (initial && props.duel.result && allThrown()) {
+    revealed.value = true;
+    return;
   }
-});
-watch(() => props.duel.result, (result) => {
-  if (result && !revealed.value && !rolling.challenger && !rolling.opponent && seen.opponent) reveal();
-});
+  revealIfDone();
+};
+queueThrows(true);
+watch(() => [props.duel.challengerTotal, props.duel.opponentTotal], () => queueThrows(false));
+watch(() => props.duel.result, () => revealIfDone());
 const myResult = computed(() => {
   if (!props.duel.result) return '';
   if (props.duel.result === 'tie') return 'draw';
@@ -354,6 +383,7 @@ const myResult = computed(() => {
   return winnerId.value === meInDuel.value ? 'win' : 'lose';
 });
 function reveal() {
+  if (revealed.value) return;
   revealed.value = true;
   const blow = { win: 'hit_win', lose: 'hit_lose', draw: 'draw' }[myResult.value];
   if (blow) audio.cue(blow);

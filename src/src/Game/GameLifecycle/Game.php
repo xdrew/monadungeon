@@ -170,7 +170,7 @@ class Game extends AggregateRoot
     private ?int $seats = null;
 
     /**
-     * Why a game ended without being played out ('abandoned': the host left the table).
+     * Why a game ended without being played out ('abandoned': the host left the table; 'decided': nobody could catch the leader any more).
      */
     #[Column(type: Types::STRING, nullable: true)]
     private ?string $endReason = null;
@@ -516,7 +516,52 @@ class Game extends AggregateRoot
             $this->placeCurse($this->curseChoicePendingBy, $target, $messageContext);
         }
 
+        if ($this->status->isInProgress() && $this->outcomeDecided($messageContext)) {
+            $messageContext->dispatch(new EndGame($event->gameId, reason: 'decided'));
+
+            return;
+        }
+
         $messageContext->dispatch(new NextTurn($event->gameId));
+    }
+
+    /**
+     * Nothing new can come into play (no tile, no arena) and no other player reaches the leader's score even with
+     * every treasure left on the field, the dragon's ruby included: the winner is known, the game ends.
+     */
+    private function outcomeDecided(MessageContext $messageContext): bool
+    {
+        $pointsLeft = $messageContext->dispatch(new GetField($this->gameId))->pointsLeftInPlay($messageContext);
+        if ($pointsLeft === null) {
+            return false;
+        }
+        $scores = $this->treasureScores($messageContext);
+        if (\count($scores) < 2) {
+            return false;
+        }
+        rsort($scores);
+        $decided = $scores[1] + $pointsLeft < $scores[0];
+        error_log('DEBUG game.outcome_check ' . json_encode(['gameId' => $this->gameId->toString(), 'scores' => $scores, 'pointsLeft' => $pointsLeft, 'decided' => $decided]));
+
+        return $decided;
+    }
+
+    /**
+     * @return array<string, int> each player's treasure points
+     */
+    private function treasureScores(MessageContext $messageContext): array
+    {
+        $scores = [];
+        foreach ($this->getPlayers() as $playerId) {
+            $treasureSum = 0;
+            $inventory = $messageContext->dispatch(new GetPlayer($playerId))->getInventory();
+            foreach ($inventory[ItemCategory::TREASURE->value] ?? [] as $treasure) {
+                $treasureSum += Item::fromAnything($treasure)->treasureValue;
+            }
+            $scores[$playerId->toString()] = $treasureSum;
+        }
+
+        return $scores;
     }
 
     /**
@@ -961,24 +1006,9 @@ class Game extends AggregateRoot
     public function endGame(EndGame $event, MessageContext $messageContext): void
     {
         $this->status = GameStatus::FINISHED;
+        $this->endReason = $event->reason ?? $this->endReason;
 
-        // Get player UUIDs from this game instance
-        $playerIds = $this->getPlayers();
-
-        $scores = [];
-        foreach ($playerIds as $playerId) {
-            $treasureSum = 0;
-            // Get the actual Player object for this ID
-            $player = $messageContext->dispatch(new GetPlayer($playerId));
-            $inventory = $player->getInventory();
-            if (isset($inventory[ItemCategory::TREASURE->value])) {
-                foreach ($inventory[ItemCategory::TREASURE->value] as $treasure) {
-                    $treasure = Item::fromAnything($treasure);
-                    $treasureSum += $treasure->treasureValue;
-                }
-            }
-            $scores[$playerId->toString()] = $treasureSum;
-        }
+        $scores = $this->treasureScores($messageContext);
         arsort($scores);
         $this->leaderboard = $scores;
 

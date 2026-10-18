@@ -484,7 +484,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
             // PRIORITY -1: Check if we're on a healing fountain and need healing
             $currentPosStr = $currentPosition->toString();
             $currentHP = $player->getHP();
-            $maxHP = $player->getMaxHP();
+            // the fountain heals only up to Valduk's heal limit: waiting for more never ends
+            $maxHP = $player->fountainHealsTo();
 
             // Check if we're on a healing fountain and need healing (HP < max)
             if ($currentHP < $maxHP && $this->isOnHealingFountain($currentPosStr, $field)) {
@@ -1299,7 +1300,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
         // Check if we're on a healing fountain and need healing
         $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
         $currentHP = $player->getHP();
-        $maxHP = $player->getMaxHP();
+        // the fountain heals only up to Valduk's heal limit: waiting for more never ends
+        $maxHP = $player->fountainHealsTo();
 
         if ($currentHP < $maxHP) {
             $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
@@ -2772,7 +2774,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
             $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
             $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
             $currentHP = $player->getHP();
-            $maxHP = $player->getMaxHP();
+            // the fountain heals only up to Valduk's heal limit: waiting for more never ends
+            $maxHP = $player->fountainHealsTo();
 
             if ($currentHP < $maxHP) {
                 $field = $this->messageBus->dispatch(new GetField($gameId));
@@ -3564,7 +3567,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
             // Check if we're on a healing fountain and need healing (only if NOT pursuing dragon)
             $player = $this->messageBus->dispatch(new GetPlayer($playerId, $gameId));
             $currentHP = $player->getHP();
-            $maxHP = $player->getMaxHP();
+            // the fountain heals only up to Valduk's heal limit: waiting for more never ends
+            $maxHP = $player->fountainHealsTo();
 
             if ($currentHP < $maxHP) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
@@ -3984,6 +3988,11 @@ final class SmartVirtualPlayer implements AiTurnTaker
             ]);
         }
         $pickupItem = $decision['wins'] && $this->wantsReward((string) ($battleInfo['reward']['type'] ?? ''), $player);
+        // A full slot needs an item given in exchange: without one the pickup threw and the fight never finished
+        $replaceItemId = null;
+        if ($pickupItem) {
+            [$pickupItem, $replaceItemId] = $this->rewardSlotChoice((string) ($battleInfo['reward']['type'] ?? ''), $player, $decision['consumableIds']);
+        }
 
         // Finalize battle
         if ($needsConsumableConfirmation) {
@@ -3994,7 +4003,7 @@ final class SmartVirtualPlayer implements AiTurnTaker
                 $battleId,
                 $selectedConsumableIds,
                 $pickupItem,
-                null,
+                $replaceItemId,
                 $decision['sacrifice'],
             );
             $actions[] = $this->createAction('finalize_battle', ['result' => $finalizeResult]);
@@ -4117,6 +4126,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
             $actions[] = $this->createAction('ai_reasoning', [
                 'decision' => 'use_spell',
                 'spell' => 'teleport',
+                // the playback carries the hero to the fountain (else the figure just jumps there)
+                'to' => $portalTarget,
                 'reason' => "Portal of Healing to {$portalTarget} (HP {$player->getHP()})",
                 'result' => $result,
             ]);
@@ -4147,10 +4158,20 @@ final class SmartVirtualPlayer implements AiTurnTaker
             chests: $this->unopenedChests($field),
         );
         if ($swapTarget !== null) {
+            // where both heroes stand: the playback trades their figures
+            $swapTo = null;
+            foreach ($this->rivalPositions($gameId, $playerId) as $rival) {
+                if ($rival['playerId'] === $swapTarget) {
+                    $swapTo = $rival['position'];
+                }
+            }
             $result = $this->apiClient->magicSwap($gameId, $playerId, $turnId, Uuid::fromString($swapTarget));
             $actions[] = $this->createAction('ai_reasoning', [
                 'decision' => 'use_skill',
                 'skill' => 'magic_swap',
+                'target' => $swapTarget,
+                'from' => $position,
+                'to' => $swapTo,
                 'reason' => "Swapping places with {$swapTarget}",
                 'result' => $result,
             ]);
@@ -4171,6 +4192,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
             $actions[] = $this->createAction('ai_reasoning', [
                 'decision' => 'use_skill',
                 'skill' => 'lightning_attack',
+                // the playback carries the hero onto the monster before the fight
+                'to' => $lightningTarget,
                 'reason' => "Striking the monster at {$lightningTarget}",
                 'result' => $result,
             ]);
@@ -4544,6 +4567,55 @@ final class SmartVirtualPlayer implements AiTurnTaker
         }
 
         return true;
+    }
+
+    /**
+     * Whether the reward fits its slot after the fight, and what goes out for it when the slot is full: the
+     * weakest item of the slot, only when the reward is better (else it stays). Spells spent in the fight leave
+     * the pack before the pickup, unless the hero keeps them (Wizard).
+     *
+     * @param list<string> $spentSpellIds
+     * @return array{0: bool, 1: ?string} pick up, the item id to give in exchange
+     */
+    private function rewardSlotChoice(string $rewardType, $player, array $spentSpellIds): array
+    {
+        $category = ItemType::tryFrom($rewardType)?->getCategory();
+        $limit = match ($category) {
+            ItemCategory::KEY => 1,
+            ItemCategory::WEAPON => 2,
+            ItemCategory::SPELL => 3,
+            default => null,
+        };
+        if ($limit === null || $player->hasRoomFor(ItemType::from($rewardType))) {
+            return [true, null];
+        }
+        $spellsKept = $player->getSkills()?->keepsSpellsInCombat() === true;
+        $items = [];
+        foreach ($player->getInventory()[$category->value] ?? [] as $item) {
+            $item = Item::fromAnything($item);
+            if ($category === ItemCategory::SPELL && !$spellsKept && \in_array($item->itemId->toString(), $spentSpellIds, true)) {
+                continue;
+            }
+            $items[] = $item;
+        }
+        if (\count($items) < $limit) {
+            return [true, null];
+        }
+        $priority = ['dagger' => 1, 'sword' => 2, 'axe' => 3, 'teleport' => 1, 'fireball' => 2];
+        $weakest = null;
+        foreach ($items as $item) {
+            if ($weakest === null || ($priority[$item->type->value] ?? 0) < ($priority[$weakest->type->value] ?? 0)) {
+                $weakest = $item;
+            }
+        }
+        if ($weakest === null || ($priority[$rewardType] ?? 0) <= ($priority[$weakest->type->value] ?? 0)) {
+            error_log('DEBUG ai.reward_left ' . json_encode(['reward' => $rewardType, 'reason' => 'slot full, nothing weaker']));
+
+            return [false, null];
+        }
+        error_log('DEBUG ai.reward_swap ' . json_encode(['reward' => $rewardType, 'gives' => $weakest->type->value]));
+
+        return [true, $weakest->itemId->toString()];
     }
 
     /**
@@ -5120,6 +5192,13 @@ final class SmartVirtualPlayer implements AiTurnTaker
 
                 return $closestEdge;
             }
+        }
+
+        // No edge one step away: the way to the nearest tile with an open side onto an empty place. Without it
+        // the AI walked to and fro between explored tiles, turn after turn, a wall away from any new tile
+        $frontierStep = $this->stepTowardsFrontier($currentPosition->toString(), $moveOptions, $field);
+        if ($frontierStep !== null) {
+            return $frontierStep;
         }
 
         $farthestOption = null;
@@ -6920,8 +6999,18 @@ final class SmartVirtualPlayer implements AiTurnTaker
     {
         $edgePositions = [];
         $placedTiles = $field->getPlacedTiles();
+        $transitions = $this->fieldTransitions($field);
 
         foreach ($positions as $position) {
+            // an open side onto an empty place: an empty place behind a wall is no edge to place a tile from
+            if ($transitions !== null) {
+                if ($this->opensOntoEmptyPlace((string) $position, $transitions, $placedTiles)) {
+                    $edgePositions[] = $position;
+                }
+
+                continue;
+            }
+
             [$x, $y] = explode(',', (string) $position);
             $x = (int) $x;
             $y = (int) $y;
@@ -6949,6 +7038,62 @@ final class SmartVirtualPlayer implements AiTurnTaker
         }
 
         return $edgePositions;
+    }
+
+    /**
+     * @return array<string, list<string>>|null the field's open sides (null for a stand-in field without them)
+     */
+    private function fieldTransitions($field): ?array
+    {
+        return \is_object($field) && method_exists($field, 'getDebugTransitions') ? $field->getDebugTransitions() : null;
+    }
+
+    /**
+     * @param array<string, list<string>> $transitions
+     * @param array<string, mixed> $placedTiles
+     */
+    private function opensOntoEmptyPlace(string $position, array $transitions, array $placedTiles): bool
+    {
+        foreach ($transitions[$position] ?? [] as $next) {
+            if (!isset($placedTiles[$next])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The first step on the shortest way to a tile with an open side onto an empty place, or null.
+     *
+     * @param list<string> $moveOptions
+     */
+    private function stepTowardsFrontier(string $from, array $moveOptions, $field): ?string
+    {
+        $transitions = $this->fieldTransitions($field);
+        if ($transitions === null) {
+            return null;
+        }
+        $placedTiles = $field->getPlacedTiles();
+        $frontier = array_values(array_filter(
+            array_map('strval', array_keys($placedTiles)),
+            fn(string $position): bool => $position !== $from && $this->opensOntoEmptyPlace($position, $transitions, $placedTiles),
+        ));
+        if ($frontier === []) {
+            error_log('DEBUG ai.frontier_none ' . json_encode(['from' => $from]));
+
+            return null;
+        }
+        $path = $this->nearestReachable($from, $frontier, $field, PHP_INT_MAX);
+        $step = $path[1] ?? null;
+        if ($step === null || !\in_array($step, $moveOptions, true)) {
+            error_log('DEBUG ai.frontier_unreachable ' . json_encode(['from' => $from, 'frontier' => $frontier, 'path' => $path]));
+
+            return null;
+        }
+        error_log('DEBUG ai.frontier_step ' . json_encode(['from' => $from, 'goal' => end($path), 'step' => $step]));
+
+        return $step;
     }
 
     /**

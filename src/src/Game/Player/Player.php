@@ -336,6 +336,19 @@ class Player extends AggregateRoot
     }
 
     /**
+     * The HP a healing fountain brings this hero to: his heal limit for Valduk "Berserk" (never less than he has),
+     * else full health. A hero at this HP gains nothing from waiting on a fountain.
+     */
+    public function fountainHealsTo(): int
+    {
+        if ($this->healLimit !== null && $this->getSkills()?->choosesHealing() === true) {
+            return max($this->hp, min(self::MAX_HP, $this->healLimit));
+        }
+
+        return $this->getMaxHp();
+    }
+
+    /**
      * Valduk "Berserk": set how many HP a heal restores at most (null = heal fully).
      *
      * @throws \DomainException
@@ -391,6 +404,13 @@ class Player extends AggregateRoot
             $category = ItemCategory::SPELL;
             $maxItems = self::MAX_SPELLS;
             $currentCount = \count($this->inventory[ItemCategory::SPELL->value] ?? []);
+        }
+
+        // Hanna "Dagger Throwing": with the weapon slots full a dagger of hers moves into a free spell slot and
+        // makes room for the new weapon (nothing is lost, so the player is not asked)
+        if (!$throwsDagger && $category === ItemCategory::WEAPON && $maxItems !== null && $currentCount >= $maxItems
+            && $this->throwDaggerAside()) {
+            $currentCount = \count($this->inventory[ItemCategory::WEAPON->value] ?? []);
         }
 
         if ($maxItems === null || $currentCount < $maxItems) {
@@ -816,7 +836,48 @@ class Player extends AggregateRoot
             return true;
         }
 
+        // Hanna "Dagger Throwing": a dagger of hers in the weapon slots may move into a free spell slot
+        if ($category === ItemCategory::WEAPON && $this->daggerToThrowAside() !== null) {
+            return true;
+        }
+
         return $maxItems === null || \count($this->inventory[$category->value] ?? []) < $maxItems;
+    }
+
+    /**
+     * Hanna "Dagger Throwing": the index of a dagger in the weapon slots that may move into a free spell slot.
+     */
+    private function daggerToThrowAside(): ?int
+    {
+        if ($this->getSkills()?->throwsDaggers() !== true
+            || \count($this->inventory[ItemCategory::SPELL->value] ?? []) >= self::MAX_SPELLS) {
+            return null;
+        }
+        foreach ($this->inventory[ItemCategory::WEAPON->value] ?? [] as $index => $weapon) {
+            if (Item::fromAnything($weapon)->type === ItemType::DAGGER) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Hanna "Dagger Throwing": move a dagger from the weapon slots into a free spell slot.
+     */
+    private function throwDaggerAside(): bool
+    {
+        $index = $this->daggerToThrowAside();
+        if ($index === null) {
+            return false;
+        }
+        $dagger = $this->inventory[ItemCategory::WEAPON->value][$index];
+        unset($this->inventory[ItemCategory::WEAPON->value][$index]);
+        $this->inventory[ItemCategory::WEAPON->value] = array_values($this->inventory[ItemCategory::WEAPON->value]);
+        $this->inventory[ItemCategory::SPELL->value][] = $dagger;
+        error_log('DEBUG player.dagger_thrown_aside ' . json_encode(['playerId' => $this->playerId->toString()]));
+
+        return true;
     }
 
     public function isAwaitingReincarnation(): bool

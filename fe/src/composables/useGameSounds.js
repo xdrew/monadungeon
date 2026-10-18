@@ -39,7 +39,6 @@ const snapshot = (game) => {
     positions: { ...(game.field?.playerPositions || {}) },
     players,
     seats: (game.players || []).length,
-    lordKarak: !!game.state.lordKarak,
     duelId: game.state.duel?.battleId || game.state.duel?.id || (game.state.duel ? 'on' : null),
   };
 };
@@ -97,7 +96,6 @@ export function useGameSounds(gameData, { isReplaying, isMine }) {
     prev = next;
     if (!before || !next || before.gameId !== next.gameId || isReplaying?.value) return;
     if (before.status !== 'finished' && next.status === 'finished') audio.sting('game_over');
-    if (!before.lordKarak && next.lordKarak) audio.sting('lord_karak');
     cuesBetween(before, next, { isMine }).forEach((id, i) => {
       if (i === 0) audio.cue(id);
       else setTimeout(() => audio.cue(id), i * STAGGER_MS);

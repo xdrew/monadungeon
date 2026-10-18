@@ -10,25 +10,36 @@
         v-for="entry in entries"
         :key="entry.player.id"
         class="party-member"
-        :class="[`party-member--${entry.state}`, { 'party-member--you': entry.isYou }]"
+        :class="[`party-member--${entry.state}`, { 'party-member--you': entry.isYou, 'party-member--cursed': entry.player.cursed && !entry.player.awaitingReincarnation }]"
         :data-player-id="entry.player.id"
       >
         <span class="party-member__numeral">{{ entry.numeral }}</span>
-        <button
-          type="button"
-          class="party-member__medallion"
-          :aria-label="t('hud.showKit', { name: entry.name })"
-          :aria-expanded="compact ? openId === entry.player.id : undefined"
-          @click="toggle(entry.player.id)"
-          @mouseenter="hoverId = entry.player.id"
-          @mouseleave="hoverId = null"
-        >
-          <img
-            :src="portrait(entry.player)"
-            :alt="entry.name"
-            @error="emit('portrait-error', $event, entry.player)"
+        <span class="party-member__portrait">
+          <button
+            type="button"
+            class="party-member__medallion"
+            :aria-label="t('hud.showKit', { name: entry.name })"
+            :aria-expanded="compact ? openId === entry.player.id : undefined"
+            @click="toggle(entry.player.id)"
+            @mouseenter="hoverId = entry.player.id"
+            @mouseleave="hoverId = null"
           >
-        </button>
+            <img
+              :src="portrait(entry.player)"
+              :alt="entry.name"
+              @error="emit('portrait-error', $event, entry.player)"
+            >
+          </button>
+          <!-- the Curse of Karak lies on the hero's portrait, big enough to be seen at a glance -->
+          <img
+            v-if="entry.player.cursed && !entry.player.awaitingReincarnation"
+            src="/images/curse.webp"
+            :alt="t('hud.cursedBadge')"
+            :title="t('game.tooltip.cursed')"
+            class="party-member__curse"
+            data-testid="curse-portrait-badge"
+          >
+        </span>
         <div class="party-member__body">
           <span class="party-member__name">{{ entry.name }}</span>
           <span class="party-member__who"><span class="party-member__who-line">
@@ -223,6 +234,45 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 
 .party-member--done {
   opacity: 0.55;
+}
+
+/* cursed: a violet ring and the token on the portrait (after --you/--acting: the curse is what matters) */
+.party-member--cursed {
+  --ring: #8a3fd0;
+  --glow: 0 0 18px rgba(160, 80, 240, 0.75);
+}
+
+.party-member--cursed.party-member--acting {
+  --glow: 0 0 26px rgba(160, 80, 240, 0.95);
+}
+
+.party-member__portrait {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+}
+
+.party-member__curse {
+  position: absolute;
+  right: calc(var(--size) * -0.18);
+  bottom: calc(var(--size) * -0.14);
+  width: calc(var(--size) * 0.55);
+  height: calc(var(--size) * 0.55);
+  pointer-events: auto;
+  filter: drop-shadow(0 0 6px rgba(170, 80, 240, 0.95)) drop-shadow(0 2px 3px #000);
+  animation: curse-throb 2.4s ease-in-out infinite;
+  transition: width var(--transition-normal), height var(--transition-normal);
+}
+
+@keyframes curse-throb {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(170, 80, 240, 0.7)) drop-shadow(0 2px 3px #000); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(170, 80, 240, 1)) drop-shadow(0 2px 3px #000); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .party-member__curse {
+    animation: none;
+  }
 }
 
 .party-member__numeral {

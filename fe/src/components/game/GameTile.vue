@@ -124,7 +124,8 @@
           :class="{
             'swap-target': swapTargetable && !isCurrentUser(player.playerId),
             'is-you': isCurrentUser(player.playerId),
-            'is-acting': player.playerId === actingPlayerId
+            'is-acting': player.playerId === actingPlayerId,
+            'is-stunned': stunnedPlayerIds.includes(player.playerId)
           }"
           :style="standeeStyle(index, allPlayerEmojis.length)"
           :title="swapTargetable && !isCurrentUser(player.playerId) ? $t('field.swapTarget') : $t('field.playerTitle', { id: player.playerId })"
@@ -138,6 +139,28 @@
             :class="isCurrentUser(player.playerId) ? 'player-image' : 'ai-player-image'"
             @error="onFigureError($event, player.playerId)"
           />
+          <!-- the Curse of Karak over the hero's head: who is cursed is seen on the field too -->
+          <img
+            v-if="cursedPlayerIds.includes(player.playerId)"
+            src="/images/curse.webp"
+            :alt="$t('hud.cursedBadge')"
+            class="standee-curse"
+            :data-testid="`standee-curse-${player.playerId}`"
+          />
+          <!-- knocked out (0 HP): the hero stands grey, stars circling over his head -->
+          <span
+            v-if="stunnedPlayerIds.includes(player.playerId)"
+            class="standee-stun"
+            :title="$t('game.stunned')"
+            :data-testid="`standee-stunned-${player.playerId}`"
+          >
+            <i
+              v-for="n in 3"
+              :key="n"
+              class="standee-stun__star"
+              :style="{ '--i': n - 1 }"
+            />
+          </span>
         </span>
       </div>
       <div
@@ -278,6 +301,16 @@ const props = defineProps({
     default: ''
   },
   allPlayerIds: {
+    type: Array,
+    default: () => []
+  },
+  /** the heroes knocked out (0 HP): their figures lie on the floor */
+  stunnedPlayerIds: {
+    type: Array,
+    default: () => []
+  },
+  /** the heroes under the Curse of Karak: the token is drawn over their figures */
+  cursedPlayerIds: {
     type: Array,
     default: () => []
   },
@@ -729,6 +762,62 @@ const onItemClick = () => {
   height: 52%;
 }
 
+/* Knocked out: the figure stands grey and dimmed, stars circling over its head */
+.hero-standee.is-stunned img:not(.standee-curse) {
+  filter: grayscale(1) brightness(0.6) drop-shadow(0 4px 4px rgba(0, 0, 0, 0.9));
+}
+
+.standee-stun {
+  position: absolute;
+  z-index: 4;
+  top: -6%;
+  left: 15%;
+  width: 70%;
+  height: 22%;
+  pointer-events: none;
+}
+
+.standee-stun__star {
+  position: absolute;
+  top: 0;
+  left: 41%;
+  width: 18%;
+  aspect-ratio: 1;
+  background: #ffd76a;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 4px rgba(255, 200, 80, 0.95));
+  animation: stun-orbit 1.6s linear infinite;
+  animation-delay: calc(var(--i) * -0.533s);
+}
+
+@keyframes stun-orbit {
+  0% { transform: translate(-200%, 0) scale(0.7); opacity: 0.7; }
+  25% { transform: translate(0, 60%) scale(1.1); opacity: 1; }
+  50% { transform: translate(200%, 0) scale(0.7); opacity: 0.7; }
+  75% { transform: translate(0, -50%) scale(0.45); opacity: 0.35; }
+  100% { transform: translate(-200%, 0) scale(0.7); opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .standee-stun__star {
+    animation: none;
+    transform: translate(calc((var(--i) - 1) * 180%), 0);
+  }
+}
+
+.hero-standee img.standee-curse {
+  position: absolute;
+  z-index: 3;
+  top: -12%;
+  right: -18%;
+  width: 52%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(170, 80, 240, 0.95)) drop-shadow(0 2px 3px #000);
+}
+
 .hero-standee img {
   position: relative;
   z-index: 1;
@@ -1127,6 +1216,31 @@ const onItemClick = () => {
   height: 34%;
   z-index: 4;
   pointer-events: none;
+}
+
+/* A hero stands on the tile: the figure would hide the feature, so it moves to the free top-right corner as a
+   medallion over the standees */
+.tile.has-player .healing-fountain-indicator,
+.tile.has-player .teleportation-gate-indicator,
+.tile.has-player .arena-indicator,
+.tile.has-player .cursed-room-indicator {
+  top: 4%;
+  left: 68%;
+  width: 28%;
+  height: 28%;
+  z-index: 9;
+  padding: 3%;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(20, 14, 10, 0.92) 62%, rgba(20, 14, 10, 0.55) 100%);
+  box-shadow: 0 0 0 1px var(--iron-edge, #8a7a66), 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.tile.has-player .arena-badge {
+  width: 16px;
+  height: 16px;
+  right: -14%;
+  bottom: -14%;
 }
 
 .healing-fountain-image,

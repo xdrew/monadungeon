@@ -22,5 +22,7 @@ final readonly class DuelLootTaken implements Event
         public Uuid $winnerId,
         public Uuid $loserId,
         public Item $item,
+        // a full pack kept its own items: the taken item leaves the loser and stays on the arena
+        public bool $leftOnArena = false,
     ) {}
 }

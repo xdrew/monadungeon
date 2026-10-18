@@ -146,6 +146,31 @@ final class AstralWalkingTest extends TestCase
         self::assertNull($this->findMessage($messages, PerformTurnAction::class), 'The fight, not the move, is recorded');
     }
 
+    #[Test]
+    public function aStepOntoAnArenaWhoseDuelIsOpenDoesNotEndTheTurn(): void
+    {
+        // the duel waits for the challenger's spells: ending the turn now would settle it without asking him
+        $tester = $this->createTester(HeroType::WARLOCK, duelInfo: ['duelId' => Uuid::v7()->toString(), 'turnId' => $this->turnId->toString(), 'phase' => 'challenger_prepare']);
+
+        [, $messages] = $tester->handle($this->movement->movePlayer(...), $this->move('1,0'));
+
+        $action = $this->findMessage($messages, PerformTurnAction::class);
+        self::assertInstanceOf(PerformTurnAction::class, $action);
+        self::assertTrue($action->deferTurnEnd, 'The duel ends the turn itself once it is over');
+    }
+
+    #[Test]
+    public function aSettledDuelOfAnotherTurnDoesNotHoldTheTurn(): void
+    {
+        $tester = $this->createTester(HeroType::WARLOCK, duelInfo: ['duelId' => Uuid::v7()->toString(), 'turnId' => Uuid::v7()->toString(), 'phase' => 'challenger_prepare']);
+
+        [, $messages] = $tester->handle($this->movement->movePlayer(...), $this->move('1,0'));
+
+        $action = $this->findMessage($messages, PerformTurnAction::class);
+        self::assertInstanceOf(PerformTurnAction::class, $action);
+        self::assertFalse($action->deferTurnEnd);
+    }
+
     private function move(string $to): MovePlayer
     {
         return new MovePlayer(
@@ -164,12 +189,16 @@ final class AstralWalkingTest extends TestCase
 
     /**
      * @param array<string, Item> $items
+     * @param array<string, mixed>|null $duelInfo
      */
-    private function createTester(?HeroType $hero, array $items = []): MessageBusTester
+    private function createTester(?HeroType $hero, array $items = [], ?array $duelInfo = null): MessageBusTester
     {
-        $field = new class ($items) {
-            /** @param array<string, Item> $items */
-            public function __construct(private readonly array $items) {}
+        $field = new class ($items, $duelInfo) {
+            /**
+             * @param array<string, Item> $items
+             * @param array<string, mixed>|null $duelInfo
+             */
+            public function __construct(private readonly array $items, private readonly ?array $duelInfo) {}
 
             /** @return array<string, list<string>> */
             public function getDebugTransitions(): array
@@ -205,9 +234,12 @@ final class AstralWalkingTest extends TestCase
                 return null;
             }
 
+            private int $duelReads = 0;
+
+            // the duel starts inside the step: the check before the move does not see it yet
             public function getDuelInfo(): ?array
             {
-                return null;
+                return $this->duelReads++ === 0 ? null : $this->duelInfo;
             }
         };
 

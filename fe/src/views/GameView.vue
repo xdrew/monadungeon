@@ -415,8 +415,13 @@
                   :key="`retreat-${option}`"
                   type="button"
                   class="portal-target btn btn--ghost btn--sm"
+                  :class="{ 'is-hovered': hoveredSkillTarget === option }"
                   :data-testid="`retreat-${option}`"
                   :disabled="loading || isRequestInProgress"
+                  @mouseenter="hoveredSkillTarget = option"
+                  @mouseleave="hoveredSkillTarget = null"
+                  @focus="hoveredSkillTarget = option"
+                  @blur="hoveredSkillTarget = null"
                   @click="handleChooseRetreat(option)"
                 >
                   {{ retreatOptionLabel(option) }}
@@ -438,8 +443,13 @@
                   :key="`lightning-${target.position}`"
                   type="button"
                   class="portal-target btn btn--ghost btn--sm"
+                  :class="{ 'is-hovered': hoveredSkillTarget === target.position }"
                   :data-testid="`lightning-target-${target.position}`"
                   :disabled="loading || isRequestInProgress"
+                  @mouseenter="hoveredSkillTarget = target.position"
+                  @mouseleave="hoveredSkillTarget = null"
+                  @focus="hoveredSkillTarget = target.position"
+                  @blur="hoveredSkillTarget = null"
                   @click="handleLightningAttack(target.position)"
                 >
                   {{ target.label }} · <GameIcon name="sword" :size="13" /> {{ target.hp }}
@@ -502,7 +512,11 @@
         class="game-finished-banner"
       >
         <span class="trophy-icon"><GameIcon name="trophy" :size="22" /></span>
-        <span class="finished-text">{{ winnerIds.length > 1 ? t('game.overShared', { who: winnerNames }) : isCurrentUserWinner() ? t('game.overYouWin') : winnerId ? t('game.overWins', { who: heroNameById(winnerId) }) : t('game.overResults') }}</span>
+        <span class="finished-lines">
+          <span class="finished-text">{{ winnerIds.length > 1 ? t('game.overShared', { who: winnerNames }) : isCurrentUserWinner() ? t('game.overYouWin') : winnerId ? t('game.overWins', { who: heroNameById(winnerId) }) : t('game.overResults') }}</span>
+          <!-- ended before the dragon: nobody could catch the leader any more -->
+          <span v-if="gameData?.state?.endReason === 'decided'" class="finished-reason">{{ t('game.overDecided') }}</span>
+        </span>
         <button
           type="button"
           class="btn btn--ghost btn--sm view-results-button"
@@ -560,53 +574,55 @@
                   :style="fieldStyles"
                 >
                   <!-- Render available move/place markers before tiles -->
-                  <AvailableMoveMarker
-                    v-for="position in gameData.state.availablePlaces.moveTo"
-                    v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isProcessingAI && !arenaChoiceForMe && gameData.state.status !== 'finished'"
-                    :key="`move-${position}`"
-                    :position="position"
-                    :x="parseInt(position.split(',')[0])"
-                    :y="parseInt(position.split(',')[1])"
-                    :player-x="currentPlayerFieldPosition?.x ?? null"
-                    :player-y="currentPlayerFieldPosition?.y ?? null"
-                    :can-place-tile="!isProcessingAI && (gameData.state.availablePlaces.placeTile.includes(position) ||
-                      (gameData.state.availablePlaces.placeTile.length === 0 &&
-                        gameData.state.deck?.remainingTiles > 0 &&
-                        !gameData.state.deck?.isEmpty &&
-                        !isFieldPlaceAlreadyTaken(position, gameData))) &&
-                      !gameData.state.deck?.isEmpty"
-                    :is-player-turn="isPlayerTurn"
-                    :can-click="isPlayerTurn && !isRequestInProgress"
-                    :is-request-in-progress="isRequestInProgress"
-                    :min-x="gameData.field.size.minX || 0"
-                    :min-y="gameData.field.size.minY || 0"
-                    :tile-size="tileSize"
-                    @click="(position) => handlePlaceClick(position)"
-                  />
+                  <template v-if="gameData.state && gameData.state.availablePlaces && !isPlacingTile && !pickedTileId && !isTeleportMode && !isReincarnationMode && !isMagicSwapMode && !isProcessingAI && !arenaChoiceForMe && gameData.state.status !== 'finished'">
+                    <AvailableMoveMarker
+                      v-for="position in gameData.state.availablePlaces.moveTo"
+                      :key="`move-${position}`"
+                      :position="position"
+                      :x="parseInt(position.split(',')[0])"
+                      :y="parseInt(position.split(',')[1])"
+                      :player-x="currentPlayerFieldPosition?.x ?? null"
+                      :player-y="currentPlayerFieldPosition?.y ?? null"
+                      :can-place-tile="!isProcessingAI && (gameData.state.availablePlaces.placeTile.includes(position) ||
+                        (gameData.state.availablePlaces.placeTile.length === 0 &&
+                          gameData.state.deck?.remainingTiles > 0 &&
+                          !gameData.state.deck?.isEmpty &&
+                          !isFieldPlaceAlreadyTaken(position, gameData))) &&
+                        !gameData.state.deck?.isEmpty"
+                      :is-player-turn="isPlayerTurn"
+                      :can-click="isPlayerTurn && !isRequestInProgress"
+                      :is-request-in-progress="isRequestInProgress"
+                      :min-x="gameData.field.size.minX || 0"
+                      :min-y="gameData.field.size.minY || 0"
+                      :tile-size="tileSize"
+                      @click="(position) => handlePlaceClick(position)"
+                    />
+                  </template>
 
                   <!-- Render healing fountain markers in teleport mode -->
                   <!-- Use healingFountainTiles from gameData to ensure ALL healing fountains are shown, excluding current position -->
-                  <div
-                    v-for="tile in teleportableHealingFountains"
-                    v-if="isTeleportMode"
-                    :key="`teleport-${tile.position}`"
-                    class="healing-fountain-marker"
-                    :style="{
-                      position: 'absolute',
-                      left: `${(tile.x - (gameData.field.size.minX || 0)) * tileSize}px`,
-                      top: `${(tile.y - (gameData.field.size.minY || 0)) * tileSize}px`,
-                      width: `${tileSize}px`,
-                      height: `${tileSize}px`,
-                      pointerEvents: 'auto',
-                      opacity: 1,
-                      cursor: 'pointer'
-                    }"
-                    @click="handleTeleportClick(tile.position)"
-                  >
-                    <div class="healing-fountain-indicator">
-                      <span class="fountain-emoji"><GameIcon name="heart" :size="40" /></span>
+                  <template v-if="isTeleportMode">
+                    <div
+                      v-for="tile in teleportableHealingFountains"
+                      :key="`teleport-${tile.position}`"
+                      class="healing-fountain-marker"
+                      :style="{
+                        position: 'absolute',
+                        left: `${(tile.x - (gameData.field.size.minX || 0)) * tileSize}px`,
+                        top: `${(tile.y - (gameData.field.size.minY || 0)) * tileSize}px`,
+                        width: `${tileSize}px`,
+                        height: `${tileSize}px`,
+                        pointerEvents: 'auto',
+                        opacity: 1,
+                        cursor: 'pointer'
+                      }"
+                      @click="handleTeleportClick(tile.position)"
+                    >
+                      <div class="healing-fountain-indicator">
+                        <span class="fountain-emoji"><GameIcon name="heart" :size="40" /></span>
+                      </div>
                     </div>
-                  </div>
+                  </template>
 
                   <!-- Standing on a teleportation gate: dashed lines to the gates it can carry the hero to -->
                   <svg
@@ -640,7 +656,7 @@
                     v-for="mark in skillTargetMarks"
                     :key="`skill-mark-${mark.position}`"
                     class="healing-fountain-marker skill-target-marker"
-                    :class="`skill-target-marker--${mark.kind}`"
+                    :class="[`skill-target-marker--${mark.kind}`, { 'is-hovered': hoveredSkillTarget === mark.position }]"
                     :data-testid="`${mark.kind}-marker-${mark.position}`"
                     :title="mark.title"
                     :style="{
@@ -652,6 +668,8 @@
                       pointerEvents: 'auto',
                       cursor: 'pointer'
                     }"
+                    @mouseenter="hoveredSkillTarget = mark.position"
+                    @mouseleave="hoveredSkillTarget = null"
                     @click="mark.kind === 'lightning' ? handleLightningAttack(mark.position) : handleChooseRetreat(mark.position)"
                   >
                     <div class="healing-fountain-indicator">
@@ -712,58 +730,61 @@
                   />
 
                   <!-- Replace the processed tiles with GameTile components -->
-                  <GameTile
-                    v-for="tile in processedTiles"
-                    v-if="processedTiles && processedTiles.length"
-                    :key="`${tile.x}-${tile.y}`"
-                    :position="tile.position"
-                    :x="tile.x"
-                    :y="tile.y"
-                    :orientation-char="tile.orientationChar"
-                    :orientation-class="tile.orientation"
-                    :orientation-symbol="getTileOrientationSymbol(tile.orientationChar, tile.isRoom)"
-                    :is-room="tile.isRoom"
-                    :is-starting-tile="tile.x === 0 && tile.y === 0"
-                    :has-player="tile.hasPlayer"
-                    :player-id="tile.playerId"
-                    :all-player-ids="tile.allPlayerIds"
-                    :player-heroes="playerHeroes"
-                    :acting-player-id="torchlightActingId"
-                    :player-emoji="getPlayerEmoji(tile.playerId)"
-                    :has-item="tile.hasItem"
-                    :item="tile.item"
-                    :item-emoji="getItemEmoji(tile.item)"
-                    :item-tooltip="getItemTooltip(tile.item)"
-                    :is-replaying="isReplaying"
-                    :current-replay-turn="currentReplayTurn"
-                    :turn-number="tile.turnNumber"
-                    :is-current-action="tile.isCurrentAction"
-                    :is-placing-animation="tile.isPlacingAnimation"
-                    :is-current-player-position="isPlayerPosition(tile.position)"
-                    :min-x="gameData.field.size.minX || 0"
-                    :min-y="gameData.field.size.minY || 0"
-                    :tile-size="tileSize"
-                    :animation-start-x="tile.animationStartX"
-                    :animation-start-y="tile.animationStartY"
-                    :is-highlighted="highlightedTile === tile"
-                    :openings="{
-                      top: hasOpening(tile.orientationChar, 'T'),
-                      right: hasOpening(tile.orientationChar, 'R'),
-                      bottom: hasOpening(tile.orientationChar, 'B'),
-                      left: hasOpening(tile.orientationChar, 'L')
-                    }"
-                    :has-healing-fountain="tile.hasHealingFountain"
-                    :has-teleportation-gate="tile.hasTeleportationGate"
-                    :has-battle-arena="tile.hasBattleArena"
-                    :has-cursed-room="tile.hasCursedRoom"
-                    :arena-used="(gameData.field.activatedArenas || []).includes(tile.position)"
-                    @highlight="highlightTile"
-                    @unhighlight="unhighlightTile"
-                    @center-view="centerViewOnTile"
-                    @item-click="handleItemClick"
-                    :swap-targetable="isMagicSwapMode && !isPlayerPosition(tile.position) && !hasUndefeatedMonster(tile.position)"
-                    @player-click="handlePlayerFigureClick"
-                  />
+                  <template v-if="processedTiles && processedTiles.length">
+                    <GameTile
+                      v-for="tile in processedTiles"
+                      :key="`${tile.x}-${tile.y}`"
+                      :position="tile.position"
+                      :x="tile.x"
+                      :y="tile.y"
+                      :orientation-char="tile.orientationChar"
+                      :orientation-class="tile.orientation"
+                      :orientation-symbol="getTileOrientationSymbol(tile.orientationChar, tile.isRoom)"
+                      :is-room="tile.isRoom"
+                      :is-starting-tile="tile.x === 0 && tile.y === 0"
+                      :has-player="tile.hasPlayer"
+                      :player-id="tile.playerId"
+                      :all-player-ids="tile.allPlayerIds"
+                      :player-heroes="playerHeroes"
+                      :cursed-player-ids="cursedPlayerIds"
+                      :stunned-player-ids="stunnedPlayerIds"
+                      :acting-player-id="torchlightActingId"
+                      :player-emoji="getPlayerEmoji(tile.playerId)"
+                      :has-item="tile.hasItem"
+                      :item="tile.item"
+                      :item-emoji="getItemEmoji(tile.item)"
+                      :item-tooltip="getItemTooltip(tile.item)"
+                      :is-replaying="isReplaying"
+                      :current-replay-turn="currentReplayTurn"
+                      :turn-number="tile.turnNumber"
+                      :is-current-action="tile.isCurrentAction"
+                      :is-placing-animation="tile.isPlacingAnimation"
+                      :is-current-player-position="isPlayerPosition(tile.position)"
+                      :min-x="gameData.field.size.minX || 0"
+                      :min-y="gameData.field.size.minY || 0"
+                      :tile-size="tileSize"
+                      :animation-start-x="tile.animationStartX"
+                      :animation-start-y="tile.animationStartY"
+                      :is-highlighted="highlightedTile === tile"
+                      :openings="{
+                        top: hasOpening(tile.orientationChar, 'T'),
+                        right: hasOpening(tile.orientationChar, 'R'),
+                        bottom: hasOpening(tile.orientationChar, 'B'),
+                        left: hasOpening(tile.orientationChar, 'L')
+                      }"
+                      :has-healing-fountain="tile.hasHealingFountain"
+                      :has-teleportation-gate="tile.hasTeleportationGate"
+                      :has-battle-arena="tile.hasBattleArena"
+                      :has-cursed-room="tile.hasCursedRoom"
+                      :arena-used="(gameData.field.activatedArenas || []).includes(tile.position)"
+                      @highlight="highlightTile"
+                      @unhighlight="unhighlightTile"
+                      @center-view="centerViewOnTile"
+                      @item-click="handleItemClick"
+                      :swap-targetable="isMagicSwapMode && !isPlayerPosition(tile.position) && !hasUndefeatedMonster(tile.position)"
+                      @player-click="handlePlayerFigureClick"
+                    />
+                  </template>
 
                   <!-- Torchlight: darkness outside the heroes' torches (visual only, under the move marks) -->
                   <TorchlightLayer
@@ -1047,13 +1068,15 @@
       :name="heroNameById(cursedRoomScene.playerId)"
       :sprite="cursedRoomSceneSprite"
       :auto-close-ms="cursedRoomSceneMine ? 0 : 2200"
+      :lost-skills="cursedRoomSceneLostSkills"
       @close="closeCursedRoomScene"
     />
 
     <!-- Karak: Regent — the current (or last) duel as a scene: the spells before the roll, the dice, the outcome -->
-    <!-- after the AI's moves are played back, not over them: they show how the rival got onto the arena -->
+    <!-- after the AI's moves are played back, not over them: they show how the rival got onto the arena; nor while
+         the AI's turn is still being played on the server (a state loaded meanwhile already has the duel) -->
     <DuelScene
-      v-if="visibleDuel && !showBattleReportModal && !isAiPlayingBack"
+      v-if="visibleDuel && !showBattleReportModal && !isAiPlayingBack && !aiTurnInFlight"
       :duel="visibleDuel"
       :players="gameData?.players || []"
       :labels="duelPanelPlayers"
@@ -1067,7 +1090,7 @@
 
     <!-- Karak: Regent, Lord Karak variant — shown once per browser when the weakest hero is transformed (after the room's die) -->
     <LordKarakRevealModal
-      v-if="visibleLordKarak && !cursedRoomScene"
+      v-if="visibleLordKarak && lordKarakReady"
       :reveal="visibleLordKarak"
       :players="duelPanelPlayers"
       @close="dismissLordKarak"
@@ -1133,7 +1156,7 @@ import { useMusicSituation } from '@/composables/useMusicSituation';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import { getTileOrientationChar, getTileOrientationClass, processTiles, getTileOrientationSymbol, parseOrientationString, hasOpening, hasMatchingDoors, getOppositeSide, isOpenedSide, getAllAdjacentPositions, getTileOrientationAt, isValidOrientation, getRequiredOpenSide, rotateGhostTile, handleInitialTileOrientation, highlightTile as highlightTileUtil, unhighlightTile as unhighlightTileUtil } from '@/utils/tileUtils';
 import { isPlayerInGame as isPlayerInGameUtil, isSecondPlayerInGame as isSecondPlayerInGameUtil, isPlayerTurn as isPlayerTurnUtil, getPlayerEmoji, joinGame as joinGameUtil, generateUUID, getPlayerReady as getPlayerReadyUtil, formatPlayerId, switchPlayer as switchPlayerUtil, autoSwitchPlayer as autoSwitchPlayerUtil } from '@/utils/playerUtils';
-import { getItemEmoji, getItemTooltip, formatItemName, handleItemClick as handleItemClickUtil, getItemImage, SPELL_TYPES, hasRoomForItem, isWorthOffering } from '@/utils/itemUtils';
+import { getItemEmoji, getItemTooltip, formatItemName, getItemImage, SPELL_TYPES, hasRoomForItem, isWorthOffering } from '@/utils/itemUtils';
 
 // Import field utility functions
 import { TILE_SIZE, calculateScrollPosition, playerIsAtPosition as isPlayerAt, getPlayerIdAtPosition as getPlayerAt, getAllPlayerIdsAtPosition as getAllPlayersAt, isPlayerPosition as isCurrentPlayerAt, getProcessedAvailablePlaces, centerViewOnCurrentPlayer as centerViewOnCurrentPlayerUtil, centerViewOnAvailablePlaces as centerViewOnAvailablePlacesUtil, scrollToPosition as scrollToPositionUtil, handlePlaceClick as handlePlaceClickUtil, isRequestActive, resetRequestLock, isItemWorthPickingUp, isFieldPlaceAlreadyTaken } from '@/utils/fieldUtils';
@@ -1152,7 +1175,7 @@ import { getMonsterEmoji as getMonsterEmojiUtil } from '@/utils/monsterUtils';
 import { closeBattleReportAndEndTurn as closeBattleReportAndEndTurnUtil, predictBattleResult } from '@/utils/battleUtils';
 
 // Import keyboard utility functions
-import { handleKeyboardEvents as handleKeyboardEventsUtil } from '@/utils/keyboardUtils';
+import { handleKeyboardEvents as handleKeyboardEventsUtil, isLetterKey } from '@/utils/keyboardUtils';
 
 // Helper function for calculating item damage values
 const getItemDamage = (item) => {
@@ -1255,6 +1278,8 @@ let onlinePlaybackActive = false;
 let onlineReloadPending = false;
 const onlinePlaybackQueue = [];
 let lastOnlineFightKey = null;
+// a reload right after a server-played turn's playback: its fights were shown already
+let suppressFightNotice = false;
 const virtualPlayerIdStored = computed(() => localStorage.getItem('virtualPlayerId') || null);
 // Debug UI (force the AI turn) shows only in dev builds: its texts live in this constant,
 // so a production build folds it to null and drops them from the bundle
@@ -1266,6 +1291,8 @@ let aiStuckTimer = null;
 const playerIsReady = ref(false);
 const gameStarted = ref(false);
 const isProcessingAI = ref(false); // Flag to block interactions during AI turn
+// the AI's turn is being played on the server: a state loaded meanwhile is ahead of the playback still to come
+const aiTurnInFlight = ref(false);
 const aiPlayback = useAiTurnPlayback();
 const isAiPlayingBack = computed(() => aiPlayback.isPlayingBack.value);
 const aiBattleOverlay = ref(null); // { position, x, y, playerDamage, monsterHP, result, monsterType }
@@ -1441,6 +1468,12 @@ const heroShortName = (player) => (player?.hero ? heroName(player.hero, 'role') 
 const figureHeroKey = (player) => (player?.lordKarak ? 'lord_karak' : player?.hero || null);
 
 // Hero per player id for the tile figures (theme portraits); the AI is dealt a hero like everyone
+// the heroes knocked out at 0 HP, drawn grey with stars (Horan waiting to reincarnate has his skull instead)
+const stunnedPlayerIds = computed(() => (gameData.value?.players || [])
+  .filter((p) => (p.hp === 0 || p.defeated === true) && !p.awaitingReincarnation).map((p) => p.id));
+// the heroes under the Curse of Karak (a hero waiting to reincarnate shows the skull instead)
+const cursedPlayerIds = computed(() => (gameData.value?.players || [])
+  .filter((p) => p.cursed && !p.awaitingReincarnation).map((p) => p.id));
 const playerHeroes = computed(() => Object.fromEntries(
   (gameData.value?.players || []).map((p) => [p.id, figureHeroKey(p)])
 ));
@@ -1673,15 +1706,15 @@ const dismissDuel = () => {
   } catch (e) {
     // localStorage unavailable - the panel is hidden for this page only
   }
-  // an AI that summoned me goes on with its turn
-  if (aiPausedForDuel) nextTick(() => checkAndHandleVirtualPlayerTurn());
+  // an AI that summoned me goes on with its turn; the AI's turn that waited for the outcome to be read starts
+  nextTick(() => checkAndHandleVirtualPlayerTurn());
 };
 
 // The challenger cannot end the turn while the arena choice or his duel is open
 const duelBlocksEndTurn = computed(() => {
   if (arenaChoiceForMe.value) return true;
   const duel = gameData.value?.state?.duel;
-  return !!duel && duel.challengerId === currentPlayerId.value && ['challenger_roll', 'opponent_roll', 'loot'].includes(duel.phase);
+  return !!duel && duel.challengerId === currentPlayerId.value && ['challenger_prepare', 'opponent_prepare', 'challenger_roll', 'opponent_roll', 'loot'].includes(duel.phase);
 });
 
 const handleChooseDuelOpponent = async (opponentId) => {
@@ -1897,6 +1930,12 @@ const cursedRoomSceneMine = computed(() => {
   if (!playerId) return false;
   return isOnline.value ? playerId === mySeatId.value : !gameData.value?.players?.find((p) => p.id === playerId)?.isAi;
 });
+// my hero's skills, told as lost when the curse falls on it
+const cursedRoomSceneLostSkills = computed(() => {
+  if (!cursedRoomSceneMine.value) return [];
+  const player = gameData.value?.players?.find((p) => p.id === cursedRoomScene.value?.playerId);
+  return (player?.heroSkills || []).map((skill) => skillText(skill).name);
+});
 const cursedRoomSceneSprite = computed(() => {
   const player = gameData.value?.players?.find((p) => p.id === cursedRoomScene.value?.playerId);
   return getHero(figureHeroKey(player)).image;
@@ -2048,6 +2087,20 @@ const gamePollingInterval = ref(null); // Interval for polling game updates
 
 // Battle modal state
 const showBattleReportModal = ref(false);
+
+// Lord Karak rises on the tile that was just entered: the tile's own scene first (the Cursed Room's die and its
+// token, the arena's rival choice and duel, a fight, the AI's playback), the reveal and its music a moment after
+const tileSceneBusy = computed(() => !!cursedRoomScene.value || !!arenaChoiceForMe.value || !!visibleDuel.value
+  || showBattleReportModal.value || isAiPlayingBack.value || aiTurnInFlight.value);
+const lordKarakReady = ref(false);
+let lordKarakTimer = null;
+watch(tileSceneBusy, (busy) => {
+  clearTimeout(lordKarakTimer);
+  lordKarakReady.value = false;
+  // the curse token's flight to the hero's card takes under a second
+  if (!busy) lordKarakTimer = setTimeout(() => { lordKarakReady.value = true; }, 1000);
+}, { immediate: true });
+onUnmounted(() => clearTimeout(lordKarakTimer));
 const battleInfo = ref(null);
 const battleReportModalRef = ref(null);
 const skipBattleModalReshow = ref(false);
@@ -2192,9 +2245,6 @@ const canStartGame = computed(() => {
 const fieldStyles = computed(() => {
   if (!gameData.value || !gameData.value.field) return {};
 
-  // Fixed tile size (TILE_SIZE)
-  tileSize.value = TILE_SIZE;
-
   // Get field dimensions based on tile positions
   let fieldWidth, fieldHeight;
 
@@ -2276,16 +2326,6 @@ const isPlayerTurn = computed(() => {
   const humanPlayerId = localStorage.getItem('humanPlayerId');
   const virtualPlayerId = localStorage.getItem('virtualPlayerId');
   
-  // Debug logging
-  if (serverCurrentPlayerId) {
-
-
-
-
-
-
-  }
-  
   // If it's the AI's turn, return false (not player's turn)
   if (virtualPlayerId && serverCurrentPlayerId === virtualPlayerId) {
 
@@ -2295,15 +2335,6 @@ const isPlayerTurn = computed(() => {
   // Check if it's actually the human player's turn
   // Use the stable humanPlayerId, not currentPlayerId which changes
   const isHumanTurn = humanPlayerId && serverCurrentPlayerId === humanPlayerId;
-  
-  // IMPORTANT: Only clear isProcessingAI if we're CERTAIN it's the human's turn
-  // and the virtual player check above didn't match
-  if (isHumanTurn && isProcessingAI.value && (!virtualPlayerId || serverCurrentPlayerId !== virtualPlayerId)) {
-
-    isProcessingAI.value = false;
-    aiTurnInProgress = false;
-    aiExecutionPromise = null;
-  }
   
   // Block interactions if AI is processing
   if (isProcessingAI.value) {
@@ -2673,9 +2704,12 @@ const applyAiPlayerMovement = (action, playerId) => {
   const to = result.to;
   if (!to) return;
 
-  // Update player position in game data
+  // Update player position in game data (Magic Swap: the rival takes the hero's old tile)
   if (gameData.value?.field?.playerPositions) {
     gameData.value.field.playerPositions[playerId] = to;
+    if (result.swapWith?.playerId && result.swapWith.to) {
+      gameData.value.field.playerPositions[result.swapWith.playerId] = result.swapWith.to;
+    }
   }
 
   // Also update in players array if present
@@ -2699,6 +2733,24 @@ let aiExecutionInProgressForTurn = null;
 let aiExecutionPromise = null;
 // Track if AI turn is in progress
 let aiTurnInProgress = false;
+
+// A game with AI: the AI flags still set while the server says it is certainly the human's turn are cleared
+watch(
+  () => {
+    const state = gameData.value?.state;
+    if (!state || isOnline.value || !gameData.value?.players?.some((p) => p.isAi === true)) return false;
+    const humanPlayerId = localStorage.getItem('humanPlayerId');
+    return isProcessingAI.value && !!humanPlayerId && state.currentPlayerId === humanPlayerId
+      && state.currentPlayerId !== localStorage.getItem('virtualPlayerId');
+  },
+  (stale) => {
+    if (!stale) return;
+    isProcessingAI.value = false;
+    aiTurnInProgress = false;
+    aiExecutionPromise = null;
+  },
+  { flush: 'sync' },
+);
 
 // Check if current player is virtual and handle their turn
 const checkAndHandleVirtualPlayerTurn = async () => {
@@ -2763,6 +2815,13 @@ const checkAndHandleVirtualPlayerTurn = async () => {
       aiPausedForDuel = false;
     }
 
+    // A duel's outcome is still on screen (a duel ends the challenger's turn): the AI starts once it is closed,
+    // else its turn hid the outcome and could open the next duel right over it
+    if (visibleDuel.value?.phase === 'done') {
+      console.info('[duel] the AI waits until the duel outcome is closed');
+      return;
+    }
+
     // Check if we already executed this turn
     if (lastExecutedAITurn === currentTurnNumber) {
 
@@ -2813,12 +2872,13 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     }, 10000);
     
     // Create a promise for the AI execution
-    aiExecutionPromise = new Promise(async (resolve) => {
+    aiExecutionPromise = (async () => {
       try {
         // Add a small delay
         await new Promise(timeout => setTimeout(timeout, 1000));
         
 
+        aiTurnInFlight.value = true;
         const response = await gameApi.executeVirtualPlayerTurn(id.value, currentPlayer);
         
         if (response.success) {
@@ -2841,6 +2901,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
             });
             clearAiBattleOverlay();
           }
+          aiTurnInFlight.value = false;
 
           // Sync to authoritative final state
           await loadGameData(false);
@@ -2884,6 +2945,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
         console.error('Error executing AI turn:', error);
         isProcessingAI.value = false;
       } finally {
+        aiTurnInFlight.value = false;
         // Clear the execution flag for this turn
         if (aiExecutionInProgressForTurn === currentTurnNumber) {
           aiExecutionInProgressForTurn = null;
@@ -2896,11 +2958,8 @@ const checkAndHandleVirtualPlayerTurn = async () => {
           aiStuckTimer = null;
         }
         aiStuckDetected.value = false;
-        
-
-        resolve();
       }
-    });
+    })();
     
     // Wait for completion
     await aiExecutionPromise;
@@ -2915,18 +2974,29 @@ const checkAndHandleVirtualPlayerTurn = async () => {
 // ===== Online play: what the server pushes for this game =====
 // Another seat fought: a short notice with the chronicle's sentence (the field and the log update by themselves)
 const noticeOpponentFight = (data) => {
-  const turns = data?.turns || [];
-  const turn = turns.find((tr) => tr.turnId === data?.state?.currentTurnId)
-    || [...turns].sort((a, b) => (b.turnNumber || 0) - (a.turnNumber || 0))[0];
-  const actions = Array.isArray(turn?.actions) ? turn.actions : [];
-  const index = actions.map((a) => a?.action || a?.type).lastIndexOf('fight_monster');
-  if (index < 0) return;
+  // the latest fight of the game: a fight usually ends its turn, so by the time the state comes the current turn
+  // is already the next player's (looking only there missed every rival's fight)
+  const turns = [...(data?.turns || [])].sort((a, b) => (b.turnNumber || 0) - (a.turnNumber || 0));
+  let turn = null;
+  let index = -1;
+  for (const candidate of turns) {
+    const found = (Array.isArray(candidate.actions) ? candidate.actions : []).map((a) => a?.action || a?.type).lastIndexOf('fight_monster');
+    if (found >= 0) {
+      turn = candidate;
+      index = found;
+      break;
+    }
+  }
+  if (!turn) return;
+  const actions = turn.actions;
   const key = `${turn.turnId || turn.turnNumber}:${index}`;
   const first = lastOnlineFightKey === null;
   if (key === lastOnlineFightKey) return;
   lastOnlineFightKey = key;
-  // the first state of the page shows the field as it is; my own fights have their own scene
-  if (first || turn.playerId === mySeatId.value) return;
+  // the first state of the page shows the field as it is; my own fights have their own scene; an AI seat's
+  // fights are played back with its turn (ai.turn)
+  const fighter = data.players?.find((p) => p.id === turn.playerId);
+  if (first || suppressFightNotice || turn.playerId === mySeatId.value || fighter?.isAi) return;
   const nameOf = (playerId) => {
     const player = data.players?.find((p) => p.id === playerId);
     return player ? playerDisplayName(player, data.players) : t('common.unknown');
@@ -2980,7 +3050,14 @@ const playOnlineAiTurn = async (message) => {
         clearAiBattleOverlay();
       }
       // the state after this turn before the next one (stand-in turns can come one after another)
-      if (onlinePlaybackQueue.length) await loadGameData(false, { force: true });
+      if (onlinePlaybackQueue.length) {
+        suppressFightNotice = true;
+        try {
+          await loadGameData(false, { force: true });
+        } finally {
+          suppressFightNotice = false;
+        }
+      }
     }
   } catch (err) {
     console.error('[online] the playback failed:', err);
@@ -2988,7 +3065,13 @@ const playOnlineAiTurn = async (message) => {
     onlinePlaybackActive = false;
     onlineReloadPending = false;
     isProcessingAI.value = false;
-    await loadGameData(false, { force: true });
+    // its fights were just played back (a stand-in plays a human seat): the state after it shows them no more
+    suppressFightNotice = true;
+    try {
+      await loadGameData(false, { force: true });
+    } finally {
+      suppressFightNotice = false;
+    }
   }
 };
 
@@ -3150,8 +3233,6 @@ const loadGameData = async (showLoading = true, { force = false } = {}) => {
 
 
         isProcessingAI.value = true;
-      } else {
-
       }
       
       // Simply call checkAndHandleVirtualPlayerTurn - it will handle all the logic
@@ -3165,8 +3246,6 @@ const loadGameData = async (showLoading = true, { force = false } = {}) => {
         isProcessingAI.value = false;
         aiExecutionInProgressForTurn = null;
         aiExecutionPromise = null;
-      } else {
-
       }
     }
     
@@ -3212,8 +3291,6 @@ const loadGameData = async (showLoading = true, { force = false } = {}) => {
 
         skipBattleModalReshow.value = false; // Reset the flag for future battles
       }
-    } else {
-
     }
 
     // Karak: Regent — the summoned rival rolls in this browser
@@ -3526,7 +3603,7 @@ const unhighlightTile = () => {
 const startGame = async () => {
   try {
     // Call the extracted startGame utility function
-    const result = await doStartGame(
+    await doStartGame(
       id.value,
       gameApi,
       updateGameDataSelectively,
@@ -3536,10 +3613,6 @@ const startGame = async () => {
       (value) => gameStarted.value = value
     );
 
-    // The utility function handles all the logic and error handling
-    if (result && result.success) {
-
-    }
   } catch (err) {
     console.error('Failed to start game:', err);
     // Error is already set in the utility function
@@ -4360,8 +4433,6 @@ const handlePlaceClick = async (position) => {
         await loadGameData(false);
       } else if (isPlayerTurn.value) {
         showItemPickupDialog.value = true;
-      } else {
-
       }
     }
   } else if (!response?.battleInfo && !response?.tilePicked && !response?.tilePlaced) {
@@ -4589,7 +4660,7 @@ const handleKeyboardControls = (e) => {
 
   // If we have a picked tile, handle its movement
   if (pickedTileId.value && pickedTile.value && isPlacingTile.value) {
-    if (e.key === 'r') {
+    if (isLetterKey(e, 'r')) {
       rotateGhostTileLocal();
       e.preventDefault();
     } else if (e.key === 'Enter') {
@@ -4977,7 +5048,7 @@ const replaceItem = async () => {
     turnId: currentTurnId,
     loadGameData,
     keepTurn: inventoryFullKeepsTurn.value,
-    heroPosition: gameData.value?.field?.playerPositions?.[currentPlayerId.value] || null,
+    heroPosition: pickupPosition() || null,
     // the dialog stays open: the player can try again or leave the find
     onError: (message) => showActionNotice(message)
   });
@@ -5146,29 +5217,7 @@ const handleItemClick = async (itemData) => {
       tileItem.value = itemData.item;
       itemPickupTurnId.value = gameData.value?.state?.currentTurnId;
       showItemPickupDialog.value = true;
-    } else {
-
     }
-    return;
-
-    // The original code below will only run if we don't show the dialog
-    await handleItemClickUtil({
-      itemData,
-      isPlayerTurn,
-      gameData,
-      currentPlayerId,
-      loading,
-      loadingStatus,
-      error,
-      gameApi,
-      gameId: id.value,
-      showInventoryFullDialog,
-      droppedItem,
-      itemCategory,
-      maxItemsInCategory,
-      inventoryForCategory,
-      loadGameData
-    });
   } catch (err) {
     // Handle missing key error specifically
     if (err.message && err.message.startsWith('MISSING_KEY:')) {
@@ -5187,17 +5236,7 @@ const handlePickItemAndEndTurn = async () => {
   try {
     const currentTurnId = gameData.value?.state?.currentTurnId;
     
-    // Determine the position where the item is located
-    let itemPosition;
-    
-    // If this is a battle reward, use the battle position
-    if (battleInfo.value && battleInfo.value.result === 'win' && battleInfo.value.position) {
-      itemPosition = battleInfo.value.position;
-
-    } else {
-      // Otherwise, use the player's current position
-      itemPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
-    }
+    const itemPosition = pickupPosition();
 
     if (!currentTurnId || !itemPosition) {
       console.error('Missing turn ID or item position');
@@ -5261,7 +5300,8 @@ const handlePickItemAndEndTurn = async () => {
           inventoryFullKeepsTurn.value = lastBattleUnstoppable();
           isInventoryFullAfterBattle.value = !inventoryFullKeepsTurn.value;
           showInventoryFullDialog.value = true;
-          droppedItem.value = response.item;
+          // the reward lies on the fight's tile: the loaded positions may still show the tile the hero came from
+          droppedItem.value = { ...response.item, position: itemPosition };
           itemCategory.value = response.itemCategory;
           maxItemsInCategory.value = response.maxItemsInCategory;
           inventoryForCategory.value = response.currentInventory || [];
@@ -5275,7 +5315,8 @@ const handlePickItemAndEndTurn = async () => {
         inventoryFullKeepsTurn.value = lastBattleUnstoppable();
         isInventoryFullAfterBattle.value = !inventoryFullKeepsTurn.value;
         showInventoryFullDialog.value = true;
-        droppedItem.value = response.item;
+        // the reward lies on the fight's tile: the loaded positions may still show the tile the hero came from
+        droppedItem.value = { ...response.item, position: itemPosition };
         itemCategory.value = response.itemCategory;
         maxItemsInCategory.value = response.maxItemsInCategory;
         inventoryForCategory.value = response.currentInventory || [];
@@ -5317,11 +5358,20 @@ const handlePickItemAndEndTurn = async () => {
   }
 };
 
+// Where the item to pick up lies: a won fight's reward on the fight's tile (the loaded positions may still show the
+// tile the hero came from until the state is reloaded), else the hero's own tile
+const pickupPosition = () => {
+  if (battleInfo.value && battleInfo.value.result === 'win' && battleInfo.value.position) {
+    return battleInfo.value.position;
+  }
+  return gameData.value?.field?.playerPositions?.[currentPlayerId.value];
+};
+
 // Function to handle picking up item with replacement
 const handlePickItemWithReplacement = async (itemIdToReplace) => {
   try {
     const currentTurnId = gameData.value?.state?.currentTurnId;
-    const playerPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
+    const playerPosition = pickupPosition();
 
     if (!currentTurnId || !playerPosition) {
       console.error('Missing turn ID or player position');
@@ -5627,8 +5677,6 @@ const handleFinalizeBattle = async (finalizeBattleData) => {
         playerId: currentPlayerId.value,
         turnId: currentTurnId
       });
-    } else {
-
     }
 
     // Close modal and clear loading before refreshing (loadGameData auto-triggers AI turn)
@@ -5680,19 +5728,9 @@ const handleAutoItemPickup = async () => {
     loading.value = true;
     loadingStatus.value = 'Picking up item...';
 
-    // Determine the position where the item is located
-    let itemPosition;
-    
-    // If this is a battle reward, use the battle position
-    if (battleInfo.value && battleInfo.value.result === 'win' && battleInfo.value.position) {
-      itemPosition = battleInfo.value.position;
-
-    } else {
-      // Otherwise, use the player's current position
-      itemPosition = gameData.value?.field?.playerPositions?.[currentPlayerId.value];
-      if (!itemPosition) {
-        throw new Error('Player has no position');
-      }
+    const itemPosition = pickupPosition();
+    if (!itemPosition) {
+      throw new Error('Player has no position');
     }
 
     // Use the turn ID that was stored when the dialog was shown
@@ -5839,8 +5877,6 @@ const skipItemAndEndTurn = async () => {
     } catch (err) {
       console.error('Failed to auto-end turn:', err);
     }
-  } else {
-
   }
 };
 
@@ -6110,6 +6146,11 @@ const skillTargetMarks = computed(() => {
   if (isLightningMode.value) return lightningTargets.value.map((target) => at(target.position, 'lightning', target.label));
   if (retreatChoiceForMe.value) return (retreatChoiceForMe.value.options || []).map((option) => at(option, 'retreat', retreatOptionLabel(option)));
   return [];
+});
+// The target under the pointer, in the plaque's list or on the field: both light up together
+const hoveredSkillTarget = ref(null);
+watch(skillTargetMarks, (marks) => {
+  if (!marks.some((mark) => mark.position === hoveredSkillTarget.value)) hoveredSkillTarget.value = null;
 });
 const handleChooseRetreat = async (position) => {
   if (isRequestInProgress.value) return;
@@ -6479,14 +6520,6 @@ const forceAITurn = async () => {
 onMounted(() => {
   // Existing mounted code...
 
-  // Add watcher for debugging deck and place tile issues
-  watch(() => gameData.value?.state?.availablePlaces?.placeTile, (newValue) => {
-    if (newValue) {
-
-
-    }
-  });
-
   // Enhanced watch function for debugging
   watch(() => gameData.value?.state?.availablePlaces, (newValue) => {
     if (newValue) {
@@ -6671,6 +6704,11 @@ watch(() => (gameData.value?.players || []).map((p) => `${p.id}:${p.hp}`).join('
   const was = Object.fromEntries(before.split('|').map((entry) => entry.split(':')));
   for (const player of gameData.value?.players || []) {
     if (player.hp === 0 && Number(was[player.id]) > 0 && !player.isAi && !isVirtualPlayer(player.id) && !player.awaitingReincarnation) {
+      // online the screen is one player's: a rival knocked out is told in a line, not with "you lose your next turn"
+      if (isOnline.value && player.id !== mySeatId.value) {
+        showActionNotice(t('game.notice.rivalStunned', { who: heroNameById(player.id) }), 'notice');
+        continue;
+      }
       knockedOutPlayer.value = player;
       knockedOut.value = true;
     }
@@ -7151,6 +7189,19 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
   color: var(--color-primary);
 }
 
+.game-finished-banner .finished-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.game-finished-banner .finished-reason {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
 .game-finished-banner .finished-text {
   font-family: var(--font-display);
   font-size: 24px;
@@ -7343,6 +7394,26 @@ watch(() => gameData.value?.state?.currentPlayerId, (newPlayerId, oldPlayerId) =
 
 .skill-target-marker .healing-fountain-indicator {
   color: var(--color-primary);
+  transition: transform var(--transition-fast, 0.15s);
+}
+
+/* the target pointed at in the plaque's list (or on the field itself) */
+.healing-fountain-marker.skill-target-marker.is-hovered {
+  z-index: 101 !important;
+  border: 3px solid var(--color-primary-hover);
+  background: radial-gradient(circle, rgba(var(--ember-rgb), 0.38) 0%, rgba(var(--ember-rgb), 0.06) 75%);
+  box-shadow: inset 0 0 40px rgba(255, 140, 40, 0.7), 0 0 28px rgba(var(--ember-rgb), 0.85);
+  animation: none;
+}
+
+.skill-target-marker.is-hovered .healing-fountain-indicator {
+  transform: scale(1.3);
+}
+
+.portal-target.is-hovered:not(:disabled) {
+  border-color: var(--color-primary-hover);
+  color: var(--text-primary);
+  background: rgba(var(--ember-rgb), 0.12);
 }
 
 .portal-target__where {

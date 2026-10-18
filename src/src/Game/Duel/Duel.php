@@ -106,7 +106,7 @@ class Duel extends AggregateRoot
     #[Column(type: Types::STRING, nullable: true)]
     private ?string $reincarnatedTo = null;
 
-    /** @var array{itemId: string, type: string, name: string}|null */
+    /** @var array{itemId: string, type: string, name: string, leftOnArena?: bool}|null */
     #[Column(type: JsonType::class, columnDefinition: 'jsonb', nullable: true)]
     private ?array $loot = null;
 
@@ -368,17 +368,22 @@ class Duel extends AggregateRoot
         // A full pack takes the item in exchange for one of its own, which is left on the arena
         $winner = $messageContext->dispatch(new GetPlayer($winnerId));
         $dropped = null;
+        $leftOnArena = false;
         if (!$winner->hasRoomFor($item->type)) {
             if ($command->replaceItemId === null) {
                 throw new \DomainException('No room for this item: choose one of yours to leave');
             }
-            $dropped = self::ownItemOfSlot($winner, $item, $command->replaceItemId);
-            if ($dropped === null) {
-                throw new \DomainException('The item to leave must be yours and of the same kind');
+            // the winner keeps his own items: the taken one is left on the arena, the loser loses it all the same
+            $leftOnArena = $command->replaceItemId->equals($item->itemId);
+            if (!$leftOnArena) {
+                $dropped = self::ownItemOfSlot($winner, $item, $command->replaceItemId);
+                if ($dropped === null) {
+                    throw new \DomainException('The item to leave must be yours and of the same kind');
+                }
             }
         }
 
-        $this->transferLoot($item, $messageContext, $dropped);
+        $this->transferLoot($item, $messageContext, $dropped, $leftOnArena);
         $this->phase = DuelPhase::DONE;
 
         // The turn log belongs to the turn's hero (the challenger); `by` is who took it (the summoned winner too)
@@ -395,6 +400,7 @@ class Duel extends AggregateRoot
                     'from' => $this->loserId?->toString(),
                     'by' => $command->playerId->toString(),
                     'dropped' => $dropped?->type->value,
+                    'leftOnArena' => $leftOnArena,
                 ],
             ));
         } catch (\RuntimeException) {
@@ -819,7 +825,7 @@ class Duel extends AggregateRoot
     /**
      * The event first (the Field marks the item so it is not dropped on the arena), then the inventories.
      */
-    private function transferLoot(Item $item, MessageContext $messageContext, ?Item $dropped = null): void
+    private function transferLoot(Item $item, MessageContext $messageContext, ?Item $dropped = null, bool $leftOnArena = false): void
     {
         $winnerId = $this->winnerId();
         $loserId = $this->loserId;
@@ -833,13 +839,17 @@ class Duel extends AggregateRoot
             winnerId: $winnerId,
             loserId: $loserId,
             item: $item,
+            leftOnArena: $leftOnArena,
         ));
         $messageContext->dispatch(new RemoveItemFromInventory(
             gameId: $this->gameId,
             playerId: $loserId,
             itemId: $item->itemId,
         ));
-        if ($dropped !== null) {
+        if ($leftOnArena) {
+            // out of the loser's pack and onto the arena, where both heroes stand (the Field places it)
+            error_log('INFO duel.loot_left_on_arena ' . json_encode(['duelId' => $this->duelId->toString(), 'item' => $item->type->value]));
+        } elseif ($dropped !== null) {
             // the winner's own item leaves the pack and stays on the arena (the Field places what leaves a pack)
             $messageContext->dispatch(new ReplaceInventoryItem(
                 playerId: $winnerId,
@@ -855,7 +865,7 @@ class Duel extends AggregateRoot
             ));
         }
 
-        $this->loot = self::summary($item);
+        $this->loot = self::summary($item) + ($leftOnArena ? ['leftOnArena' => true] : []);
         $this->lootCandidates = [];
     }
 }

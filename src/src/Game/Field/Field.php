@@ -589,8 +589,11 @@ class Field extends AggregateRoot
     #[Handler]
     public function onDuelLootTaken(DuelLootTaken $event): void
     {
-        // The item changes hands: it must not be dropped on the arena when it leaves the loser's inventory
-        $this->consumedItemIds[] = $event->item->itemId->toString();
+        // The item changes hands: it must not be dropped on the arena when it leaves the loser's inventory (unless the
+        // winner's full pack left it there)
+        if (!$event->leftOnArena) {
+            $this->consumedItemIds[] = $event->item->itemId->toString();
+        }
 
         if (!$this->isCurrentDuel($event->duelId)) {
             return;
@@ -601,7 +604,7 @@ class Field extends AggregateRoot
             'itemId' => $event->item->itemId->toString(),
             'type' => $event->item->type->value,
             'name' => $event->item->name->value,
-        ];
+        ] + ($event->leftOnArena ? ['leftOnArena' => true] : []);
         $info['lootCandidates'] = [];
         $info['phase'] = $this->laterPhase($info['phase'] ?? null, DuelPhase::DONE);
         $this->duelInfo = $info;
@@ -2339,6 +2342,34 @@ class Field extends AggregateRoot
         }
 
         return false;
+    }
+
+    /**
+     * The points still to be won on the field once nothing new can come into play, or null while something can:
+     * a tile is still in the deck or waits to be placed, or a Battle Arena is still to be activated (a duel takes a
+     * treasure from the leader). The points are the treasures lying on the field, the dragon's ruby among them.
+     */
+    public function pointsLeftInPlay(MessageContext $context): ?int
+    {
+        if ($this->unplacedTile !== null || !$context->dispatch(new GetDeck($this->gameId))->isEmpty()) {
+            return null;
+        }
+        $activated = array_map(static fn(FieldPlace $arena): string => $arena->toString(), $this->activatedArenas);
+        foreach (array_keys($this->tiles) as $position) {
+            if (\in_array((string) $position, $activated, true)) {
+                continue;
+            }
+            if ($this->tileAt(FieldPlace::fromString((string) $position), $context)?->hasFeature(TileFeature::BATTLE_ARENA) === true) {
+                return null;
+            }
+        }
+
+        $points = 0;
+        foreach ($this->items as $item) {
+            $points += Item::fromAnything($item)->treasureValue;
+        }
+
+        return $points;
     }
 
     /**

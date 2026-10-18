@@ -65,6 +65,17 @@
           <img v-if="getItemImage(own)" :src="getItemImage(own)" :alt="itemName(own)" class="duel-loot-img">
           <span>{{ itemName(own) }}</span>
         </button>
+        <!-- or keep my own items: the taken one stays on the arena, the loser loses it all the same -->
+        <button
+          type="button"
+          class="duel-loot-item duel-loot-item--left"
+          :disabled="disabled"
+          data-testid="duel-leave-loot"
+          @click="leave(swapFor)"
+        >
+          <img v-if="getItemImage(swapFor)" :src="getItemImage(swapFor)" :alt="itemName(swapFor)" class="duel-loot-img">
+          <span>{{ $t('dialogs.duel.leaveLoot') }}</span>
+        </button>
       </div>
       <button type="button" class="duel-swap-back" data-testid="duel-swap-back" @click="swapFor = null">
         {{ $t('common.cancel') }}
@@ -168,6 +179,7 @@ const canPickLoot = computed(() => props.duel.phase === 'loot'
 
 const lootText = computed(() => {
   if (!props.duel.result || props.duel.result === 'tie') return '';
+  if (props.duel.loot?.leftOnArena) return t('dialogs.duel.leftOnArena', { who: nameOf(winnerId.value), item: itemName(props.duel.loot, 'acc') });
   if (props.duel.loot) return t('dialogs.duel.takes', { who: nameOf(winnerId.value), item: itemName(props.duel.loot, 'acc') });
   if (props.duel.phase === 'done') return t('dialogs.duel.nothing');
   return '';
@@ -233,6 +245,12 @@ const leave = (own) => {
 
 .duel-loot-item--swap {
   border-style: dashed;
+}
+
+/* the taken item itself, left on the arena: set apart from the winner's own items */
+.duel-loot-item--left {
+  border-style: dashed;
+  opacity: 0.9;
 }
 
 .duel-loot-swap {

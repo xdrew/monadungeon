@@ -3,6 +3,15 @@
  */
 
 /**
+ * A letter hotkey by the key's place on the keyboard, not by the letter it types: R rotates in a Russian or
+ * Polish layout too, and with Caps Lock on (`e.code` is the physical key; `e.key` is the fallback)
+ * @param {KeyboardEvent} e
+ * @param {string} letter - a Latin letter, as on an English layout
+ */
+export const isLetterKey = (e, letter) => e.code === `Key${letter.toUpperCase()}`
+  || String(e.key || '').toLowerCase() === letter.toLowerCase();
+
+/**
  * Handles keyboard events for game controls
  * @param {Object} params - Parameters for handling keyboard events
  * @param {Event} params.e - The keyboard event
@@ -75,7 +84,7 @@ export const handleKeyboardEvents = ({
 
   // If we have a picked tile, handle its movement
   if (pickedTileIdValue && pickedTileValue && isPlacingTileValue) {
-    if (e.key === 'r') {
+    if (isLetterKey(e, 'r')) {
       rotateGhostTileLocal();
       e.preventDefault();
     } else if (e.key === 'Enter') {

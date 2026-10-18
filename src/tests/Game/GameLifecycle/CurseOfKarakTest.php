@@ -285,6 +285,13 @@ final class CurseOfKarakTest extends TestCase
                     return false;
                 }
             },
+            // tiles still in the deck: the outcome is open
+            static fn(\App\Game\Field\GetField $_query): object => new class () {
+                public function pointsLeftInPlay(): ?int
+                {
+                    return null;
+                }
+            },
         );
     }
 

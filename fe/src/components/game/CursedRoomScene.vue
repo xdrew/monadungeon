@@ -66,6 +66,29 @@
         >
           {{ event.transfer ? t('curseScene.transferred', { who: name }) : event.alreadyCursed ? t('curseScene.already', { who: name }) : event.cursed ? t('curseScene.cursed', { who: name }) : t('curseScene.spared', { who: name }) }}
         </p>
+        <!-- my hero just got the curse: what it takes away, the skills shown with the curse over them -->
+        <div
+          v-if="stage === 'done' && lostSkills.length && (event.transfer || (event.cursed && !event.alreadyCursed))"
+          class="curse-scene__lost"
+          data-testid="cursed-room-lost-skills"
+        >
+          <p class="curse-scene__lost-title">
+            {{ t('curseScene.lost') }}
+          </p>
+          <ul class="curse-scene__lost-list">
+            <li
+              v-for="skill in lostSkills"
+              :key="skill"
+              class="curse-scene__lost-skill"
+            >
+              <span>{{ skill }}</span>
+              <img
+                src="/images/curse.webp"
+                alt=""
+              >
+            </li>
+          </ul>
+        </div>
         <button
           v-if="stage === 'done'"
           type="button"
@@ -94,6 +117,8 @@ const props = defineProps({
   sprite: { type: String, required: true },
   /** the scene closes by itself after this many ms once told (0: waits for the button) */
   autoCloseMs: { type: Number, default: 0 },
+  /** my hero's skill names: told as lost when the curse falls on my hero (empty for someone else's hero) */
+  lostSkills: { type: Array, default: () => [] },
 });
 const emit = defineEmits(['close']);
 const { t } = useI18n();
@@ -291,6 +316,56 @@ function close() {
   text-align: center;
   color: var(--text-heading);
   animation: curseOutcomeIn 0.35s ease-out;
+}
+
+.curse-scene__lost {
+  max-width: 420px;
+  padding: 10px 14px;
+  border: 1px solid rgba(160, 90, 220, 0.55);
+  background: rgba(60, 20, 90, 0.45);
+  text-align: center;
+  animation: curseOutcomeIn 0.35s ease-out;
+}
+
+.curse-scene__lost-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #e6d2ff;
+}
+
+.curse-scene__lost-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.curse-scene__lost-skill {
+  position: relative;
+  padding: 4px 30px 4px 10px;
+  border: 1px solid rgba(160, 90, 220, 0.5);
+  background: repeating-linear-gradient(-45deg, rgba(110, 50, 160, 0.25) 0 6px, transparent 6px 14px);
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.curse-scene__lost-skill span {
+  text-decoration: line-through;
+  text-decoration-color: rgba(190, 110, 255, 0.95);
+  text-decoration-thickness: 2px;
+}
+
+.curse-scene__lost-skill img {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  width: 26px;
+  height: 26px;
+  transform: translateY(-50%) rotate(-10deg);
+  filter: drop-shadow(0 0 4px rgba(170, 80, 240, 0.9));
 }
 
 .curse-scene--cursed .curse-scene__outcome {

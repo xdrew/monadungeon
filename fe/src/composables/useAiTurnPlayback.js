@@ -22,15 +22,35 @@ const VISUALIZABLE_TYPES = new Set([
 const BASE_DELAYS = {
   place_tile: 1500,
   move_player: 1000,
+  portal: 1500,
+  magic_swap: 1500,
+  lightning: 1200,
   battle: 2000,
   cursed_room: 2000,
   pickup: 800,
   end_turn: 500,
 };
 
+// The AI's jumps: spells and skills that carry its hero (the AI logs them as its reasoning)
+const JUMP_TYPES = new Set(['portal', 'magic_swap', 'lightning']);
+function jumpStep(action) {
+  const d = action.details || {};
+  if (action.type !== 'ai_reasoning' || !d.to || !d.result?.success) return action;
+  if (d.decision === 'use_spell' && d.spell === 'teleport') {
+    return { type: 'portal', details: { result: { to: d.to } } };
+  }
+  if (d.decision === 'use_skill' && d.skill === 'magic_swap') {
+    return { type: 'magic_swap', details: { result: { to: d.to, swapWith: d.from ? { playerId: d.target, to: d.from } : null } } };
+  }
+  if (d.decision === 'use_skill' && d.skill === 'lightning_attack') {
+    return { type: 'lightning', details: { result: { to: d.to } } };
+  }
+  return action;
+}
+
 function getActionCategory(type) {
   if (type === 'place_tile') return 'place_tile';
-  if (type === 'move_player') return 'move_player';
+  if (type === 'move_player' || JUMP_TYPES.has(type)) return 'move_player';
   if (type === 'battle' || type === 'battle_detected' || type === 'finalize_battle') return 'battle';
   if (type === 'end_turn') return 'end_turn';
   if (type === 'cursed_room') return 'cursed_room';
@@ -65,6 +85,12 @@ function getActionLabel(action) {
     case 'chest_pickup_attempt':
     case 'chest_pickup_result':
       return t('playback.chest');
+    case 'portal':
+      return t('playback.portal', { pos: action.details?.result?.to || '?' });
+    case 'magic_swap':
+      return t('playback.magicSwap', { pos: action.details?.result?.to || '?' });
+    case 'lightning':
+      return t('playback.lightning', { pos: action.details?.result?.to || '?' });
     case 'end_turn':
       return t('playback.turnEnded');
     case 'cursed_room':
@@ -109,7 +135,9 @@ export function useAiTurnPlayback() {
   function filterActions(rawActions) {
     if (!rawActions || !Array.isArray(rawActions)) return [];
 
-    const visualizable = rawActions.filter(a => VISUALIZABLE_TYPES.has(a.type));
+    // the AI's jumps get steps of their own (else its figure just turns up elsewhere): Portal of Healing on
+    // itself, Magic Swap (both figures trade places), Lightning Attack (onto the monster, before the fight)
+    const visualizable = rawActions.map(jumpStep).filter(a => VISUALIZABLE_TYPES.has(a.type) || JUMP_TYPES.has(a.type));
 
     // Merge battle_detected + finalize_battle into single battle steps
     const merged = [];
@@ -268,6 +296,7 @@ export function useAiTurnPlayback() {
             break;
           case 'move_player':
             if (callbacks.onMovePlayer) await callbacks.onMovePlayer(action);
+            if (action.type === 'portal' || action.type === 'magic_swap') audio.cue('spell_teleport');
             break;
           case 'battle':
             if (callbacks.onBattle) await callbacks.onBattle(action);
@@ -290,7 +319,7 @@ export function useAiTurnPlayback() {
 
       // Wait before next step (unless skipped or last action)
       if (!skipRequested && i < filteredActions.length - 1) {
-        const delay = (BASE_DELAYS[category] || 800) / playbackSpeed.value;
+        const delay = (BASE_DELAYS[action.type] || BASE_DELAYS[category] || 800) / playbackSpeed.value;
         await new Promise(resolve => {
           currentResolve = resolve;
           setTimeout(resolve, delay);

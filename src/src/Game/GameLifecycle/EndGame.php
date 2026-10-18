@@ -17,5 +17,7 @@ final readonly class EndGame implements Message
     public function __construct(
         public Uuid $gameId,
         public \DateTimeImmutable $at = new \DateTimeImmutable(),
+        // why the game ended before the dragon: 'decided' — nobody can catch the leader any more
+        public ?string $reason = null,
     ) {}
 }

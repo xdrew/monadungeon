@@ -62,14 +62,21 @@
         <ul
           v-else
           class="skills-hero__list"
-          :class="{ 'skills-hero__list--off': hero.cursed }"
         >
           <li
             v-for="skill in hero.skills"
             :key="skill.key"
             class="skill"
+            :class="{ 'skill--cursed': hero.cursed }"
             :data-testid="`skill-${skill.key}`"
           >
+            <!-- the skill stays readable, the Curse of Karak lies over it: it does nothing until a fountain lifts it -->
+            <img
+              v-if="hero.cursed"
+              src="/images/curse.webp"
+              :alt="t('hud.cursedBadge')"
+              class="skill__curse"
+            >
             <div class="skill__head">
               <span class="skill__name">{{ skill.name }}</span>
               <span
@@ -255,13 +262,38 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
 }
 
 .skills-hero__cursed img {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   flex: none;
 }
 
-.skills-hero__list--off {
-  opacity: 0.45;
+.skill--cursed {
+  position: relative;
+  padding: 6px 52px 6px 8px;
+  /* violet hatching over the card: the skill is there, the curse holds it */
+  background: repeating-linear-gradient(-45deg, rgba(110, 50, 160, 0.16) 0 6px, transparent 6px 14px);
+  box-shadow: inset 0 0 0 1px rgba(160, 90, 220, 0.4);
+}
+
+.skill--cursed .skill__name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(190, 110, 255, 0.9);
+  text-decoration-thickness: 2px;
+}
+
+.skill--cursed .skill__kind {
+  display: none;
+}
+
+.skill__curse {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 40px;
+  height: 40px;
+  transform: translateY(-50%) rotate(-10deg);
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(170, 80, 240, 0.9)) drop-shadow(0 2px 3px #000);
 }
 
 .skills-hero__list {

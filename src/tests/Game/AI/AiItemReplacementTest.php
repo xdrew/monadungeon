@@ -72,6 +72,41 @@ final class AiItemReplacementTest extends TestCase
     }
 
     #[Test]
+    public function theAiHeadsForAnOpenSideNotForAnEmptyPlaceBehindAWall(): void
+    {
+        $field = \App\Game\Field\Field::create(new \App\Game\GameLifecycle\GameCreated(Uuid::v7(), new \DateTimeImmutable(), 10), \App\Tests\Infrastructure\MessageBus\startMessageContext());
+        // -1,0 has empty places around it, all behind walls; 2,0 opens onto the empty 3,0
+        (new \ReflectionProperty(\App\Game\Field\Field::class, 'tiles'))->setValue($field, ['-1,0' => Uuid::v7(), '0,0' => Uuid::v7(), '1,0' => Uuid::v7(), '2,0' => Uuid::v7()]);
+        (new \ReflectionProperty(\App\Game\Field\Field::class, 'transitions'))->setValue($field, ['-1,0' => ['0,0'], '0,0' => ['-1,0', '1,0'], '1,0' => ['0,0', '2,0'], '2,0' => ['1,0', '3,0']]);
+        $ai = new SmartVirtualPlayer(MessageBusTester::create()->messageBus(), new BasicVirtualPlayerStrategy(), new VirtualPlayerApiClient($this->createMock(HttpKernelInterface::class)));
+
+        $edges = (new \ReflectionMethod(SmartVirtualPlayer::class, 'findEdgePositions'))->invoke($ai, ['-1,0', '1,0', '2,0'], $field);
+        $step = (new \ReflectionMethod(SmartVirtualPlayer::class, 'stepTowardsFrontier'))->invoke($ai, '-1,0', ['0,0'], $field);
+
+        self::assertSame(['2,0'], $edges);
+        self::assertSame('0,0', $step, 'The first step of the way to 2,0');
+    }
+
+    #[Test]
+    public function aFightWonWithASpellOnAFullWeaponSlotGivesTheWeakestWeaponForTheReward(): void
+    {
+        $player = \App\Game\Player\Player::onPlayerAddedToGame(new \App\Game\GameLifecycle\PlayerAdded(Uuid::v7(), Uuid::v7()));
+        $dagger = new \App\Game\Item\Item(\App\Game\Item\ItemName::GIANT_RAT, \App\Game\Item\ItemType::DAGGER, 5, 0, true);
+        $fireball = new \App\Game\Item\Item(\App\Game\Item\ItemName::MUMMY, \App\Game\Item\ItemType::FIREBALL, 7, 0, true);
+        (new \ReflectionProperty(\App\Game\Player\Player::class, 'inventory'))->setValue($player, [
+            'key' => [], 'treasure' => [],
+            'weapon' => [new \App\Game\Item\Item(\App\Game\Item\ItemName::SKELETON_KING, \App\Game\Item\ItemType::AXE, 10, 0, true), $dagger],
+            'spell' => [$fireball, $fireball, $fireball],
+        ]);
+        $ai = new SmartVirtualPlayer(MessageBusTester::create()->messageBus(), new BasicVirtualPlayerStrategy(), new VirtualPlayerApiClient($this->createMock(HttpKernelInterface::class)));
+        $choice = new \ReflectionMethod(SmartVirtualPlayer::class, 'rewardSlotChoice');
+
+        self::assertSame([true, $dagger->itemId->toString()], $choice->invoke($ai, 'sword', $player, []));
+        self::assertSame([false, null], $choice->invoke($ai, 'dagger', $player, []), 'Nothing weaker to give');
+        self::assertSame([true, null], $choice->invoke($ai, 'fireball', $player, [$fireball->itemId->toString()]), 'The spent fireball frees its slot');
+    }
+
+    #[Test]
     public function aRefusedStepOntoThePlacedTileIsTriedOnceMore(): void
     {
         $calls = 0;

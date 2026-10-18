@@ -126,8 +126,9 @@ const toolsOpen = ref(false);
 .game-hud__top {
   position: absolute;
   top: 22px;
+  /* as wide as the rail on both sides: the banner stands at the middle of the screen, clear of the rail */
   left: var(--hud-left);
-  right: 0;
+  right: var(--hud-left);
   display: flex;
   flex-direction: column;
   align-items: center;

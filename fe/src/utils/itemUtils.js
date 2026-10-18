@@ -44,6 +44,13 @@ export const hasRoomForItem = (player, type) => {
     return true;
   }
 
+  // Hanna "Dagger Throwing": a dagger of hers in the weapon slots moves into a free spell slot to make room
+  if (category === 'weapons' && player?.heroFlags?.throwsDaggers === true
+    && (inventory.spells?.length || 0) < INVENTORY_LIMITS.spells
+    && (inventory.weapons || []).some((weapon) => weapon?.type === 'dagger')) {
+    return true;
+  }
+
   return (inventory[category]?.length || 0) < limit;
 };
 

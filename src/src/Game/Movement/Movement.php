@@ -107,6 +107,21 @@ class Movement extends AggregateRoot
     }
 
     /**
+     * Karak: Regent — a duel of this turn still waits for an answer, or the rival is still to be chosen.
+     */
+    private function duelOpenInTurn(Uuid $turnId, MessageContext $context): bool
+    {
+        $field = $context->dispatch(new GetField($this->gameId));
+        if (($field->getPendingArena()['turnId'] ?? null) === $turnId->toString()) {
+            return true;
+        }
+        $duel = $field->getDuelInfo();
+
+        return ($duel['turnId'] ?? null) === $turnId->toString()
+            && DuelPhase::tryFrom((string) ($duel['phase'] ?? ''))?->isSettled() === false;
+    }
+
+    /**
      * Whether the tile holds an item that can be picked up (no guard, or a defeated one).
      *
      * @param array<string, mixed> $items
@@ -255,6 +270,10 @@ class Movement extends AggregateRoot
         // Record turn action if not moving to battle
         if (!$destinationHasMonster) {
             $hasPickableItem = self::hasPickableItemAt($items, $destinationKey);
+            // Karak: Regent — the last step onto an arena does not end the turn while its duel (or the choice of the
+            // rival) is open: the duel ends the challenger's turn itself once the spells, the rolls and the loot are
+            // chosen; ending it now settled the duel without asking anyone
+            $duelOpen = $this->duelOpenInTurn($command->turnId, $context);
 
             $additionalData = [
                 'from' => $currentPosition->toString(),
@@ -284,7 +303,7 @@ class Movement extends AggregateRoot
                 tileId: null,
                 additionalData: $additionalData,
                 at: new \DateTimeImmutable(),
-                deferTurnEnd: $hasPickableItem,
+                deferTurnEnd: $hasPickableItem || $duelOpen,
             ));
 
             // Karak: Regent — a duel fought inside this step (nobody's answer was needed) ends the turn now

@@ -89,6 +89,24 @@ final class RegentHeroPlayerTest extends TestCase
     }
 
     #[Test]
+    public function aFountainBringsValdukOnlyToHisLimit(): void
+    {
+        // the AI waited on the fountain for a 5th HP the limit never gives, turn after turn
+        $player = $this->createPlayer(HeroType::BARBARIAN, 4);
+        $player->setHealLimit(new SetHealLimit($this->gameId, $this->playerId, 4));
+        self::assertSame(4, $player->fountainHealsTo(), 'At his limit: nothing to wait for');
+
+        $player->setTestHp(2);
+        self::assertSame(4, $player->fountainHealsTo());
+
+        $player->setHealLimit(new SetHealLimit($this->gameId, $this->playerId, null));
+        self::assertSame(Player::MAX_HP, $player->fountainHealsTo());
+
+        $other = $this->createPlayer(HeroType::THIEF, 4);
+        self::assertSame(Player::MAX_HP, $other->fountainHealsTo());
+    }
+
+    #[Test]
     public function aCursedValdukHealsFully(): void
     {
         $player = $this->createPlayer(HeroType::BARBARIAN, 1);
@@ -160,8 +178,35 @@ final class RegentHeroPlayerTest extends TestCase
     public function aSwordStillNeedsAWeaponSlot(): void
     {
         $hanna = $this->createPlayer(HeroType::ACROBAT, 5);
-        $this->setInventory($hanna, weapons: [$this->sword(), $this->dagger()]);
+        $this->setInventory($hanna, weapons: [$this->sword(), $this->sword()]);
 
+        self::assertFalse($hanna->hasRoomFor(ItemType::SWORD));
+        $this->expectException(InventoryFullException::class);
+        $this->tester()->handle($hanna->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $this->sword()));
+    }
+
+    #[Test]
+    public function hannaMovesADaggerIntoAFreeSpellSlotToMakeRoomForAWeapon(): void
+    {
+        $hanna = $this->createPlayer(HeroType::ACROBAT, 5);
+        $this->setInventory($hanna, weapons: [$this->dagger(), $this->dagger()], spells: [$this->fireball(), $this->fireball()]);
+        self::assertTrue($hanna->hasRoomFor(ItemType::SWORD));
+
+        $this->tester()->handle($hanna->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $this->sword()));
+
+        $inventory = $hanna->getInventory();
+        self::assertSame([ItemType::DAGGER, ItemType::SWORD], array_map(static fn($item): ItemType => Item::fromAnything($item)->type, $inventory[ItemCategory::WEAPON->value]));
+        self::assertCount(3, $inventory[ItemCategory::SPELL->value], 'The dagger took the free spell slot');
+        self::assertSame(4, $hanna->calculateWeaponDamage(), 'sword 2 + dagger 1 + thrown dagger 1');
+    }
+
+    #[Test]
+    public function withTheSpellSlotsFullTheDaggerStaysAndTheSwordFindsNoRoom(): void
+    {
+        $hanna = $this->createPlayer(HeroType::ACROBAT, 5);
+        $this->setInventory($hanna, weapons: [$this->dagger(), $this->dagger()], spells: [$this->fireball(), $this->fireball(), $this->fireball()]);
+
+        self::assertFalse($hanna->hasRoomFor(ItemType::SWORD));
         $this->expectException(InventoryFullException::class);
         $this->tester()->handle($hanna->addItem(...), new AddItemToInventory($this->gameId, $this->playerId, $this->sword()));
     }
@@ -210,7 +255,7 @@ final class RegentHeroPlayerTest extends TestCase
         $hanna = $this->createPlayer(HeroType::ACROBAT, 5);
         $this->setInventory($hanna, weapons: [$this->sword(), $this->dagger()], spells: [$this->fireball(), $this->fireball()]);
         self::assertTrue($hanna->hasRoomFor(ItemType::DAGGER));
-        self::assertFalse($hanna->hasRoomFor(ItemType::SWORD));
+        self::assertTrue($hanna->hasRoomFor(ItemType::SWORD), 'Her dagger moves into the free spell slot');
 
         $other = $this->createPlayer(HeroType::THIEF, 5);
         $this->setInventory($other, weapons: [$this->sword(), $this->dagger()]);

@@ -60,6 +60,12 @@ export default defineConfig(() => {
           secure: false,
           // X-Forwarded-Host/Port/Proto: the backend builds absolute links (the Google callback) from them
           xfwd: true,
+        },
+        // Push (Mercure, Server-Sent Events): nginx proxies it on :18080; the page opened on Vite needs it too
+        '/.well-known/mercure': {
+          target: 'http://mercure:80',
+          changeOrigin: true,
+          xfwd: true,
         }
       }
     },

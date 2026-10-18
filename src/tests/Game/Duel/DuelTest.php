@@ -448,6 +448,36 @@ final class DuelTest extends TestCase
     }
 
     #[Test]
+    public function aFullPackMayLeaveTheTakenItemOnTheArena(): void
+    {
+        $this->addPlayer($this->opponent, inventory: ['skeleton_warrior']);
+        $this->addPlayer($this->challenger, inventory: ['skeleton_king', 'skeleton_king']);
+        [$duel] = $this->resolvedDuel(10, 5);
+
+        // two axes kept: the sword leaves the loser all the same and stays on the arena
+        $sword = $this->opponentItem(ItemType::SWORD);
+        [, $messages] = $this->createTester()->handle($duel->takeLoot(...), new TakeDuelLoot(
+            $this->gameId,
+            $this->challenger,
+            $this->turnId,
+            $duel->getDuelId(),
+            $sword->itemId,
+            replaceItemId: $sword->itemId,
+        ));
+
+        $taken = $this->findMessage($messages, DuelLootTaken::class);
+        self::assertInstanceOf(DuelLootTaken::class, $taken);
+        self::assertTrue($taken->leftOnArena, 'The Field places it on the arena instead of letting it change hands');
+        $removed = $this->findMessage($messages, RemoveItemFromInventory::class);
+        self::assertInstanceOf(RemoveItemFromInventory::class, $removed);
+        self::assertTrue($removed->playerId->equals($this->opponent));
+        self::assertNull($this->findMessage($messages, AddItemToInventory::class));
+        self::assertNull($this->findMessage($messages, ReplaceInventoryItem::class));
+        self::assertTrue($duel->getLoot()['leftOnArena'] ?? false);
+        self::assertSame(DuelPhase::DONE, $duel->getPhase());
+    }
+
+    #[Test]
     public function nobodyToChooseWhatToLeaveTakesOnlyWhatFits(): void
     {
         $this->addPlayer($this->opponent, isAi: true, inventory: ['skeleton_warrior', 'skeleton_warrior']);

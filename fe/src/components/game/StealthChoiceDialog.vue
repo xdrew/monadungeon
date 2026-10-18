@@ -57,6 +57,7 @@ import { computed, onMounted, onUnmounted } from 'vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import { getMonsterImage } from '@/utils/monsterUtils';
 import { monsterName as localizedMonsterName } from '@/i18n/names';
+import { isLetterKey } from '@/utils/keyboardUtils';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -78,7 +79,7 @@ const onKeyDown = (e) => {
   if (!props.show) return;
   if (e.key === 'Enter') {
     choose(false);
-  } else if (e.key === 's' || e.key === 'S' || e.key === 'ы' || e.key === 'Ы') {
+  } else if (isLetterKey(e, 's')) {
     choose(true);
   } else {
     return;

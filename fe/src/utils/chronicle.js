@@ -99,7 +99,7 @@ export function describeAction(action, who, nameOf, siblings = []) {
     }
     case 'duel_loot':
       // a summoned winner takes it in the challenger's turn: `by` names him
-      return t('chronicle.duelLoot', { who: d.by ? nameOf(d.by) : who, item: itemName(d.item, 'acc'), from: nameOf(d.from) });
+      return t(d.leftOnArena ? 'chronicle.duelLootLeft' : 'chronicle.duelLoot', { who: d.by ? nameOf(d.by) : who, item: itemName(d.item, 'acc'), from: nameOf(d.from) });
     case 'tireless':
       return t('chronicle.tireless', { who, item: itemName(d.leftItem?.type, 'acc') });
     case 'lightning_attack':
