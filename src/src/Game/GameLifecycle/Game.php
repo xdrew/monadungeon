@@ -138,6 +138,13 @@ class Game extends AggregateRoot
     private bool $randomHeroes = false;
 
     /**
+     * Hot-seat: several humans at one screen (the screen is handed over between their turns); the first human seat
+     * is the account's, the others are named guests.
+     */
+    #[Column(type: BooleanType::class, options: ['default' => false])]
+    private bool $hotseat = false;
+
+    /**
      * Karak: Regent, Lord Karak variant — the player who became Lord Karak (once per game).
      */
     #[Column(type: UuidType::class, nullable: true)]
@@ -212,6 +219,10 @@ class Game extends AggregateRoot
         $game->regent = $command->regent;
         $game->lordKarak = $command->lordKarak;
         $game->randomHeroes = $command->randomHeroes;
+        $game->hotseat = $command->hotseat;
+        if ($command->hotseat) {
+            error_log('INFO game.created ' . json_encode(['gameId' => $command->gameId->toString(), 'hotseat' => true]));
+        }
         $messageContext->dispatch(new GameCreated(
             gameId: $command->gameId,
             gameCreateTime: $command->at,
@@ -849,6 +860,11 @@ class Game extends AggregateRoot
     public function isRandomHeroes(): bool
     {
         return $this->randomHeroes;
+    }
+
+    public function isHotseat(): bool
+    {
+        return $this->hotseat;
     }
 
     /**

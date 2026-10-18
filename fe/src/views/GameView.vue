@@ -105,7 +105,7 @@
         >
           <ActionRings :waiting-text="ringsWaitingText">
             <template
-              v-if="(isPlayerTurn && (gameData?.state?.sprint || isListenMode || astralHint || fountainHint)) || healLimitOpen || (devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored)"
+              v-if="(isPlayerTurn && (gameData?.state?.sprint || isListenMode || astralHint || fountainHint)) || healLimitOpen || (devAiLabels && !isPlayerTurn && isVirtualPlayer(gameData?.state?.currentPlayerId))"
               #above
             >
               <span
@@ -231,7 +231,7 @@
             <!-- Dev-only debug plaques (dev builds only; the AI auto-forcing timer works in every build).
                  They keep .end-turn-btn after End Turn in the DOM: the e2e runs against the dev server and its .first() must not change. -->
             <div
-              v-if="devAiLabels && !isPlayerTurn && gameData?.state?.currentPlayerId === virtualPlayerIdStored"
+              v-if="devAiLabels && !isPlayerTurn && isVirtualPlayer(gameData?.state?.currentPlayerId)"
               class="debug-plaque"
             >
               <button
@@ -934,10 +934,11 @@
         <div
           v-if="humanPlayerId && !isVirtualPlayer(humanPlayerId)"
           class="result-banner"
-          :class="isCurrentUserWinner() ? 'result-win' : 'result-loss'"
+          :class="isCurrentUserWinner() || isHotseat ? 'result-win' : 'result-loss'"
         >
+          <!-- hot-seat: the screen is everyone's, the banner just crowns the winner -->
           <GameIcon
-            :name="isCurrentUserWinner() ? 'trophy' : 'skull'"
+            :name="isCurrentUserWinner() || isHotseat ? 'trophy' : 'skull'"
             :size="30"
           />
           <span class="result-text">{{ winnerIds.length > 1 ? (isCurrentUserWinner() ? t('game.victoryShared') : t('game.overShared', { who: winnerNames })) : isCurrentUserWinner() ? t('game.victory') : t('game.opponentWinsName', { who: heroNameById(winnerId) }) }}</span>
@@ -1088,6 +1089,16 @@
       @dismiss="dismissDuel"
     />
 
+    <!-- Hot-seat: the screen goes to the next player behind a curtain (over everything, the last player's pack included) -->
+    <HotseatCurtain
+      v-if="showHotseatCurtain"
+      :name="displayName(hotseatSeatToAct.player)"
+      :player-name="hotseatSeatToAct.player.username || ''"
+      :portrait="playerAvatar(hotseatSeatToAct.player)"
+      :reason="hotseatSeatToAct.reason"
+      @reveal="revealHotseatSeat"
+    />
+
     <!-- Karak: Regent, Lord Karak variant — shown once per browser when the weakest hero is transformed (after the room's die) -->
     <LordKarakRevealModal
       v-if="visibleLordKarak && lordKarakReady"
@@ -1128,6 +1139,7 @@ import DuelScene from '@/components/game/DuelScene.vue';
 import CursedRoomScene from '@/components/game/CursedRoomScene.vue';
 import FieldCurseRoll from '@/components/game/FieldCurseRoll.vue';
 import LordKarakRevealModal from '@/components/game/LordKarakRevealModal.vue';
+import HotseatCurtain from '@/components/game/HotseatCurtain.vue';
 import StealthChoiceDialog from '@/components/game/StealthChoiceDialog.vue';
 import GameHud from '@/components/game/hud/GameHud.vue';
 import TurnBanner from '@/components/game/hud/TurnBanner.vue';
@@ -2295,6 +2307,68 @@ const isSecondPlayerInGame = computed(() => {
   return isSecondPlayerInGameUtil(gameData.value, secondPlayerId.value);
 });
 
+// Hot-seat: several humans at this screen; the screen follows the human seat whose turn it is
+const isHotseat = computed(() => gameData.value?.state?.hotseat === true && !isOnline.value);
+const followHotseatSeat = (data) => {
+  if (data?.state?.hotseat !== true || data.state.online) return;
+  const current = data.state.currentPlayerId;
+  const seat = data.players?.find((p) => p.id === current);
+  if (!seat || seat.isAi) return;
+  if (currentPlayerId.value === current && humanPlayerId.value === current) return;
+  console.info('[hotseat] screen follows', { from: currentPlayerId.value, to: current });
+  currentPlayerId.value = current;
+  humanPlayerId.value = current;
+  try {
+    localStorage.setItem('currentPlayerId', current);
+    localStorage.setItem('humanPlayerId', current);
+    localStorage.setItem(`humanPlayer:${data.gameId || id.value}`, current);
+  } catch (e) {
+    // localStorage unavailable: the refs carry the seat for this page
+  }
+};
+
+// whichever path brought the new state (a reload, a selective update after a fight or a pickup), the screen follows
+watch(() => gameData.value?.state?.currentPlayerId, () => followHotseatSeat(gameData.value));
+
+// Hot-seat: the screen is handed over between humans behind a curtain; the seat that must act now is the current
+// human, or a human summoned to a duel (spells, roll) or winning one (loot) during someone else's turn
+const hotseatRevealedKey = () => `hotseat.revealed:${id.value}`;
+const readHotseatRevealed = () => {
+  try { return sessionStorage.getItem(hotseatRevealedKey()); } catch (e) { return null; }
+};
+const hotseatRevealed = ref(readHotseatRevealed());
+const hotseatSeatToAct = computed(() => {
+  if (!isHotseat.value || gameData.value?.state?.status === 'finished') return null;
+  const players = gameData.value?.players || [];
+  const human = (playerId) => players.find((p) => p.id === playerId && !p.isAi) || null;
+  const currentId = gameData.value?.state?.currentPlayerId;
+  const duel = gameData.value?.state?.duel;
+  if (duel && ['opponent_prepare', 'opponent_roll'].includes(duel.phase) && human(duel.opponentId)) {
+    return { player: human(duel.opponentId), reason: duel.opponentId === currentId ? 'turn' : 'duel' };
+  }
+  if (duel && duel.phase === 'loot') {
+    const winnerId = duel.result === 'challenger' ? duel.challengerId : duel.result === 'opponent' ? duel.opponentId : null;
+    if (human(winnerId)) return { player: human(winnerId), reason: winnerId === currentId ? 'turn' : 'duel' };
+  }
+  const current = human(currentId);
+  return current ? { player: current, reason: 'turn' } : null;
+});
+const showHotseatCurtain = computed(() => !!hotseatSeatToAct.value
+  && hotseatSeatToAct.value.player.id !== hotseatRevealed.value
+  && !isAiPlayingBack.value && !aiTurnInFlight.value && !isProcessingAI.value && !cursedRoomScene.value
+  // the last player reads their duel's outcome first (a duel ends the challenger's turn)
+  && visibleDuel.value?.phase !== 'done');
+watch(showHotseatCurtain, (shown) => {
+  if (shown) console.info('[hotseat] curtain', { seat: hotseatSeatToAct.value?.player?.id, reason: hotseatSeatToAct.value?.reason });
+});
+const revealHotseatSeat = () => {
+  const seatId = hotseatSeatToAct.value?.player?.id || null;
+  hotseatRevealed.value = seatId;
+  try { sessionStorage.setItem(hotseatRevealedKey(), seatId || ''); } catch (e) { /* the ref carries it for this page */ }
+  audio.cue('notice');
+  console.info('[hotseat] revealed', { seat: seatId });
+};
+
 // Check if it's the current player's turn
 const isPlayerTurn = computed(() => {
   // Block interactions if game is finished
@@ -2304,6 +2378,11 @@ const isPlayerTurn = computed(() => {
   // An online game: my seat's turn, and no pushed turn still playing back
   if (isOnline.value) {
     return !!mySeatId.value && gameData.value?.state?.currentPlayerId === mySeatId.value && !isProcessingAI.value;
+  }
+  // Hot-seat: the human seat whose turn it is plays at this screen (the screen follows it, followHotseatSeat)
+  if (isHotseat.value) {
+    const seat = gameData.value?.players?.find((p) => p.id === gameData.value?.state?.currentPlayerId);
+    return !!seat && !seat.isAi && seat.id === currentPlayerId.value && !isProcessingAI.value;
   }
   
   // Get the actual current player from the API - this is the source of truth
@@ -2324,11 +2403,9 @@ const isPlayerTurn = computed(() => {
   
   // This is a game with AI - use the original logic
   const humanPlayerId = localStorage.getItem('humanPlayerId');
-  const virtualPlayerId = localStorage.getItem('virtualPlayerId');
-  
-  // If it's the AI's turn, return false (not player's turn)
-  if (virtualPlayerId && serverCurrentPlayerId === virtualPlayerId) {
 
+  // An AI seat's turn (any of them: a hot-seat game may have several) is not the player's
+  if (isVirtualPlayer(serverCurrentPlayerId)) {
     return false;
   }
   
@@ -2359,7 +2436,7 @@ const fieldRows = computed(() => {
   return size && 'maxY' in size ? size.maxY - size.minY + 1 : 1;
 });
 const torchlightActingId = computed(() => (isAiPlayingBack.value
-  ? (aiPlayback.currentAction.value?.playerId || virtualPlayerIdStored.value)
+  ? (aiPlayback.currentAction.value?.playerId || gameData.value?.state?.currentPlayerId || virtualPlayerIdStored.value)
   : gameData.value?.state?.currentPlayerId) || null);
 const torchLights = computed(() => {
   const positions = gameData.value?.field?.playerPositions || {};
@@ -2632,7 +2709,7 @@ const showAiBattleOverlay = (action, playerId = null) => {
   // Position comes from the enriched battleInfo, or fall back to AI player's current position
   let battlePosition = action.position;
   if (!battlePosition) {
-    const aiPlayerId = localStorage.getItem('virtualPlayerId');
+    const aiPlayerId = playerId || gameData.value?.state?.currentPlayerId;
     if (aiPlayerId && gameData.value?.field?.playerPositions) {
       battlePosition = gameData.value.field.playerPositions[aiPlayerId];
     }
@@ -2741,7 +2818,7 @@ watch(
     if (!state || isOnline.value || !gameData.value?.players?.some((p) => p.isAi === true)) return false;
     const humanPlayerId = localStorage.getItem('humanPlayerId');
     return isProcessingAI.value && !!humanPlayerId && state.currentPlayerId === humanPlayerId
-      && state.currentPlayerId !== localStorage.getItem('virtualPlayerId');
+      && !isVirtualPlayer(state.currentPlayerId);
   },
   (stale) => {
     if (!stale) return;
@@ -2782,8 +2859,11 @@ const checkAndHandleVirtualPlayerTurn = async () => {
     
     const currentTurnNumber = gameData.value?.state?.turn;
     const currentPlayer = gameData.value.state.currentPlayer || gameData.value.state.currentPlayerId;
-    const storedVirtualPlayerId = localStorage.getItem('virtualPlayerId');
-    const isAITurn = storedVirtualPlayerId && currentPlayer === storedVirtualPlayerId;
+    // any AI seat plays when it is current (a hot-seat game may have several; virtualPlayerId names one)
+    const isAITurn = isVirtualPlayer(currentPlayer);
+    if (isAITurn && currentPlayer !== localStorage.getItem('virtualPlayerId')) {
+      console.info('[hotseat] AI seat plays', currentPlayer);
+    }
     
 
     
@@ -2922,7 +3002,7 @@ const checkAndHandleVirtualPlayerTurn = async () => {
           if (!paused && newGameState?.state) {
             const newTurn = newGameState.state.turn;
             const newCurrentPlayer = newGameState.state.currentPlayer || newGameState.state.currentPlayerId;
-            const isStillAI = storedVirtualPlayerId && newCurrentPlayer === storedVirtualPlayerId;
+            const isStillAI = isVirtualPlayer(newCurrentPlayer);
             
             if (isStillAI && newTurn !== currentTurnNumber && newTurn !== lastExecutedAITurn) {
 
@@ -3139,6 +3219,7 @@ const loadGameData = async (showLoading = true, { force = false } = {}) => {
     }
     const fetchedGameData = await gameApi.getGame(id.value);
     adoptThisGamesPlayer(fetchedGameData);
+    followHotseatSeat(fetchedGameData);
     if (fetchedGameData?.state?.online) noticeOpponentFight(fetchedGameData);
 
 
@@ -3224,7 +3305,8 @@ const loadGameData = async (showLoading = true, { force = false } = {}) => {
       }
     }
     
-    const isCurrentlyAITurn = virtualPlayerId && currentPlayer === virtualPlayerId;
+    const isCurrentlyAITurn = !!currentPlayer && (fetchedGameData.players?.find((p) => p.id === currentPlayer)?.isAi === true
+      || currentPlayer === virtualPlayerId);
     
     // If it's an AI turn, always ensure isProcessingAI is true to prevent user interaction
     if (isCurrentlyAITurn) {
@@ -5130,8 +5212,10 @@ const closeBattleReportAndEndTurn = async () => {
     const updatedGameState = await gameApi.getGame(id.value);
     doUpdateGameDataSelectively(updatedGameState);
     
-    // If the turn advanced to a different player, update player IDs
-    if (updatedGameState.state.currentPlayerId !== currentPlayerId.value) {
+    // If the turn advanced to a different player, update player IDs (hot-seat: the screen follows the human seats)
+    if (updatedGameState.state?.hotseat) {
+      followHotseatSeat(updatedGameState);
+    } else if (updatedGameState.state.currentPlayerId !== currentPlayerId.value) {
 
       // If it's our second player, switch to them
       if (secondPlayerId.value === updatedGameState.state.currentPlayerId) {
@@ -6377,6 +6461,8 @@ const winnerNames = computed(() => winnerIds.value.map((playerId) => heroNameByI
 
 // Helper to check if current user is (one of) the winner(s)
 const isCurrentUserWinner = () => {
+  // hot-seat: everyone at the screen sees the game end, the banner names the winner ("Victory to X")
+  if (isHotseat.value) return false;
   if (humanPlayerId.value && !isVirtualPlayer(humanPlayerId.value)) {
     return winnerIds.value.includes(humanPlayerId.value);
   }
@@ -6392,6 +6478,8 @@ const calculatePlayerTreasure = (player) => {
 
 // Helper to check if a leaderboard entry is the current user
 const isCurrentUserEntry = (entry) => {
+  // hot-seat: "you" is the seat on screen during the game (humanPlayerId follows it); at the end there is no one "you"
+  if (isHotseat.value && gameData.value?.state?.status === 'finished') return false;
   if (humanPlayerId.value && !isVirtualPlayer(humanPlayerId.value)) {
     return entry.playerId === humanPlayerId.value;
   }
@@ -6806,6 +6894,8 @@ const checkStunnedPlayersAndSwitch = () => {
   if (!gameData.value || !gameData.value.players) return;
   // an online game: this browser plays its own seat only
   if (gameData.value.state?.online) return;
+  // hot-seat: the screen follows the human seats itself (followHotseatSeat), no legacy two-player swap
+  if (gameData.value.state?.hotseat) return;
   
   const serverCurrentPlayerId = gameData.value.state?.currentPlayerId;
   if (!serverCurrentPlayerId) return;

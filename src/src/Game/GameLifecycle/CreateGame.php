@@ -30,5 +30,9 @@ final readonly class CreateGame implements Message
          * Heroes are dealt at random: a player who joins without a hero gets a free one (AI players always do).
          */
         public bool $randomHeroes = false,
+        /**
+         * Hot-seat: several humans play at one screen; the human seats after the first are named guests.
+         */
+        public bool $hotseat = false,
     ) {}
 }

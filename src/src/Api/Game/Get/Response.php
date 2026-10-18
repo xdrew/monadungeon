@@ -185,6 +185,7 @@ final readonly class Response
                 'online' => $game->isOnline(), // an online table: every human seat plays from its own browser
                 'seats' => $game->getSeats(), // an online table: how many seats it has
                 'randomHeroes' => $game->isRandomHeroes(),
+                'hotseat' => $game->isHotseat(),
                 'endReason' => $game->getEndReason(), // 'abandoned': the host closed the table before the start
                 'turnSeconds' => $game->getTurnSeconds(), // an online table's turn time limit (null: none)
                 'turnDeadline' => $game->getTurnDeadline()?->format(DATE_ATOM), // when the current turn runs out

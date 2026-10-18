@@ -106,7 +106,7 @@ export default {
   },
   lobby: {
     prepare: 'Przygotowanie do zejścia',
-    tabs: { ai: 'Przeciw SI', online: 'Online' },
+    tabs: { ai: 'Przeciw SI', hotseat: 'Przy jednym ekranie', online: 'Online' },
     description: 'Do lochów pod górą — po skarby i smoczy skarbiec.',
     heroesRandom: 'Bohaterowie są losowani',
     chooseHero: 'Wybierz bohatera',
@@ -229,6 +229,7 @@ export default {
     centerAvailable: 'Do dostępnych pól'
   },
   sound: { title: 'Dźwięk', music: 'Muzyka', sounds: 'Efekty', mute: 'Wycisz wszystko', unmute: 'Włącz dźwięk' },
+  hotseat: { seatsTitle: 'Gracze przy tym ekranie', you: '(ty)', namePlaceholder: 'Imię gracza {n}', ai: 'SI', makeAi: 'Zamień na SI', makeHuman: 'Zamień na gracza', remove: 'Usuń miejsce', addHuman: 'Dodaj gracza', addAi: 'Dodaj SI', start: 'Zejdźcie razem', curtainCaption: 'Przekaż ekran', curtainTitle: 'Tura: {name}', curtainPlayer: 'Gracz: {player}', curtainText: 'Przekaż ekran graczowi {who}. Plecak i umiejętności pokażą się, gdy będzie gotowy.', curtainDuel: '{who} zostaje wezwany na pojedynek: przekaż mu ekran.', reveal: 'Jestem {who} — pokaż moją turę' },
   curseScene: { transferCaption: 'Klątwa Karaka', transferTitle: 'Klątwa spada na bohatera: {who}', transferRule: '{by} pokonał mumię i przekazuje Klątwę Karaka', transferred: '{who} jest przeklęty: umiejętności nie działają, dopóki fontanna nie zdejmie klątwy', enters: '{who} wchodzi do komnaty', alreadyRule: 'Już przeklęty bohater nie rzuca kością', already: '{who} jest już przeklęty: komnata nie działa', caption: 'Przeklęta komnata', rolls: '{who} rzuca kością', rule: '1–3: Klątwa Karaka spada na bohatera · 4–6: udało się', token: 'Klątwa Karaka', cursed: '{who} przeklęty: żeton trafia do bohatera', spared: 'Udało się: klątwa zostaje w komnacie', lost: 'Twoje umiejętności nie działają, dopóki fontanna nie zdejmie klątwy:', ok: 'Dalej' },
   duelScene: { chooseRival: 'Kogo wyzywasz?', callOut: 'Wyzwij', caption: 'Pojedynek na Arenie', noSpells: 'bez zaklęć', choosing: 'wybiera…', rolls: 'rzuca…', prepareTitle: '{who}: przed rzutem', prepareHint: 'Wybrane przepada, nawet jeśli rzut wygrałby bez tego.', plus: '+{n} do rzutu', sacrifice: '1 PW za +1', nothingToSpend: 'Brak bojowych zaklęć.', go: 'Do pojedynku', waitsFor: '{who} wybiera zaklęcia…', items: 'przedmioty +{n}', win: 'Zwycięstwo!', lose: 'Porażka', tie: 'Remis', wins: '{who} wygrywa' },
   skillsPanel: {

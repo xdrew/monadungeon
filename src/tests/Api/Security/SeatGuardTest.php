@@ -33,6 +33,9 @@ final class SeatGuardTest extends TestCase
         yield 'the AI of a table I do not sit at' => [$ai, [self::ME], self::RIVAL, true, SeatGuard::NOT_YOURS];
         yield 'the AI of a table nobody owns' => [$ai, [], null, true, SeatGuard::ALLOWED];
         yield 'an unowned seat (old game, test mode)' => [$unowned, [], null, false, SeatGuard::ALLOWED];
+        yield 'a hot-seat guest, from the owner\'s browser' => [$unowned, [self::ME], self::ME, false, SeatGuard::ALLOWED];
+        yield 'a hot-seat guest, from someone else' => [$unowned, [self::ME], self::RIVAL, false, SeatGuard::NOT_YOURS];
+        yield 'a hot-seat guest, no session' => [$unowned, [self::ME], null, false, SeatGuard::NOT_YOURS];
     }
 
     /**

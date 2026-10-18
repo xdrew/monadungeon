@@ -18,6 +18,7 @@ final readonly class Request
         #[Assert\Uuid]
         public Uuid $playerId,
         public ?string $externalId = null,
+        #[Assert\Length(max: SeatIdentity::MAX_NAME_LENGTH)]
         public ?string $username = null,
         public bool $isAi = false,
         #[Assert\Choice(callback: [HeroType::class, 'values'])]

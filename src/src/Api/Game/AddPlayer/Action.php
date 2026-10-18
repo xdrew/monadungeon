@@ -8,6 +8,7 @@ use App\Account\CurrentAccount;
 use App\Api\Error;
 use App\Game\GameLifecycle\AddPlayer;
 use App\Game\GameLifecycle\GetGame;
+use App\Game\Player\GetPlayer;
 use App\Game\Player\HeroType;
 use App\Infrastructure\Uuid\Uuid;
 use Symfony\Component\HttpFoundation\Request as HttpRequest;
@@ -25,8 +26,18 @@ final readonly class Action
     #[Route('/game/player', methods: ['POST'])]
     public function __invoke(#[MapRequestPayload] Request $request, HttpRequest $httpRequest): Response|Error
     {
-        // A human seat belongs to the caller's account: its id and name, never what the body says.
-        // The AI keeps its own name and no account.
+        try {
+            $game = $this->messageBus->dispatch(new GetGame($request->gameId));
+        } catch (\Throwable) {
+            $game = null;
+        }
+        // An online table is joined through /tables/{id}/join and gets its AI from the host only
+        if ($game?->isOnline() === true) {
+            return new Error(Uuid::v7(), 'table.use_join: join an online table through its invite', 409);
+        }
+
+        // A human seat belongs to the caller's account: its id and name, never what the body says — except the
+        // later human seats of a hot-seat game, named guests. The AI keeps its own name and no account.
         $externalId = null;
         $username = $request->username;
         if (!$request->isAi) {
@@ -34,18 +45,19 @@ final readonly class Action
             if ($account === null) {
                 return new Error(Uuid::v7(), 'account.required: sign in with a name first', 401);
             }
-            $externalId = $account->getId()->toString();
-            $username = $account->getName();
-        }
-
-        // An online table is joined through /tables/{id}/join and gets its AI from the host only
-        try {
-            $online = $this->messageBus->dispatch(new GetGame($request->gameId))->isOnline();
-        } catch (\Throwable) {
-            $online = false;
-        }
-        if ($online) {
-            return new Error(Uuid::v7(), 'table.use_join: join an online table through its invite', 409);
+            $hotseat = $game !== null && $game->isHotseat();
+            $seat = SeatIdentity::for(
+                hotseat: $hotseat,
+                accountId: $account->getId()->toString(),
+                accountName: $account->getName(),
+                seats: $game !== null && $hotseat ? $this->seatsOf($game->getPlayers()) : [],
+                requestedName: $request->username,
+            );
+            $externalId = $seat->externalId;
+            $username = $seat->username;
+            if ($hotseat) {
+                error_log('INFO game.hotseat_seat ' . json_encode(['gameId' => $request->gameId->toString(), 'playerId' => $request->playerId->toString(), 'guest' => $seat->guest]));
+            }
         }
 
         try {
@@ -62,5 +74,20 @@ final readonly class Action
         }
 
         return new Response($request->playerId);
+    }
+
+    /**
+     * @param list<Uuid> $playerIds
+     * @return list<array{externalId: ?string, isAi: bool}>
+     */
+    private function seatsOf(array $playerIds): array
+    {
+        $seats = [];
+        foreach ($playerIds as $playerId) {
+            $player = $this->messageBus->dispatch(new GetPlayer($playerId));
+            $seats[] = ['externalId' => $player->getExternalId(), 'isAi' => $player->isAi()];
+        }
+
+        return $seats;
     }
 }

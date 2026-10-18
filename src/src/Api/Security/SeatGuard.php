@@ -6,8 +6,9 @@ namespace App\Api\Security;
 
 /**
  * Who may act for a seat. A human seat with an owner (Player.externalId = account id) only for that account;
- * an AI seat, in a game where some human seats have owners, only for one of those owners (the AI's turn is
- * started from a player's browser); seats nobody owns (old games, test-mode setups) for anyone.
+ * an AI seat or an ownerless human seat (a hot-seat guest), in a game where some human seats have owners, only for
+ * one of those owners (the AI's turn and the guests' turns are played from that player's browser); in a game nobody
+ * owns a seat of (old games, test-mode setups) for anyone.
  */
 final class SeatGuard
 {
@@ -25,15 +26,12 @@ final class SeatGuard
         if ($aiTurn && !$seat['isAi']) {
             return self::NOT_AI;
         }
-        if ($seat['isAi']) {
+        if ($seat['isAi'] || $seat['externalId'] === null || $seat['externalId'] === '') {
             if ($owners === []) {
                 return self::ALLOWED;
             }
 
             return $callerId !== null && \in_array($callerId, $owners, true) ? self::ALLOWED : self::NOT_YOURS;
-        }
-        if ($seat['externalId'] === null || $seat['externalId'] === '') {
-            return self::ALLOWED;
         }
 
         return $callerId === $seat['externalId'] ? self::ALLOWED : self::NOT_YOURS;

@@ -107,7 +107,7 @@ export default {
   },
   lobby: {
     prepare: 'Prepare the descent',
-    tabs: { ai: 'Against the AI', online: 'Online' },
+    tabs: { ai: 'Against the AI', hotseat: 'At one screen', online: 'Online' },
     description: 'Into the dungeon under the mountain — for treasure, and the Dragon\'s hoard.',
     heroesRandom: 'Heroes are dealt at random',
     chooseHero: 'Choose your hero',
@@ -230,6 +230,7 @@ export default {
     centerAvailable: 'Center on Available Places'
   },
   sound: { title: 'Sound', music: 'Music', sounds: 'Sounds', mute: 'Mute all', unmute: 'Sound on' },
+  hotseat: { seatsTitle: 'Players at this screen', you: '(you)', namePlaceholder: 'Player {n} name', ai: 'AI', makeAi: 'Make AI', makeHuman: 'Make human', remove: 'Remove the seat', addHuman: 'Add a player', addAi: 'Add the AI', start: 'Descend together', curtainCaption: 'Pass the screen', curtainTitle: 'Turn: {name}', curtainPlayer: 'Player: {player}', curtainText: 'Hand the screen to {who}. Their pack and skills show once they are ready.', curtainDuel: '{who} is summoned to a duel: hand them the screen.', reveal: 'I am {who} — show my turn' },
   curseScene: { transferCaption: 'The Curse of Karak', transferTitle: 'The curse falls on {who}', transferRule: '{by} slew a mummy and passes the Curse of Karak on', transferred: '{who} is cursed: no skills until a fountain lifts it', enters: '{who} enters the room', alreadyRule: 'A hero already cursed does not roll', already: '{who} is already cursed: the room does nothing', caption: 'Cursed Room', rolls: '{who} rolls the die', rule: '1–3: the Curse of Karak falls on the hero · 4–6: spared', token: 'The Curse of Karak', cursed: '{who} is cursed: the token goes onto the hero', spared: 'Spared: the curse stays in the room', lost: 'Your skills no longer work until a fountain lifts the curse:', ok: 'Go on' },
   duelScene: { chooseRival: 'Whom do you call out?', callOut: 'Call out', caption: 'Duel on the Battle Arena', noSpells: 'no spells', choosing: 'choosing…', rolls: 'rolls…', prepareTitle: '{who}: before the roll', prepareHint: 'What you choose is spent even if the roll would win without it.', plus: '+{n} to the roll', sacrifice: '1 HP for +1', nothingToSpend: 'No damage spells to spend.', go: 'Into the duel', waitsFor: '{who} chooses the spells…', items: 'items +{n}', win: 'Victory!', lose: 'Defeat', tie: 'A tie', wins: '{who} wins' },
   skillsPanel: {

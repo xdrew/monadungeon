@@ -38,12 +38,14 @@ export const gameApi = {
    * @param {boolean} [options.randomHeroes] - heroes are dealt at random (the AI is dealt one in any case)
    * @returns {Promise<GameResponse>} Promise with game response data
    */
-  createGame: async (gameId = null, { regent = false, lordKarak = false, randomHeroes = false } = {}) => {
+  createGame: async (gameId = null, { regent = false, lordKarak = false, randomHeroes = false, hotseat = false } = {}) => {
     const payload = {
       gameId: gameId || generateRandomId(),
       regent,
       lordKarak: regent && lordKarak,
-      randomHeroes
+      randomHeroes,
+      // several humans at one screen (the human seats after the first are named guests)
+      hotseat
     };
     
     try {

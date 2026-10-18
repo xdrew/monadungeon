@@ -142,6 +142,16 @@ final class RandomHeroAssignmentTest extends TestCase
         self::assertTrue($messages[0]->randomHeroes);
     }
 
+    #[Test]
+    public function aHotseatGameKeepsItsFlag(): void
+    {
+        [$game] = handle(Game::create(...), new CreateGame(gameId: Uuid::v7(), hotseat: true));
+        [$plain] = handle(Game::create(...), new CreateGame(gameId: Uuid::v7()));
+
+        self::assertTrue($game->isHotseat());
+        self::assertFalse($plain->isHotseat());
+    }
+
     private function createGame(bool $regent = false, bool $randomHeroes = false): Game
     {
         [$game] = handle(Game::create(...), new CreateGame(gameId: Uuid::v7(), regent: $regent, randomHeroes: $randomHeroes));

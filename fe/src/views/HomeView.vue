@@ -108,7 +108,7 @@
           </button>
         </form>
       </div>
-      <!-- Two ways down, one tab each, so the panel fits the screen: against the AI, or at a table online -->
+      <!-- Three ways down, one tab each, so the panel fits the screen: against the AI, at one screen, or online -->
       <div
         class="lobby-tabs lobby-caption"
         role="tablist"
@@ -348,6 +348,17 @@
         {{ t('lobby.playAi') }}
       </button>
 
+      <!-- Hot-seat: several players at this screen, the screen handed over between their turns -->
+      <HotseatSetup
+        v-if="tab === 'hotseat' && account"
+        :regent="regentExpansion"
+        :lord-karak="lordKarakVariant"
+        :random-heroes="randomHeroes"
+        :hero-cards="heroCards"
+        :account-name="account.name || ''"
+        :disabled="loading"
+      />
+
       <!-- Online play: a table for friends, the open tables -->
       <TablesPanel
         v-if="tab === 'online'"
@@ -426,6 +437,7 @@ import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import ThemeLogo from '@/components/ThemeLogo.vue';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import TablesPanel from '@/components/lobby/TablesPanel.vue';
+import HotseatSetup from '@/components/lobby/HotseatSetup.vue';
 import { useI18n } from 'vue-i18n';
 import { theme, getHero } from '@/theme';
 import { heroName, HERO_SKILL_KEYS } from '@/i18n/names';
@@ -435,7 +447,7 @@ const route = useRoute();
 useMusicSituation('lobby');
 
 // The panel's tab, kept for this browser; an online flow (a table link, Google) may open on its own
-const LOBBY_TABS = ['ai', 'online'];
+const LOBBY_TABS = ['ai', 'hotseat', 'online'];
 const readTab = () => {
   try { return localStorage.getItem('lobby.tab'); } catch { return null; }
 };

@@ -25,5 +25,7 @@ final readonly class Request
          * Heroes are dealt at random (AI players are dealt one in any case).
          */
         public bool $randomHeroes = false,
+        /** several humans at one screen */
+        public bool $hotseat = false,
     ) {}
 }

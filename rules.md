@@ -12,6 +12,7 @@ Monadungeon is a dungeon-crawling adventure game where players explore a labyrin
 - **Starting Tile**: A pre-placed starting tile is set at position (0,0) ✅
 - **Components** (exactly the box, never trimmed): 80 tiles — the start, 53 rooms, 20 corridors, 2 healing fountains, 4 teleportation gates; 53 tokens — 43 monsters with the dragon and 10 chests. Karak: Regent adds 18 tiles and 8 tokens ✅
 - **Turn Order**: every player rolls 2d6, the highest roll starts (the players tied for the highest roll again), then play goes clockwise; in test mode player 1 starts and no dice are spent ✅
+- **Players at one screen (hot-seat)**: 2–4 seats in one browser, humans and the AI; between two humans' turns the screen is handed over behind a curtain, each human's pack and skills show only after they reveal their turn ✅
 
 ## Turn Structure ✅
 Each player has **4 movement actions** per turn. During their turn, players can:
