@@ -3,7 +3,7 @@
 FROM node:18-alpine AS builder
 
 # Accept build arguments for environment variables
-ARG VITE_API_BASE_URL=https://monadungeon.avelent.work
+ARG VITE_API_BASE_URL=https://karak.avelent.work
 
 WORKDIR /app
 

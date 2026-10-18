@@ -67,7 +67,7 @@ services:
       context: ./fe
       dockerfile: Dockerfile.prod
       args:
-        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-https://monadungeon.avelent.work}"
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-https://karak.avelent.work}"
     volumes:
       - frontend_dist:/target
       - frontend_backup:/backup
@@ -152,6 +152,8 @@ services:
   certbot:
     image: certbot/certbot
     container_name: certbot_monadungeon_prod
+    # Without a restart policy the renewal loop stayed down after the Docker daemon restarted (Aug 2026).
+    restart: unless-stopped
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot_webroot:/var/www/certbot

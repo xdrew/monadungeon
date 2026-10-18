@@ -34,14 +34,14 @@ docker exec nginx_monadungeon_prod sh -c '
 echo ""
 echo "=== Testing actual HTTP response ==="
 echo "Fetching index.html to see loaded scripts:"
-curl -s https://monadungeon.avelent.work/ | grep -o '<script.*src="[^"]*"' | head -5
+curl -s https://karak.avelent.work/ | grep -o '<script.*src="[^"]*"' | head -5
 
 echo ""
 echo "Fetching a JS file to check for env vars:"
 # Get the first JS file from index.html
-JS_FILE=$(curl -s https://monadungeon.avelent.work/ | grep -o '/assets/[^"]*\.js' | head -1)
+JS_FILE=$(curl -s https://karak.avelent.work/ | grep -o '/assets/[^"]*\.js' | head -1)
 if [ ! -z "$JS_FILE" ]; then
     echo "Checking $JS_FILE for environment variables..."
-    curl -s "https://monadungeon.avelent.work$JS_FILE" | grep -o "cmeb207py01ikky0csyj8akos" | head -1 || echo "Privy app ID not found in $JS_FILE"
-    curl -s "https://monadungeon.avelent.work$JS_FILE" | grep -o "VITE_PRIVY_APP_ID" | head -1 && echo "WARNING: Unprocessed env var reference found!"
+    curl -s "https://karak.avelent.work$JS_FILE" | grep -o "cmeb207py01ikky0csyj8akos" | head -1 || echo "Privy app ID not found in $JS_FILE"
+    curl -s "https://karak.avelent.work$JS_FILE" | grep -o "VITE_PRIVY_APP_ID" | head -1 && echo "WARNING: Unprocessed env var reference found!"
 fi

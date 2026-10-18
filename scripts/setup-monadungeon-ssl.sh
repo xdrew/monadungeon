@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# SSL setup for the main site vhost (monadungeon.avelent.work).
+# SSL setup for the main site vhost (karak.avelent.work).
 #
 # The nginx config references /etc/letsencrypt/live/$DOMAIN/*.pem, so nginx
 # cannot start before the certificate exists. This script breaks that
@@ -12,7 +12,7 @@ set -euo pipefail
 # touched here.
 
 PROJECT_DIR="${PROJECT_DIR:-/opt/monadungeon}"
-DOMAIN="${DOMAIN:-monadungeon.avelent.work}"
+DOMAIN="${DOMAIN:-karak.avelent.work}"
 EMAIL="${EMAIL:-ripxdrew@gmail.com}"
 COMPOSE_FILE="compose.prod.yml"
 ENV_FILE=".env.prod"

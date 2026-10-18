@@ -45,13 +45,13 @@ export default defineConfig(() => {
     },
     // Define environment variables explicitly for production build
     define: {
-      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://monadungeon.avelent.work'),
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://karak.avelent.work'),
     },
     server: {
       host: '0.0.0.0',
       port: 5173,
       strictPort: true,
-      allowedHosts: ['monadungeon.avelent.work', 'sf.sf', 'localhost', '127.0.0.1'],
+      allowedHosts: ['karak.avelent.work', 'monadungeon.avelent.work', 'sf.sf', 'localhost', '127.0.0.1'],
       proxy: {
         // Proxy API requests to backend during development
         '/api': {

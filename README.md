@@ -2,7 +2,7 @@
 
 A fully-featured multiplayer dungeon-crawling adventure game where players explore a labyrinth, fight monsters, collect treasures, and race to defeat the final boss.
 
-🎮 **[Play Now at monadungeon.avelent.work](https://monadungeon.avelent.work)**
+🎮 **[Play Now at karak.avelent.work](https://karak.avelent.work)**
 📺 **[Watch Gameplay Video](https://www.youtube.com/watch?v=BEVkE--cnkc&feature=youtu.be)**
 
 ## Game Features

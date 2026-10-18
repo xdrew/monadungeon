@@ -12,7 +12,7 @@ not just monadungeon. As of the last audit it served vhosts for:
 
 | project | domains |
 | --- | --- |
-| monadungeon | `monadungeon.avelent.work` |
+| monadungeon (Karak) | `karak.avelent.work` (`monadungeon.avelent.work` redirects to it) |
 | showcase | `showcase.monadungeon.xyz` |
 | watermelon | `watermelon.monadungeon.xyz` |
 | td | `td.monadungeon.xyz`, `td.avelent.work` |
@@ -21,7 +21,24 @@ not just monadungeon. As of the last audit it served vhosts for:
 | countryatlas | `countryatlas.org` |
 | swapnad | `swapnad.xyz`, `www.swapnad.xyz`, `indexer.swapnad.xyz` |
 
-The committed version contains only the monadungeon vhosts.
+The committed version contains only the monadungeon vhosts and is older than the live one: the live
+`karak.avelent.work` server block also carries the push location below (online tables), kept out of the
+committed file so that `git pull` on the host keeps working.
+
+```nginx
+    # Push (Mercure, Server-Sent Events): long-lived streams, never buffered
+    location /.well-known/mercure {
+        proxy_pass http://mercure:80;
+        proxy_http_version 1.1;
+        proxy_set_header Connection '';
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+    }
+```
 
 ### Consequences
 
