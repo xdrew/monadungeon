@@ -3010,6 +3010,30 @@ final class SmartVirtualPlayer implements AiTurnTaker
                 }
             }
 
+            // Without a key, keep walking to the nearest free key it can reach (through visited places too): the
+            // first step alone, then exploring, walked it to and fro next to the keys turn after turn
+            if (!$this->playerHasKey($player) && !empty($moveToOptions) && $this->moveCount < $this->maxMoves) {
+                $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
+                $freeKeys = [];
+                foreach ($items as $pos => $item) {
+                    $item = Item::fromAnything($item);
+                    if ($item->type === ItemType::KEY && $item->guardDefeated
+                        && !isset(self::$unreachableTargets[$trackingKey][(string) $pos])
+                        && $this->walkingDistance($currentPosition->toString(), (string) $pos, $field) < 100) {
+                        $freeKeys[] = (string) $pos;
+                    }
+                }
+                if ($freeKeys !== []) {
+                    $moveCountBefore = $this->moveCount;
+                    $actions[] = $this->createAction('ai_reasoning', ['message' => 'Continuing towards a free key']);
+                    error_log('DEBUG ai.free_key_pursuit ' . json_encode(['from' => $currentPosition->toString(), 'keys' => $freeKeys]));
+                    $this->executeMoveTowardsTarget($gameId, $playerId, $currentTurnId, $currentPosition, $moveToOptions, $freeKeys, 'key', $actions);
+                    if ($this->moveCount > $moveCountBefore) {
+                        return;
+                    }
+                }
+            }
+
             // Continue pursuing valuable monsters even through visited positions
             if (!empty($valuableMonsters) && !empty($moveToOptions) && $this->moveCount < $this->maxMoves) {
                 $currentPosition = $this->messageBus->dispatch(new GetPlayerPosition($gameId, $playerId));
