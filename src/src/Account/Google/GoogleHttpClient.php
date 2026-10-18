@@ -28,7 +28,9 @@ final readonly class GoogleHttpClient implements GoogleOAuthClient
             'client_id' => $this->clientId,
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
-            'scope' => 'openid email profile',
+            // the stable id is all the game needs: no name, photo or email asked (a new account gets a made-up
+            // name, the account line reads "kept with Google" without an address)
+            'scope' => 'openid',
             'state' => $state,
             'code_challenge' => $codeChallenge,
             'code_challenge_method' => 'S256',
