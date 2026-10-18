@@ -391,8 +391,9 @@ final class SmartVirtualPlayer implements AiTurnTaker
                         if ($item instanceof Item) {
                             $itemType = $item->type->value ?? '';
                         }
-                        // Only add weapons that are truly worth picking up
-                        if (\in_array($itemType, ['dagger', 'sword', 'axe'], true)) {
+                        // Weapons truly worth picking up, and a free key while we have none (it beats fighting a
+                        // turnkey for one: no die, no HP lost)
+                        if (\in_array($itemType, ['dagger', 'sword', 'axe'], true) || ($itemType === 'key' && !$hasKey)) {
                             $betterWeaponsImmediate[$pos] = $itemType;
                             error_log("DEBUG AI: Found weapon worth picking up at {$pos}: {$itemType} (can reach this turn)");
                         }
@@ -431,8 +432,9 @@ final class SmartVirtualPlayer implements AiTurnTaker
                     if ($item instanceof Item) {
                         $itemType = $item->type->value ?? '';
                     }
-                    // Only add weapons that are truly worth picking up
-                    if (\in_array($itemType, ['dagger', 'sword', 'axe'], true)) {
+                    // Weapons truly worth picking up, and a free key while we have none (a turnkey is fought for it
+                    // only when no key lies free on the field)
+                    if (\in_array($itemType, ['dagger', 'sword', 'axe'], true) || ($itemType === 'key' && !$hasKey)) {
                         $betterWeaponsOnField[$pos] = $itemType;
                         error_log("DEBUG AI: Weapon worth picking up on field at {$pos}: {$itemType}");
                     }

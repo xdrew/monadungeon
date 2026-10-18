@@ -5086,11 +5086,17 @@ const currentPlayerFieldPosition = computed(() => {
 });
 
 // Check if player has inventory space for the battle reward
+// The loot of the fight on screen. A fight lost or drawn on the dice carries no reward, though spells or a
+// Sacrifice may still win it: the monster's own token on the field tells what it guards
+const battleRewardType = computed(() => battleRewardType.value
+  || gameData.value?.field?.items?.[battleInfo.value?.position]?.type
+  || null);
+
 const hasInventorySpaceForReward = computed(() => {
-  if (!battleInfo.value || !battleInfo.value.reward || !getCurrentPlayerData.value) return true;
+  if (!battleInfo.value || !battleRewardType.value || !getCurrentPlayerData.value) return true;
 
   // One place for the slot rules (hero skills included: Hanna's daggers also fit a spell slot)
-  return hasRoomForItem(getCurrentPlayerData.value, battleInfo.value.reward.type);
+  return hasRoomForItem(getCurrentPlayerData.value, battleRewardType.value);
 });
 
 // Function to select inventory item
@@ -5551,7 +5557,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
 
     // If consumables were used, check if removing them creates space
     if (!hasInventorySpaceForReward.value && !keepsSpellsInCombat && finalizeBattleData.selectedConsumableIds && finalizeBattleData.selectedConsumableIds.length > 0) {
-      const rewardType = battleInfo.value?.reward?.type;
+      const rewardType = battleRewardType.value;
       
       // If the reward is a spell (Karak: Regent spells included), check if we're freeing up spell slots
       if (SPELL_TYPES.includes(rewardType)) {
@@ -5575,7 +5581,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
 
       
       // Special case for keys: auto-replace
-      if (battleInfo.value?.reward?.type === 'key') {
+      if (battleRewardType.value === 'key') {
 
         const currentKeys = getCurrentPlayerData.value?.inventory?.keys || [];
         if (currentKeys.length > 0) {
@@ -5588,7 +5594,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
         loading.value = false;
         
         // Get inventory category
-        const rewardType = battleInfo.value?.reward?.type;
+        const rewardType = battleRewardType.value;
         let inventoryCategory = 'treasures';
         if (['dagger', 'sword', 'axe'].includes(rewardType)) {
           inventoryCategory = 'weapons';
@@ -5647,7 +5653,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
     }
     
     // Ensure skip flag is set if we auto-replaced a key (check before clearing battleInfo)
-    const wasKeyReplacement = battleInfo.value?.reward?.type === 'key' && finalizeBattleData.replaceItemId;
+    const wasKeyReplacement = battleRewardType.value === 'key' && finalizeBattleData.replaceItemId;
     if (wasKeyReplacement) {
       skipBattleModalReshow.value = true;
     }
