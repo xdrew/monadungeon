@@ -20,9 +20,10 @@ final class Version20261015130209 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('DROP INDEX game.unique_player_wallet');
-        $this->addSql('ALTER TABLE game.leaderboard DROP wallet_address');
-        $this->addSql('ALTER TABLE player.player DROP wallet_address');
+        // the production database never had this index under this name (its own history): drop it only if present
+        $this->addSql('DROP INDEX IF EXISTS game.unique_player_wallet');
+        $this->addSql('ALTER TABLE game.leaderboard DROP COLUMN IF EXISTS wallet_address');
+        $this->addSql('ALTER TABLE player.player DROP COLUMN IF EXISTS wallet_address');
     }
 
     public function down(Schema $schema): void
