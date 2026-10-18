@@ -981,7 +981,9 @@ const potentialVictoryWithConsumables = computed(() => {
 
 
 const dynamicResult = computed(() => {
-  if (hasBoost.value && (showConsumableSelection.value || showInventorySelection.value)) {
+  // the full-pack choice comes only after a won fight (also one won with spells or a Sacrifice)
+  if (showInventorySelection.value) return 'win';
+  if (hasBoost.value && showConsumableSelection.value) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
 
@@ -1420,11 +1422,13 @@ const showInventoryFullSelection = (inventory, item) => {
   try { console.log('[BattleReportModal] Inventory full selection opened.'); } catch { /* logging must never break the fight */ }
 };
 
-const showFinalizeBattleInventoryFullSelection = (inventory) => {
+// `item`: the loot when the fight carries none (lost on the dice, won with spells or a Sacrifice)
+const showFinalizeBattleInventoryFullSelection = (inventory, item = null) => {
   console.log('showFinalizeBattleInventoryFullSelection called with inventory:', inventory);
   isProcessing.value = false;
   showInventorySelection.value = true;
   inventoryForSelection.value = inventory || [];
+  if (item && !props.battleInfo?.reward) pendingPickupItem.value = item;
   selectedItemForReplacement.value = null;
   setShowConsumableSelection(false, 'showFinalizeBattleInventoryFullSelection hides consumable selection');
   console.log('Keeping selected consumables for later:', selectedConsumables.value);

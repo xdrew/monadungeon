@@ -5623,7 +5623,9 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
 
         
         if (battleReportModalRef.value) {
-          battleReportModalRef.value.showFinalizeBattleInventoryFullSelection(inventoryForCategory);
+          // a fight won with spells carries no reward: the monster's token on the field is the loot
+          const fieldLoot = gameData.value?.field?.items?.[battleInfo.value?.position] || null;
+          battleReportModalRef.value.showFinalizeBattleInventoryFullSelection(inventoryForCategory, fieldLoot);
           return; // Wait for user to select replacement
         }
       }
