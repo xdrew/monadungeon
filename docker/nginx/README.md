@@ -40,6 +40,9 @@ committed file so that `git pull` on the host keeps working.
     }
 ```
 
+Its `location /api` also passes `proxy_set_header X-Forwarded-Port $server_port;`, so the Google sign-in callback
+is built as `https://karak.avelent.work/...` (the app now falls back to the scheme's default port without it).
+
 ### Consequences
 
 **Never `git checkout` this file on the production host.** Replacing the live

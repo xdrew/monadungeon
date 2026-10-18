@@ -83,9 +83,15 @@ final class OAuthCookie
         $forwardedHost = trim(explode(',', (string) $request->headers->get('X-Forwarded-Host', ''))[0]);
         $hostHeader = $forwardedHost !== '' ? $forwardedHost : (string) $request->headers->get('Host', $request->getHost());
         $host = (string) preg_replace('/:\d+$/', '', $hostHeader);
-        $port = preg_match('/:(\d+)$/', $hostHeader, $m) === 1
-            ? $m[1]
-            : trim(explode(',', (string) ($request->headers->get('X-Forwarded-Port') ?: $request->getPort()))[0]);
+        // the port: in the browser's host, else forwarded; a TLS proxy that names only the scheme (nginx in production)
+        // means that scheme's default port — the hop from the proxy to PHP is plain http on its own port
+        $forwardedPort = trim(explode(',', (string) $request->headers->get('X-Forwarded-Port', ''))[0]);
+        $port = match (true) {
+            preg_match('/:(\d+)$/', $hostHeader, $m) === 1 => $m[1],
+            $forwardedPort !== '' => $forwardedPort,
+            $request->headers->has('X-Forwarded-Proto') => '',
+            default => (string) $request->getPort(),
+        };
         $default = ($scheme === 'https' && $port === '443') || ($scheme === 'http' && $port === '80') || $port === '';
 
         return sprintf('%s://%s%s%s', $scheme, $host, $default ? '' : ':' . $port, self::PATH . '/callback');
