@@ -107,7 +107,11 @@ export default {
   lobby: {
     prepare: 'Przygotowanie do zejścia',
     tabs: { ai: 'Przeciw SI', hotseat: 'Przy jednym ekranie', online: 'Online' },
-    description: 'Do lochów pod górą — po skarby i smoczy skarbiec.',
+    description: 'Do lochów zamku Karak — po skarby i smoczy skarbiec.',
+    original: {
+      text: 'Na podstawie gry planszowej Karak Petra Mikšy i Romana Hladíka, wydawca Albi.',
+      buy: 'Kup oryginał'
+    },
     heroesRandom: 'Bohaterowie są losowani',
     chooseHero: 'Wybierz bohatera',
     randomHeroes: 'Losowi bohaterowie',

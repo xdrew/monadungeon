@@ -23,6 +23,18 @@
       <p class="description">
         {{ t('lobby.description') }}
       </p>
+      <!-- the board game this is made after, and where to get it -->
+      <p
+        class="original-game"
+        data-testid="original-game"
+      >
+        {{ t('lobby.original.text') }}
+        <a
+          :href="ORIGINAL_GAME_URL"
+          target="_blank"
+          rel="noopener"
+        >{{ t('lobby.original.buy') }}</a>
+      </p>
     </header>
 
     <main class="game-panel">
@@ -435,6 +447,9 @@ import SoundControl from '@/components/ui/SoundControl.vue';
 import { useMusicSituation } from '@/composables/useMusicSituation';
 import LanguageSwitch from '@/components/ui/LanguageSwitch.vue';
 import ThemeLogo from '@/components/ThemeLogo.vue';
+
+// The original board game (Albi, Petr Mikša and Roman Hladík): its publisher's page
+const ORIGINAL_GAME_URL = 'https://albi.cz/karak-druha-edice/';
 import GameIcon from '@/components/ui/GameIcon.vue';
 import TablesPanel from '@/components/lobby/TablesPanel.vue';
 import HotseatSetup from '@/components/lobby/HotseatSetup.vue';
@@ -803,6 +818,19 @@ const createNewGame = async () => {
   font-size: 20px;
   line-height: 1.4;
   color: #d6c3a0;
+}
+
+.original-game {
+  max-width: 34em;
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.original-game a {
+  color: var(--text-accent);
+  white-space: nowrap;
 }
 
 /* ===== Preparing the descent ===== */
@@ -1441,6 +1469,11 @@ const createNewGame = async () => {
     margin-left: auto;
     margin-right: auto;
     font-size: 17px;
+  }
+
+  .original-game {
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .game-panel {

@@ -108,7 +108,11 @@ export default {
   lobby: {
     prepare: 'Prepare the descent',
     tabs: { ai: 'Against the AI', hotseat: 'At one screen', online: 'Online' },
-    description: 'Into the dungeon under the mountain — for treasure, and the Dragon\'s hoard.',
+    description: 'Into the dungeons of Castle Karak — for treasure, and the Dragon\'s hoard.',
+    original: {
+      text: 'Made after Karak, the board game by Petr Mikša and Roman Hladík, published by Albi.',
+      buy: 'Get the original'
+    },
     heroesRandom: 'Heroes are dealt at random',
     chooseHero: 'Choose your hero',
     randomHeroes: 'Random heroes',
