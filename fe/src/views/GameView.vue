@@ -2100,6 +2100,27 @@ const gamePollingInterval = ref(null); // Interval for polling game updates
 // Battle modal state
 const showBattleReportModal = ref(false);
 
+// The end of the game: the results wait while the fight scene that ended it is on screen (a dragon won without
+// spells finishes the game on the server at once); closing the scene shows them
+let endScreenPending = false;
+const openEndScreen = () => {
+  if (showBattleReportModal.value) {
+    endScreenPending = true;
+    return;
+  }
+  endScreenPending = false;
+  showLeaderboardModal.value = true;
+};
+watch(showBattleReportModal, (open) => {
+  if (!open && endScreenPending) nextTick(openEndScreen);
+});
+// A finished game takes no more fight decisions: a button of the fight scene just closes it (the results follow)
+const closeFightOfFinishedGame = () => {
+  if (gameData.value?.state?.status !== 'finished') return false;
+  showBattleReportModal.value = false;
+  return true;
+};
+
 // Lord Karak rises on the tile that was just entered: the tile's own scene first (the Cursed Room's die and its
 // token, the arena's rival choice and duel, a fight, the AI's playback), the reveal and its music a moment after
 const tileSceneBusy = computed(() => !!cursedRoomScene.value || !!arenaChoiceForMe.value || !!visibleDuel.value
@@ -4382,19 +4403,8 @@ watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
     const winnerExternalId = entries.length > 0 ? entries[0].externalId : null;
 
 
-    // Close battle modal if it's still open before showing leaderboard
-    if (showBattleReportModal.value) {
-
-      showBattleReportModal.value = false;
-      
-      // Add a small delay to ensure DOM updates
-      setTimeout(() => {
-        showLeaderboardModal.value = true;
-      }, 100);
-    } else {
-      // Show the leaderboard modal immediately if battle modal is not open
-      showLeaderboardModal.value = true;
-    }
+    // the fight that ended the game is read first (the dragon falls on screen), then the results
+    openEndScreen();
   }
 }, { immediate: true });
 
@@ -4964,19 +4974,8 @@ watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
     const winnerExternalId = entries.length > 0 ? entries[0].externalId : null;
 
 
-    // Close battle modal if it's still open before showing leaderboard
-    if (showBattleReportModal.value) {
-
-      showBattleReportModal.value = false;
-      
-      // Add a small delay to ensure DOM updates
-      setTimeout(() => {
-        showLeaderboardModal.value = true;
-      }, 100);
-    } else {
-      // Show the leaderboard modal immediately if battle modal is not open
-      showLeaderboardModal.value = true;
-    }
+    // the fight that ended the game is read first (the dragon falls on screen), then the results
+    openEndScreen();
   }
 }, { immediate: true });
 
@@ -5183,6 +5182,7 @@ const handleInventoryFullResponse = (response) => {
 
 // Function to close battle report and end turn
 const closeBattleReportAndEndTurn = async () => {
+  if (closeFightOfFinishedGame()) return;
   try {
     // Reset request lock when battle ends
     resetRequestLock();
@@ -5323,6 +5323,7 @@ const handleItemClick = async (itemData) => {
 
 // Function to handle picking up item and ending turn
 const handlePickItemAndEndTurn = async () => {
+  if (closeFightOfFinishedGame()) return;
   try {
     const currentTurnId = gameData.value?.state?.currentTurnId;
     
@@ -5459,6 +5460,7 @@ const pickupPosition = () => {
 
 // Function to handle picking up item with replacement
 const handlePickItemWithReplacement = async (itemIdToReplace) => {
+  if (closeFightOfFinishedGame()) return;
   try {
     const currentTurnId = gameData.value?.state?.currentTurnId;
     const playerPosition = pickupPosition();
@@ -5516,6 +5518,7 @@ const handlePickItemWithReplacement = async (itemIdToReplace) => {
 
 // Function to handle finalize battle and pick up
 const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
+  if (closeFightOfFinishedGame()) return;
 
 
   
@@ -5687,6 +5690,7 @@ const handleFinalizeBattleAndPickUp = async (finalizeBattleData) => {
 
 // Function to handle finalize battle
 const handleFinalizeBattle = async (finalizeBattleData) => {
+  if (closeFightOfFinishedGame()) return;
   // Karak: Regent — a duel side has its own flow (no monster, no turn end)
   if (battleInfo.value?.duel) {
     await handleFinalizeDuelSide(finalizeBattleData);
@@ -6652,18 +6656,8 @@ function handleGameEnded(event) {
   leaderboard.value = entries;
   winnerId.value = event.winnerId;
   
-  // Close battle modal if it's still open before showing leaderboard
-  if (showBattleReportModal.value) {
-
-    showBattleReportModal.value = false;
-    
-    // Add a small delay to ensure DOM updates
-    setTimeout(() => {
-      showLeaderboardModal.value = true;
-    }, 100);
-  } else {
-    showLeaderboardModal.value = true;
-  }
+  // the fight that ended the game is read first (the dragon falls on screen), then the results
+  openEndScreen();
 }
 
 // Also watch for gameEnded flag
@@ -6696,19 +6690,8 @@ watch(() => gameData.value?.state?.gameEnded, (isEnded) => {
     const winnerExternalId = entries.length > 0 ? entries[0].externalId : null;
 
 
-    // Close battle modal if it's still open before showing leaderboard
-    if (showBattleReportModal.value) {
-
-      showBattleReportModal.value = false;
-      
-      // Add a small delay to ensure DOM updates
-      setTimeout(() => {
-        showLeaderboardModal.value = true;
-      }, 100);
-    } else {
-      // Show the leaderboard modal immediately if battle modal is not open
-      showLeaderboardModal.value = true;
-    }
+    // the fight that ended the game is read first (the dragon falls on screen), then the results
+    openEndScreen();
   }
 });
 
@@ -6743,19 +6726,8 @@ watch(() => gameData.value?.state?.status, (newStatus, oldStatus) => {
     const winnerExternalId = entries.length > 0 ? entries[0].externalId : null;
 
 
-    // Close battle modal if it's still open before showing leaderboard
-    if (showBattleReportModal.value) {
-
-      showBattleReportModal.value = false;
-      
-      // Add a small delay to ensure DOM updates
-      setTimeout(() => {
-        showLeaderboardModal.value = true;
-      }, 100);
-    } else {
-      // Show the leaderboard modal immediately if battle modal is not open
-      showLeaderboardModal.value = true;
-    }
+    // the fight that ended the game is read first (the dragon falls on screen), then the results
+    openEndScreen();
   }
 }, { immediate: true });
 
