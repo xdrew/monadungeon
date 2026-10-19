@@ -43,6 +43,33 @@ committed file so that `git pull` on the host keeps working.
 Its `location /api` also passes `proxy_set_header X-Forwarded-Port $server_port;`, so the Google sign-in callback
 is built as `https://karak.avelent.work/...` (the app now falls back to the scheme's default port without it).
 
+The static files and the audio are served outside `location /` and its `limit_req` (30 r/s, burst 20): a long game
+loads dozens of pictures and the first tap fetches the sound effects, and the limit answered part of them with 503
+(the lobby music among them):
+
+```nginx
+    location / {
+        root /usr/share/nginx/html;
+        try_files $uri $uri/ /index.html;
+        limit_req zone=general_limit burst=20 nodelay;
+    }
+
+    # Static files: no rate limit (a page loads dozens of pictures, the first tap ~40 sounds at once)
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff|woff2|ttf|eot)$ {
+        root /usr/share/nginx/html;
+        try_files $uri =404;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Audio: file names are not hashed, so cached for a week, not forever
+    location ^~ /audio/ {
+        root /usr/share/nginx/html;
+        try_files $uri =404;
+        expires 7d;
+    }
+```
+
 ### Consequences
 
 **Never `git checkout` this file on the production host.** Replacing the live
