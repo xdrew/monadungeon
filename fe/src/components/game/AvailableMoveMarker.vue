@@ -169,10 +169,13 @@ const handleClick = () => {
   100% { transform: translate(-2%, 5%) scale(1.02); opacity: 0.8; }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* Still on phones too: a running animation under the field promotes every tile drawn over it
+   to a layer of its own, dozens of field-sized layers that made placing and walking lag */
+@media (prefers-reduced-motion: reduce), (pointer: coarse) {
   .unexplored-mist,
   .move-marker.place-tile::after {
     animation: none;
+    will-change: auto;
   }
 }
 

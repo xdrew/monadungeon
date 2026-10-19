@@ -881,7 +881,8 @@ const onItemClick = () => {
   100% { transform: scale(1.9); opacity: 0; }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* A still ring on phones too: the running pulse layers every tile drawn over it (see AvailableMoveMarker) */
+@media (prefers-reduced-motion: reduce), (pointer: coarse) {
   .hero-standee.is-acting::after,
   .hero-standee.is-acting::before {
     animation: none;
@@ -970,9 +971,11 @@ const onItemClick = () => {
   50% { opacity: 1; transform: scale(1.04); }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* Still on phones: see the mist in AvailableMoveMarker (a running animation layers the tiles over it) */
+@media (prefers-reduced-motion: reduce), (pointer: coarse) {
   .tile-items.pickable::before {
     animation: none;
+    will-change: auto;
   }
 }
 
@@ -1270,6 +1273,14 @@ const onItemClick = () => {
 .arena-indicator.arena-used {
   animation: none;
   filter: none;
+}
+
+/* Still on phones (see the mist in AvailableMoveMarker); after the rules above so it wins */
+@media (prefers-reduced-motion: reduce), (pointer: coarse) {
+  .healing-fountain-indicator,
+  .arena-indicator {
+    animation: none;
+  }
 }
 
 .arena-indicator.arena-used .arena-image {
