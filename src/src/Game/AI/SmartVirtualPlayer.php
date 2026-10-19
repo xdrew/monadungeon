@@ -4516,6 +4516,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
                     $this->skillActions[] = $this->createAction('ai_reasoning', [
                         'decision' => 'use_skill',
                         'skill' => 'stealth',
+                        // the playback marks the step onto this tile (the notes come after the turn's steps)
+                        'position' => $key,
                         'reason' => "Sneaking past the monster at {$key}",
                     ]);
                 }
@@ -4563,6 +4565,7 @@ final class SmartVirtualPlayer implements AiTurnTaker
         $actions[] = $this->createAction('ai_reasoning', [
             'decision' => 'use_skill',
             'skill' => 'listening',
+            'position' => $key,
             'reason' => "Listening at {$key} instead of entering (HP {$player->getHP()}"
                 . ($winChance !== null ? ', win chance ' . round($winChance * 100) . '%' : '') . ')',
             'result' => $result,
@@ -4682,6 +4685,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
         $actions[] = $this->createAction('ai_reasoning', [
             'decision' => 'use_skill',
             'skill' => 'reincarnation',
+            // the playback carries the hero to the fountain
+            'to' => $fountain,
             'reason' => "Reincarnating at the fountain {$fountain}",
             'result' => $result,
         ]);
@@ -4711,6 +4716,8 @@ final class SmartVirtualPlayer implements AiTurnTaker
         $actions[] = $this->createAction('ai_reasoning', [
             'decision' => 'use_skill',
             'skill' => 'lightning_retreat',
+            // the playback carries the hero back
+            'to' => $option,
             'reason' => "Retreating to {$option}",
             'result' => $result,
         ]);

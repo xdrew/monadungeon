@@ -2759,6 +2759,12 @@ const showAiBattleOverlay = (action, playerId = null) => {
   centerViewOnTile(battlePosition);
 };
 
+// A skill of the AI told in the playback line; Dark Thorn is also a notice (someone just lost an HP to it)
+const showAiSkillNote = (action) => {
+  clearAiBattleOverlay();
+  if (action.type === 'thorn') showActionNotice(action.label, 'notice');
+};
+
 const clearAiBattleOverlay = () => {
   aiBattleOverlay.value = null;
   aiRoomOverlay.value = null;
@@ -2990,13 +2996,14 @@ const checkAndHandleVirtualPlayerTurn = async () => {
 
           // Play back AI actions step by step before loading final state
           claimPlaybackRoomRolls(response.actions);
-          const filteredActions = aiPlayback.filterActions(response.actions || []);
+          const filteredActions = aiPlayback.filterActions(response.actions || [], { nameOf: heroNameById });
           if (filteredActions.length > 0) {
             await aiPlayback.playActions(filteredActions, {
               onPlaceTile: (action) => { clearAiBattleOverlay(); applyAiTilePlacement(action); },
               onMovePlayer: (action) => { clearAiBattleOverlay(); applyAiPlayerMovement(action, currentPlayer); },
               onBattle: (action) => showAiBattleOverlay(action, currentPlayer),
               onCursedRoom: (action) => showAiRoomRoll(action),
+              onNote: (action) => showAiSkillNote(action),
               onPickup: () => clearAiBattleOverlay(),
               onEndTurn: () => clearAiBattleOverlay(),
             });
@@ -3136,7 +3143,7 @@ const playOnlineAiTurn = async (message) => {
       // a Cursed Room's die on screen is read first
       await whenRoomSceneClosed();
       const next = onlinePlaybackQueue.shift();
-      const actions = aiPlayback.filterActions(next.actions || []);
+      const actions = aiPlayback.filterActions(next.actions || [], { nameOf: heroNameById });
       console.info('[online] playing back the server turn of', next.playerId, `(${actions.length} actions${next.standIn ? ', stand-in' : ''})`);
       if (next.standIn) showActionNotice(t('tables.standIn', { who: heroNameById(next.playerId) }), 'notice');
       if (actions.length) {
@@ -3145,6 +3152,7 @@ const playOnlineAiTurn = async (message) => {
           onMovePlayer: (action) => { clearAiBattleOverlay(); applyAiPlayerMovement(action, next.playerId); },
           onBattle: (action) => showAiBattleOverlay(action, next.playerId),
           onCursedRoom: (action) => showAiRoomRoll(action),
+          onNote: (action) => showAiSkillNote(action),
           onPickup: () => clearAiBattleOverlay(),
           onEndTurn: () => clearAiBattleOverlay(),
         });

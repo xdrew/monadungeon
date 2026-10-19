@@ -25,6 +25,10 @@ const BASE_DELAYS = {
   portal: 1500,
   magic_swap: 1500,
   lightning: 1200,
+  reincarnation: 1500,
+  retreat: 1200,
+  thorn: 1400,
+  note: 1100,
   battle: 2000,
   cursed_room: 2000,
   pickup: 800,
@@ -32,9 +36,20 @@ const BASE_DELAYS = {
 };
 
 // The AI's jumps: spells and skills that carry its hero (the AI logs them as its reasoning)
-const JUMP_TYPES = new Set(['portal', 'magic_swap', 'lightning']);
+const JUMP_TYPES = new Set(['portal', 'magic_swap', 'lightning', 'reincarnation', 'retreat']);
+// Skills with no step of their own, told as a line of the playback (Dark Thorn also hurts its target)
+const NOTE_TYPES = new Set(['thorn', 'note']);
+const NOTE_SKILLS = new Set(['listening', 'sprint', 'tireless', 'unstoppable']);
 function jumpStep(action) {
   const d = action.details || {};
+  if (action.type === 'ai_reasoning' && d.decision === 'use_spell' && d.spell === 'dark_thorn' && d.result?.success) {
+    return { type: 'thorn', details: { target: d.result.targetPlayerId || null } };
+  }
+  // tireless/listening/sprint answer the server; unstoppable is the AI's own note (the 6 already kept the turn)
+  if (action.type === 'ai_reasoning' && d.decision === 'use_skill' && NOTE_SKILLS.has(d.skill)
+    && (d.skill === 'unstoppable' || d.result?.success)) {
+    return { type: 'note', skill: d.skill, details: { position: d.position || null } };
+  }
   // Warrior "Double Attack": the reroll is a fight step of its own, its new dice and outcome after the first ones
   if (action.type === 'ai_reasoning' && d.decision === 'use_skill' && d.skill === 'double_attack' && d.result?.success
     && d.result?.response?.battleInfo) {
@@ -51,19 +66,44 @@ function jumpStep(action) {
   if (d.decision === 'use_skill' && d.skill === 'lightning_attack') {
     return { type: 'lightning', details: { result: { to: d.to } } };
   }
+  if (d.decision === 'use_skill' && d.skill === 'reincarnation') {
+    return { type: 'reincarnation', details: { result: { to: d.to } } };
+  }
+  if (d.decision === 'use_skill' && d.skill === 'lightning_retreat') {
+    return { type: 'retreat', details: { result: { to: d.to } } };
+  }
   return action;
+}
+
+/**
+ * The skills and spells behind a fight's total, named for the playback line: the battle info's flags, the spells
+ * spent and the Sacrifice from the finalize request.
+ */
+function fightNotes(bi, finalize, tieWon) {
+  const notes = [];
+  if (bi.onesRerolled > 0) notes.push(t('skills.combat_training.name'));
+  if (bi.onesAsSixes > 0) notes.push(t('skills.bear_attack.name'));
+  if (bi.berserk > 0) notes.push(`${t('skills.berserk.name')} +${bi.berserk}`);
+  if (bi.farseeing) notes.push(t('skills.farseeing.name'));
+  if (tieWon) notes.push(t('skills.backstab.name'));
+  const spells = Array.isArray(finalize?.consumables) ? finalize.consumables.length : 0;
+  if (spells > 0) notes.push(t('playback.spells', { n: spells }));
+  if (bi.spellsKept && spells > 0) notes.push(t('skills.magical_affinity.name'));
+  if (finalize?.sacrificeHp || bi.hpSacrificed) notes.push(t('skills.sacrifice.name'));
+  return notes;
 }
 
 function getActionCategory(type) {
   if (type === 'place_tile') return 'place_tile';
   if (type === 'move_player' || JUMP_TYPES.has(type)) return 'move_player';
+  if (NOTE_TYPES.has(type)) return 'note';
   if (type === 'battle' || type === 'battle_detected' || type === 'finalize_battle') return 'battle';
   if (type === 'end_turn') return 'end_turn';
   if (type === 'cursed_room') return 'cursed_room';
   return 'pickup';
 }
 
-function getActionLabel(action) {
+function getActionLabel(action, nameOf = () => '') {
   switch (action.type) {
     case 'place_tile': {
       const pos = action.details?.result?.position;
@@ -71,18 +111,22 @@ function getActionLabel(action) {
     }
     case 'move_player': {
       const to = action.details?.result?.to;
+      // Thief "Stealth": the step onto the monster's tile with no fight
+      if (action.skill === 'stealth') return t('playback.sneaks', { pos: to || '?' });
       return to ? t('playback.movedTo', { pos: to }) : t('playback.moved');
     }
     case 'battle': {
       // Double Attack: the same fight, rolled again
-      if (action.reroll) return `${t('skills.double_attack.name')} — ${getActionLabel({ ...action, reroll: false })}`;
+      if (action.reroll) return `${t('skills.double_attack.name')} — ${getActionLabel({ ...action, reroll: false }, nameOf)}`;
       const result = action.battleResult;
       const params = { dmg: action.totalDamage || 0, hp: action.monsterHP || 0 };
       const monster = action.monsterType ? monsterName(action.monsterType, 'name', params.hp) : '';
-      if (result === 'win') return monster ? t('playback.wonVs', { ...params, monster }) : t('playback.won', params);
-      if (result === 'lose') return monster ? t('playback.lostVs', { ...params, monster }) : t('playback.lost', params);
-      if (result === 'draw') return monster ? t('playback.drawVs', { ...params, monster }) : t('playback.draw', params);
-      return t('playback.battle');
+      let line = t('playback.battle');
+      if (result === 'win') line = monster ? t('playback.wonVs', { ...params, monster }) : t('playback.won', params);
+      if (result === 'lose') line = monster ? t('playback.lostVs', { ...params, monster }) : t('playback.lost', params);
+      if (result === 'draw') line = monster ? t('playback.drawVs', { ...params, monster }) : t('playback.draw', params);
+      // what made the total: the hero's skills and the spells spent
+      return action.notes?.length ? `${line} · ${action.notes.join(', ')}` : line;
     }
     case 'pickup_attempt':
     case 'pickup_result':
@@ -99,6 +143,14 @@ function getActionLabel(action) {
       return t('playback.magicSwap', { pos: action.details?.result?.to || '?' });
     case 'lightning':
       return t('playback.lightning', { pos: action.details?.result?.to || '?' });
+    case 'reincarnation':
+      return t('playback.reincarnation', { pos: action.details?.result?.to || '?' });
+    case 'retreat':
+      return t('playback.retreat', { pos: action.details?.result?.to || '?' });
+    case 'thorn':
+      return t('playback.darkThorn', { who: nameOf(action.details?.target) || '?' });
+    case 'note':
+      return t(`playback.skill.${action.skill}`, { pos: action.details?.position || '?' });
     case 'end_turn':
       return t('playback.turnEnded');
     case 'cursed_room':
@@ -140,12 +192,19 @@ export function useAiTurnPlayback() {
    * Filter raw AI actions to only game-affecting, visualizable ones.
    * Merges battle_detected + finalize_battle into a single battle step.
    */
-  function filterActions(rawActions) {
+  function filterActions(rawActions, { nameOf = () => '' } = {}) {
     if (!rawActions || !Array.isArray(rawActions)) return [];
+
+    // Thief "Stealth": the AI notes it after the turn's steps; the step onto that tile is marked instead
+    const sneakedOnto = new Set(rawActions
+      .filter(a => a.type === 'ai_reasoning' && a.details?.decision === 'use_skill' && a.details?.skill === 'stealth' && a.details?.position)
+      .map(a => a.details.position));
 
     // the AI's jumps get steps of their own (else its figure just turns up elsewhere): Portal of Healing on
     // itself, Magic Swap (both figures trade places), Lightning Attack (onto the monster, before the fight)
-    const visualizable = rawActions.map(jumpStep).filter(a => VISUALIZABLE_TYPES.has(a.type) || JUMP_TYPES.has(a.type));
+    const visualizable = rawActions.map(jumpStep)
+      .filter(a => VISUALIZABLE_TYPES.has(a.type) || JUMP_TYPES.has(a.type) || NOTE_TYPES.has(a.type))
+      .map(a => (a.type === 'move_player' && sneakedOnto.has(a.details?.result?.to) ? { ...a, skill: 'stealth' } : a));
 
     // Merge battle_detected + finalize_battle into single battle steps
     const merged = [];
@@ -158,14 +217,22 @@ export function useAiTurnPlayback() {
         // Look ahead for finalize_battle (consumable usage)
         const next = visualizable[i + 1];
         if (next && next.type === 'finalize_battle') {
-          const finalizeData = next.details?.result?.response || {};
+          const finalize = next.details?.result || {};
+          const finalizeData = finalize.response || {};
           const finalBi = finalizeData.battleResult || {};
+          // the spells and the Sacrifice change the total after the roll: the outcome follows the final total
+          const monsterHp = finalBi.monster || bi.monster || 0;
+          const finalTotal = finalizeData.finalTotalDamage ?? finalBi.totalDamage ?? bi.totalDamage ?? 0;
+          const tieWon = finalTotal === monsterHp && bi.tieIsWin === true;
+          const finalResult = finalBi.result
+            || (finalTotal > monsterHp || tieWon ? 'win' : finalTotal === monsterHp ? 'draw' : 'lose');
           merged.push({
             type: 'battle',
             reroll: action.details?.reroll === true,
-            battleResult: finalBi.result || battleResult,
+            notes: fightNotes(bi, finalize, tieWon),
+            battleResult: finalResult,
             monsterType: finalBi.monsterType || bi.monsterType || '',
-            totalDamage: finalBi.totalDamage || bi.totalDamage || 0,
+            totalDamage: finalTotal,
             monsterHP: finalBi.monster || bi.monster || 0,
             diceResults: finalBi.diceResults || bi.diceResults || [],
             position: finalBi.position || bi.position || '',
@@ -180,6 +247,7 @@ export function useAiTurnPlayback() {
         merged.push({
           type: 'battle',
           reroll: action.details?.reroll === true,
+          notes: fightNotes(bi, null, (bi.totalDamage || 0) === (bi.monster || 0) && bi.tieIsWin === true && battleResult === 'win'),
           battleResult,
           monsterType: bi.monsterType || '',
           totalDamage: bi.totalDamage || 0,
@@ -236,7 +304,7 @@ export function useAiTurnPlayback() {
     // Enrich with labels and icons
     return withRooms.map(action => ({
       ...action,
-      label: action.label || getActionLabel(action),
+      label: action.label || getActionLabel(action, nameOf),
       icon: action.icon || getActionIcon(action.type),
     }));
   }
@@ -318,6 +386,11 @@ export function useAiTurnPlayback() {
           case 'cursed_room':
             if (callbacks.onCursedRoom) await callbacks.onCursedRoom(action);
             if (!action.event?.alreadyCursed) audio.cue('dice_roll');
+            break;
+          case 'note':
+            // a skill told in the playback line; Dark Thorn also shows on its target (onNote)
+            if (callbacks.onNote) await callbacks.onNote(action);
+            if (action.type === 'thorn') audio.cue('dark_thorn');
             break;
           default:
             if (callbacks.onPickup) await callbacks.onPickup(action);
