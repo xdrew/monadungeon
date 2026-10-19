@@ -3081,6 +3081,68 @@ const checkAndHandleVirtualPlayerTurn = async () => {
 
 // ===== Online play: what the server pushes for this game =====
 // Another seat fought: a short notice with the chronicle's sentence (the field and the log update by themselves)
+// The rival's lines come one after another (a turn may carry a Sprint, a Dark Thorn and a fight): each stays on
+// screen a moment instead of the next one replacing it at once
+const opponentNoticeQueue = [];
+let opponentNoticeTimer = null;
+const pumpOpponentNotices = () => {
+  if (opponentNoticeTimer) return;
+  const next = opponentNoticeQueue.shift();
+  if (!next) return;
+  showActionNotice(next.line, next.cue);
+  opponentNoticeTimer = setTimeout(() => {
+    opponentNoticeTimer = null;
+    pumpOpponentNotices();
+  }, 2200);
+};
+const queueOpponentNotice = (line, cue = 'notice') => {
+  opponentNoticeQueue.push({ line, cue });
+  pumpOpponentNotices();
+};
+onUnmounted(() => clearTimeout(opponentNoticeTimer));
+
+// Online: another human's skills and spells (their fights have noticeOpponentFight). The state only jumps — a
+// swapped figure, a lost HP — so each new skill of the turn is told with its chronicle sentence. The AI's (and a
+// stand-in's) come with their played-back turn; my own I saw doing them.
+const OPPONENT_SKILL_ACTIONS = new Set(['use_spell', 'use_teleport', 'magic_swap', 'sprint', 'listen', 'tireless',
+  'lightning_attack', 'retreat', 'fateweaver', 'use_hero_ability']);
+const OPPONENT_SKILL_CUES = { dark_thorn: 'dark_thorn', teleport: 'spell_teleport' };
+const seenOpponentActions = new Set();
+let opponentActionsArmed = false;
+const noticeOpponentSkills = (data) => {
+  const fresh = [];
+  for (const turn of [...(data?.turns || [])].sort((a, b) => (a.turnNumber || 0) - (b.turnNumber || 0))) {
+    (Array.isArray(turn.actions) ? turn.actions : []).forEach((action, index) => {
+      const key = `${turn.turnId || turn.turnNumber}:${index}`;
+      if (seenOpponentActions.has(key)) return;
+      seenOpponentActions.add(key);
+      fresh.push({ turn, action });
+    });
+  }
+  if (!opponentActionsArmed) {
+    opponentActionsArmed = true;
+    return;
+  }
+  if (suppressFightNotice) return;
+  const nameOf = (playerId) => {
+    const player = data.players?.find((p) => p.id === playerId);
+    return player ? playerDisplayName(player, data.players) : t('common.unknown');
+  };
+  for (const { turn, action } of fresh) {
+    const actor = data.players?.find((p) => p.id === turn.playerId);
+    if (turn.playerId === mySeatId.value || !actor || actor.isAi) continue;
+    const type = action?.action || action?.type;
+    const d = action?.additionalData || action?.details || {};
+    const skilled = OPPONENT_SKILL_ACTIONS.has(type) || (type === 'move' && (d.sneakedPastMonster || d.throughWall));
+    if (!skilled) continue;
+    const line = describeAction(action, nameOf(turn.playerId), nameOf, turn.actions);
+    if (!line) continue;
+    const cue = OPPONENT_SKILL_CUES[d.spell] || (type === 'magic_swap' ? 'spell_teleport' : 'notice');
+    console.info('[online] the rival used a skill', { type, spell: d.spell || null });
+    queueOpponentNotice(line, cue);
+  }
+};
+
 const noticeOpponentFight = (data) => {
   // the latest fight of the game: a fight usually ends its turn, so by the time the state comes the current turn
   // is already the next player's (looking only there missed every rival's fight)
@@ -3110,7 +3172,7 @@ const noticeOpponentFight = (data) => {
     return player ? playerDisplayName(player, data.players) : t('common.unknown');
   };
   const line = describeAction(actions[index], nameOf(turn.playerId), nameOf, actions);
-  if (line) showActionNotice(line, 'notice');
+  if (line) queueOpponentNotice(line, 'notice');
   const fight = actions[index]?.additionalData || actions[index]?.details || {};
   if (fight.toPosition) {
     const action = {
@@ -3249,7 +3311,11 @@ const loadGameData = async (showLoading = true, { force = false } = {}) => {
     const fetchedGameData = await gameApi.getGame(id.value);
     adoptThisGamesPlayer(fetchedGameData);
     followHotseatSeat(fetchedGameData);
-    if (fetchedGameData?.state?.online) noticeOpponentFight(fetchedGameData);
+    if (fetchedGameData?.state?.online) {
+      // the rival's skills in the order of the turn, then its fight (which usually ends it)
+      noticeOpponentSkills(fetchedGameData);
+      noticeOpponentFight(fetchedGameData);
+    }
 
 
     // Initialize gameData if it doesn't exist yet
