@@ -213,6 +213,8 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
 
 .party-member {
   position: relative;
+  /* the rail itself lets taps through to the field (GameHud): the heroes take them */
+  pointer-events: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -474,9 +476,14 @@ const heroRole = (player) => (player.lordKarak ? heroName('lord_karak') : props.
   .party-member__numeral,
   .party-member__name,
   .party-member__who,
-  .party-member__treasure,
   .party-member__roll {
     display: none;
+  }
+
+  /* the score stays in the strip, beside the heart: who leads is the game's question */
+  .party-member__treasure {
+    gap: 2px;
+    font-size: 12px;
   }
 
   .party-rail__list {

@@ -102,7 +102,6 @@ const toolsOpen = ref(false);
   --hud-left: var(--rail-width);
 }
 
-.game-hud__rail,
 .game-hud__tools,
 .game-hud__chronicle,
 .game-hud__plaque,
@@ -111,9 +110,23 @@ const toolsOpen = ref(false);
   pointer-events: auto;
 }
 
-/* The top column spans the width: only what it holds takes clicks */
+/* The top column (the turn banner, the playback bar, the notices) spans the width over the field: only its
+   controls take taps, the rest lets them through to the tiles under it (building upwards on a phone) */
 .game-hud__top > :slotted(*) {
+  pointer-events: none;
+}
+
+.game-hud__top :deep(button),
+.game-hud__top :deep(a),
+.game-hud__top :deep(input),
+.game-hud__top :deep(select),
+.game-hud__top :deep([role="button"]) {
   pointer-events: auto;
+}
+
+/* The rail: its heroes take taps, the space between them does not (on a phone it is a strip over the field) */
+.game-hud__rail {
+  pointer-events: none;
 }
 
 .game-hud__scrim {

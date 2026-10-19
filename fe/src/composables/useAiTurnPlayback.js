@@ -35,6 +35,12 @@ const BASE_DELAYS = {
 const JUMP_TYPES = new Set(['portal', 'magic_swap', 'lightning']);
 function jumpStep(action) {
   const d = action.details || {};
+  // Warrior "Double Attack": the reroll is a fight step of its own, its new dice and outcome after the first ones
+  if (action.type === 'ai_reasoning' && d.decision === 'use_skill' && d.skill === 'double_attack' && d.result?.success
+    && d.result?.response?.battleInfo) {
+    const bi = d.result.response.battleInfo;
+    return { type: 'battle_detected', details: { battleInfo: bi, battleResult: bi.result, reroll: true } };
+  }
   if (action.type !== 'ai_reasoning' || !d.to || !d.result?.success) return action;
   if (d.decision === 'use_spell' && d.spell === 'teleport') {
     return { type: 'portal', details: { result: { to: d.to } } };
@@ -68,6 +74,8 @@ function getActionLabel(action) {
       return to ? t('playback.movedTo', { pos: to }) : t('playback.moved');
     }
     case 'battle': {
+      // Double Attack: the same fight, rolled again
+      if (action.reroll) return `${t('skills.double_attack.name')} — ${getActionLabel({ ...action, reroll: false })}`;
       const result = action.battleResult;
       const params = { dmg: action.totalDamage || 0, hp: action.monsterHP || 0 };
       const monster = action.monsterType ? monsterName(action.monsterType, 'name', params.hp) : '';
@@ -154,6 +162,7 @@ export function useAiTurnPlayback() {
           const finalBi = finalizeData.battleResult || {};
           merged.push({
             type: 'battle',
+            reroll: action.details?.reroll === true,
             battleResult: finalBi.result || battleResult,
             monsterType: finalBi.monsterType || bi.monsterType || '',
             totalDamage: finalBi.totalDamage || bi.totalDamage || 0,
@@ -170,6 +179,7 @@ export function useAiTurnPlayback() {
         // battle_detected without finalize — use battleInfo directly
         merged.push({
           type: 'battle',
+          reroll: action.details?.reroll === true,
           battleResult,
           monsterType: bi.monsterType || '',
           totalDamage: bi.totalDamage || 0,
