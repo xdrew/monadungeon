@@ -26,7 +26,7 @@ final readonly class Action
         $sortOrder = strtoupper((string) $request->query->get('sortOrder', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
 
         try {
-            /** @var list<array{hero: string, games: int|string, victories: int|string}> $rows */
+            /** @var list<array{hero: string|null, games: int|string, victories: int|string}> $rows */
             $rows = $this->connection->fetchAllAssociative(<<<'SQL'
                     SELECT p.hero AS hero,
                            COUNT(*) AS games,
@@ -45,7 +45,8 @@ final readonly class Action
                                END) AS victories
                     FROM player.player p
                     JOIN game.game g ON g.game_id = p.game_id
-                    WHERE g.status = 'finished' AND g.end_reason IS NULL AND p.hero IS NOT NULL
+                    -- played out or ended once the outcome was decided, not abandoned; no hero (null) is a row too
+                    WHERE g.status = 'finished' AND (g.end_reason IS NULL OR g.end_reason <> 'abandoned')
                     GROUP BY p.hero
                 SQL);
         } catch (\Throwable $e) {

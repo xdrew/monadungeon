@@ -41,4 +41,13 @@ final class HeroStandingsTest extends TestCase
     {
         self::assertSame('warrior', HeroStandings::build(self::ROWS, 'drop table')[0]['hero']);
     }
+
+    #[Test]
+    public function gamesWithoutAHeroAreARowOfTheirOwn(): void
+    {
+        $table = HeroStandings::build([...self::ROWS, ['hero' => null, 'games' => '4', 'victories' => '4']]);
+
+        self::assertNull($table[0]['hero']);
+        self::assertSame(100.0, $table[0]['winRate']);
+    }
 }

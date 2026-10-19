@@ -67,7 +67,7 @@
           </tr>
           <tr
             v-for="entry in heroes"
-            :key="entry.hero"
+            :key="entry.hero || 'none'"
             :class="{ [`rank-${entry.position}`]: entry.position <= 3 }"
           >
             <td class="position">{{ entry.position }}</td>
@@ -78,7 +78,7 @@
                   :src="getHero(entry.hero).image"
                   alt=""
                 >
-                {{ heroName(entry.hero, 'name') }}
+                {{ entry.hero ? heroName(entry.hero, 'name') : $t('lobby.noHero') }}
               </span>
             </td>
             <td class="victories">{{ entry.victories }}</td>

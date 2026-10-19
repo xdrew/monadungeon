@@ -7,7 +7,7 @@ namespace App\Api\Leaderboard\Heroes;
 final readonly class Response
 {
     /**
-     * @param list<array{position: int, hero: string, games: int, victories: int, winRate: float}> $entries
+     * @param list<array{position: int, hero: string|null, games: int, victories: int, winRate: float}> $entries
      * @param array{sortBy: string, sortOrder: string} $sorting
      */
     public function __construct(
