@@ -1430,6 +1430,7 @@ const selectedTeleportSpell = ref(null);
 // Thief "Stealth": pending "fight or sneak past" prompt ({ position, monster, resolve })
 const stealthPrompt = ref(null);
 const confirmStealth = ({ position, monster }) => new Promise((resolve) => {
+  showMissingKeyDialog.value = false;
   stealthPrompt.value = { position, monster, resolve };
 });
 const handleStealthChoice = (sneak) => {
@@ -4517,6 +4518,9 @@ const handlePlaceClick = async (position) => {
     return;
   }
   
+  // a new step or tile: the locked chest of the last step is behind us
+  showMissingKeyDialog.value = false;
+
   const response = await handlePlaceClickUtil({
     position,
     isPlayerTurn: isPlayerTurn.value,
