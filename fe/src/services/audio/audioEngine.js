@@ -11,6 +11,7 @@ import { SFX, STINGS, TRACKS, sfxFiles } from './cues';
 const CROSSFADE_S = 1.5;
 const DUCK_LEVEL = 0.25; // the loop under a sting
 const DEDUPE_MS = 60; // the same cue twice within this is one sound
+const PRELOAD_AT_ONCE = 4; // sound files fetched at the same time
 const KEYS = { music: 'audio.music', sfx: 'audio.sfx', muted: 'audio.muted' };
 
 const storage = {
@@ -120,9 +121,18 @@ class AudioEngine {
     if (this.unlocked || ctx.state !== 'running') return;
     this.unlocked = true;
     console.info('[audio] unlocked');
-    // the sounds are small: decode them all now so the first of each is not late
-    for (const id of SFX) sfxFiles(id).forEach((url) => this.buffer(url));
+    // the music first, then the sounds: small, decoded now so the first of each is not late,
+    // a few at a time (all at once tripped the server's rate limit, the music among them)
     if (this.wantedTrack) this.startTrack(this.wantedTrack);
+    this.preloadSounds();
+  }
+
+  async preloadSounds() {
+    const queue = [...SFX].flatMap((id) => sfxFiles(id));
+    const worker = async () => {
+      while (queue.length) await this.buffer(queue.shift());
+    };
+    await Promise.all(Array.from({ length: PRELOAD_AT_ONCE }, worker));
   }
 
   applyVolumes() {
