@@ -5177,7 +5177,7 @@ const currentPlayerFieldPosition = computed(() => {
 // Check if player has inventory space for the battle reward
 // The loot of the fight on screen. A fight lost or drawn on the dice carries no reward, though spells or a
 // Sacrifice may still win it: the monster's own token on the field tells what it guards
-const battleRewardType = computed(() => battleRewardType.value
+const battleRewardType = computed(() => battleInfo.value?.reward?.type
   || gameData.value?.field?.items?.[battleInfo.value?.position]?.type
   || null);
 

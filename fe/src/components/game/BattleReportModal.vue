@@ -1004,8 +1004,8 @@ const dynamicResultText = computed(() => {
     return t('battle.yourStrength', { n: totalCalculatedDamage.value });
   }
 
-  // a choice is still open (spells, Sacrifice, the duel side not locked in): a forecast, not the outcome
-  if (showConsumableSelection.value || duelAwaitsDecision.value) {
+  // the duel side not locked in yet: a forecast, not the outcome
+  if (duelAwaitsDecision.value) {
     const totalDamage = totalCalculatedDamage.value;
     const monsterHP = props.battleInfo.monster;
 
@@ -1014,8 +1014,9 @@ const dynamicResultText = computed(() => {
     return t('battle.forecastLose');
   }
 
-  if (props.battleInfo.result === 'win') return t('battle.victory');
-  if (props.battleInfo.result === 'draw') return t('battle.draw');
+  // the outcome with the spells and Sacrifice ticked right now (and a won fight's full-pack choice)
+  if (dynamicResult.value === 'win') return t('battle.victory');
+  if (dynamicResult.value === 'draw') return t('battle.draw');
   return t('battle.defeat');
 });
 
