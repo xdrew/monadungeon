@@ -2721,7 +2721,17 @@ const applyAiTilePlacement = (action) => {
 };
 
 let fieldFightKey = 0;
+// A played-back fight the hero won leaves its loot, not the monster, on the tile: the Swordsman
+// walks on after a win, and the state that clears the monster comes only at the end of his turn
+const settleAiFight = () => {
+  const fight = aiBattleOverlay.value;
+  if (fight?.result !== 'win') return;
+  const item = gameData.value?.field?.items?.[fight.position];
+  if (item && item.guardHP > 0) item.guardDefeated = true;
+};
+
 const showAiBattleOverlay = (action, playerId = null) => {
+  settleAiFight();
   const battleResult = String(action.battleResult || 'draw').toLowerCase();
   const totalDamage = action.totalDamage || 0;
   const monsterHP = action.monsterHP || 0;
@@ -2767,6 +2777,7 @@ const showAiSkillNote = (action) => {
 };
 
 const clearAiBattleOverlay = () => {
+  settleAiFight();
   aiBattleOverlay.value = null;
   aiRoomOverlay.value = null;
 };
@@ -2781,6 +2792,7 @@ const claimPlaybackRoomRolls = (rawActions) => {
 const showAiRoomRoll = (action) => {
   const event = action.event;
   if (!event?.position) return;
+  settleAiFight();
   aiBattleOverlay.value = null;
   const [x, y] = event.position.split(',').map(Number);
   const player = gameData.value?.players?.find((p) => p.id === event.playerId);
