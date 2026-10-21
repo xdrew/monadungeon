@@ -2,10 +2,10 @@
 FROM spiralscout/roadrunner:2024.2.1 AS roadrunner
 
 # install extensions, image page: <https://hub.docker.com/r/mlocati/php-extension-installer/tags>
-FROM mlocati/php-extension-installer:2.7.5 AS ext_installer
+FROM mlocati/php-extension-installer:2.12.3 AS ext_installer
 
 # build application runtime, image page: <https://hub.docker.com/_/php>
-FROM php:8.3-alpine3.17 AS app_base
+FROM php:8.3-alpine3.24 AS app_base
 
 
 COPY --from=ext_installer /usr/bin/install-php-extensions /usr/local/bin/
